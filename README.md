@@ -1,5 +1,36 @@
 ## bilibili 直播弹幕机
 
+### 当前支持功能列表
+```
+Msg.go
+case 后有函数调用的为支持，无调用的为未支持，注释掉的为未启用
+
+case "COMBO_SEND":
+case "INTERACT_WORD":
+case "ACTIVITY_BANNER_UPDATE_V2":
+case "NOTICE_MSG":
+case "ROOM_BANNER":
+case "ONLINERANK":
+case "WELCOME":
+case "HOUR_RANK_AWARDS":
+case "ROOM_RANK":
+case "ROOM_SHIELD":
+case "USER_TOAST_MSG":
+case "GUARD_BUY"://大航海购买
+case "WELCOME_GUARD"://welcome_guard(s)//大航海进入
+case "ROOM_SILENT_OFF", "ROOM_SILENT_ON":roomsilent(s);//禁言
+case "SEND_GIFT":send_gift(s)//礼物
+case "ROOM_BLOCK_MSG":room_block_msg(s)//封禁
+case "PREPARING":preparing(s)//下播
+case "LIVE":live(s)//开播
+case "SUPER_CHAT_MESSAGE", "SUPER_CHAT_MESSAGE_JPN":super_chat_message(s)//打赏
+case "PANEL":panel(s)//排行榜
+case "ENTRY_EFFECT":entry_effect(s)//进入特效
+case "ROOM_REAL_TIME_MESSAGE_UPDATE":roominfo(s)//粉丝数
+case "DANMU_MSG":danmu(s)//弹幕
+
+```
+
 ### demo 
 ```
 git clone https://github.com/qydysky/bili_danmu.git
@@ -7,38 +38,22 @@ cd demo
 go run main.go
 ```
 ```
-输入房间号: 213 
-INFO:  2020/09/14 21:02:58 [send hello to wss://tx-sh-live-comet-02.chat.bilibili.com/sub]
-ERROR:  2020/09/14 21:02:58 [-> websocket: close 1006 (abnormal closure): unexpected EOF]
-INFO:  2020/09/14 21:02:59 [send hello to wss://tx-gz-live-comet-01.chat.bilibili.com/sub]
-ERROR:  2020/09/14 21:02:59 [-> websocket: close 1006 (abnormal closure): unexpected EOF]
-INFO:  2020/09/14 21:03:00 [send hello to wss://broadcastlv.chat.bilibili.com/sub]
-INFO:  2020/09/14 21:03:00 [wss://broadcastlv.chat.bilibili.com/sub hello!]
-INFO:  2020/09/14 21:06:56 [祸美人M : 鬼来了]
-INFO:  2020/09/14 21:06:56 [泽北SAMAい : wc]
-INFO:  2020/09/14 21:06:57 [OurTube丶Now : 偷窥]
-INFO:  2020/09/14 21:06:57 [云又云又云 : 什么游戏？]
-INFO:  2020/09/14 21:06:57 [GNsetusna : 草]
-INFO:  2020/09/14 21:06:58 [amuseustillwedie : 闸总你出来！]
-INFO:  2020/09/14 21:06:58 [Kinoko7pro : 游戏名：零~月蚀之假面~]
-INFO:  2020/09/14 21:07:00 [mousebat04 : 就是能登麻美子]
-INFO:  2020/09/14 21:07:02 [紅魔の月時計 : 毫无感觉]
-INFO:  2020/09/14 21:07:03 [0小牙0 : 想到了冲自己冲冲冲]
-INFO:  2020/09/14 21:07:03 [gamestarts0 : 拿到武器必遇怪]
-INFO:  2020/09/14 21:07:04 [为什么鸽 : 我敲]
-INFO:  2020/09/14 21:07:04 [欢迎舰长 <%林嘉驹%> 进入直播间]
-INFO:  2020/09/14 21:07:04 [Icarus丶 : 这不就是小圆]
-INFO:  2020/09/14 21:07:05 [伶伶miss : 妖孽！哪里逃]
-INFO:  2020/09/14 21:07:07 [阿克酱 : 胆子好大啊]
-INFO:  2020/09/14 21:07:08 [Fdalmir : 偷窥]
-INFO:  2020/09/14 21:07:08 [欣泠丶 : 那个是圆香吧]
-INFO:  2020/09/14 21:07:08 [[[粉丝总人数: 599214] [粉丝团人数: 13796]]]
-INFO:  2020/09/14 21:07:09 [_墨轩- : 要是我直接哭了]
-INFO:  2020/09/14 21:07:09 [百合花业余植物学家 : 要是等流歌来可能就不会全灭了]
-INFO:  2020/09/14 21:07:09 [单机 第70名]
-INFO:  2020/09/14 21:07:11 [红脸的野郎 : 小姐姐；爱玩啊]
-INFO:  2020/09/14 21:07:11 [三月三日三重樱 : 大威天龙！]
+输入房间号: 13946381
+INFO: 2020/09/15 06:40:21 [bili_danmu.go>测试] [连接到房间 13946381]
+INFO: 2020/09/15 06:40:21 [bili_danmu.go>测试] [连接 wss://tx-sh-live-comet-01.chat.bilibili.com/sub]
+INFO: 2020/09/15 06:40:21 [bili_danmu.go>测试] [已连接到房间 13946381]
+INFO: 2020/09/15 06:40:22 [bili_danmu.go>测试] [开始心跳]
+INFO: 2020/09/15 06:40:29 [Msg.go>] [pek0pek0 : 外掛]
+INFO: 2020/09/15 06:40:30 [Msg.go>] [NealxS : 明显是挂了]
+INFO: 2020/09/15 06:40:33 [Msg.go>] [懒得起昵称丶 : 真大哥]
+INFO: 2020/09/15 06:40:36 [Msg.go>] [恩里克-普奇-神父 : 这场战役我们失去了天义佬]
+INFO: 2020/09/15 06:40:36 [Msg.go>] [ntwww 投喂 1 x 冰阔落 ( 1000 x 金瓜子 )]
+INFO: 2020/09/15 06:40:38 [Msg.go>] [方舟之下幽兰呆鹅 : 外挂]
+INFO: 2020/09/15 06:40:38 [Msg.go>] [一般通りのまこちゅう : 科技大佬]
+^CINFO: 2020/09/15 06:46:14 [ws.go>心跳] [fin]
+INFO: 2020/09/15 06:46:14 [ws.go>关闭] [*ws.Close]
+INFO: 2020/09/15 06:46:14 [ws.go>关闭] [ok]
 
-ctrl+c退出，弹幕会同时追加记录到文件danmu.log中
+ctrl+c退出，日志会同时追加记录到文件danmu.log中
 ```
 更多内容详见注释，如有疑问请发issues

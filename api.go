@@ -14,10 +14,10 @@ type api struct {
 }
 
 func New_api(Roomid int) (o *api) {
-	l := p.Logf().New().Level(LogLevel).T("New_api")
+	l := p.Logf().New().Base(-1, "api.go>新建").Level(LogLevel).T("New_api")
 	defer l.Block()
 
-	l.T("->", "ok")
+	l.T("ok")
 	o = new(api)
 	o.Roomid = Roomid
 	o.Get_info()
@@ -27,11 +27,11 @@ func New_api(Roomid int) (o *api) {
 
 func (i *api) Get_info() (o *api) {
 	o = i 
-	l := p.Logf().New().Level(LogLevel).T("*api.Get_info")
+	l := p.Logf().New().Base(-1, "api.go>获取房号").Level(LogLevel).T("*api.Get_info")
 	defer l.Block()
 
 	if o.Roomid == 0 {
-		l.E("->", "还未New_api")
+		l.E("还未New_api")
 		return
 	}
 	Roomid := strconv.Itoa(o.Roomid)
@@ -43,26 +43,26 @@ func (i *api) Get_info() (o *api) {
 		Timeout:10,
 		Retry:2,
 	});err != nil {
-		l.E("->", err)
+		l.E(err)
 		return
 	}
 	res := string(req.Respon)
 	if msg := p.Json().GetValFrom(res, "msg");msg == nil || msg != "ok" {
-		l.E("->", "msg", msg)
+		l.E("msg", msg)
 		return
 	}
 	if Uid := p.Json().GetValFrom(res, "data.uid");Uid == nil {
-		l.E("->", "data.uid", Uid)
+		l.E("data.uid", Uid)
 		return
 	} else {
 		o.Uid = int(Uid.(float64))
 	}
 
 	if room_id := p.Json().GetValFrom(res, "data.room_id");room_id == nil {
-		l.E("->", "data.room_id", room_id)
+		l.E("data.room_id", room_id)
 		return
 	} else {
-		l.T("->", "ok")
+		l.T("ok")
 		o.Roomid = int(room_id.(float64))
 	}
 	return
@@ -70,11 +70,11 @@ func (i *api) Get_info() (o *api) {
 
 func (i *api) Get_host_Token() (o *api) {
 	o = i
-	l := p.Logf().New().Level(LogLevel).T("*api.Get_host_Token")
+	l := p.Logf().New().Base(-1, "api.go>获取host key").Level(LogLevel).T("*api.Get_host_Token")
 	defer l.Block()
 
 	if o.Roomid == 0 {
-		l.E("->", "还未New_api")
+		l.E("还未New_api")
 		return
 	}
 	Roomid := strconv.Itoa(o.Roomid)
@@ -87,35 +87,35 @@ func (i *api) Get_host_Token() (o *api) {
 		Timeout:10,
 		Retry:2,
 	});err != nil {
-		l.E("->", err)
+		l.E(err)
 		return
 	}
 	res := string(req.Respon)
 	if msg := p.Json().GetValFrom(res, "message");msg == nil || msg != "0" {
-		l.E("->", "message", msg)
+		l.E("message", msg)
 		return
 	}
 
 	_Token := p.Json().GetValFrom(res, "data.token")
 	if _Token == nil {
-		l.E("->", "data.token", _Token, res)
+		l.E("data.token", _Token, res)
 		return
 	}
 	o.Token = _Token.(string)
 
 	if host_list := p.Json().GetValFrom(res, "data.host_list");host_list == nil {
-		l.E("->", "data.host_list", host_list)
+		l.E("data.host_list", host_list)
 		return
 	} else {
 		for k, v := range host_list.([]interface{}) {
 			if _host := p.Json().GetValFrom(v, "host");_host == nil {
-				l.E("->", "data.host_list[", k, "].host", _host)
+				l.E("data.host_list[", k, "].host", _host)
 				continue
 			} else {
 				o.Url = append(o.Url, "wss://" + _host.(string) + "/sub")
 			}			
 		}
-		l.T("->", "ok")
+		l.T("ok")
 	}
 
 	return

@@ -23,6 +23,8 @@ github.com/qydysky/bili_danmu v0.0.0-20200914143111-fe17ba7dd5a9 h1:85K/6r/1qlW5
 github.com/qydysky/bili_danmu v0.0.0-20200914143111-fe17ba7dd5a9/go.mod h1:hejetn5M5YL0dZpEBtswTWEOwS9Rq8eRiN3SFco3JXA=
 github.com/qydysky/part v0.0.0-20200914123330-afade058e33d h1:um1WzsGzwD6h+1W3jqGcWJPVr4kT5gmRRaXXVwO7nb4=
 github.com/qydysky/part v0.0.0-20200914123330-afade058e33d/go.mod h1:+8N3UgJBVyJj8ar31eZtucwrKpLpay854Y5qq0xk3x0=
+github.com/qydysky/part v0.0.0-20200914222559-436abc80976a h1:Wurgg5wiPemdfbO9lzOywZWst0DyEI610gUo3HV/ros=
+github.com/qydysky/part v0.0.0-20200914222559-436abc80976a/go.mod h1:+8N3UgJBVyJj8ar31eZtucwrKpLpay854Y5qq0xk3x0=
 github.com/shirou/gopsutil v2.20.7+incompatible/go.mod h1:5b4v6he4MtMOwMlS0TUMTu2PcXUg8+E1lC7eC3UO/RA=
 github.com/shirou/gopsutil v2.20.8+incompatible h1:8c7Atn0FAUZJo+f4wYbN0iVpdWniCQk7IYwGtgdh1mY=
 github.com/shirou/gopsutil v2.20.8+incompatible/go.mod h1:5b4v6he4MtMOwMlS0TUMTu2PcXUg8+E1lC7eC3UO/RA=

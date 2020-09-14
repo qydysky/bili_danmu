@@ -13,7 +13,7 @@ import (
 const LogLevel = 1
 
 func Demo() {
-	l:=p.Logf().New().Open("danmu.log").Level(LogLevel)
+	l:=p.Logf().New().Open("danmu.log").Base(-1, "bili_danmu.go>测试").Level(LogLevel)
 	defer l.Block()
 	
 	//ctrl+c退出
@@ -33,7 +33,7 @@ func Demo() {
 		for !break_sign {
 			//获取房间相关信息
 			api := New_api(room).Get_host_Token()
-			if len(api.Url) == 0 || api.Roomid == 0 || api.Token == "" {
+			if len(api.Url) == 0 || api.Roomid == 0 || api.Token == "" || api.Uid == 0 {
 				l.E("some err")
 				return
 			}
@@ -46,15 +46,15 @@ func Demo() {
 	
 				//SendChan 传入发送[]byte
 				//RecvChan 接收[]byte
-				l.I("send hello to", v)
+				l.I("连接", v)
 				ws.SendChan <- hello_send(api.Roomid, api.Token)
 				if hello_ok(<- ws.RecvChan) {
-					l.I(v, "hello!")
-					l.I("已连接", room)
+					l.I("已连接到房间", room)
 
 					//开始心跳
 					go func(){
 						p.Sys().MTimeoutf(500)//500ms
+						l.I("开始心跳")
 						heartbeatmsg, heartinterval := heartbeat()
 						ws.Heartbeat(1000 * heartinterval, heartbeatmsg)						
 					}()
@@ -101,7 +101,7 @@ const (
 
 //返回数据分派
 func Reply(b []byte) {
-	l := p.Logf().New().Level(LogLevel)
+	l := p.Logf().New().Base(-1, "bili_danmu.go>返回分派").Level(LogLevel)
 	defer l.Block()
 
 	if ist, _ := headChe(b[:16], len(b), WS_BODY_PROTOCOL_VERSION_DEFLATE, WS_OP_MESSAGE, 0, 4); ist {
@@ -135,7 +135,7 @@ func headGen(datalenght,Opeation,Sequence int) []byte {
 func headChe(head []byte, datalenght,Bodyv,Opeation,Sequence,show int) (bool,int32) {
 	if len(head) != WS_PACKAGE_HEADER_TOTAL_LENGTH {return false, 0}
 	
-	l := p.Logf().New().Level(show)
+	l := p.Logf().New().Base(-1, "bili_danmu.go>头检查").Level(show)
 	defer l.Block()
 
 	packL := Btoi32(head[:4])
@@ -154,11 +154,11 @@ func headChe(head []byte, datalenght,Bodyv,Opeation,Sequence,show int) (bool,int
 
 //认证生成与检查
 func hello_send(roomid int, key string) []byte {
-	l := p.Logf().New().Level(LogLevel).T("hello_ws")
+	l := p.Logf().New().Base(-1, "bili_danmu.go>头生成").Level(LogLevel).T("hello_ws")
 	defer l.Block()
 
 	if roomid == 0 || key == "" {
-		l.E("->", "roomid == 0 || key == \"\"")
+		l.E("roomid == 0 || key == \"\"")
 		return []byte("")
 	}
 	

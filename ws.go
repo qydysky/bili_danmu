@@ -18,10 +18,10 @@ type ws struct {
 }
 
 func New_ws(url string) (o *ws) {
-	l := p.Logf().New().Level(LogLevel).T("New_ws")
+	l := p.Logf().New().Base(-1, "ws.go>新建").Level(LogLevel).T("New_ws")
 	defer l.Block()
 
-	l.T("->", "ok")
+	l.T("ok")
 	o = new(ws)
 	o.url = url
 	o.SendChan = make(chan []byte, 1e4)
@@ -31,16 +31,16 @@ func New_ws(url string) (o *ws) {
 
 func (i *ws) Handle() (o *ws) {
 	o = i
-	l := p.Logf().New().Level(LogLevel).T("*ws.handle")
+	l := p.Logf().New().Base(-1, "ws.go>处理").Level(LogLevel).T("*ws.handle")
 	defer l.Block()
 
 	if o.used {
-		l.E("->", "o.used")
+		l.E("o.used")
 		return
 	}
 
 	if o.url == "" {
-		l.E("->", "o.url == \"\"")
+		l.E("o.url == \"\"")
 		return
 	}
 
@@ -54,12 +54,12 @@ func (i *ws) Handle() (o *ws) {
 
 		c, _, err := websocket.DefaultDialer.Dial(o.url, nil)
 		if err != nil {
-			l.E("->", err)
+			l.E(err)
 			return
 		}
 		defer c.Close()
 
-		l.T("->", "ok")
+		l.T("ok")
 		o.interrupt = make(chan struct{})
 		done := make(chan struct{})
 
@@ -70,7 +70,7 @@ func (i *ws) Handle() (o *ws) {
 				_, message, err := c.ReadMessage()
 				if err != nil {
 					if !websocket.IsCloseError(err, websocket.CloseNormalClosure) {
-						l.E("->", err)
+						l.E(err)
 					}
 					return
 				}
@@ -87,16 +87,16 @@ func (i *ws) Handle() (o *ws) {
 			case t := <- o.SendChan:
 				err := c.WriteMessage(websocket.TextMessage, t)
 				if err != nil {
-					l.E("->", "write:", err)
+					l.E("write:", err)
 					return
 				}
 			case <- o.interrupt:
-				l.I("->", "interrupt")
+				l.I("interrupt")
 				// Cleanly close the connection by sending a close message and then
 				// waiting (with timeout) for the server to close the connection.
 				err := c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 				if err != nil {
-					l.E("->", err)
+					l.E(err)
 				}
 				select {
 				case <- done:
@@ -114,15 +114,15 @@ func (i *ws) Handle() (o *ws) {
 
 func (i *ws) Heartbeat(Millisecond int, msg []byte) (o *ws) {
 	o = i
-	l := p.Logf().New().Level(LogLevel).T("*ws.heartbeat")
+	l := p.Logf().New().Base(-1, "ws.go>心跳").Level(LogLevel).T("*ws.heartbeat")
 	defer l.Block()
 
 	if !o.used {
-		l.E("->", "!o.used")
+		l.E("!o.used")
 		return
 	}
 	o.SendChan <- msg
-	l.T("->", "ok")
+	l.T("ok")
 
 	go func(){
 		ticker := time.NewTicker(time.Duration(Millisecond)*time.Millisecond)
@@ -133,7 +133,7 @@ func (i *ws) Heartbeat(Millisecond int, msg []byte) (o *ws) {
 				case <-ticker.C:
 					o.SendChan <- msg
 				case <- o.interrupt:
-					l.I("->", "fin")
+					l.I("fin")
 					return
 				}
 		}
@@ -143,17 +143,17 @@ func (i *ws) Heartbeat(Millisecond int, msg []byte) (o *ws) {
 }
 
 func (o *ws) Close() {
-	l := p.Logf().New().Level(LogLevel).I("*ws.Close")
+	l := p.Logf().New().Base(-1, "ws.go>关闭").Level(LogLevel).I("*ws.Close")
 	defer l.Block()
 
 	if !o.used {
-		l.I("->", "!o.used")
+		l.I("!o.used")
 		return
 	}
 	o.used = false
 
 	close(o.interrupt)
-	l.I("->", "ok")
+	l.I("ok")
 }
 
 func (o *ws) Isclose() bool {
