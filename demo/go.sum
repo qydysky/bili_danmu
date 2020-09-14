@@ -1,4 +1,6 @@
+github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d h1:G0m3OIz70MZUWq3EgK3CesDbo8upS2Vm9/P3FtgI+Jk=
 github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d/go.mod h1:3eOhrUMpNV+6aFIbp5/iudMxNCF27Vw2OZgy4xEx0Fg=
+github.com/go-ole/go-ole v1.2.4 h1:nNBDSCOigTSiarFpYE9J/KtEA1IOW4CNeqT9TQDqCxI=
 github.com/go-ole/go-ole v1.2.4/go.mod h1:XCwSNxSkXRo4vlyPy93sltvi/qJq0jqQhjqQNIwKuxM=
 github.com/gorilla/websocket v1.4.2 h1:+/TMaTYc4QFitKJxsQ7Yye35DkWvkdLcvGKqM+x0Ufc=
 github.com/gorilla/websocket v1.4.2/go.mod h1:YR8l580nyteQvAITg2hZ9XVh4b55+EU/adAjf1fMHhE=
@@ -9,6 +11,8 @@ github.com/miekg/dns v1.1.31 h1:sJFOl9BgwbYAWOGEwr61FU28pqsBNdpRBnhGXtO06Oo=
 github.com/miekg/dns v1.1.31/go.mod h1:KNUDUusw/aVsxyTYZM1oqvCicbwhgbNgztCETuNZ7xM=
 github.com/qydysky/bili_danmu v0.0.0-20200914124700-b89028b3554c h1:iFyG6L41DwT1CS16Ddi2/vjnnKLfL0TC6L6BuYcPnSo=
 github.com/qydysky/bili_danmu v0.0.0-20200914124700-b89028b3554c/go.mod h1:hejetn5M5YL0dZpEBtswTWEOwS9Rq8eRiN3SFco3JXA=
+github.com/qydysky/bili_danmu v0.0.0-20200914132045-726c917d9f37 h1:U3sncVRe/cKExu8CeWd01l7NQYcSY0HEOTP3OV0NCIY=
+github.com/qydysky/bili_danmu v0.0.0-20200914132045-726c917d9f37/go.mod h1:hejetn5M5YL0dZpEBtswTWEOwS9Rq8eRiN3SFco3JXA=
 github.com/qydysky/part v0.0.0-20200914123330-afade058e33d h1:um1WzsGzwD6h+1W3jqGcWJPVr4kT5gmRRaXXVwO7nb4=
 github.com/qydysky/part v0.0.0-20200914123330-afade058e33d/go.mod h1:+8N3UgJBVyJj8ar31eZtucwrKpLpay854Y5qq0xk3x0=
 github.com/shirou/gopsutil v2.20.7+incompatible/go.mod h1:5b4v6he4MtMOwMlS0TUMTu2PcXUg8+E1lC7eC3UO/RA=
