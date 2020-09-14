@@ -52,11 +52,13 @@ func Msg(b []byte, compress bool) {
 			case "ROOM_RANK":;
 			case "WELCOME_GUARD":;
 			case "GUARD_BUY":;
-			case "ROOM_BLOCK_MSG":;
 			case "ROOM_SHIELD":;
 			case "USER_TOAST_MSG":;
-			case "SUPER_CHAT_MESSAGE", "SUPER_CHAT_MESSAGE_JPN":super_chat_message(s);
-			case "PANEL":panel(s);
+			case "ROOM_BLOCK_MSG":room_block_msg(s)
+			case "PREPARING":preparing(s)
+			case "LIVE":live(s)
+			case "SUPER_CHAT_MESSAGE", "SUPER_CHAT_MESSAGE_JPN":super_chat_message(s)
+			case "PANEL":panel(s)
 			case "ENTRY_EFFECT":entry_effect(s)
 			case "ROOM_REAL_TIME_MESSAGE_UPDATE":roominfo(s)
 			case "DANMU_MSG":danmu(s)
@@ -66,6 +68,33 @@ func Msg(b []byte, compress bool) {
 	}
 
 	return 
+}
+
+func room_block_msg(s string) {
+	if uname := p.Json().GetValFromS(s, "uname");uname == nil {
+		msglog.E("->", "uname", uname)
+		return
+	} else {
+		msglog.I("用户", uname.(string)， "已被封禁")
+	}
+}
+
+func preparing(s string) {
+	if roomid := p.Json().GetValFromS(s, "roomid");roomid == nil {
+		msglog.E("->", "roomid", roomid)
+		return
+	} else {
+		msglog.I("房间", roomid.(string)， "下播了")
+	}
+}
+
+func live(s string) {
+	if roomid := p.Json().GetValFromS(s, "roomid");roomid == nil {
+		msglog.E("->", "roomid", roomid)
+		return
+	} else {
+		msglog.I("房间", roomid.(string)， "开播了")
+	}
 }
 
 func super_chat_message(s string){
