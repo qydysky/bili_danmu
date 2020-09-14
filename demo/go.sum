@@ -19,6 +19,8 @@ github.com/qydysky/bili_danmu v0.0.0-20200914140951-8ef294d54540 h1:YXe6BMG/EkdB
 github.com/qydysky/bili_danmu v0.0.0-20200914140951-8ef294d54540/go.mod h1:hejetn5M5YL0dZpEBtswTWEOwS9Rq8eRiN3SFco3JXA=
 github.com/qydysky/bili_danmu v0.0.0-20200914141357-762a9f0d89cb h1:biHfTziQSldCF3/vMXwbL+AMgOMazYlzqN5eOqKdoFE=
 github.com/qydysky/bili_danmu v0.0.0-20200914141357-762a9f0d89cb/go.mod h1:hejetn5M5YL0dZpEBtswTWEOwS9Rq8eRiN3SFco3JXA=
+github.com/qydysky/bili_danmu v0.0.0-20200914143111-fe17ba7dd5a9 h1:85K/6r/1qlW5UZ8xC4S3DoNTyF4uuHf2KNxa2Ybairo=
+github.com/qydysky/bili_danmu v0.0.0-20200914143111-fe17ba7dd5a9/go.mod h1:hejetn5M5YL0dZpEBtswTWEOwS9Rq8eRiN3SFco3JXA=
 github.com/qydysky/part v0.0.0-20200914123330-afade058e33d h1:um1WzsGzwD6h+1W3jqGcWJPVr4kT5gmRRaXXVwO7nb4=
 github.com/qydysky/part v0.0.0-20200914123330-afade058e33d/go.mod h1:+8N3UgJBVyJj8ar31eZtucwrKpLpay854Y5qq0xk3x0=
 github.com/shirou/gopsutil v2.20.7+incompatible/go.mod h1:5b4v6he4MtMOwMlS0TUMTu2PcXUg8+E1lC7eC3UO/RA=
