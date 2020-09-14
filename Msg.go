@@ -51,6 +51,10 @@ func Msg(b []byte, compress bool) {
 			case "HOUR_RANK_AWARDS":;
 			case "ROOM_RANK":;
 			case "WELCOME_GUARD":;
+			case "GUARD_BUY":;
+			case "ROOM_BLOCK_MSG":;
+			case "ROOM_SHIELD":;
+			case "USER_TOAST_MSG":;
 			case "SUPER_CHAT_MESSAGE", "SUPER_CHAT_MESSAGE_JPN":super_chat_message(s);
 			case "PANEL":panel(s);
 			case "ENTRY_EFFECT":entry_effect(s)
