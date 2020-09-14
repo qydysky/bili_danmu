@@ -75,7 +75,7 @@ func room_block_msg(s string) {
 		msglog.E("->", "uname", uname)
 		return
 	} else {
-		msglog.I("用户", uname.(string)， "已被封禁")
+		msglog.I("用户", uname.(string), "已被封禁")
 	}
 }
 
@@ -84,7 +84,7 @@ func preparing(s string) {
 		msglog.E("->", "roomid", roomid)
 		return
 	} else {
-		msglog.I("房间", roomid.(string)， "下播了")
+		msglog.I("房间", roomid.(string), "下播了")
 	}
 }
 
@@ -93,7 +93,7 @@ func live(s string) {
 		msglog.E("->", "roomid", roomid)
 		return
 	} else {
-		msglog.I("房间", roomid.(string)， "开播了")
+		msglog.I("房间", roomid.(string), "开播了")
 	}
 }
 
