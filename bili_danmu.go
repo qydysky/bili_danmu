@@ -10,7 +10,7 @@ import (
 	p "github.com/qydysky/part"
 )
 
-const LogLevel = 3
+const LogLevel = 1
 
 func Demo() {
 	l:=p.Logf().New().Level(LogLevel)
@@ -42,11 +42,6 @@ func Demo() {
 			for _, v := range api.Url {
 				//ws启动
 				ws := New_ws(v).Handle()
-				go func(){
-					<- interrupt
-					ws.Close()
-					break_sign = true
-				}()
 	
 				//SendChan 传入发送[]byte
 				//RecvChan 接收[]byte
@@ -63,13 +58,21 @@ func Demo() {
 					}()
 				}
 	
-				for {
-					i := <- ws.RecvChan
-					if len(i) == 0 && ws.Isclose() {
-						break
-					} else {
-						go Reply(i)
+				var isclose bool
+				for !isclose {
+					select {
+					case i := <- ws.RecvChan:
+						if len(i) == 0 && ws.Isclose() {
+							isclose = true
+						} else {
+							go Reply(i)
+						}
+					case <- interrupt:
+						ws.Close()
+						isclose = true
+						break_sign = true
 					}
+
 				}
 
 				if break_sign {break}
@@ -107,11 +110,11 @@ func Reply(b []byte) {
 	}
 
 	if ist, _ := headChe(b[:16], len(b), WS_HEADER_DEFAULT_VERSION, WS_OP_HEARTBEAT_REPLY, WS_HEADER_DEFAULT_SEQUENCE, 4); ist {
-		l.I("heartbeat replay!");
+		l.T("heartbeat replay!");
 		return
 	}
 
-	l.I("unknow reply", b)
+	l.T("unknow reply", b)
 }
 
 //头部生成与检查
@@ -149,7 +152,7 @@ func headChe(head []byte, datalenght,Bodyv,Opeation,Sequence,show int) (bool,int
 
 //认证生成与检查
 func hello_send(roomid int, key string) []byte {
-	l := p.Logf().New().Level(LogLevel).I("hello_ws")
+	l := p.Logf().New().Level(LogLevel).T("hello_ws")
 	defer l.Block()
 
 	if roomid == 0 || key == "" {

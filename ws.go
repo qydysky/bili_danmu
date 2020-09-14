@@ -18,10 +18,10 @@ type ws struct {
 }
 
 func New_ws(url string) (o *ws) {
-	l := p.Logf().New().Level(LogLevel).I("New_ws")
+	l := p.Logf().New().Level(LogLevel).T("New_ws")
 	defer l.Block()
 
-	l.I("->", "ok")
+	l.T("->", "ok")
 	o = new(ws)
 	o.url = url
 	o.SendChan = make(chan []byte, 1e4)
@@ -31,7 +31,7 @@ func New_ws(url string) (o *ws) {
 
 func (i *ws) Handle() (o *ws) {
 	o = i
-	l := p.Logf().New().Level(LogLevel).I("*ws.handle")
+	l := p.Logf().New().Level(LogLevel).T("*ws.handle")
 	defer l.Block()
 
 	if o.used {
@@ -47,7 +47,10 @@ func (i *ws) Handle() (o *ws) {
 	started := make(chan struct{})
 
 	go func() {
-		defer close(o.RecvChan)
+		defer func(){
+			close(o.RecvChan)
+			o.used = false
+		}()
 
 		c, _, err := websocket.DefaultDialer.Dial(o.url, nil)
 		if err != nil {
@@ -56,7 +59,7 @@ func (i *ws) Handle() (o *ws) {
 		}
 		defer c.Close()
 
-		l.I("->", "ok")
+		l.T("->", "ok")
 		o.interrupt = make(chan struct{})
 		done := make(chan struct{})
 
@@ -69,7 +72,6 @@ func (i *ws) Handle() (o *ws) {
 					if !websocket.IsCloseError(err, websocket.CloseNormalClosure) {
 						l.E("->", err)
 					}
-					o.used = false
 					return
 				}
 				o.RecvChan <- message
@@ -81,13 +83,11 @@ func (i *ws) Handle() (o *ws) {
 		for {
 			select {
 			case <- done:
-				o.used = false
 				return
 			case t := <- o.SendChan:
 				err := c.WriteMessage(websocket.TextMessage, t)
 				if err != nil {
-					l.I("->", "write:", err)
-					o.used = false
+					l.E("->", "write:", err)
 					return
 				}
 			case <- o.interrupt:
@@ -102,7 +102,6 @@ func (i *ws) Handle() (o *ws) {
 				case <- done:
 				case <- time.After(time.Second):
 				}
-				o.used = false
 				return
 			}
 		}
@@ -115,7 +114,7 @@ func (i *ws) Handle() (o *ws) {
 
 func (i *ws) Heartbeat(Millisecond int, msg []byte) (o *ws) {
 	o = i
-	l := p.Logf().New().Level(LogLevel).I("*ws.heartbeat")
+	l := p.Logf().New().Level(LogLevel).T("*ws.heartbeat")
 	defer l.Block()
 
 	if !o.used {
@@ -123,7 +122,7 @@ func (i *ws) Heartbeat(Millisecond int, msg []byte) (o *ws) {
 		return
 	}
 	o.SendChan <- msg
-	l.I("->", "ok")
+	l.T("->", "ok")
 
 	go func(){
 		ticker := time.NewTicker(time.Duration(Millisecond)*time.Millisecond)

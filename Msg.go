@@ -39,6 +39,7 @@ func Msg(b []byte, compress bool) {
 			return
 		} else {
 			switch cmd.(string) {
+			case "COMBO_SEND":;
 			case "INTERACT_WORD":;
 			case "ACTIVITY_BANNER_UPDATE_V2":;
 			case "SEND_GIFT":;//礼物

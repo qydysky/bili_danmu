@@ -14,10 +14,10 @@ type api struct {
 }
 
 func New_api(Roomid int) (o *api) {
-	l := p.Logf().New().Level(LogLevel).I("New_api")
+	l := p.Logf().New().Level(LogLevel).T("New_api")
 	defer l.Block()
 
-	l.I("->", "ok")
+	l.T("->", "ok")
 	o = new(api)
 	o.Roomid = Roomid
 	o.Get_info()
@@ -27,7 +27,7 @@ func New_api(Roomid int) (o *api) {
 
 func (i *api) Get_info() (o *api) {
 	o = i 
-	l := p.Logf().New().Level(LogLevel).I("*api.Get_info")
+	l := p.Logf().New().Level(LogLevel).T("*api.Get_info")
 	defer l.Block()
 
 	if o.Roomid == 0 {
@@ -62,7 +62,7 @@ func (i *api) Get_info() (o *api) {
 		l.E("->", "data.room_id", room_id)
 		return
 	} else {
-		l.I("->", "ok")
+		l.T("->", "ok")
 		o.Roomid = int(room_id.(float64))
 	}
 	return
@@ -70,7 +70,7 @@ func (i *api) Get_info() (o *api) {
 
 func (i *api) Get_host_Token() (o *api) {
 	o = i
-	l := p.Logf().New().Level(LogLevel).I("*api.Get_host_Token")
+	l := p.Logf().New().Level(LogLevel).T("*api.Get_host_Token")
 	defer l.Block()
 
 	if o.Roomid == 0 {
@@ -115,7 +115,7 @@ func (i *api) Get_host_Token() (o *api) {
 				o.Url = append(o.Url, "wss://" + _host.(string) + "/sub")
 			}			
 		}
-		l.I("->", "ok")
+		l.T("->", "ok")
 	}
 
 	return
