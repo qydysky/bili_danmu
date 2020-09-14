@@ -10,7 +10,7 @@ import (
 	数据为WS_OP_MESSAGE类型的
 */
 
-var msglog = p.Logf().New().Level(0)
+var msglog = p.Logf().New().Open("danmu.log").Level(0)
 
 func Msg(b []byte, compress bool) {
 	if compress {
