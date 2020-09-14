@@ -37,7 +37,8 @@ func Demo() {
 				l.E("some err")
 				return
 			}
-	
+			l.I("连接到房间", room)
+
 			//对每个弹幕服务器尝试
 			for _, v := range api.Url {
 				//ws启动
@@ -49,6 +50,7 @@ func Demo() {
 				ws.SendChan <- hello_send(api.Roomid, api.Token)
 				if hello_ok(<- ws.RecvChan) {
 					l.I(v, "hello!")
+					l.I("已连接", room)
 
 					//开始心跳
 					go func(){
