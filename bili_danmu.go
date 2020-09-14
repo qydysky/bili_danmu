@@ -13,7 +13,7 @@ import (
 const LogLevel = 1
 
 func Demo() {
-	l:=p.Logf().New().Level(LogLevel)
+	l:=p.Logf().New().Open("danmu.log").Level(LogLevel)
 	defer l.Block()
 	
 	//ctrl+c退出
