@@ -25,6 +25,8 @@ github.com/qydysky/part v0.0.0-20200914123330-afade058e33d h1:um1WzsGzwD6h+1W3jq
 github.com/qydysky/part v0.0.0-20200914123330-afade058e33d/go.mod h1:+8N3UgJBVyJj8ar31eZtucwrKpLpay854Y5qq0xk3x0=
 github.com/qydysky/part v0.0.0-20200914222559-436abc80976a h1:Wurgg5wiPemdfbO9lzOywZWst0DyEI610gUo3HV/ros=
 github.com/qydysky/part v0.0.0-20200914222559-436abc80976a/go.mod h1:+8N3UgJBVyJj8ar31eZtucwrKpLpay854Y5qq0xk3x0=
+github.com/qydysky/part v0.0.0-20200914225111-80645055bc83 h1:iAqwOKLRNeJ2kwgFOWRifJGEomYPKvCpygSQqSXzdSM=
+github.com/qydysky/part v0.0.0-20200914225111-80645055bc83/go.mod h1:+8N3UgJBVyJj8ar31eZtucwrKpLpay854Y5qq0xk3x0=
 github.com/shirou/gopsutil v2.20.7+incompatible/go.mod h1:5b4v6he4MtMOwMlS0TUMTu2PcXUg8+E1lC7eC3UO/RA=
 github.com/shirou/gopsutil v2.20.8+incompatible h1:8c7Atn0FAUZJo+f4wYbN0iVpdWniCQk7IYwGtgdh1mY=
 github.com/shirou/gopsutil v2.20.8+incompatible/go.mod h1:5b4v6he4MtMOwMlS0TUMTu2PcXUg8+E1lC7eC3UO/RA=
