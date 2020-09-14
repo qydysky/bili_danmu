@@ -69,8 +69,12 @@ func (i *ws) Handle() (o *ws) {
 			for {
 				_, message, err := c.ReadMessage()
 				if err != nil {
-					if !websocket.IsCloseError(err, websocket.CloseNormalClosure) {
-						l.E(err)
+					if e, ok := err.(*websocket.CloseError); ok {
+						switch e.Code {
+						case websocket.CloseNormalClosure:l.E("服务器关闭连接")
+						case websocket.CloseAbnormalClosure:l.E("服务器意外关闭连接")
+						default:l.E(err);
+						}
 					}
 					return
 				}
