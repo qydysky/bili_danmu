@@ -95,7 +95,7 @@ func (i *ws) Handle() (o *ws) {
 					return
 				}
 			case <- o.interrupt:
-				l.I("interrupt")
+				l.I("捕获到中断")
 				// Cleanly close the connection by sending a close message and then
 				// waiting (with timeout) for the server to close the connection.
 				err := c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
@@ -137,7 +137,7 @@ func (i *ws) Heartbeat(Millisecond int, msg []byte) (o *ws) {
 				case <-ticker.C:
 					o.SendChan <- msg
 				case <- o.interrupt:
-					l.I("fin")
+					l.I("停止！")
 					return
 				}
 		}
@@ -147,17 +147,17 @@ func (i *ws) Heartbeat(Millisecond int, msg []byte) (o *ws) {
 }
 
 func (o *ws) Close() {
-	l := p.Logf().New().Base(-1, "ws.go>关闭").Level(LogLevel).I("*ws.Close")
+	l := p.Logf().New().Base(-1, "ws.go>关闭").Level(LogLevel)
 	defer l.Block()
 
 	if !o.used {
-		l.I("!o.used")
+		l.E("未在使用的连接")
 		return
 	}
 	o.used = false
 
 	close(o.interrupt)
-	l.I("ok")
+	l.I("关闭!")
 }
 
 func (o *ws) Isclose() bool {

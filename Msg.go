@@ -11,6 +11,8 @@ import (
 */
 
 var msglog = p.Logf().New().Base(-1, "Msg.go>").Open("danmu.log").Level(1)
+var Msg_cookie string
+var Msg_roomid int
 
 func Msg(b []byte, compress bool) {
 	if compress {
@@ -39,6 +41,10 @@ func Msg(b []byte, compress bool) {
 			return
 		} else {
 			switch cmd.(string) {
+			case "ANCHOR_LOT_START"://天选之人开始
+			case "ANCHOR_LOT_CHECKSTATUS":
+			case "ANCHOR_LOT_END"://天选之人结束
+			case "ANCHOR_LOT_AWARD"://天选之人获奖
 			case "COMBO_SEND":
 			case "INTERACT_WORD":
 			case "ACTIVITY_BANNER_UPDATE_V2":
@@ -71,6 +77,8 @@ func Msg(b []byte, compress bool) {
 }
 
 func welcome_guard(s string){
+	msglog.Base(1, "房")
+
 	username := p.Json().GetValFromS(s, "data.username");
 	guard_level := p.Json().GetValFromS(s, "data.guard_level");
 
@@ -88,6 +96,8 @@ func welcome_guard(s string){
 }
 
 func send_gift(s string){
+	msglog.Base(1, "礼")
+
 	coin_type := p.Json().GetValFromS(s, "data.coin_type");
 	num := p.Json().GetValFromS(s, "data.num");
 	uname := p.Json().GetValFromS(s, "data.uname");
@@ -96,30 +106,35 @@ func send_gift(s string){
 	price := p.Json().GetValFromS(s, "data.price");
 
 	var sh []interface{}
+	var allprice int64
 
+	if num != nil {
+		sh = append(sh, int64(num.(float64)), "x")
+	}
+	if price != nil {
+		allprice = int64(num.(float64) * price.(float64))
+		sh = append(sh, "(", allprice, "x 金瓜子 )")
+	}
 	if uname != nil {
 		sh = append(sh, uname.(string))
 	}
 	if action != nil {
 		sh = append(sh, action.(string))
 	}
-	if num != nil {
-		sh = append(sh, int64(num.(float64)), "x")
-	}
 	if giftName != nil {
 		sh = append(sh, giftName.(string))
 	}
-	if price != nil {
-		sh = append(sh, "(", int64(price.(float64)), "x 金瓜子 )")
-	}
-
+	
 	if len(sh) == 0 {return}
 
-	if coin_type.(string) == "silver" {msglog.T(sh...);return}
+	//小于1万金瓜子 银瓜子不显示
+	if allprice < 10000 || coin_type.(string) == "silver" {msglog.T(sh...);return}
 	msglog.I(sh...)
 }
 
 func room_block_msg(s string) {
+	msglog.Base(1, "封")
+
 	if uname := p.Json().GetValFromS(s, "uname");uname == nil {
 		msglog.E("uname", uname)
 		return
@@ -129,6 +144,8 @@ func room_block_msg(s string) {
 }
 
 func preparing(s string) {
+	msglog.Base(1, "房")
+
 	if roomid := p.Json().GetValFromS(s, "roomid");roomid == nil {
 		msglog.E("roomid", roomid)
 		return
@@ -138,6 +155,8 @@ func preparing(s string) {
 }
 
 func live(s string) {
+	msglog.Base(1, "房")
+
 	if roomid := p.Json().GetValFromS(s, "roomid");roomid == nil {
 		msglog.E("roomid", roomid)
 		return
@@ -147,6 +166,8 @@ func live(s string) {
 }
 
 func super_chat_message(s string){
+	msglog.Base(1, "礼")
+
 	uname := p.Json().GetValFromS(s, "data.user_info.uname");
 	price := p.Json().GetValFromS(s, "data.price");
 	message := p.Json().GetValFromS(s, "data.message");
@@ -171,6 +192,8 @@ func super_chat_message(s string){
 }
 
 func panel(s string){
+	msglog.Base(1, "房")
+
 	if note := p.Json().GetValFromS(s, "data.note");note == nil {
 		msglog.E("note", note)
 		return
@@ -180,6 +203,8 @@ func panel(s string){
 }
 
 func entry_effect(s string){
+	msglog.Base(1, "房")
+
 	if copy_writing := p.Json().GetValFromS(s, "data.copy_writing");copy_writing == nil {
 		msglog.E("copy_writing", copy_writing)
 		return
@@ -190,6 +215,8 @@ func entry_effect(s string){
 }
 
 func roomsilent(s string){
+	msglog.Base(1, "房")
+
 	if level := p.Json().GetValFromS(s, "data.level");level == nil {
 		msglog.E("level", level)
 		return
@@ -200,6 +227,8 @@ func roomsilent(s string){
 }
 
 func roominfo(s string){
+	msglog.Base(1, "粉")
+
 	fans := p.Json().GetValFromS(s, "data.fans");
 	fans_club := p.Json().GetValFromS(s, "data.fans_club");
 
@@ -223,6 +252,9 @@ func danmu(s string) {
 		infob := info.([]interface{})
 		msg := infob[1].(string)
 		auth := infob[2].([]interface{})[1].(string)
+
+		if Msg_roomid != 0 && Msg_cookie != "" && msg == "弹幕机在么" {Danmu_s("在", Msg_cookie, Msg_roomid)}
+
 		msglog.I(auth, ":", msg)
 	}
 }

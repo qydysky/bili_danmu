@@ -11,10 +11,11 @@ import (
 )
 
 const LogLevel = 1
+var danmulog = p.Logf().New().Open("danmu.log").Base(-1, "bili_danmu.go").Level(LogLevel)
 
 func Demo() {
-	l:=p.Logf().New().Open("danmu.log").Base(-1, "bili_danmu.go>测试").Level(LogLevel)
-	defer l.Block()
+	danmulog.Base(-1, "测试")
+	defer danmulog.Base(0)
 	
 	//ctrl+c退出
 	interrupt := make(chan os.Signal, 1)
@@ -25,7 +26,7 @@ func Demo() {
 		fmt.Printf("输入房间号: ")
 		_, err := fmt.Scanln(&room)
 		if err != nil {
-			l.E("输入错误", err)
+			danmulog.E("输入错误", err)
 			return
 		}
 		
@@ -34,10 +35,10 @@ func Demo() {
 			//获取房间相关信息
 			api := New_api(room).Get_host_Token()
 			if len(api.Url) == 0 || api.Roomid == 0 || api.Token == "" || api.Uid == 0 {
-				l.E("some err")
+				danmulog.E("some err")
 				return
 			}
-			l.I("连接到房间", room)
+			danmulog.I("连接到房间", room)
 
 			//对每个弹幕服务器尝试
 			for _, v := range api.Url {
@@ -46,17 +47,28 @@ func Demo() {
 	
 				//SendChan 传入发送[]byte
 				//RecvChan 接收[]byte
-				l.I("连接", v)
+				danmulog.I("连接", v)
 				ws.SendChan <- hello_send(api.Roomid, api.Token)
 				if hello_ok(<- ws.RecvChan) {
-					l.I("已连接到房间", room)
+					danmulog.I("已连接到房间", room)
 
 					//开始心跳
 					go func(){
+						danmulog.I("开始心跳")
 						p.Sys().MTimeoutf(500)//500ms
-						l.I("开始心跳")
 						heartbeatmsg, heartinterval := heartbeat()
-						ws.Heartbeat(1000 * heartinterval, heartbeatmsg)						
+						ws.Heartbeat(1000 * heartinterval, heartbeatmsg)
+						
+						//打招呼
+						if p.Checkfile().IsExist("cookie.txt") {
+							f := p.File().FileWR(p.Filel{
+								File:"cookie.txt",
+								Write:false,
+							})
+							//传输变量至Msg，以便响应弹幕"弹幕机在么"
+							Msg_roomid = api.Roomid
+							Msg_cookie = f
+						}
 					}()
 				}
 	
@@ -71,17 +83,19 @@ func Demo() {
 						}
 					case <- interrupt:
 						ws.Close()
-						isclose = true
+						danmulog.I("停止，等待服务器断开连接")
 						break_sign = true
 					}
 
 				}
 
 				if break_sign {break}
-
-				p.Sys().Timeoutf(1)
 			}
+
+			p.Sys().Timeoutf(1)
 		}
+
+		danmulog.I("结束退出")
 	}
 }
 
@@ -101,8 +115,8 @@ const (
 
 //返回数据分派
 func Reply(b []byte) {
-	l := p.Logf().New().Base(-1, "bili_danmu.go>返回分派").Level(LogLevel)
-	defer l.Block()
+	danmulog.Base(-1, "返回分派")
+	defer danmulog.Base(0)
 
 	if ist, _ := headChe(b[:16], len(b), WS_BODY_PROTOCOL_VERSION_DEFLATE, WS_OP_MESSAGE, 0, 4); ist {
 		Msg(b, true);return
@@ -112,11 +126,11 @@ func Reply(b []byte) {
 	}
 
 	if ist, _ := headChe(b[:16], len(b), WS_HEADER_DEFAULT_VERSION, WS_OP_HEARTBEAT_REPLY, WS_HEADER_DEFAULT_SEQUENCE, 4); ist {
-		l.T("heartbeat replay!");
+		danmulog.T("heartbeat replay!");
 		return
 	}
 
-	l.T("unknow reply", b)
+	danmulog.T("unknow reply", b)
 }
 
 //头部生成与检查
@@ -135,8 +149,8 @@ func headGen(datalenght,Opeation,Sequence int) []byte {
 func headChe(head []byte, datalenght,Bodyv,Opeation,Sequence,show int) (bool,int32) {
 	if len(head) != WS_PACKAGE_HEADER_TOTAL_LENGTH {return false, 0}
 	
-	l := p.Logf().New().Base(-1, "bili_danmu.go>头检查").Level(show)
-	defer l.Block()
+	danmulog.Base(-1, "头部检查").Level(show)
+	defer danmulog.Base(0)
 
 	packL := Btoi32(head[:4])
 	headL := Btoi16(head[4:6])
@@ -144,21 +158,19 @@ func headChe(head []byte, datalenght,Bodyv,Opeation,Sequence,show int) (bool,int
 	OpeaT := Btoi32(head[8:12])
 	Seque := Btoi32(head[12:16])
 
-	if packL > int32(datalenght) {l.E("包缺损", packL, datalenght);return false, packL}
-	if headL != WS_PACKAGE_HEADER_TOTAL_LENGTH {l.E("头错误", headL);return false, packL}
-	if OpeaT != int32(Opeation) {l.E("类型错误");return false, packL}
-	if Seque != int32(Sequence) {l.E("Seq错误");return false, packL}
-	if BodyV != int16(Bodyv) {l.E("压缩算法错误");return false, packL}
+	if packL > int32(datalenght) {danmulog.E("包缺损", packL, datalenght);return false, packL}
+	if headL != WS_PACKAGE_HEADER_TOTAL_LENGTH {danmulog.E("头错误", headL);return false, packL}
+	if OpeaT != int32(Opeation) {danmulog.E("类型错误");return false, packL}
+	if Seque != int32(Sequence) {danmulog.E("Seq错误");return false, packL}
+	if BodyV != int16(Bodyv) {danmulog.E("压缩算法错误");return false, packL}
 	return true, packL
 }
 
 //认证生成与检查
 func hello_send(roomid int, key string) []byte {
-	l := p.Logf().New().Base(-1, "bili_danmu.go>头生成").Level(LogLevel).T("hello_ws")
-	defer l.Block()
 
 	if roomid == 0 || key == "" {
-		l.E("roomid == 0 || key == \"\"")
+		danmulog.Base(1, "认证生成").E("roomid == 0 || key == \"\"")
 		return []byte("")
 	}
 	
