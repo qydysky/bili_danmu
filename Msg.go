@@ -253,6 +253,7 @@ func danmu(s string) {
 		msg := infob[1].(string)
 		auth := infob[2].([]interface{})[1].(string)
 
+		if Autobanf(msg) > 0.5 {msglog.Base(1, "风险").I(msg)}
 		if Msg_roomid != 0 && Msg_cookie != "" && msg == "弹幕机在么" {Danmu_s("在", Msg_cookie, Msg_roomid)}
 
 		msglog.I(auth, ":", msg)

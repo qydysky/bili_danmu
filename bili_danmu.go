@@ -150,7 +150,7 @@ func headChe(head []byte, datalenght,Bodyv,Opeation,Sequence,show int) (bool,int
 	if len(head) != WS_PACKAGE_HEADER_TOTAL_LENGTH {return false, 0}
 	
 	danmulog.Base(-1, "头部检查").Level(show)
-	defer danmulog.Base(0)
+	defer danmulog.Base(0).Level(LogLevel)
 
 	packL := Btoi32(head[:4])
 	headL := Btoi16(head[4:6])
