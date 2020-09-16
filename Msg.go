@@ -11,7 +11,7 @@ import (
 	数据为WS_OP_MESSAGE类型的
 */
 
-var msglog = p.Logf().New().Base(-1, "Msg.go>").Open("danmu.log").Level(1)
+var msglog = p.Logf().New().Base(-1, "Msg.go").Open("danmu.log").Level(1)
 var Msg_cookie string
 var Msg_roomid int
 var Msg_map = map[string]func(replayF, string) {
@@ -96,8 +96,9 @@ func (replayF) defaultMsg(s string){
 }
 
 func (replayF) guard_buy(s string){
-	msglog.Fileonly(true).Base(1, "礼")
-	defer msglog.Fileonly(false)
+	msglog.Fileonly(true).Base(-1, "礼")
+	defer msglog.Base(0).Fileonly(false)
+
 	username := p.Json().GetValFromS(s, "data.username");
 	gift_name := p.Json().GetValFromS(s, "data.gift_name");
 	price := p.Json().GetValFromS(s, "data.price");
@@ -111,7 +112,7 @@ func (replayF) guard_buy(s string){
 		sh = append(sh, "购买了", gift_name)
 	}
 	if price != nil {
-		sh = append(sh, "￥", price)
+		sh = append(sh, "￥", int(price.(float64)) / 1000)
 	}
 
 	fmt.Println("====")
@@ -177,14 +178,14 @@ func (replayF) send_gift(s string){
 		sh = append(sh, giftName)
 	}
 	if price != nil {
-		allprice = int64(num.(float64) * price.(float64))
-		sh = append(sh, "(", allprice, "x 金瓜子 )")
+		allprice = int64(num.(float64) * price.(float64) / 1000)
+		sh = append(sh, "￥", allprice)
 	}
 
 	if len(sh) == 0 {return}
 
-	msglog.Fileonly(true).Base(1, "礼")
-	defer msglog.Fileonly(false)
+	msglog.Fileonly(true).Base(-1, "礼")
+	defer msglog.Base(0).Fileonly(false)
 
 	//小于3万金瓜子
 	if allprice < 30000 {msglog.T(sh...);return}
@@ -196,8 +197,8 @@ func (replayF) send_gift(s string){
 }
 
 func (replayF) room_block_msg(s string) {
-	msglog.Fileonly(true).Base(1, "封")
-	defer msglog.Fileonly(false)
+	msglog.Fileonly(true).Base(-1, "封")
+	defer msglog.Base(0).Fileonly(false)
 
 	if uname := p.Json().GetValFromS(s, "uname");uname == nil {
 		msglog.E("uname", uname)
@@ -273,8 +274,8 @@ func (replayF) panel(s string){
 }
 
 func (replayF) entry_effect(s string){
-	msglog.Fileonly(true).Base(1, "房")
-	defer msglog.Fileonly(false)
+	msglog.Fileonly(true).Base(-1, "房")
+	defer msglog.Base(0).Fileonly(false)
 
 	if copy_writing := p.Json().GetValFromS(s, "data.copy_writing");copy_writing == nil {
 		msglog.E("copy_writing", copy_writing)
@@ -326,6 +327,7 @@ func (replayF) danmu(s string) {
 		msglog.Fileonly(true)
 		defer msglog.Fileonly(false)
 
+		//F附加方法
 		Danmujif(msg, Msg_cookie, Msg_roomid)
 		if Autobanf(msg) > 0.5 {
 			msglog.Base(1, "风险").I(msg)
@@ -335,7 +337,7 @@ func (replayF) danmu(s string) {
 			msglog.I(auth, ":", msg)
 			return
 		}
-		if Lessdanmuf(msg, 50) {
+		if Lessdanmuf(msg, 200) {
 			msglog.I(auth, ":", msg)
 			return
 		}

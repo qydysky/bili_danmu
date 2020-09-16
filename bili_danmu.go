@@ -116,6 +116,8 @@ const (
 
 //返回数据分派
 func Reply(b []byte) {
+	danmulog.Base(-1, "返回分派")
+	defer danmulog.Base(0)
 
 	if ist, _ := headChe(b[:16], len(b), WS_BODY_PROTOCOL_VERSION_DEFLATE, WS_OP_MESSAGE, 0, 4); ist {
 		Msg(b, true);return
@@ -123,8 +125,6 @@ func Reply(b []byte) {
 	if ist, _ := headChe(b[:16], len(b), WS_BODY_PROTOCOL_VERSION_NORMAL, WS_OP_MESSAGE, 0, 4); ist {
 		Msg(b, false);return
 	}
-
-	danmulog.Base(1, "返回分派")
 
 	if ist, _ := headChe(b[:16], len(b), WS_HEADER_DEFAULT_VERSION, WS_OP_HEARTBEAT_REPLY, WS_HEADER_DEFAULT_SEQUENCE, 4); ist {
 		danmulog.T("heartbeat replay!");
@@ -148,10 +148,13 @@ func headGen(datalenght,Opeation,Sequence int) []byte {
 }
 
 func headChe(head []byte, datalenght,Bodyv,Opeation,Sequence,show int) (bool,int32) {
+	danmulog.Base(-1, "头部检查")
+	defer danmulog.Base(0)
+
 	if len(head) != WS_PACKAGE_HEADER_TOTAL_LENGTH {return false, 0}
 	
-	danmulog.Base(-1, "头部检查").Level(show)
-	defer danmulog.Base(0).Level(LogLevel)
+	danmulog.Level(show)
+	defer danmulog.Level(LogLevel)
 	
 
 	packL := Btoi32(head[:4])
@@ -171,9 +174,11 @@ func headChe(head []byte, datalenght,Bodyv,Opeation,Sequence,show int) (bool,int
 
 //认证生成与检查
 func hello_send(roomid int, key string) []byte {
+	danmulog.Base(-1, "认证生成")
+	defer danmulog.Base(0)
 
 	if roomid == 0 || key == "" {
-		danmulog.Base(1, "认证生成").E("roomid == 0 || key == \"\"")
+		danmulog.E("roomid == 0 || key == \"\"")
 		return []byte("")
 	}
 	

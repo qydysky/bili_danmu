@@ -15,7 +15,8 @@ var AllF = map[string]bool{
 	"Danmuji":true,//反射型弹幕机，回应弹幕
 	"Danmuji_auto":false,//自动型弹幕机，定时输出
 	"Autoskip":true,//刷屏缩减，相同合并
-	"Lessdanmu":true,//弹幕缩减，显示差异大的
+	"Lessdanmu":false,//弹幕缩减，显示差异大的
+	"Moredanmu":false,//弹幕增量
 }
 
 func IsOn(s string) bool {
@@ -124,7 +125,7 @@ func Autoskipf(s string, maxNum,muteSecond int) int {
 		}
 		autoskip.num -= 1
 		i, ok := autoskip.buf.LoadAndDelete(s);
-		if ok && i.(int) > 0 {fmt.Println(s, "+", i)}
+		if ok && i.(int) > 1 {fmt.Println(s, "+", i)}
 	}()
 	return 0
 }
@@ -149,23 +150,21 @@ func Lessdanmuf(s string, bufsize int) bool {
 	}
 
 	o := cross(s, lessdanmu.buf)
-	lessdanmu.avg = (0.8 * lessdanmu.avg + 0.2 * o)
-	return o > lessdanmu.avg 
+	lessdanmu.avg = (95 * lessdanmu.avg + 5 * o) / 100
+	return o < lessdanmu.avg
 }
 
-func cross(a string,buf []string) float32 {
-	var (
-		s float32
-		all float32
-	)
-	for _,v1 := range buf {
-		for _,v2 := range v1 {
-			for _,v3 := range a {
-				if v3 == v2 {s += 1}
-				all += 1
+func cross(a string,buf []string) (float32) {
+	var s float32
+	for _,v1 := range a {
+		var matched bool
+		for _,v2 := range buf {
+			for _,v3 := range v2 {
+				if v3 == v1 {matched = true;break}
 			}
+			if matched {break}
 		}
-
+		if matched {s += 1}
 	}
-	return s / all
+	return s / float32(len(a))
 }
