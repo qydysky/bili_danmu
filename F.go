@@ -11,15 +11,16 @@ import (
 
 //功能开关
 var AllF = map[string]bool{
-	"Autoban":true,//自动封禁(仅提示，未完成)
-	"Danmuji":true,//反射型弹幕机
-	"Danmuji_auto":false,//自动型弹幕机
-	"Autoskip":true,//刷屏缩减
+	"Autoban":false,//自动封禁(仅提示，未完成)
+	"Danmuji":true,//反射型弹幕机，回应弹幕
+	"Danmuji_auto":false,//自动型弹幕机，定时输出
+	"Autoskip":true,//刷屏缩减，相同合并
+	"Lessdanmu":true,//弹幕缩减，显示差异大的
 }
 
 func IsOn(s string) bool {
-	if v, ok := AllF[s]; ok {
-		return v
+	if v, ok := AllF[s]; ok && v {
+		return true
 	}
 	return false
 }
@@ -35,7 +36,7 @@ var autoban = Autoban {
 }
 
 func Autobanf(s string) float32 {
-	if autoban.Inuse {return 0}
+	if !autoban.Inuse {return 0}
 
 	if len(autoban.buf) == 0 {
 		f := p.File().FileWR(p.Filel{
@@ -123,7 +124,48 @@ func Autoskipf(s string, maxNum,muteSecond int) int {
 		}
 		autoskip.num -= 1
 		i, ok := autoskip.buf.LoadAndDelete(s);
-		if ok && i.(int) > 0 {fmt.Println("", s, "+", i)}
+		if ok && i.(int) > 0 {fmt.Println(s, "+", i)}
 	}()
 	return 0
+}
+
+type Lessdanmu struct {
+	Inuse bool
+	buf []string
+
+	avg float32
+}
+
+var lessdanmu = Lessdanmu{
+	Inuse:IsOn("Lessdanmu"),
+}
+
+func Lessdanmuf(s string, bufsize int) bool {
+	if !lessdanmu.Inuse {return false}
+	if len(lessdanmu.buf) > bufsize {
+		lessdanmu.buf = append(lessdanmu.buf[1:], s)
+	} else {
+		lessdanmu.buf = append(lessdanmu.buf, s)
+	}
+
+	o := cross(s, lessdanmu.buf)
+	lessdanmu.avg = (0.8 * lessdanmu.avg + 0.2 * o)
+	return o > lessdanmu.avg 
+}
+
+func cross(a string,buf []string) float32 {
+	var (
+		s float32
+		all float32
+	)
+	for _,v1 := range buf {
+		for _,v2 := range v1 {
+			for _,v3 := range a {
+				if v3 == v2 {s += 1}
+				all += 1
+			}
+		}
+
+	}
+	return s / all
 }

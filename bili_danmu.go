@@ -150,7 +150,9 @@ func headGen(datalenght,Opeation,Sequence int) []byte {
 func headChe(head []byte, datalenght,Bodyv,Opeation,Sequence,show int) (bool,int32) {
 	if len(head) != WS_PACKAGE_HEADER_TOTAL_LENGTH {return false, 0}
 	
-	danmulog.Base(1, "头部检查").Level(show)
+	danmulog.Base(-1, "头部检查").Level(show)
+	defer danmulog.Base(0).Level(LogLevel)
+	
 
 	packL := Btoi32(head[:4])
 	headL := Btoi16(head[4:6])
@@ -163,7 +165,7 @@ func headChe(head []byte, datalenght,Bodyv,Opeation,Sequence,show int) (bool,int
 	if OpeaT != int32(Opeation) {danmulog.E("类型错误");return false, packL}
 	if Seque != int32(Sequence) {danmulog.E("Seq错误");return false, packL}
 	if BodyV != int16(Bodyv) {danmulog.E("压缩算法错误");return false, packL}
-	danmulog.Base(0).Level(LogLevel)
+
 	return true, packL
 }
 

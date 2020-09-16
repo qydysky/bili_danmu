@@ -1,6 +1,7 @@
 package bili_danmu
 
 import (
+	"fmt"
 	"bytes"
 	"compress/zlib"
 
@@ -14,6 +15,8 @@ var msglog = p.Logf().New().Base(-1, "Msg.go>").Open("danmu.log").Level(1)
 var Msg_cookie string
 var Msg_roomid int
 var Msg_map = map[string]func(replayF, string) {
+	"ROOM_SKIN_MSG":nil,
+	"GUARD_ACHIEVEMENT_ROOM":nil,
 	"ANCHOR_LOT_START":nil,//天选之人开始
 	"ANCHOR_LOT_CHECKSTATUS":nil,
 	"ANCHOR_LOT_END":nil,//天选之人结束
@@ -29,7 +32,8 @@ var Msg_map = map[string]func(replayF, string) {
 	"ROOM_RANK":nil,
 	"ROOM_SHIELD":nil,
 	"USER_TOAST_MSG":nil,
-	"GUARD_BUY":nil,//大航海购买
+	"WIN_ACTIVITY":nil,
+	"GUARD_BUY":replayF.guard_buy,//大航海购买
 	"WELCOME_GUARD":nil,//replayF.welcome_guard,//大航海进入
 	"DANMU_MSG":replayF.danmu,//弹幕
 	"ROOM_CHANGE":replayF.room_change,//房间信息分区改变
@@ -43,7 +47,7 @@ var Msg_map = map[string]func(replayF, string) {
 	"SUPER_CHAT_MESSAGE_JPN":replayF.super_chat_message,//打赏
 	"PANEL":replayF.panel,//排行榜
 	"ENTRY_EFFECT":replayF.entry_effect,//进入特效
-	"ROOM_REAL_TIME_MESSAGE_UPDATE":replayF.roominfo,//粉丝数
+	"ROOM_REAL_TIME_MESSAGE_UPDATE":nil,//replayF.roominfo,//粉丝数
 }
 
 func Msg(b []byte, compress bool) {
@@ -89,6 +93,32 @@ type replayF struct {}
 
 func (replayF) defaultMsg(s string){
 	msglog.Base(1, "Unknow cmd").E(s)
+}
+
+func (replayF) guard_buy(s string){
+	msglog.Fileonly(true).Base(1, "礼")
+	defer msglog.Fileonly(false)
+	username := p.Json().GetValFromS(s, "data.username");
+	gift_name := p.Json().GetValFromS(s, "data.gift_name");
+	price := p.Json().GetValFromS(s, "data.price");
+
+	var sh []interface{}
+
+	if username != nil {
+		sh = append(sh, username)
+	}
+	if gift_name != nil {
+		sh = append(sh, "购买了", gift_name)
+	}
+	if price != nil {
+		sh = append(sh, "￥", price)
+	}
+
+	fmt.Println("====")
+	fmt.Println(sh...)
+	fmt.Println("====")
+	msglog.I(sh...)
+
 }
 
 func (replayF) room_change(s string){
@@ -153,20 +183,28 @@ func (replayF) send_gift(s string){
 
 	if len(sh) == 0 {return}
 
-	msglog.Base(1, "礼")
-	//小于1万金瓜子
-	if allprice < 10000 {msglog.T(sh...);return}
+	msglog.Fileonly(true).Base(1, "礼")
+	defer msglog.Fileonly(false)
+
+	//小于3万金瓜子
+	if allprice < 30000 {msglog.T(sh...);return}
+
+	fmt.Println("====")
+	fmt.Println(sh...)
+	fmt.Println("====")
 	msglog.I(sh...)
 }
 
 func (replayF) room_block_msg(s string) {
-	msglog.Base(1, "封")
+	msglog.Fileonly(true).Base(1, "封")
+	defer msglog.Fileonly(false)
 
 	if uname := p.Json().GetValFromS(s, "uname");uname == nil {
 		msglog.E("uname", uname)
 		return
 	} else {
-		msglog.I("用户", uname, "已被封禁")
+	fmt.Println("用户", uname, "已被封禁")
+	msglog.I("用户", uname, "已被封禁")
 	}
 }
 
@@ -212,29 +250,38 @@ func (replayF) super_chat_message(s string){
 	if message_jpn != nil && message != message_jpn {
 		sh = append(sh, message_jpn)
 	}
+	msglog.Fileonly(true)
+	defer msglog.Fileonly(false)
 
+	fmt.Println("====")
+	fmt.Println(sh...)
+	fmt.Println("====")
 	msglog.Base(1, "礼").I(sh...)
 }
 
 func (replayF) panel(s string){
-	msglog.Base(1, "房")
+	msglog.Fileonly(true).Base(1, "房")
+	defer msglog.Fileonly(false)
 
 	if note := p.Json().GetValFromS(s, "data.note");note == nil {
 		msglog.E("note", note)
 		return
 	} else {
+		fmt.Println("排行", note)
 		msglog.I("排行", note)
 	}
 }
 
 func (replayF) entry_effect(s string){
-	msglog.Base(1, "房")
+	msglog.Fileonly(true).Base(1, "房")
+	defer msglog.Fileonly(false)
 
 	if copy_writing := p.Json().GetValFromS(s, "data.copy_writing");copy_writing == nil {
 		msglog.E("copy_writing", copy_writing)
 		return
 	} else {
 		msglog.I(copy_writing)
+		fmt.Println(copy_writing)
 	}
 
 }
@@ -276,13 +323,24 @@ func (replayF) danmu(s string) {
 		msg := infob[1].(string)
 		auth := infob[2].([]interface{})[1]
 
+		msglog.Fileonly(true)
+		defer msglog.Fileonly(false)
+
 		Danmujif(msg, Msg_cookie, Msg_roomid)
-		if Autobanf(msg) > 0.5 {msglog.Base(1, "风险").I(msg);return}
-		if i := Autoskipf(msg, 20, 20); i > 0 {
-			msglog.Fileonly(true).I(auth, ":", msg).Fileonly(false)
+		if Autobanf(msg) > 0.5 {
+			msglog.Base(1, "风险").I(msg)
+			return
+		}
+		if i := Autoskipf(msg, 50, 15); i > 0 {
+			msglog.I(auth, ":", msg)
+			return
+		}
+		if Lessdanmuf(msg, 50) {
+			msglog.I(auth, ":", msg)
 			return
 		}
 
+		fmt.Println(msg)
 		msglog.I(auth, ":", msg)
 	}
 }
