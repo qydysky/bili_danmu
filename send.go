@@ -75,6 +75,4 @@ func Danmu_s(msg,Cookie string, roomid int) {
 		return
 	}
 
-	l.I("成功")
-
 }

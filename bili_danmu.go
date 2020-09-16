@@ -68,6 +68,7 @@ func Demo() {
 							//传输变量至Msg，以便响应弹幕"弹幕机在么"
 							Msg_roomid = api.Roomid
 							Msg_cookie = f
+							Danmuji_auto(Msg_cookie, 5, Msg_roomid)
 						}
 					}()
 				}
@@ -115,8 +116,6 @@ const (
 
 //返回数据分派
 func Reply(b []byte) {
-	danmulog.Base(-1, "返回分派")
-	defer danmulog.Base(0)
 
 	if ist, _ := headChe(b[:16], len(b), WS_BODY_PROTOCOL_VERSION_DEFLATE, WS_OP_MESSAGE, 0, 4); ist {
 		Msg(b, true);return
@@ -124,6 +123,8 @@ func Reply(b []byte) {
 	if ist, _ := headChe(b[:16], len(b), WS_BODY_PROTOCOL_VERSION_NORMAL, WS_OP_MESSAGE, 0, 4); ist {
 		Msg(b, false);return
 	}
+
+	danmulog.Base(1, "返回分派")
 
 	if ist, _ := headChe(b[:16], len(b), WS_HEADER_DEFAULT_VERSION, WS_OP_HEARTBEAT_REPLY, WS_HEADER_DEFAULT_SEQUENCE, 4); ist {
 		danmulog.T("heartbeat replay!");
@@ -149,8 +150,7 @@ func headGen(datalenght,Opeation,Sequence int) []byte {
 func headChe(head []byte, datalenght,Bodyv,Opeation,Sequence,show int) (bool,int32) {
 	if len(head) != WS_PACKAGE_HEADER_TOTAL_LENGTH {return false, 0}
 	
-	danmulog.Base(-1, "头部检查").Level(show)
-	defer danmulog.Base(0).Level(LogLevel)
+	danmulog.Base(1, "头部检查").Level(show)
 
 	packL := Btoi32(head[:4])
 	headL := Btoi16(head[4:6])
@@ -163,6 +163,7 @@ func headChe(head []byte, datalenght,Bodyv,Opeation,Sequence,show int) (bool,int
 	if OpeaT != int32(Opeation) {danmulog.E("类型错误");return false, packL}
 	if Seque != int32(Sequence) {danmulog.E("Seq错误");return false, packL}
 	if BodyV != int16(Bodyv) {danmulog.E("压缩算法错误");return false, packL}
+	danmulog.Base(0).Level(LogLevel)
 	return true, packL
 }
 
