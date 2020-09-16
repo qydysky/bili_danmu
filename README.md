@@ -5,29 +5,46 @@
 Msg.go
 case 后有函数调用的为支持，无调用的为待完善，注释掉的调用为未启用
 
-case "COMBO_SEND":
-case "INTERACT_WORD":
-case "ACTIVITY_BANNER_UPDATE_V2":
-case "NOTICE_MSG":
-case "ROOM_BANNER":
-case "ONLINERANK":
-case "WELCOME":
-case "HOUR_RANK_AWARDS":
-case "ROOM_RANK":
-case "ROOM_SHIELD":
-case "USER_TOAST_MSG":
-case "GUARD_BUY"://大航海购买
-case "WELCOME_GUARD"://welcome_guard(s)//大航海进入
-case "ROOM_SILENT_OFF", "ROOM_SILENT_ON":roomsilent(s);//禁言
-case "SEND_GIFT":send_gift(s)//礼物
-case "ROOM_BLOCK_MSG":room_block_msg(s)//封禁
-case "PREPARING":preparing(s)//下播
-case "LIVE":live(s)//开播
-case "SUPER_CHAT_MESSAGE", "SUPER_CHAT_MESSAGE_JPN":super_chat_message(s)//打赏
-case "PANEL":panel(s)//排行榜
-case "ENTRY_EFFECT":entry_effect(s)//进入特效
-case "ROOM_REAL_TIME_MESSAGE_UPDATE":roominfo(s)//粉丝数
-case "DANMU_MSG":danmu(s)//弹幕
+var Msg_map = map[string]func(replayF, string) {
+	"ANCHOR_LOT_START":nil,//天选之人开始
+	"ANCHOR_LOT_CHECKSTATUS":nil,
+	"ANCHOR_LOT_END":nil,//天选之人结束
+	"ANCHOR_LOT_AWARD":nil,//天选之人获奖
+	"COMBO_SEND":nil,
+	"INTERACT_WORD":nil,
+	"ACTIVITY_BANNER_UPDATE_V2":nil,
+	"NOTICE_MSG":nil,
+	"ROOM_BANNER":nil,
+	"ONLINERANK":nil,
+	"WELCOME":nil,
+	"HOUR_RANK_AWARDS":nil,
+	"ROOM_RANK":nil,
+	"ROOM_SHIELD":nil,
+	"USER_TOAST_MSG":nil,
+	"GUARD_BUY":nil,//大航海购买
+	"WELCOME_GUARD":nil,//replayF.welcome_guard,//大航海进入
+	"DANMU_MSG":replayF.danmu,//弹幕
+	"ROOM_CHANGE":replayF.room_change,//房间信息分区改变
+	"ROOM_SILENT_OFF":replayF.roomsilent,//禁言结束
+	"ROOM_SILENT_ON":replayF.roomsilent,//禁言开始
+	"SEND_GIFT":replayF.send_gift,//礼物
+	"ROOM_BLOCK_MSG":replayF.room_block_msg,//封禁
+	"PREPARING":replayF.preparing,//下播
+	"LIVE":replayF.live,//开播
+	"SUPER_CHAT_MESSAGE":nil,//replayF.super_chat_message,//打赏
+	"SUPER_CHAT_MESSAGE_JPN":replayF.super_chat_message,//打赏
+	"PANEL":replayF.panel,//排行榜
+	"ENTRY_EFFECT":replayF.entry_effect,//进入特效
+	"ROOM_REAL_TIME_MESSAGE_UPDATE":replayF.roominfo,//粉丝数
+}
+
+其他功能
+var AllF = map[string]bool{
+	"Autoban":true,//自动封禁(仅提示，未完成)
+	"Danmuji":true,//反射型弹幕机
+	"Danmuji_auto":false,//自动型弹幕机
+	"Autoskip":true,//刷屏缩减
+}
 
 ```
 
