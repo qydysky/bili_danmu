@@ -168,3 +168,10 @@ func cross(a string,buf []string) (float32) {
 	}
 	return s / float32(len(a))
 }
+
+/*
+	Moredanmu
+	目标：弹幕机自动发送弹幕
+	原理：留存弹幕，称为buf。将当前若干弹幕在buf中的位置找出，根据位置聚集情况及该位置出现语句的频率，选择发送的弹幕
+*/
+type Moredanmu struct {}
