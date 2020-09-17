@@ -1,7 +1,7 @@
 package bili_danmu
 
 import (
-	"fmt"
+	"strconv"
 	"bytes"
 	"sync"
 	"time"
@@ -15,8 +15,9 @@ var AllF = map[string]bool{
 	"Danmuji":true,//反射型弹幕机，回应弹幕
 	"Danmuji_auto":false,//自动型弹幕机，定时输出
 	"Autoskip":true,//刷屏缩减，相同合并
-	"Lessdanmu":false,//弹幕缩减，显示差异大的
+	"Lessdanmu":true,//弹幕缩减，屏蔽与前n条弹幕重复的字数占比度高于阈值的弹幕
 	"Moredanmu":false,//弹幕增量
+	"Shortdanmu":true,//上下文相同文字缩减
 }
 
 func IsOn(s string) bool {
@@ -125,7 +126,7 @@ func Autoskipf(s string, maxNum,muteSecond int) int {
 		}
 		autoskip.num -= 1
 		i, ok := autoskip.buf.LoadAndDelete(s);
-		if ok && i.(int) > 1 {fmt.Println(s, "+", i)}
+		if ok && i.(int) > 1 {Msg_showdanmu(nil, strconv.Itoa(i.(int)) + " x " + s)}
 	}()
 	return 0
 }
@@ -133,31 +134,30 @@ func Autoskipf(s string, maxNum,muteSecond int) int {
 type Lessdanmu struct {
 	Inuse bool
 	buf []string
-
-	avg float32
 }
 
 var lessdanmu = Lessdanmu{
 	Inuse:IsOn("Lessdanmu"),
 }
 
-func Lessdanmuf(s string, bufsize int) bool {
+func Lessdanmuf(s string, bufsize int, drop float32) bool {
 	if !lessdanmu.Inuse {return false}
-	if len(lessdanmu.buf) > bufsize {
-		lessdanmu.buf = append(lessdanmu.buf[1:], s)
-	} else {
+	if len(lessdanmu.buf) < bufsize {
 		lessdanmu.buf = append(lessdanmu.buf, s)
+		return false
 	}
 
 	o := cross(s, lessdanmu.buf)
-	lessdanmu.avg = (95 * lessdanmu.avg + 5 * o) / 100
-	return o < lessdanmu.avg
+	if o == 1 {return true}//完全无用
+	lessdanmu.buf = append(lessdanmu.buf[1:], s)
+	
+	return o > drop
 }
 
 func cross(a string,buf []string) (float32) {
 	var s float32
+	var matched bool
 	for _,v1 := range a {
-		var matched bool
 		for _,v2 := range buf {
 			for _,v3 := range v2 {
 				if v3 == v1 {matched = true;break}
@@ -165,8 +165,9 @@ func cross(a string,buf []string) (float32) {
 			if matched {break}
 		}
 		if matched {s += 1}
+		matched = false
 	}
-	return s / float32(len(a))
+	return s / float32(len([]rune(a)))
 }
 
 /*
@@ -175,3 +176,36 @@ func cross(a string,buf []string) (float32) {
 	原理：留存弹幕，称为buf。将当前若干弹幕在buf中的位置找出，根据位置聚集情况及该位置出现语句的频率，选择发送的弹幕
 */
 type Moredanmu struct {}
+
+type Shortdanmu struct {
+	Inuse bool
+	lastdanmu []rune
+}
+
+var shortdanmu = Shortdanmu{
+	Inuse:IsOn("Shortdanmu"),
+}
+
+func Shortdanmuf(s string) string {
+	if !shortdanmu.Inuse {return s}
+	if len(shortdanmu.lastdanmu) == 0 {shortdanmu.lastdanmu = []rune(s);return s}
+
+	var new string
+
+	for k,v := range []rune(s) {
+		if k >= len(shortdanmu.lastdanmu) {
+			new += string([]rune(s)[k:])
+			break
+		}
+		if v != shortdanmu.lastdanmu[k] {
+			switch k {
+			case 0, 1, 2:new = s
+			default:new = "..." + string([]rune(s)[k-1:])
+			}
+			break
+		}
+	}
+	if new == "" {new = "...."}
+	shortdanmu.lastdanmu = []rune(s)
+	return new
+}

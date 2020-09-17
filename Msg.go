@@ -34,7 +34,7 @@ var Msg_map = map[string]func(replayF, string) {
 	"USER_TOAST_MSG":nil,
 	"WIN_ACTIVITY":nil,
 	"GUARD_BUY":replayF.guard_buy,//大航海购买
-	"WELCOME_GUARD":nil,//replayF.welcome_guard,//大航海进入
+	"WELCOME_GUARD":replayF.welcome_guard,//大航海进入
 	"DANMU_MSG":replayF.danmu,//弹幕
 	"ROOM_CHANGE":replayF.room_change,//房间信息分区改变
 	"ROOM_SILENT_OFF":replayF.roomsilent,//禁言结束
@@ -46,7 +46,7 @@ var Msg_map = map[string]func(replayF, string) {
 	"SUPER_CHAT_MESSAGE":nil,//replayF.super_chat_message,//打赏
 	"SUPER_CHAT_MESSAGE_JPN":replayF.super_chat_message,//打赏
 	"PANEL":replayF.panel,//排行榜
-	"ENTRY_EFFECT":replayF.entry_effect,//进入特效
+	"ENTRY_EFFECT":nil,//replayF.entry_effect,//进入特效
 	"ROOM_REAL_TIME_MESSAGE_UPDATE":nil,//replayF.roominfo,//粉丝数
 }
 
@@ -144,14 +144,22 @@ func (replayF) welcome_guard(s string){
 
 	var sh = []interface{}{"欢迎"}
 
+	if guard_level != nil {
+		switch guard_level.(float64) {
+		case 1:sh = append(sh, "总督")
+		case 2:sh = append(sh, "提督")
+		case 3:sh = append(sh, "舰长")
+		default:sh = append(sh, "等级", guard_level)
+		}
+	}
 	if username != nil {
 		sh = append(sh, username, "进入直播间")
 	}
-	if guard_level != nil {
-		sh = append(sh, "等级", guard_level)
-	}
 
-	msglog.Base(1, "房").I(sh...)
+	fmt.Print(">>> ")
+	fmt.Println(sh...)
+
+	msglog.Base(1, "房").Fileonly(true).I(sh...).Fileonly(false)
 }
 
 func (replayF) send_gift(s string){
@@ -216,6 +224,10 @@ func (replayF) preparing(s string) {
 		msglog.E("roomid", roomid)
 		return
 	} else {
+		if p.Sys().Type(roomid) == "float64" {
+			msglog.I("房间", int(roomid.(float64)), "下播了")
+			return
+		}
 		msglog.I("房间", roomid, "下播了")
 	}
 }
@@ -227,6 +239,10 @@ func (replayF) live(s string) {
 		msglog.E("roomid", roomid)
 		return
 	} else {
+		if p.Sys().Type(roomid) == "float64" {
+			msglog.I("房间", int(roomid.(float64)), "开播了")
+			return
+		}
 		msglog.I("房间", roomid, "开播了")
 	}
 }
@@ -337,12 +353,16 @@ func (replayF) danmu(s string) {
 			msglog.I(auth, ":", msg)
 			return
 		}
-		if Lessdanmuf(msg, 200) {
-			msglog.I(auth, ":", msg)
-			return
-		}
 
-		fmt.Println(msg)
+		Msg_showdanmu(auth, msg)
 		msglog.I(auth, ":", msg)
 	}
+}
+
+func Msg_showdanmu(auth interface{}, msg string) {
+	if Lessdanmuf(msg, 20, 0.5) {//与前20条弹幕重复的字数占比度>0.5的屏蔽
+		if auth != nil {msglog.I(auth, ":", msg)}
+		return
+	}
+	fmt.Println(Shortdanmuf(msg))
 }
