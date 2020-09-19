@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"os"
 	"os/signal"
+	"compress/zlib"
 
 	p "github.com/qydysky/part"
 )
@@ -116,22 +117,43 @@ const (
 
 //返回数据分派
 func Reply(b []byte) {
-	danmulog.Base(-1, "返回分派")
-	defer danmulog.Base(0)
+	danmulog.Base(-1, "返回分派").Level(4)
+	defer danmulog.Base(0).Level(LogLevel)
 
-	if ist, _ := headChe(b[:16], len(b), WS_BODY_PROTOCOL_VERSION_DEFLATE, WS_OP_MESSAGE, 0, 4); ist {
-		Msg(b, true);return
-	}
-	if ist, _ := headChe(b[:16], len(b), WS_BODY_PROTOCOL_VERSION_NORMAL, WS_OP_MESSAGE, 0, 4); ist {
-		Msg(b, false);return
+	head := headChe(b[:16])
+	if int(head.packL) > len(b) {danmulog.E("包缺损");return}
+
+	if head.BodyV == WS_BODY_PROTOCOL_VERSION_DEFLATE {
+		readc, err := zlib.NewReader(bytes.NewReader(b[16:]))
+		if err != nil {danmulog.E("解压错误");return}
+		defer readc.Close()
+		
+		buf := bytes.NewBuffer(nil)
+		if _, err := buf.ReadFrom(readc);err != nil {danmulog.E("解压错误");return}
+		b = buf.Bytes()
 	}
 
-	if ist, _ := headChe(b[:16], len(b), WS_HEADER_DEFAULT_VERSION, WS_OP_HEARTBEAT_REPLY, WS_HEADER_DEFAULT_SEQUENCE, 4); ist {
-		danmulog.T("heartbeat replay!");
-		return
-	}
+	for len(b) != 0 {
+		head := headChe(b[:16])
+		if int(head.packL) > len(b) {danmulog.E("包缺损");return}
+		
+		contain := b[16:head.packL]
+		switch head.OpeaT {
+		case WS_OP_MESSAGE:Msg(contain)
+		case WS_OP_HEARTBEAT_REPLY:danmulog.T("heartbeat replay!")
+		default :danmulog.T("unknow reply", contain)
+		}
 
-	danmulog.T("unknow reply", b)
+		b = b[head.packL:]
+	}
+}
+
+type header struct {
+	packL int32
+	headL int16
+	BodyV int16
+	OpeaT int32
+	Seque int32
 }
 
 //头部生成与检查
@@ -147,29 +169,23 @@ func headGen(datalenght,Opeation,Sequence int) []byte {
 	return buffer.Bytes()
 }
 
-func headChe(head []byte, datalenght,Bodyv,Opeation,Sequence,show int) (bool,int32) {
-	danmulog.Base(-1, "头部检查")
-	defer danmulog.Base(0)
+func headChe(head []byte) (header) {
 
-	if len(head) != WS_PACKAGE_HEADER_TOTAL_LENGTH {return false, 0}
+	if len(head) != WS_PACKAGE_HEADER_TOTAL_LENGTH {danmulog.Base(1, "头部检查").E("输入头长度错误");return header{}}
 	
-	danmulog.Level(show)
-	defer danmulog.Level(LogLevel)
-	
-
 	packL := Btoi32(head[:4])
 	headL := Btoi16(head[4:6])
 	BodyV := Btoi16(head[6:8])
 	OpeaT := Btoi32(head[8:12])
 	Seque := Btoi32(head[12:16])
 
-	if packL > int32(datalenght) {danmulog.E("包缺损", packL, datalenght);return false, packL}
-	if headL != WS_PACKAGE_HEADER_TOTAL_LENGTH {danmulog.E("头错误", headL);return false, packL}
-	if OpeaT != int32(Opeation) {danmulog.E("类型错误");return false, packL}
-	if Seque != int32(Sequence) {danmulog.E("Seq错误");return false, packL}
-	if BodyV != int16(Bodyv) {danmulog.E("压缩算法错误");return false, packL}
-
-	return true, packL
+	return header{
+		packL :packL,
+		headL :headL,
+		BodyV :BodyV,
+		OpeaT :OpeaT,
+		Seque :Seque,
+	}
 }
 
 //认证生成与检查

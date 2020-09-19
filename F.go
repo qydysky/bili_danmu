@@ -1,8 +1,9 @@
 package bili_danmu
 
 import (
+	// "fmt"
 	"strconv"
-	"bytes"
+	"strings"
 	"sync"
 	"time"
 
@@ -11,7 +12,7 @@ import (
 
 //功能开关
 var AllF = map[string]bool{
-	"Autoban":false,//自动封禁(仅提示，未完成)
+	"Autoban":true,//自动封禁(仅提示，未完成)
 	"Danmuji":true,//反射型弹幕机，回应弹幕
 	"Danmuji_auto":false,//自动型弹幕机，定时输出
 	"Autoskip":true,//刷屏缩减，相同合并
@@ -26,10 +27,36 @@ func IsOn(s string) bool {
 	}
 	return false
 }
+//公共
+func cross(a string,buf []string) (float32) {
+	var s float32
+	var matched bool
+	for _,v1 := range a {
+		for _,v2 := range buf {
+			for _,v3 := range v2 {
+				if v3 == v1 {matched = true;break}
+			}
+			if matched {break}
+		}
+		if matched {s += 1}
+		matched = false
+	}
+	return s / float32(len([]rune(a)))
+}
+func selfcross(a string) (float32) {
+	buf := make(map[rune]bool)
+	for _,v := range a {
+		if _,ok := buf[v]; !ok {
+			buf[v] = true
+		}
+	}
+	return 1 - float32(len(buf)) / float32(len([]rune(a)))
+}
 
 //功能区
 type Autoban struct {
-	buf []byte
+	Banbuf []string
+	buf []string
 	Inuse bool
 }
 
@@ -37,22 +64,48 @@ var autoban = Autoban {
 	Inuse:IsOn("Autoban"),
 }
 
-func Autobanf(s string) float32 {
-	if !autoban.Inuse {return 0}
+func Autobanf(s string) bool {
+	if !autoban.Inuse {return false}
 
-	if len(autoban.buf) == 0 {
+	if len(autoban.Banbuf) == 0 {
 		f := p.File().FileWR(p.Filel{
 			File:"Autoban.txt",
-			Write:false,
 		})
-		autoban.buf = []byte(f)
+
+		for _,v := range strings.Split(f, "\n") {
+			autoban.Banbuf = append(autoban.Banbuf, v)
+		}
 	}
 
-	var scop int
-	for _, v := range []byte(s) {
-		if bytes.Contains(autoban.buf, []byte{v}) {scop += 1}
+	if len(autoban.buf) < 10 {
+		autoban.buf = append(autoban.buf, s)
+		return false
 	}
-	return float32(scop) / float32(len(s))
+	defer func(){
+		autoban.buf = append(autoban.buf[1:], s)
+	}()
+
+	var res []float32
+
+	pt := float32(len([]rune(s)))
+	if pt <= 3 {return false}//字数过少去除
+	res = append(res, pt)
+
+	pt = selfcross(s);
+	if pt > 0.6 {return false}//自身重复高去除
+	res = append(res, pt)
+
+	pt = cross(s, autoban.buf);
+	if pt < 0.7 {return false}//历史重复低去除
+	res = append(res, pt)
+
+	pt = cross(s, autoban.Banbuf);
+	if pt < 0.8 {return false}//ban字符重复低去除
+	res = append(res, pt)
+
+	l := p.Logf().New().Open("danmu.log").Base(1, "autoban")
+	l.W(res)
+	return true
 }
 
 type Danmuji struct {
@@ -140,34 +193,18 @@ var lessdanmu = Lessdanmu{
 	Inuse:IsOn("Lessdanmu"),
 }
 
-func Lessdanmuf(s string, bufsize int, drop float32) bool {
-	if !lessdanmu.Inuse {return false}
+func Lessdanmuf(s string, bufsize int) float32 {
+	if !lessdanmu.Inuse {return 0}
 	if len(lessdanmu.buf) < bufsize {
 		lessdanmu.buf = append(lessdanmu.buf, s)
-		return false
+		return 0
 	}
 
 	o := cross(s, lessdanmu.buf)
-	if o == 1 {return true}//完全无用
+	if o == 1 {return 1}//完全无用
 	lessdanmu.buf = append(lessdanmu.buf[1:], s)
-	
-	return o > drop
-}
 
-func cross(a string,buf []string) (float32) {
-	var s float32
-	var matched bool
-	for _,v1 := range a {
-		for _,v2 := range buf {
-			for _,v3 := range v2 {
-				if v3 == v1 {matched = true;break}
-			}
-			if matched {break}
-		}
-		if matched {s += 1}
-		matched = false
-	}
-	return s / float32(len([]rune(a)))
+	return o
 }
 
 /*
@@ -175,7 +212,56 @@ func cross(a string,buf []string) (float32) {
 	目标：弹幕机自动发送弹幕
 	原理：留存弹幕，称为buf。将当前若干弹幕在buf中的位置找出，根据位置聚集情况及该位置出现语句的频率，选择发送的弹幕
 */
-type Moredanmu struct {}
+// type Moredanmu struct {
+// 	Inuse bool
+// 	buf []string
+// }
+
+// var moredanmu = Moredanmu{
+// 	Inuse:IsOn("Moredanmu"),
+// }
+// func moredanmuf(s string) {
+// 	if !moredanmu.Inuse {return}
+// 	// if len(moredanmu.buf) < bufsize {
+// 		moredanmu.buf = append(moredanmu.buf, s)
+// 	// }
+
+// 	// b := p.Buf("danmu.buf").Load()
+// 	// if b.Get() != nil {
+// 	// 	moredanmu.buf = *b.Get()
+// 	// }
+// }
+
+// func moredanmu_get(tb []string) {
+// 	if !moredanmu.Inuse {return}
+
+// 	var tmp string
+// 	for _,v := range tb {
+// 		tmp += v
+// 	}
+// 	// for _,v := range tb {
+// 	// 	tmp += len([]rune(v[:len(v)-1]))
+// 	// }
+
+// 	var max float32
+// 	var loc int
+// 	for i := 0; len(moredanmu.buf) >= i + len(tb); i++ {
+// 		if m := cross(tmp, moredanmu.buf[i:i + len(tb)]);m > max {
+// 			max = m
+// 			loc = i
+// 		}
+// 	}
+// 	if loc != 0 {
+// 		p := moredanmu.buf[loc:loc + len(tb)]
+// 		for i,v := range p{
+// 			if m := cross(v, p);m > max {
+// 				max = m
+// 				loc = i
+// 			}
+// 		}
+// 		fmt.Println(len(moredanmu.buf),"=>",p[loc])
+// 	}
+// }
 
 type Shortdanmu struct {
 	Inuse bool

@@ -2,8 +2,6 @@ package bili_danmu
 
 import (
 	"fmt"
-	"bytes"
-	"compress/zlib"
 
 	p "github.com/qydysky/part"
 )
@@ -32,7 +30,8 @@ var Msg_map = map[string]func(replayF, string) {
 	"ROOM_RANK":nil,
 	"ROOM_SHIELD":nil,
 	"USER_TOAST_MSG":nil,
-	"WIN_ACTIVITY":nil,
+	"WIN_ACTIVITY":replayF.win_activity,//活动
+	"SPECIAL_GIFT":replayF.special_gift,//节奏风暴
 	"GUARD_BUY":replayF.guard_buy,//大航海购买
 	"WELCOME_GUARD":replayF.welcome_guard,//大航海进入
 	"DANMU_MSG":replayF.danmu,//弹幕
@@ -50,39 +49,18 @@ var Msg_map = map[string]func(replayF, string) {
 	"ROOM_REAL_TIME_MESSAGE_UPDATE":nil,//replayF.roominfo,//粉丝数
 }
 
-func Msg(b []byte, compress bool) {
-	if compress {
-		readc, err := zlib.NewReader(bytes.NewReader(b[16:]))
-		if err != nil {msglog.E("解压错误");return}
-		defer readc.Close()
-		
-		buf := bytes.NewBuffer(nil)
-		if _, err := buf.ReadFrom(readc);err != nil {msglog.E("解压错误");return}
-		b = buf.Bytes()
-	}
+func Msg(b []byte) {
+	s := string(b)
+	if cmd := p.Json().GetValFromS(s, "cmd");cmd == nil {
+		msglog.E("cmd", s)
+		return
+	} else {
+		var f replayF
 
-	for len(b) != 0 {
-		
-		var packL int32
-		if ist, packl := headChe(b[:16], len(b), WS_BODY_PROTOCOL_VERSION_NORMAL, WS_OP_MESSAGE, 0, 0); !ist {
-			msglog.E("头错误");return
+		if F, ok := Msg_map[cmd.(string)]; ok {
+			if F != nil {F(f, s)}
 		} else {
-			packL = packl
-		}
-
-		s := string(b[16:packL])
-		b = b[packL:]
-		if cmd := p.Json().GetValFromS(s, "cmd");cmd == nil {
-			msglog.E("cmd", s)
-			return
-		} else {
-			var f replayF
-
-			if F, ok := Msg_map[cmd.(string)]; ok {
-				if F != nil {F(f, s)}
-			} else {
-				f.defaultMsg(s)
-			}
+			f.defaultMsg(s)
 		}
 	}
 
@@ -93,6 +71,39 @@ type replayF struct {}
 
 func (replayF) defaultMsg(s string){
 	msglog.Base(1, "Unknow cmd").E(s)
+}
+
+func (replayF) win_activity(s string){
+	msglog.Fileonly(true)
+	defer msglog.Fileonly(false)
+
+	title := p.Json().GetValFromS(s, "data.title");
+
+	fmt.Println("活动", title, "已开启")
+	msglog.Base(1, "房").I("活动", title, "已开启")
+}
+
+func (replayF) special_gift(s string){
+	msglog.Fileonly(true)
+	defer msglog.Fileonly(false)
+
+	content := p.Json().GetValFromS(s, "data.39.content");
+	action := p.Json().GetValFromS(s, "data.39.action");
+
+	var sh []interface{}
+
+	if action != nil && action.(string) == "end" {
+		return
+	}
+	if content != nil {
+		sh = append(sh, "节奏风暴", content, "￥ 100")
+	}
+
+	fmt.Println("\n====")
+	fmt.Println(sh...)
+	fmt.Println("====\n")
+	msglog.Base(1, "礼").I(sh...)
+
 }
 
 func (replayF) guard_buy(s string){
@@ -115,9 +126,9 @@ func (replayF) guard_buy(s string){
 		sh = append(sh, "￥", int(price.(float64)) / 1000)
 	}
 
-	fmt.Println("====")
+	fmt.Println("\n====")
 	fmt.Println(sh...)
-	fmt.Println("====")
+	fmt.Println("====\n")
 	msglog.I(sh...)
 
 }
@@ -198,9 +209,9 @@ func (replayF) send_gift(s string){
 	//小于3万金瓜子
 	if allprice < 30000 {msglog.T(sh...);return}
 
-	fmt.Println("====")
+	fmt.Println("\n====")
 	fmt.Println(sh...)
-	fmt.Println("====")
+	fmt.Println("====\n")
 	msglog.I(sh...)
 }
 
@@ -270,9 +281,9 @@ func (replayF) super_chat_message(s string){
 	msglog.Fileonly(true)
 	defer msglog.Fileonly(false)
 
-	fmt.Println("====")
+	fmt.Println("\n====")
 	fmt.Println(sh...)
-	fmt.Println("====")
+	fmt.Println("====\n")
 	msglog.Base(1, "礼").I(sh...)
 }
 
@@ -345,7 +356,8 @@ func (replayF) danmu(s string) {
 
 		//F附加方法
 		Danmujif(msg, Msg_cookie, Msg_roomid)
-		if Autobanf(msg) > 0.5 {
+		if Autobanf(msg) {
+			fmt.Println("风险", msg)
 			msglog.Base(1, "风险").I(msg)
 			return
 		}
@@ -355,14 +367,15 @@ func (replayF) danmu(s string) {
 		}
 
 		Msg_showdanmu(auth, msg)
-		msglog.I(auth, ":", msg)
 	}
 }
 
 func Msg_showdanmu(auth interface{}, msg string) {
-	if Lessdanmuf(msg, 20, 0.5) {//与前20条弹幕重复的字数占比度>0.5的屏蔽
+	if Lessdanmuf(msg, 20) > 0.7 {//与前20条弹幕重复的字数占比度>0.7的屏蔽
 		if auth != nil {msglog.I(auth, ":", msg)}
 		return
 	}
+
 	fmt.Println(Shortdanmuf(msg))
+	if auth != nil {msglog.I(auth, ":", msg)}
 }
