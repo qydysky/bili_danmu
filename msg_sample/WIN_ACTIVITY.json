@@ -1,0 +1,44 @@
+{
+    "cmd": "WIN_ACTIVITY",
+    "number": 4,
+    "data": {
+        "delay_time_min": 0,
+        "delay_time_max": 30,
+        "activity_id": 642,
+        "jump_url": "https:\/\/live.bilibili.com\/p\/html\/live-app-treasurebox\/index.html?is_live_half_webview=1&hybrid_biz=live-app-treasurebox&hybrid_rotate_d=1&hybrid_half_ui=1,3,100p,70p,0,0,30,100;2,2,375,100p,0,0,30,100;3,3,100p,70p,0,0,30,100;4,2,375,100p,0,0,30,100;5,3,100p,70p,0,0,30,100;6,3,100p,70p,0,0,30,100;7,3,100p,70p,0,0,30,100&aid=642",
+        "weight": 20,
+        "closeable": 0,
+        "title": "\u8363\u8000\u5b9d\u7bb1\u62bd\u5956",
+        "title_color": "#FFFFFF",
+        "activity_pic": "https:\/\/i0.hdslb.com\/bfs\/live\/c3ed87683f6e87d256d1f5fdddbfb220fc4c2cdf.png",
+        "background": "https:\/\/i0.hdslb.com\/bfs\/live\/84cd59bcb1e977359df618dbeb0f7828751f457c.png",
+        "current_round": 4,
+        "typeB": [
+            {
+                "join_start_time": 1600236600,
+                "join_end_time": 1600237800,
+                "round_num": 1
+            },
+            {
+                "join_start_time": 1600237800,
+                "join_end_time": 1600239600,
+                "round_num": 2
+            },
+            {
+                "join_start_time": 1600239600,
+                "join_end_time": 1600241400,
+                "round_num": 3
+            },
+            {
+                "join_start_time": 1600241400,
+                "join_end_time": 1600243200,
+                "round_num": 4
+            },
+            {
+                "join_start_time": 1600243200,
+                "join_end_time": 1600245000,
+                "round_num": 5
+            }
+        ]
+    }
+}

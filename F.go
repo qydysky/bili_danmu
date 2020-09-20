@@ -334,6 +334,7 @@ var jiezou = Jiezou{
 		"了":nil,
 		"的":nil,
 		"哈":nil,
+		"是":nil,
 	},
 }
 
