@@ -7,12 +7,12 @@ import (
 	p "github.com/qydysky/part"
 )
 
-//每秒一个令牌，最多等5秒
-var danmu_s_limit = p.Limit(1, 1500, 5000)
+//每5s一个令牌，最多等10秒
+var danmu_s_limit = p.Limit(1, 5000, 10000)
 
 //弹幕发送
 func Danmu_s(msg,Cookie string, roomid int) {
-	//等待令牌时阻塞，超时返回false
+	//等待令牌时阻塞，超时返回true
 	if danmu_s_limit.TO() {return}
 
 	l := p.Logf().New().Base(-1, "弹幕发送").Level(1)

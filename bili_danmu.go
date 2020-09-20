@@ -2,6 +2,7 @@ package bili_danmu
 
 import (
 	"fmt"
+	"flag"
 	"bytes"
 	"strconv"
 	"os"
@@ -22,15 +23,23 @@ func Demo() {
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 
+
 	{
-		var room int
+		var groomid = flag.Int("r", 0, "roomid")
+		flag.Parse()
+	
+		var room = *groomid
 		fmt.Printf("输入房间号: ")
-		_, err := fmt.Scanln(&room)
-		if err != nil {
-			danmulog.E("输入错误", err)
-			return
+		if room == 0 {
+			_, err := fmt.Scanln(&room)
+			if err != nil {
+				danmulog.E("输入错误", err)
+				return
+			}
+		} else {
+			fmt.Print(strconv.Itoa(room), "\n")
 		}
-		
+
 		var break_sign bool
 		for !break_sign {
 			//获取房间相关信息
@@ -69,7 +78,7 @@ func Demo() {
 							//传输变量至Msg，以便响应弹幕"弹幕机在么"
 							Msg_roomid = api.Roomid
 							Msg_cookie = f
-							Danmuji_auto(5)
+							Danmuji_auto(1)
 						}
 					}()
 				}
