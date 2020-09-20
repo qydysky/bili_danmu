@@ -42,8 +42,8 @@ var Msg_map = map[string]func(replayF, string) {
 	"ROOM_BLOCK_MSG":replayF.room_block_msg,//封禁
 	"PREPARING":replayF.preparing,//下播
 	"LIVE":replayF.live,//开播
-	"SUPER_CHAT_MESSAGE":nil,//replayF.super_chat_message,//打赏
-	"SUPER_CHAT_MESSAGE_JPN":replayF.super_chat_message,//打赏
+	"SUPER_CHAT_MESSAGE":nil,//replayF.super_chat_message,//SC
+	"SUPER_CHAT_MESSAGE_JPN":replayF.super_chat_message,//SC
 	"PANEL":replayF.panel,//排行榜
 	"ENTRY_EFFECT":nil,//replayF.entry_effect,//进入特效
 	"ROOM_REAL_TIME_MESSAGE_UPDATE":nil,//replayF.roominfo,//粉丝数
@@ -101,7 +101,7 @@ func (replayF) special_gift(s string){
 
 	fmt.Println("\n====")
 	fmt.Println(sh...)
-	fmt.Println("====\n")
+	fmt.Print("====\n\n")
 	msglog.Base(1, "礼").I(sh...)
 
 }
@@ -128,7 +128,7 @@ func (replayF) guard_buy(s string){
 
 	fmt.Println("\n====")
 	fmt.Println(sh...)
-	fmt.Println("====\n")
+	fmt.Print("====\n\n")
 	msglog.I(sh...)
 
 }
@@ -211,20 +211,20 @@ func (replayF) send_gift(s string){
 
 	fmt.Println("\n====")
 	fmt.Println(sh...)
-	fmt.Println("====\n")
+	fmt.Print("====\n\n")
 	msglog.I(sh...)
 }
 
 func (replayF) room_block_msg(s string) {
-	msglog.Fileonly(true).Base(-1, "封")
-	defer msglog.Base(0).Fileonly(false)
+	msglog.Fileonly(true)
+	defer msglog.Fileonly(false)
 
 	if uname := p.Json().GetValFromS(s, "uname");uname == nil {
 		msglog.E("uname", uname)
 		return
 	} else {
-	fmt.Println("用户", uname, "已被封禁")
-	msglog.I("用户", uname, "已被封禁")
+		fmt.Println("用户", uname, "已被封禁")
+		msglog.Base(1, "封").I("用户", uname, "已被封禁")
 	}
 }
 
@@ -264,7 +264,7 @@ func (replayF) super_chat_message(s string){
 	message := p.Json().GetValFromS(s, "data.message");
 	message_jpn := p.Json().GetValFromS(s, "data.message_jpn");
 
-	var sh = []interface{}{"打赏: "}
+	var sh = []interface{}{"SC: "}
 
 	if uname != nil {
 		sh = append(sh, uname)
@@ -283,7 +283,7 @@ func (replayF) super_chat_message(s string){
 
 	fmt.Println("\n====")
 	fmt.Println(sh...)
-	fmt.Println("====\n")
+	fmt.Print("====\n\n")
 	msglog.Base(1, "礼").I(sh...)
 }
 
@@ -355,7 +355,7 @@ func (replayF) danmu(s string) {
 		defer msglog.Fileonly(false)
 
 		//F附加方法
-		Danmujif(msg, Msg_cookie, Msg_roomid)
+		Danmujif(msg)
 		if Autobanf(msg) {
 			fmt.Println("风险", msg)
 			msglog.Base(1, "风险").I(msg)
@@ -368,6 +368,11 @@ func (replayF) danmu(s string) {
 
 		Msg_showdanmu(auth, msg)
 	}
+}
+
+func Msg_senddanmu(msg string){
+	if Msg_cookie == "" || Msg_roomid == 0 {return}
+	Danmu_s(msg, Msg_cookie, Msg_roomid)
 }
 
 func Msg_showdanmu(auth interface{}, msg string) {

@@ -8,7 +8,7 @@ import (
 )
 
 //每秒一个令牌，最多等5秒
-var danmu_s_limit = p.Limit(1, 1000, 5000)
+var danmu_s_limit = p.Limit(1, 1500, 5000)
 
 //弹幕发送
 func Danmu_s(msg,Cookie string, roomid int) {

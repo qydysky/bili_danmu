@@ -13,6 +13,7 @@ import (
 //功能开关
 var AllF = map[string]bool{
 	"Autoban":true,//自动封禁(仅提示，未完成)
+	"Jiezou":true,//带节奏预警，提示弹幕礼仪
 	"Danmuji":true,//反射型弹幕机，回应弹幕
 	"Danmuji_auto":false,//自动型弹幕机，定时输出
 	"Autoskip":true,//刷屏缩减，相同合并
@@ -52,7 +53,27 @@ func selfcross(a string) (float32) {
 	}
 	return 1 - float32(len(buf)) / float32(len([]rune(a)))
 }
-
+func selfcross2(a []string) (float32, string) {
+	buf := make(map[rune]float32)
+	for _,v := range a {
+		block := make(map[rune]bool)
+		for _,v1 := range v {
+			if _,ok := block[v1]; ok {continue}
+			block[v1] = true
+			buf[v1] += 1
+		}
+	}
+	var (
+		max float32
+		maxS string
+		all float32
+	)
+	for k,v := range buf {
+		all += v
+		if v > max {max = v;maxS = string(k)}
+	}
+	return max / all, maxS
+}
 //功能区
 type Autoban struct {
 	Banbuf []string
@@ -88,11 +109,11 @@ func Autobanf(s string) bool {
 	var res []float32
 
 	pt := float32(len([]rune(s)))
-	if pt <= 3 {return false}//字数过少去除
+	if pt <= 5 {return false}//字数过少去除
 	res = append(res, pt)
 
 	pt = selfcross(s);
-	if pt > 0.6 {return false}//自身重复高去除
+	if pt > 0.5 {return false}//自身重复高去除
 	res = append(res, pt)
 
 	pt = cross(s, autoban.buf);
@@ -124,17 +145,16 @@ var danmuji = Danmuji{
 	},
 }
 
-func Danmujif(s,cookie string, roomid int) {
+func Danmujif(s string) {
 	if !danmuji.Inuse {return}
-	if cookie == "" || roomid == 0 {return}
 	if v, ok := danmuji.buf[s]; ok {
-		Danmu_s(v, cookie, roomid)
+		Msg_senddanmu(v)
 	}
 }
 
-func Danmuji_auto(cookie string, sleep,roomid int) {
+func Danmuji_auto(sleep int) {
 	if !danmuji.Inuse || !danmuji.Inuse_auto || danmuji.mute {return}
-	if cookie == "" || roomid == 0 || sleep == 0 {return}
+	if sleep == 0 {return}
 
 	danmuji.mute = true
 	var list = []string{
@@ -144,7 +164,7 @@ func Danmuji_auto(cookie string, sleep,roomid int) {
 	go func(){
 		for i := 0; true; i++{
 			if i >= len(list) {i = 0}
-			Danmu_s(list[i], cookie, roomid)
+			Msg_senddanmu(list[i])
 			p.Sys().Timeoutf(sleep)
 		}
 	}()
@@ -202,6 +222,7 @@ func Lessdanmuf(s string, bufsize int) float32 {
 
 	o := cross(s, lessdanmu.buf)
 	if o == 1 {return 1}//完全无用
+	Jiezouf(lessdanmu.buf)
 	lessdanmu.buf = append(lessdanmu.buf[1:], s)
 
 	return o
@@ -294,4 +315,47 @@ func Shortdanmuf(s string) string {
 	if new == "" {new = "...."}
 	shortdanmu.lastdanmu = []rune(s)
 	return new
+}
+
+type Jiezou struct {
+	Inuse bool
+	alertdanmu string
+	skipS map[string]interface{}
+
+	avg float32
+	turn int
+	sync.Mutex
+}
+
+var jiezou = Jiezou{
+	Inuse:IsOn("Jiezou"),
+	alertdanmu:"",
+	skipS:map[string]interface{}{//常见语气词忽略
+		"了":nil,
+		"的":nil,
+		"哈":nil,
+	},
+}
+
+func Jiezouf(s []string) bool {
+	if !jiezou.Inuse {return false}
+	now,S := selfcross2(s)
+	jiezou.avg = (9 * jiezou.avg + now)/10
+	if jiezou.turn < len(s) {jiezou.turn += 1;return false}
+	
+	if _,ok := jiezou.skipS[S]; ok {return false}
+
+	jiezou.Lock()
+	if now > 1.3 * jiezou.avg {//触发
+		l := p.Logf().New().Open("danmu.log").Base(1, "jiezou")
+		l.W("节奏注意", now, jiezou.avg, S)
+		jiezou.avg = now //沉默
+		jiezou.Unlock()
+
+		//发送弹幕
+		if jiezou.alertdanmu != "" {Msg_senddanmu(jiezou.alertdanmu)}
+		return true
+	}
+	jiezou.Unlock()
+	return false
 }
