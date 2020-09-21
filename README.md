@@ -70,6 +70,8 @@ var AllF = map[string]bool{
 git clone https://github.com/qydysky/bili_danmu.git
 cd demo
 go run main.go
+或
+go run main.go -r=此处填房间ID
 ```
 以下内容可能过时，以实际运行为准
 ```
