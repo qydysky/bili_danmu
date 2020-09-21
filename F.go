@@ -17,7 +17,7 @@ var AllF = map[string]bool{
 	"Obs":true,//obs组件(仅录播)
 	/*
 		Obs需要外部组件:
-		obs https://obsproject.com/wiki/install-instructions#debian-based-build-directions
+		obs https://obsproject.com/download
 		obs-websocket https://github.com/Palakis/obs-websocket/releases
 	*/
 	"Autoban":true,//自动封禁(仅提示，未完成)
