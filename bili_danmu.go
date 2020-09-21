@@ -78,11 +78,13 @@ func Demo() {
 							//传输变量至Msg，以便响应弹幕"弹幕机在么"
 							Msg_roomid = api.Roomid
 							Msg_cookie = f
-							Danmuji_auto(1)
+							{//附加功能 弹幕机
+								Danmuji_auto(1)
+							}
 						}
 					}()
 				}
-	
+
 				var isclose bool
 				for !isclose {
 					select {
@@ -107,7 +109,6 @@ func Demo() {
 		}
 
 		danmulog.I("结束退出")
-		os.Exit(0)
 	}
 }
 

@@ -1,7 +1,10 @@
 github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d h1:G0m3OIz70MZUWq3EgK3CesDbo8upS2Vm9/P3FtgI+Jk=
 github.com/StackExchange/wmi v0.0.0-20190523213315-cbe66965904d/go.mod h1:3eOhrUMpNV+6aFIbp5/iudMxNCF27Vw2OZgy4xEx0Fg=
+github.com/christopher-dG/go-obs-websocket v0.0.0-20200720193653-c4fed10356a5 h1:UFBgEMSPv6a2vgzowHOPphVit+ZBNQ3+4Q+dEBgwIww=
+github.com/christopher-dG/go-obs-websocket v0.0.0-20200720193653-c4fed10356a5/go.mod h1:P5w+dDqQEbCMFAkmucNcEQ6xgAt/NP+Aw58OQfY/H/o=
 github.com/go-ole/go-ole v1.2.4 h1:nNBDSCOigTSiarFpYE9J/KtEA1IOW4CNeqT9TQDqCxI=
 github.com/go-ole/go-ole v1.2.4/go.mod h1:XCwSNxSkXRo4vlyPy93sltvi/qJq0jqQhjqQNIwKuxM=
+github.com/gorilla/websocket v1.4.0/go.mod h1:E7qHFY5m1UJ88s3WnNqhKjPHQ0heANvMoAMk2YaljkQ=
 github.com/gorilla/websocket v1.4.2 h1:+/TMaTYc4QFitKJxsQ7Yye35DkWvkdLcvGKqM+x0Ufc=
 github.com/gorilla/websocket v1.4.2/go.mod h1:YR8l580nyteQvAITg2hZ9XVh4b55+EU/adAjf1fMHhE=
 github.com/klauspost/compress v1.10.10/go.mod h1:aoV0uJVorq1K+umq18yTdKaF57EivdYsUV+/s2qKfXs=
@@ -9,6 +12,8 @@ github.com/klauspost/compress v1.11.0 h1:wJbzvpYMVGG9iTI9VxpnNZfd4DzMPoCWze3GgSq
 github.com/klauspost/compress v1.11.0/go.mod h1:aoV0uJVorq1K+umq18yTdKaF57EivdYsUV+/s2qKfXs=
 github.com/miekg/dns v1.1.31 h1:sJFOl9BgwbYAWOGEwr61FU28pqsBNdpRBnhGXtO06Oo=
 github.com/miekg/dns v1.1.31/go.mod h1:KNUDUusw/aVsxyTYZM1oqvCicbwhgbNgztCETuNZ7xM=
+github.com/mitchellh/mapstructure v1.1.2 h1:fmNYVwqnSfB9mZU6OS2O6GsXM+wcskZDuKQzvN1EDeE=
+github.com/mitchellh/mapstructure v1.1.2/go.mod h1:FVVH3fgwuzCH5S8UJGiWEs2h04kUh9fWfEaFds41c1Y=
 github.com/qydysky/bili_danmu v0.0.0-20200914124700-b89028b3554c h1:iFyG6L41DwT1CS16Ddi2/vjnnKLfL0TC6L6BuYcPnSo=
 github.com/qydysky/bili_danmu v0.0.0-20200914124700-b89028b3554c/go.mod h1:hejetn5M5YL0dZpEBtswTWEOwS9Rq8eRiN3SFco3JXA=
 github.com/qydysky/bili_danmu v0.0.0-20200914132045-726c917d9f37 h1:U3sncVRe/cKExu8CeWd01l7NQYcSY0HEOTP3OV0NCIY=

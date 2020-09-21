@@ -48,7 +48,14 @@ var Msg_map = map[string]func(replayF, string) {
 自动化功能、挑选有价值的弹幕
 //功能开关
 var AllF = map[string]bool{
-	"Autoban":false,//自动封禁(仅提示，未完成)
+	"Obs":true,//obs组件(录播)
+	/*
+		Obs需要外部组件:
+		obs https://obsproject.com/wiki/install-instructions#debian-based-build-directions
+		obs-websocket https://github.com/Palakis/obs-websocket/releases
+	*/
+	"Autoban":true,//自动封禁(仅提示，未完成)
+	"Jiezou":true,//带节奏预警，提示弹幕礼仪
 	"Danmuji":true,//反射型弹幕机，回应弹幕
 	"Danmuji_auto":false,//自动型弹幕机，定时输出
 	"Autoskip":true,//刷屏缩减，相同合并

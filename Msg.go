@@ -107,9 +107,6 @@ func (replayF) special_gift(s string){
 }
 
 func (replayF) guard_buy(s string){
-	msglog.Fileonly(true).Base(-1, "礼")
-	defer msglog.Base(0).Fileonly(false)
-
 	username := p.Json().GetValFromS(s, "data.username");
 	gift_name := p.Json().GetValFromS(s, "data.gift_name");
 	price := p.Json().GetValFromS(s, "data.price");
@@ -129,8 +126,10 @@ func (replayF) guard_buy(s string){
 	fmt.Println("\n====")
 	fmt.Println(sh...)
 	fmt.Print("====\n\n")
-	msglog.I(sh...)
 
+	msglog.Fileonly(true)
+	defer msglog.Fileonly(false)
+	msglog.Base(1, "礼").I(sh...)
 }
 
 func (replayF) room_change(s string){
@@ -203,16 +202,16 @@ func (replayF) send_gift(s string){
 
 	if len(sh) == 0 {return}
 
-	msglog.Fileonly(true).Base(-1, "礼")
-	defer msglog.Base(0).Fileonly(false)
-
 	//小于3万金瓜子
 	if allprice < 30000 {msglog.T(sh...);return}
 
 	fmt.Println("\n====")
 	fmt.Println(sh...)
 	fmt.Print("====\n\n")
-	msglog.I(sh...)
+
+	msglog.Fileonly(true)
+	defer msglog.Fileonly(false)
+	msglog.Base(1, "礼").I(sh...)
 }
 
 func (replayF) room_block_msg(s string) {
@@ -235,6 +234,10 @@ func (replayF) preparing(s string) {
 		msglog.E("roomid", roomid)
 		return
 	} else {
+		{//附加功能 obs结束
+			Obs_R(false)
+			Obsf(false)
+		}
 		if p.Sys().Type(roomid) == "float64" {
 			msglog.I("房间", int(roomid.(float64)), "下播了")
 			return
@@ -250,6 +253,10 @@ func (replayF) live(s string) {
 		msglog.E("roomid", roomid)
 		return
 	} else {
+		{//附加功能 obs录播
+			Obsf(true)
+			Obs_R(true)
+		}
 		if p.Sys().Type(roomid) == "float64" {
 			msglog.I("房间", int(roomid.(float64)), "开播了")
 			return
@@ -354,18 +361,18 @@ func (replayF) danmu(s string) {
 		msglog.Fileonly(true)
 		defer msglog.Fileonly(false)
 
-		//F附加方法
-		Danmujif(msg)
-		if Autobanf(msg) {
-			fmt.Println("风险", msg)
-			msglog.Base(1, "风险").I(msg)
-			return
+		{//附加功能 弹幕机 封禁 弹幕合并
+			Danmujif(msg)
+			if Autobanf(msg) {
+				fmt.Println("风险", msg)
+				msglog.Base(1, "风险").I(msg)
+				return
+			}
+			if i := Autoskipf(msg, 50, 15); i > 0 {
+				msglog.I(auth, ":", msg)
+				return
+			}
 		}
-		if i := Autoskipf(msg, 50, 15); i > 0 {
-			msglog.I(auth, ":", msg)
-			return
-		}
-
 		Msg_showdanmu(auth, msg)
 	}
 }
@@ -376,11 +383,13 @@ func Msg_senddanmu(msg string){
 }
 
 func Msg_showdanmu(auth interface{}, msg string) {
-	if Lessdanmuf(msg, 20) > 0.7 {//与前20条弹幕重复的字数占比度>0.7的屏蔽
-		if auth != nil {msglog.I(auth, ":", msg)}
-		return
+	{//附加功能 更少弹幕
+		if Lessdanmuf(msg, 20) > 0.7 {//与前20条弹幕重复的字数占比度>0.7的屏蔽
+			if auth != nil {msglog.I(auth, ":", msg)}
+			return
+		}
+		msg = Shortdanmuf(msg)
 	}
-
-	fmt.Println(Shortdanmuf(msg))
+	fmt.Println(msg)
 	if auth != nil {msglog.I(auth, ":", msg)}
 }

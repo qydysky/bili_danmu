@@ -6,12 +6,20 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"os/exec"
 
+	"github.com/christopher-dG/go-obs-websocket"
 	p "github.com/qydysky/part"
-) 
+)
 
 //功能开关
 var AllF = map[string]bool{
+	"Obs":true,//obs组件(仅录播)
+	/*
+		Obs需要外部组件:
+		obs https://obsproject.com/wiki/install-instructions#debian-based-build-directions
+		obs-websocket https://github.com/Palakis/obs-websocket/releases
+	*/
 	"Autoban":true,//自动封禁(仅提示，未完成)
 	"Jiezou":true,//带节奏预警，提示弹幕礼仪
 	"Danmuji":true,//反射型弹幕机，回应弹幕
@@ -75,6 +83,91 @@ func selfcross2(a []string) (float32, string) {
 	return max / all, maxS
 }
 //功能区
+type Obs struct {
+	Inuse bool
+	c obsws.Client
+	Prog string//程序路径
+}
+
+var obs = Obs {
+	Inuse:IsOn("Obs"),
+	c:obsws.Client{Host: "127.0.0.1", Port: 4444},
+	Prog:"obs",
+}
+
+func Obsf(on bool){
+	if !obs.Inuse {return}
+	l := p.Logf().New().Open("danmu.log").Base(1, "obs")
+
+	if on {
+		if p.Sys().CheckProgram("obs")[0] != 0 {l.W("obs已经启动");return}
+		if p.Sys().CheckProgram("obs")[0] == 0 {
+			if obs.Prog == "" {
+				l.E("未知的obs程序位置")
+				return
+			}
+			l.I("启动obs")
+			p.Exec().Startf(exec.Command(obs.Prog))
+			p.Sys().Timeoutf(3)
+		}
+		
+		// Connect a client.
+		if err := obs.c.Connect(); err != nil {
+			l.E(err)
+			return
+		}
+	} else {
+		if p.Sys().CheckProgram("obs")[0] == 0 {l.W("obs未启动");return}
+		obs.c.Disconnect()
+	}
+}
+
+func Obs_R(on bool){
+	if !obs.Inuse {return}
+
+	l := p.Logf().New().Open("danmu.log").Base(1, "obs_R")
+	if p.Sys().CheckProgram("obs")[0] == 0 {
+		l.W("obs未启动")
+		return
+	} else {
+		if err := obs.c.Connect(); err != nil {
+			l.E(err)
+			return
+		}
+	}
+	//录
+	if on {
+		req := obsws.NewStartRecordingRequest()
+		if err := req.Send(obs.c); err != nil {
+			l.E(err)
+			return
+		}
+		resp, err := req.Receive()
+		if err != nil {
+			l.E(err)
+			return
+		}
+		if resp.Status() == "ok" {
+			l.I("开始录制")
+		}
+	} else {
+		req := obsws.NewStopRecordingRequest()
+		if err := req.Send(obs.c); err != nil {
+			l.E(err)
+			return
+		}
+		resp, err := req.Receive()
+		if err != nil {
+			l.E(err)
+			return
+		}
+		if resp.Status() == "ok" {
+			l.I("停止录制")
+		}
+		p.Sys().Timeoutf(3)
+	}
+}
+
 type Autoban struct {
 	Banbuf []string
 	buf []string
@@ -335,13 +428,15 @@ var jiezou = Jiezou{
 		"的":nil,
 		"哈":nil,
 		"是":nil,
+		"，":nil,
+		"这":nil,
 	},
 }
 
 func Jiezouf(s []string) bool {
 	if !jiezou.Inuse {return false}
 	now,S := selfcross2(s)
-	jiezou.avg = (9 * jiezou.avg + now)/10
+	jiezou.avg = (8 * jiezou.avg + 2 * now)/10
 	if jiezou.turn < len(s) {jiezou.turn += 1;return false}
 	
 	if _,ok := jiezou.skipS[S]; ok {return false}
