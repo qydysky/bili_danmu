@@ -91,6 +91,8 @@ func selfcross2(a []string) (float32, string) {
 type Saveflv struct {
 	Inuse bool
 	path string
+	wait chan bool
+	cancel chan interface{}
 }
 
 var saveflv = Saveflv {
@@ -100,6 +102,7 @@ var saveflv = Saveflv {
 func Saveflvf(){
 	if !saveflv.Inuse || saveflv.path != "" {return}
 	l := p.Logf().New().Open("danmu.log").Base(1, "saveflv")
+	defer l.BC()
 
 	r := p.Get(p.Rval{
 		Url:"https://live.bilibili.com/" + strconv.Itoa(Msg_roomid),
@@ -114,15 +117,22 @@ func Saveflvf(){
 			if saveflv.path != "" {return}
 			saveflv.path = strconv.Itoa(Msg_roomid) + "_" + p.Sys().GetTime()
 			l.I("直播流保存到", saveflv.path)
-			if e := p.Req().Reqf(p.Rval{
+
+			saveflv.wait = make(chan bool,1)
+			saveflv.cancel = make(chan interface{},1)
+
+			rr := p.Req()
+			go func(){
+				<- saveflv.cancel
+				close(rr.Cancel)
+			}()
+			if e := rr.Reqf(p.Rval{
 				Url:url.(string),
 				SaveToPath:saveflv.path + ".flv",
 				Timeout:-1,
-			}); e != nil{
-				l.E(e)
-				return
-			}
+			}); e != nil{l.E(e)}
 			Saveflv_transcode()
+			close(saveflv.wait)
 		} 
 	}
 }
@@ -130,12 +140,18 @@ func Saveflvf(){
 func Saveflv_transcode(){
 	if !saveflv.Inuse || saveflv.path == "" {return}
 	if p.Checkfile().IsExist(saveflv.path+".flv"){
-		saveflv.path = ""
 		p.Exec().Run(false, "ffmpeg", "-i", saveflv.path+".flv", "-c", "copy", saveflv.path+".mp4")
 	} else if p.Checkfile().IsExist(saveflv.path+".flv.dtmp"){
-		saveflv.path = ""
 		p.Exec().Run(false, "ffmpeg", "-i", saveflv.path+".flv.dtmp", "-c", "copy", saveflv.path+".mp4")
 	}
+	saveflv.path = ""
+}
+
+func Saveflv_wait(){
+	if !saveflv.Inuse || saveflv.path == "" {return}
+	close(saveflv.cancel)
+	p.Logf().New().Open("danmu.log").Base(1, "saveflv").I("等待转码").Block()
+	<- saveflv.wait
 }
 
 type Obs struct {
@@ -153,6 +169,7 @@ var obs = Obs {
 func Obsf(on bool){
 	if !obs.Inuse {return}
 	l := p.Logf().New().Open("danmu.log").Base(1, "obs")
+	defer l.BC()
 
 	if on {
 		if p.Sys().CheckProgram("obs")[0] != 0 {l.W("obs已经启动");return}
@@ -181,6 +198,8 @@ func Obs_R(on bool){
 	if !obs.Inuse {return}
 
 	l := p.Logf().New().Open("danmu.log").Base(1, "obs_R")
+	defer l.BC()
+
 	if p.Sys().CheckProgram("obs")[0] == 0 {
 		l.W("obs未启动")
 		return
@@ -273,7 +292,7 @@ func Autobanf(s string) bool {
 	res = append(res, pt)
 
 	l := p.Logf().New().Open("danmu.log").Base(1, "autoban")
-	l.W(res)
+	l.W(res).Block()
 	return true
 }
 
@@ -499,7 +518,7 @@ func Jiezouf(s []string) bool {
 	jiezou.Lock()
 	if now > 1.3 * jiezou.avg {//触发
 		l := p.Logf().New().Open("danmu.log").Base(1, "jiezou")
-		l.W("节奏注意", now, jiezou.avg, S)
+		l.W("节奏注意", now, jiezou.avg, S).Block()
 		jiezou.avg = now //沉默
 		jiezou.Unlock()
 
