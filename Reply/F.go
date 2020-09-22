@@ -115,7 +115,7 @@ func Saveflvf(){
 			return
 		} else {
 			if saveflv.path != "" {return}
-			saveflv.path = strconv.Itoa(Msg_roomid) + "_" + p.Sys().GetTime()
+			saveflv.path = strconv.Itoa(Msg_roomid) + "_" + time.Now().Format(time.RFC3339)
 			l.I("直播流保存到", saveflv.path)
 
 			saveflv.wait = make(chan bool,1)
@@ -124,14 +124,17 @@ func Saveflvf(){
 			rr := p.Req()
 			go func(){
 				<- saveflv.cancel
-				close(rr.Cancel)
+				rr.Close()
 			}()
 			if e := rr.Reqf(p.Rval{
 				Url:url.(string),
+				Retry:10,
+				SleepTime:5,
 				SaveToPath:saveflv.path + ".flv",
 				Timeout:-1,
 			}); e != nil{l.E(e)}
 			Saveflv_transcode()
+			l.I("结束")
 			close(saveflv.wait)
 		} 
 	}
@@ -284,7 +287,7 @@ func Autobanf(s string) bool {
 	res = append(res, pt)
 
 	pt = cross(s, autoban.buf);
-	if pt < 0.7 {return false}//历史重复低去除
+	if pt > 0.7 {return false}//历史重复高去除
 	res = append(res, pt)
 
 	pt = cross(s, autoban.Banbuf);

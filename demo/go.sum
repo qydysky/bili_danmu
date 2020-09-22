@@ -50,6 +50,10 @@ github.com/qydysky/part v0.0.0-20200922060746-8db61966366b h1:9Qe6wazp6ImV0jyIEL
 github.com/qydysky/part v0.0.0-20200922060746-8db61966366b/go.mod h1:+8N3UgJBVyJj8ar31eZtucwrKpLpay854Y5qq0xk3x0=
 github.com/qydysky/part v0.0.0-20200922062343-5096e51d5989 h1:W3Sm7L2/7q2VHEc0NFQKLV4mJpwouQCGDxziKiyCU/o=
 github.com/qydysky/part v0.0.0-20200922062343-5096e51d5989/go.mod h1:+8N3UgJBVyJj8ar31eZtucwrKpLpay854Y5qq0xk3x0=
+github.com/qydysky/part v0.0.0-20200922140825-5050288b80d4 h1:IqqEcdsgahVWR1OUY46RatCYYedyTHvHbnEi3M7WV+A=
+github.com/qydysky/part v0.0.0-20200922140825-5050288b80d4/go.mod h1:+8N3UgJBVyJj8ar31eZtucwrKpLpay854Y5qq0xk3x0=
+github.com/qydysky/part v0.0.0-20200922141821-acab84cb701a h1:NHe/LmpmVNWq2cK3jR2qKX/TcXszQ57PEo7eS7kOhv0=
+github.com/qydysky/part v0.0.0-20200922141821-acab84cb701a/go.mod h1:+8N3UgJBVyJj8ar31eZtucwrKpLpay854Y5qq0xk3x0=
 github.com/shirou/gopsutil v2.20.7+incompatible/go.mod h1:5b4v6he4MtMOwMlS0TUMTu2PcXUg8+E1lC7eC3UO/RA=
 github.com/shirou/gopsutil v2.20.8+incompatible h1:8c7Atn0FAUZJo+f4wYbN0iVpdWniCQk7IYwGtgdh1mY=
 github.com/shirou/gopsutil v2.20.8+incompatible/go.mod h1:5b4v6he4MtMOwMlS0TUMTu2PcXUg8+E1lC7eC3UO/RA=
@@ -84,6 +88,8 @@ golang.org/x/sys v0.0.0-20200917061948-648f2a039071 h1:t0H7WMwCt9t0LnLSYz5zdZ/Oi
 golang.org/x/sys v0.0.0-20200917061948-648f2a039071/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20200918174421-af09f7315aff h1:1CPUrky56AcgSpxz/KfgzQWzfG09u5YOL8MvPYBlrL8=
 golang.org/x/sys v0.0.0-20200918174421-af09f7315aff/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
+golang.org/x/sys v0.0.0-20200922070232-aee5d888a860 h1:YEu4SMq7D0cmT7CBbXfcH0NZeuChAXwsHe/9XueUO6o=
+golang.org/x/sys v0.0.0-20200922070232-aee5d888a860/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/text v0.3.0/go.mod h1:NqM8EUOU14njkJ3fqMW+pc6Ldnwhi/IjpwHt7yyuwOQ=
 golang.org/x/tools v0.0.0-20191216052735-49a3e744a425/go.mod h1:TB2adYChydJhpapKDTa4BR/hXlZSLoq2Wpct/0txZ28=
 golang.org/x/xerrors v0.0.0-20191011141410-1b5146add898/go.mod h1:I/5z698sn9Ka8TeJc9MKroUUfqBBauWjQqLJ2OPfmY0=

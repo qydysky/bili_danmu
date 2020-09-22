@@ -110,7 +110,6 @@ func Demo() {
 		}
 
 		{//附加功能 直播流转码
-			reply.Saveflv_transcode()
 			reply.Saveflv_wait()
 		}
 		danmulog.I("结束退出")
