@@ -239,6 +239,7 @@ func (replyF) live(s string) {
 		{//附加功能 obs录播
 			Obsf(true)
 			Obs_R(true)
+			go Saveflvf()
 		}
 		if p.Sys().Type(roomid) == "float64" {
 			msglog.I("房间", int(roomid.(float64)), "开播了")

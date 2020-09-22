@@ -98,20 +98,20 @@ var saveflv = Saveflv {
 }
 
 func Saveflvf(){
-	if !saveflv.Inuse {return}
+	if !saveflv.Inuse || saveflv.path != "" {return}
 	l := p.Logf().New().Open("danmu.log").Base(1, "saveflv")
 
 	r := p.Get(p.Rval{
 		Url:"https://live.bilibili.com/" + strconv.Itoa(Msg_roomid),
 	})
 	if e := r.S(`"durl":[`, `]`, 0, 0).Err;e != nil {
-		l.E(e)
 		return
 	} else {
 		if url := p.Json().GetValFromS("[" + r.RS + "]", "[0].url");url == nil {
-			l.E("url", url)
+			l.Fileonly(true).E("url", url)
 			return
 		} else {
+			if saveflv.path != "" {return}
 			saveflv.path = strconv.Itoa(Msg_roomid) + "_" + p.Sys().GetTime()
 			l.I("直播流保存到", saveflv.path)
 			if e := p.Req().Reqf(p.Rval{
