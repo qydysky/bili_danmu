@@ -1,79 +1,62 @@
-package bili_danmu
+package reply
 
 import (
 	"fmt"
+	"bytes"
+	"compress/zlib"
 
 	p "github.com/qydysky/part"
+	F "github.com/qydysky/bili_danmu/F"
+	S "github.com/qydysky/bili_danmu/Send"
+	. "github.com/qydysky/bili_danmu/Const"
 )
-/*
-	数据为WS_OP_MESSAGE类型的
-*/
 
-var msglog = p.Logf().New().Base(-1, "Msg.go").Open("danmu.log").Level(1)
-var Msg_cookie string
-var Msg_roomid int
-var Msg_map = map[string]func(replayF, string) {
-	"ROOM_SKIN_MSG":nil,
-	"GUARD_ACHIEVEMENT_ROOM":nil,
-	"ANCHOR_LOT_START":nil,//天选之人开始
-	"ANCHOR_LOT_CHECKSTATUS":nil,
-	"ANCHOR_LOT_END":nil,//天选之人结束
-	"ANCHOR_LOT_AWARD":nil,//天选之人获奖
-	"COMBO_SEND":nil,
-	"INTERACT_WORD":nil,
-	"ACTIVITY_BANNER_UPDATE_V2":nil,
-	"NOTICE_MSG":nil,
-	"ROOM_BANNER":nil,
-	"ONLINERANK":nil,
-	"WELCOME":nil,
-	"HOUR_RANK_AWARDS":nil,
-	"ROOM_RANK":nil,
-	"ROOM_SHIELD":nil,
-	"USER_TOAST_MSG":nil,
-	"WIN_ACTIVITY":replayF.win_activity,//活动
-	"SPECIAL_GIFT":replayF.special_gift,//节奏风暴
-	"GUARD_BUY":replayF.guard_buy,//大航海购买
-	"WELCOME_GUARD":replayF.welcome_guard,//大航海进入
-	"DANMU_MSG":replayF.danmu,//弹幕
-	"ROOM_CHANGE":replayF.room_change,//房间信息分区改变
-	"ROOM_SILENT_OFF":replayF.roomsilent,//禁言结束
-	"ROOM_SILENT_ON":replayF.roomsilent,//禁言开始
-	"SEND_GIFT":replayF.send_gift,//礼物
-	"ROOM_BLOCK_MSG":replayF.room_block_msg,//封禁
-	"PREPARING":replayF.preparing,//下播
-	"LIVE":replayF.live,//开播
-	"SUPER_CHAT_MESSAGE":nil,//replayF.super_chat_message,//SC
-	"SUPER_CHAT_MESSAGE_JPN":replayF.super_chat_message,//SC
-	"PANEL":replayF.panel,//排行榜
-	"ENTRY_EFFECT":nil,//replayF.entry_effect,//进入特效
-	"ROOM_REAL_TIME_MESSAGE_UPDATE":nil,//replayF.roominfo,//粉丝数
-}
+var replylog = p.Logf().New().Open("danmu.log").Base(-1, "Reply.go")
 
-func Msg(b []byte) {
-	s := string(b)
-	if cmd := p.Json().GetValFromS(s, "cmd");cmd == nil {
-		msglog.E("cmd", s)
-		return
-	} else {
-		var f replayF
+//返回数据分派
+func Reply(b []byte) {
+	replylog.Base(-1, "返回分派")
+	defer replylog.Base(0)
 
-		if F, ok := Msg_map[cmd.(string)]; ok {
-			if F != nil {F(f, s)}
-		} else {
-			f.defaultMsg(s)
-		}
+	head := F.HeadChe(b[:WS_PACKAGE_HEADER_TOTAL_LENGTH])
+	if int(head.PackL) > len(b) {replylog.E("包缺损");return}
+
+	if head.BodyV == WS_BODY_PROTOCOL_VERSION_DEFLATE {
+		readc, err := zlib.NewReader(bytes.NewReader(b[16:]))
+		if err != nil {replylog.E("解压错误");return}
+		defer readc.Close()
+		
+		buf := bytes.NewBuffer(nil)
+		if _, err := buf.ReadFrom(readc);err != nil {replylog.E("解压错误");return}
+		b = buf.Bytes()
 	}
 
-	return 
+	for len(b) != 0 {
+		head := F.HeadChe(b[:WS_PACKAGE_HEADER_TOTAL_LENGTH])
+		if int(head.PackL) > len(b) {replylog.E("包缺损");return}
+		
+		contain := b[WS_PACKAGE_HEADER_TOTAL_LENGTH:head.PackL]
+		switch head.OpeaT {
+		case WS_OP_MESSAGE:Msg(contain)
+		case WS_OP_HEARTBEAT_REPLY:Heart(contain)
+		default :replylog.W("unknow reply", contain)
+		}
+
+		b = b[head.PackL:]
+	}
 }
 
-type replayF struct {}
+type replyF struct {}
 
-func (replayF) defaultMsg(s string){
-	msglog.Base(1, "Unknow cmd").E(s)
+func (replyF) defaultMsg(s string){
+	msglog.Base(1, "Unknow").E(s)
 }
 
-func (replayF) win_activity(s string){
+func (replyF) heartbeat(s string){
+	heartlog.I("当前人气", s)
+}
+
+func (replyF) win_activity(s string){
 	msglog.Fileonly(true)
 	defer msglog.Fileonly(false)
 
@@ -83,7 +66,7 @@ func (replayF) win_activity(s string){
 	msglog.Base(1, "房").I("活动", title, "已开启")
 }
 
-func (replayF) special_gift(s string){
+func (replyF) special_gift(s string){
 	msglog.Fileonly(true)
 	defer msglog.Fileonly(false)
 
@@ -106,7 +89,7 @@ func (replayF) special_gift(s string){
 
 }
 
-func (replayF) guard_buy(s string){
+func (replyF) guard_buy(s string){
 	username := p.Json().GetValFromS(s, "data.username");
 	gift_name := p.Json().GetValFromS(s, "data.gift_name");
 	price := p.Json().GetValFromS(s, "data.price");
@@ -132,7 +115,7 @@ func (replayF) guard_buy(s string){
 	msglog.Base(1, "礼").I(sh...)
 }
 
-func (replayF) room_change(s string){
+func (replyF) room_change(s string){
 	title := p.Json().GetValFromS(s, "data.title");
 	area_name := p.Json().GetValFromS(s, "data.area_name");
 
@@ -147,7 +130,7 @@ func (replayF) room_change(s string){
 	msglog.Base(1, "房").I(sh...)
 }
 
-func (replayF) welcome_guard(s string){
+func (replyF) welcome_guard(s string){
 
 	username := p.Json().GetValFromS(s, "data.username");
 	guard_level := p.Json().GetValFromS(s, "data.guard_level");
@@ -172,7 +155,7 @@ func (replayF) welcome_guard(s string){
 	msglog.Base(1, "房").Fileonly(true).I(sh...).Fileonly(false)
 }
 
-func (replayF) send_gift(s string){
+func (replyF) send_gift(s string){
 	// coin_type := p.Json().GetValFromS(s, "data.coin_type");
 	num := p.Json().GetValFromS(s, "data.num");
 	uname := p.Json().GetValFromS(s, "data.uname");
@@ -214,7 +197,7 @@ func (replayF) send_gift(s string){
 	msglog.Base(1, "礼").I(sh...)
 }
 
-func (replayF) room_block_msg(s string) {
+func (replyF) room_block_msg(s string) {
 	msglog.Fileonly(true)
 	defer msglog.Fileonly(false)
 
@@ -227,7 +210,7 @@ func (replayF) room_block_msg(s string) {
 	}
 }
 
-func (replayF) preparing(s string) {
+func (replyF) preparing(s string) {
 	msglog.Base(1, "房")
 
 	if roomid := p.Json().GetValFromS(s, "roomid");roomid == nil {
@@ -246,7 +229,7 @@ func (replayF) preparing(s string) {
 	}
 }
 
-func (replayF) live(s string) {
+func (replyF) live(s string) {
 	msglog.Base(1, "房")
 
 	if roomid := p.Json().GetValFromS(s, "roomid");roomid == nil {
@@ -265,7 +248,7 @@ func (replayF) live(s string) {
 	}
 }
 
-func (replayF) super_chat_message(s string){
+func (replyF) super_chat_message(s string){
 	uname := p.Json().GetValFromS(s, "data.user_info.uname");
 	price := p.Json().GetValFromS(s, "data.price");
 	message := p.Json().GetValFromS(s, "data.message");
@@ -294,7 +277,7 @@ func (replayF) super_chat_message(s string){
 	msglog.Base(1, "礼").I(sh...)
 }
 
-func (replayF) panel(s string){
+func (replyF) panel(s string){
 	msglog.Fileonly(true).Base(1, "房")
 	defer msglog.Fileonly(false)
 
@@ -307,7 +290,7 @@ func (replayF) panel(s string){
 	}
 }
 
-func (replayF) entry_effect(s string){
+func (replyF) entry_effect(s string){
 	msglog.Fileonly(true).Base(-1, "房")
 	defer msglog.Base(0).Fileonly(false)
 
@@ -321,7 +304,7 @@ func (replayF) entry_effect(s string){
 
 }
 
-func (replayF) roomsilent(s string){
+func (replyF) roomsilent(s string){
 	msglog.Base(1, "房")
 
 	if level := p.Json().GetValFromS(s, "data.level");level == nil {
@@ -333,7 +316,7 @@ func (replayF) roomsilent(s string){
 	}
 }
 
-func (replayF) roominfo(s string){
+func (replyF) roominfo(s string){
 	fans := p.Json().GetValFromS(s, "data.fans");
 	fans_club := p.Json().GetValFromS(s, "data.fans_club");
 
@@ -349,7 +332,7 @@ func (replayF) roominfo(s string){
 	if len(sh) != 0 {msglog.Base(1, "粉").I(sh...)}
 }
 
-func (replayF) danmu(s string) {
+func (replyF) danmu(s string) {
 	if info := p.Json().GetValFromS(s, "info");info == nil {
 		msglog.E("info", info)
 		return
@@ -379,7 +362,7 @@ func (replayF) danmu(s string) {
 
 func Msg_senddanmu(msg string){
 	if Msg_cookie == "" || Msg_roomid == 0 {return}
-	Danmu_s(msg, Msg_cookie, Msg_roomid)
+	S.Danmu_s(msg, Msg_cookie, Msg_roomid)
 }
 
 func Msg_showdanmu(auth interface{}, msg string) {

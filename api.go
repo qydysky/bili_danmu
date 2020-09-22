@@ -37,34 +37,29 @@ func (i *api) Get_info() (o *api) {
 	}
 	Roomid := strconv.Itoa(o.Roomid)
 
-	req := p.Req()
-	if err := req.Reqf(p.Rval{
-		Url:"https://api.live.bilibili.com/room/v1/Room/room_init?id=" + Roomid,
-		Referer:"https://live.bilibili.com/" + Roomid,
-		Timeout:10,
-		Retry:2,
-	});err != nil {
-		apilog.E(err)
+	r := p.Get(p.Rval{
+		Url:"https://live.bilibili.com/" + Roomid,
+	})
+	//uid
+	if tmp := r.S(`"uid":`, `,`, 0, 0);tmp.Err != nil {
+		apilog.E("uid", tmp.Err)
 		return
-	}
-	res := string(req.Respon)
-	if msg := p.Json().GetValFrom(res, "msg");msg == nil || msg != "ok" {
-		apilog.E("msg", msg)
-		return
-	}
-	if Uid := p.Json().GetValFrom(res, "data.uid");Uid == nil {
-		apilog.E("data.uid", Uid)
+	} else if i,err := strconv.Atoi(tmp.RS); err != nil{
+		apilog.E("uid", err)
 		return
 	} else {
-		o.Uid = int(Uid.(float64))
+		o.Uid = i
 	}
-
-	if room_id := p.Json().GetValFrom(res, "data.room_id");room_id == nil {
-		apilog.E("data.room_id", room_id)
+	//roomid
+	if tmp := r.S(`"room_id":`, `,`, 0, 0);tmp.Err != nil {
+		apilog.E("room_id", tmp.Err)
+		return
+	} else if i,err := strconv.Atoi(tmp.RS); err != nil{
+		apilog.E("room_id", err)
 		return
 	} else {
 		apilog.T("ok")
-		o.Roomid = int(room_id.(float64))
+		o.Roomid = i
 	}
 	return
 }
@@ -92,19 +87,19 @@ func (i *api) Get_host_Token() (o *api) {
 		return
 	}
 	res := string(req.Respon)
-	if msg := p.Json().GetValFrom(res, "message");msg == nil || msg != "0" {
+	if msg := p.Json().GetValFromS(res, "message");msg == nil || msg != "0" {
 		apilog.E("message", msg)
 		return
 	}
 
-	_Token := p.Json().GetValFrom(res, "data.token")
+	_Token := p.Json().GetValFromS(res, "data.token")
 	if _Token == nil {
 		apilog.E("data.token", _Token, res)
 		return
 	}
 	o.Token = _Token.(string)
 
-	if host_list := p.Json().GetValFrom(res, "data.host_list");host_list == nil {
+	if host_list := p.Json().GetValFromS(res, "data.host_list");host_list == nil {
 		apilog.E("data.host_list", host_list)
 		return
 	} else {

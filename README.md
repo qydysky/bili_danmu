@@ -48,7 +48,12 @@ var Msg_map = map[string]func(replayF, string) {
 自动化功能、挑选有价值的弹幕
 //功能开关
 var AllF = map[string]bool{
-	"Obs":true,//obs组件(录播)
+	"Saveflv":true,//保存直播流(仅高清)
+	/*
+		Saveflv需要外部组件
+		ffmpeg http://ffmpeg.org/download.html
+	*/
+	"Obs":false,//obs组件(仅录播)
 	/*
 		Obs需要外部组件:
 		obs https://obsproject.com/download

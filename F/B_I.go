@@ -1,4 +1,4 @@
-package bili_danmu
+package F
 
 import (
 	"bytes"
@@ -25,16 +25,24 @@ func Itob16(num int16) []byte {
 	return buffer.Bytes()
 }
 
-func Btoi32(b []byte) int32 {
+func btoi32(b []byte) int32 {
 	var buffer int32
 	err := binary.Read(bytes.NewReader(b), binary.BigEndian, &buffer)
 	if err != nil {p.Logf().E(err)}
 	return buffer
 }
 
-func Btoi16(b []byte) int16 {
+func btoi16(b []byte) int16 {
 	var buffer int16
 	err := binary.Read(bytes.NewReader(b), binary.BigEndian, &buffer)
 	if err != nil {p.Logf().E(err)}
 	return buffer
+}
+
+func Btoi32(b []byte, offset int) int32 {
+	return btoi32(b[offset:offset+4])
+}
+
+func Btoi16(b []byte, offset int) int16 {
+	return btoi16(b[offset:offset+2])
 }

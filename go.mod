@@ -3,6 +3,7 @@ module github.com/qydysky/bili_danmu
 go 1.14
 
 require (
+	github.com/christopher-dG/go-obs-websocket v0.0.0-20200720193653-c4fed10356a5
 	github.com/gorilla/websocket v1.4.2
 	github.com/klauspost/compress v1.11.0 // indirect
 	github.com/qydysky/part v0.0.0-20200917071511-9f829642b501

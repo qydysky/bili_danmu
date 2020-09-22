@@ -1,4 +1,4 @@
-package bili_danmu
+package send
 
 import (
 	"strings"

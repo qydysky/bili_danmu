@@ -1,4 +1,4 @@
-package bili_danmu
+package reply
 
 import (
 	// "fmt"
@@ -14,7 +14,12 @@ import (
 
 //功能开关
 var AllF = map[string]bool{
-	"Obs":true,//obs组件(仅录播)
+	"Saveflv":true,//保存直播流(仅高清)
+	/*
+		Saveflv需要外部组件
+		ffmpeg http://ffmpeg.org/download.html
+	*/
+	"Obs":false,//obs组件(仅录播)
 	/*
 		Obs需要外部组件:
 		obs https://obsproject.com/download
@@ -83,6 +88,56 @@ func selfcross2(a []string) (float32, string) {
 	return max / all, maxS
 }
 //功能区
+type Saveflv struct {
+	Inuse bool
+	path string
+}
+
+var saveflv = Saveflv {
+	Inuse:IsOn("Saveflv"),
+}
+
+func Saveflvf(){
+	if !saveflv.Inuse {return}
+	l := p.Logf().New().Open("danmu.log").Base(1, "saveflv")
+
+	r := p.Get(p.Rval{
+		Url:"https://live.bilibili.com/" + strconv.Itoa(Msg_roomid),
+	})
+	if e := r.S(`"durl":[`, `]`, 0, 0).Err;e != nil {
+		l.E(e)
+		return
+	} else {
+		if url := p.Json().GetValFromS("[" + r.RS + "]", "[0].url");url == nil {
+			l.E("url", url)
+			return
+		} else {
+			saveflv.path = strconv.Itoa(Msg_roomid) + "_" + p.Sys().GetTime()
+			l.I("直播流保存到", saveflv.path)
+			if e := p.Req().Reqf(p.Rval{
+				Url:url.(string),
+				SaveToPath:saveflv.path + ".flv",
+				Timeout:-1,
+			}); e != nil{
+				l.E(e)
+				return
+			}
+			Saveflv_transcode()
+		} 
+	}
+}
+
+func Saveflv_transcode(){
+	if !saveflv.Inuse || saveflv.path == "" {return}
+	if p.Checkfile().IsExist(saveflv.path+".flv"){
+		saveflv.path = ""
+		p.Exec().Run(false, "ffmpeg", "-i", saveflv.path+".flv", "-c", "copy", saveflv.path+".mp4")
+	} else if p.Checkfile().IsExist(saveflv.path+".flv.dtmp"){
+		saveflv.path = ""
+		p.Exec().Run(false, "ffmpeg", "-i", saveflv.path+".flv.dtmp", "-c", "copy", saveflv.path+".mp4")
+	}
+}
+
 type Obs struct {
 	Inuse bool
 	c obsws.Client
