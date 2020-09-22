@@ -1,7 +1,7 @@
 ## bilibili 直播弹幕机
 golang go version go1.15.2 linux/amd64
 ### 当前支持显示/功能
-以下内容可能过时，点击查看[当前支持显示](https://github.com/qydysky/bili_danmu/blob/master/Msg.go#L15)
+以下内容可能过时，点击查看[当前支持显示](https://github.com/qydysky/bili_danmu/blob/master/Reply/Msg.go#L13)
 ```
 显示
 case 后有函数调用的为支持，为nil的为待完善，注释掉的调用为未启用
@@ -42,7 +42,7 @@ var Msg_map = map[string]func(replayF, string) {
 	"ROOM_REAL_TIME_MESSAGE_UPDATE":nil,//replayF.roominfo,//粉丝数
 }
 ```
-以下内容可能过时，点击查看[当前支持功能](https://github.com/qydysky/bili_danmu/blob/master/F.go#L14)
+以下内容可能过时，点击查看[当前支持功能](https://github.com/qydysky/bili_danmu/blob/master/Reply/F.go#L16)
 ```
 其他功能
 自动化功能、挑选有价值的弹幕
