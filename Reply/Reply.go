@@ -373,6 +373,7 @@ func Msg_showdanmu(auth interface{}, msg string) {
 			return
 		}
 		msg = Shortdanmuf(msg)
+		Assf(msg,"")//ass
 	}
 	fmt.Println(msg)
 	if auth != nil {msglog.I(auth, ":", msg)}

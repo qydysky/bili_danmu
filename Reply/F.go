@@ -1,10 +1,11 @@
 package reply
 
 import (
-	// "fmt"
+	"fmt"
 	"strconv"
 	"strings"
 	"sync"
+	"math"
 	"time"
 	"os/exec"
 
@@ -25,6 +26,7 @@ var AllF = map[string]bool{
 		obs https://obsproject.com/download
 		obs-websocket https://github.com/Palakis/obs-websocket/releases
 	*/
+	"Ass":true,//Ass弹幕生成
 	"Autoban":true,//自动封禁(仅提示，未完成)
 	"Jiezou":true,//带节奏预警，提示弹幕礼仪
 	"Danmuji":true,//反射型弹幕机，回应弹幕
@@ -88,6 +90,100 @@ func selfcross2(a []string) (float32, string) {
 	return max / all, maxS
 }
 //功能区
+type Ass struct {
+	Inuse bool
+	
+	file string
+	startT time.Time
+	header string
+	rtb [7]time.Duration//通道是否被字节占用
+	ri int
+}
+
+var (
+	Ass_width = 1280
+	Ass_font = 55
+	Ass_move = 13
+)
+
+var ass = Ass {
+	Inuse:IsOn("Ass"),
+header:`[Script Info]
+Title: Default Aegisub file
+ScriptType: v4.00+
+WrapStyle: 0
+ScaledBorderAndShadow: yes
+PlayResX: `+strconv.Itoa(Ass_width/16*9)+`
+PlayResY: `+strconv.Itoa(Ass_width)+`
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Default,,`+strconv.Itoa(Ass_font)+`,&H70FFFFFF,&H000017FF,&H80000000,&H89000000,0,0,0,0,100,100,0,0,1,2,0,8,15,15,15,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+`,
+}
+
+func Assf(s,file string){
+	if !ass.Inuse {return}
+	if file == "" && ass.file == "" {return}
+
+	if ass.startT.Equal(time.Date(1, 1, 1, 0, 0, 0, 0, time.UTC)) {
+		p.Logf().New().Open("danmu.log").Base(1, "Ass").I("弹幕转Ass保存至", file + ".ass")
+
+		ass.file = file
+		p.File().FileWR(p.Filel{
+			File:ass.file + ".ass",
+			Write:true,
+			Loc:0,
+			Context:[]interface{}{ass.header},
+		})
+		ass.startT = time.Now()
+	}
+
+	if s == "" {return}
+	st := time.Since(ass.startT) + time.Duration(p.Rand().MixRandom(0, 2000)) * time.Millisecond
+	et := st + time.Duration(float64(len([]rune(s)) * Ass_font * Ass_move) / 1000 / 2) * time.Second
+	loc := -1
+
+	if ass.ri > 20 {ass.ri = 0}
+
+	for k,v := range ass.rtb {
+		if st > v {
+			loc = k
+			ass.rtb[k] = et
+			break
+		}
+	}
+	switch loc {
+	case 0:ass.ri += 1
+	case -1:return
+	default:
+	}
+
+	var b string
+	// b += "Comment: " + Dtos(et) + "\n"
+	b += `Dialogue: ` + strconv.Itoa(ass.ri) + ","
+	b += Dtos(st) + `,` + Dtos(et + time.Duration(float64(Ass_width * Ass_move) / 1000) * time.Second)
+	b += `,Default,,0,0,0,Banner;`+strconv.Itoa(Ass_move)+`[;0;0],` + s + "\n"
+
+	p.File().FileWR(p.Filel{
+		File:ass.file + ".ass",
+		Write:true,
+		Loc:-1,
+		Context:[]interface{}{b},
+	})
+}
+
+func Dtos(t time.Duration) string {
+	M := int(math.Floor(t.Minutes())) % 60
+	S := int(math.Floor(t.Seconds())) % 60
+	Ns := t.Nanoseconds() / int64(time.Millisecond) % 1000 / 10
+
+	return fmt.Sprintf("%d:%02d:%02d.%02d", int(math.Floor(t.Hours())), M, S, Ns)
+}
+
 type Saveflv struct {
 	Inuse bool
 	path string
@@ -120,7 +216,9 @@ func Saveflvf(){
 
 			saveflv.wait = make(chan bool,1)
 			saveflv.cancel = make(chan interface{},1)
-
+			
+			Assf("",saveflv.path)//ass
+			
 			rr := p.Req()
 			go func(){
 				<- saveflv.cancel
@@ -143,9 +241,9 @@ func Saveflvf(){
 func Saveflv_transcode(){
 	if !saveflv.Inuse || saveflv.path == "" {return}
 	if p.Checkfile().IsExist(saveflv.path+".flv"){
-		p.Exec().Run(false, "ffmpeg", "-i", saveflv.path+".flv", "-c", "copy", saveflv.path+".mp4")
+		p.Exec().Run(false, "ffmpeg", "-i", saveflv.path+".flv", "-c", "copy", saveflv.path+".mkv")
 	} else if p.Checkfile().IsExist(saveflv.path+".flv.dtmp"){
-		p.Exec().Run(false, "ffmpeg", "-i", saveflv.path+".flv.dtmp", "-c", "copy", saveflv.path+".mp4")
+		p.Exec().Run(false, "ffmpeg", "-i", saveflv.path+".flv.dtmp", "-c", "copy", saveflv.path+".mkv")
 	}
 	saveflv.path = ""
 }
