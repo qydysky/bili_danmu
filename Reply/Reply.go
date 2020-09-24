@@ -8,7 +8,7 @@ import (
 	p "github.com/qydysky/part"
 	F "github.com/qydysky/bili_danmu/F"
 	S "github.com/qydysky/bili_danmu/Send"
-	. "github.com/qydysky/bili_danmu/Const"
+	c "github.com/qydysky/bili_danmu/Const"
 )
 
 var replylog = p.Logf().New().Open("danmu.log").Base(-1, "Reply.go")
@@ -18,10 +18,10 @@ func Reply(b []byte) {
 	replylog.Base(-1, "返回分派")
 	defer replylog.Base(0)
 
-	head := F.HeadChe(b[:WS_PACKAGE_HEADER_TOTAL_LENGTH])
+	head := F.HeadChe(b[:c.WS_PACKAGE_HEADER_TOTAL_LENGTH])
 	if int(head.PackL) > len(b) {replylog.E("包缺损");return}
 
-	if head.BodyV == WS_BODY_PROTOCOL_VERSION_DEFLATE {
+	if head.BodyV == c.WS_BODY_PROTOCOL_VERSION_DEFLATE {
 		readc, err := zlib.NewReader(bytes.NewReader(b[16:]))
 		if err != nil {replylog.E("解压错误");return}
 		defer readc.Close()
@@ -32,13 +32,13 @@ func Reply(b []byte) {
 	}
 
 	for len(b) != 0 {
-		head := F.HeadChe(b[:WS_PACKAGE_HEADER_TOTAL_LENGTH])
+		head := F.HeadChe(b[:c.WS_PACKAGE_HEADER_TOTAL_LENGTH])
 		if int(head.PackL) > len(b) {replylog.E("包缺损");return}
 		
-		contain := b[WS_PACKAGE_HEADER_TOTAL_LENGTH:head.PackL]
+		contain := b[c.WS_PACKAGE_HEADER_TOTAL_LENGTH:head.PackL]
 		switch head.OpeaT {
-		case WS_OP_MESSAGE:Msg(contain)
-		case WS_OP_HEARTBEAT_REPLY:Heart(contain)
+		case c.WS_OP_MESSAGE:Msg(contain)
+		case c.WS_OP_HEARTBEAT_REPLY:Heart(contain)
 		default :replylog.W("unknow reply", contain)
 		}
 
@@ -362,8 +362,8 @@ func (replyF) danmu(s string) {
 }
 
 func Msg_senddanmu(msg string){
-	if Msg_cookie == "" || Msg_roomid == 0 {return}
-	S.Danmu_s(msg, Msg_cookie, Msg_roomid)
+	if c.Cookie == "" || c.Roomid == 0 {return}
+	S.Danmu_s(msg, c.Cookie, c.Roomid)
 }
 
 func Msg_showdanmu(auth interface{}, msg string) {

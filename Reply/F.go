@@ -9,6 +9,7 @@ import (
 	"time"
 	"os/exec"
 
+	c "github.com/qydysky/bili_danmu/Const"
 	"github.com/christopher-dG/go-obs-websocket"
 	p "github.com/qydysky/part"
 )
@@ -101,24 +102,26 @@ type Ass struct {
 }
 
 var (
+	Ass_height = 720
 	Ass_width = 1280
-	Ass_font = 55
-	Ass_move = 13
+	Ass_font = 50
+	Ass_T = 7
+	Ass_loc = 1//小键盘对应的位置
 )
 
 var ass = Ass {
 	Inuse:IsOn("Ass"),
 header:`[Script Info]
-Title: Default Aegisub file
+Title: Default Ass file
 ScriptType: v4.00+
 WrapStyle: 0
 ScaledBorderAndShadow: yes
-PlayResX: `+strconv.Itoa(Ass_width/16*9)+`
+PlayResX: `+strconv.Itoa(Ass_height)+`
 PlayResY: `+strconv.Itoa(Ass_width)+`
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,,`+strconv.Itoa(Ass_font)+`,&H70FFFFFF,&H000017FF,&H80000000,&H89000000,0,0,0,0,100,100,0,0,1,2,0,8,15,15,15,1
+Style: Default,,`+strconv.Itoa(Ass_font)+`,&H60FFFFFF,&H000017FF,&H80000000,&H79000000,0,0,0,0,100,100,0,0,1,1,1,`+strconv.Itoa(Ass_loc)+`,15,15,15,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -143,30 +146,15 @@ func Assf(s,file string){
 	}
 
 	if s == "" {return}
+
 	st := time.Since(ass.startT) + time.Duration(p.Rand().MixRandom(0, 2000)) * time.Millisecond
-	et := st + time.Duration(float64(len([]rune(s)) * Ass_font * Ass_move) / 1000 / 2) * time.Second
-	loc := -1
-
-	if ass.ri > 20 {ass.ri = 0}
-
-	for k,v := range ass.rtb {
-		if st > v {
-			loc = k
-			ass.rtb[k] = et
-			break
-		}
-	}
-	switch loc {
-	case 0:ass.ri += 1
-	case -1:return
-	default:
-	}
+	et := st + time.Duration(Ass_T) * time.Second
 
 	var b string
-	// b += "Comment: " + Dtos(et) + "\n"
-	b += `Dialogue: ` + strconv.Itoa(ass.ri) + ","
-	b += Dtos(st) + `,` + Dtos(et + time.Duration(float64(Ass_width * Ass_move) / 1000) * time.Second)
-	b += `,Default,,0,0,0,Banner;`+strconv.Itoa(Ass_move)+`[;0;0],` + s + "\n"
+	// b += "Comment: " + strconv.Itoa(loc) + " "+ Dtos(showedt) + "\n"
+	b += `Dialogue: 0,`
+	b += Dtos(st) + `,` + Dtos(et)
+	b += `,Default,,0,0,0,,{\fad(500,500)\blur3}` + s + "\n"
 
 	p.File().FileWR(p.Filel{
 		File:ass.file + ".ass",
@@ -200,42 +188,30 @@ func Saveflvf(){
 	l := p.Logf().New().Open("danmu.log").Base(1, "saveflv")
 	defer l.BC()
 
-	r := p.Get(p.Rval{
-		Url:"https://live.bilibili.com/" + strconv.Itoa(Msg_roomid),
-	})
-	if e := r.S(`"durl":[`, `]`, 0, 0).Err;e != nil {
-		return
-	} else {
-		if url := p.Json().GetValFromS("[" + r.RS + "]", "[0].url");url == nil {
-			l.Fileonly(true).E("url", url)
-			return
-		} else {
-			if saveflv.path != "" {return}
-			saveflv.path = strconv.Itoa(Msg_roomid) + "_" + time.Now().Format(time.RFC3339)
-			l.I("直播流保存到", saveflv.path)
+	if saveflv.path != "" || c.Live == "" {return}
+	saveflv.path = strconv.Itoa(c.Roomid) + "_" + time.Now().Format(time.RFC3339)
+	l.I("直播流保存到", saveflv.path)
 
-			saveflv.wait = make(chan bool,1)
-			saveflv.cancel = make(chan interface{},1)
-			
-			Assf("",saveflv.path)//ass
-			
-			rr := p.Req()
-			go func(){
-				<- saveflv.cancel
-				rr.Close()
-			}()
-			if e := rr.Reqf(p.Rval{
-				Url:url.(string),
-				Retry:10,
-				SleepTime:5,
-				SaveToPath:saveflv.path + ".flv",
-				Timeout:-1,
-			}); e != nil{l.E(e)}
-			Saveflv_transcode()
-			l.I("结束")
-			close(saveflv.wait)
-		} 
-	}
+	saveflv.wait = make(chan bool,1)
+	saveflv.cancel = make(chan interface{},1)
+	
+	Assf("",saveflv.path)//ass
+	
+	rr := p.Req()
+	go func(){
+		<- saveflv.cancel
+		rr.Close()
+	}()
+	if e := rr.Reqf(p.Rval{
+		Url:c.Live,
+		Retry:10,
+		SleepTime:5,
+		SaveToPath:saveflv.path + ".flv",
+		Timeout:-1,
+	}); e != nil{l.E(e)}
+	Saveflv_transcode()
+	l.I("结束")
+	close(saveflv.wait)
 }
 
 func Saveflv_transcode(){

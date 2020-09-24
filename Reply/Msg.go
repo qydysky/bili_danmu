@@ -8,8 +8,6 @@ import (
 */
 
 var msglog = p.Logf().New().Base(-1, "Msg.go").Open("danmu.log").Level(1)
-var Msg_cookie string
-var Msg_roomid int
 var Msg_map = map[string]func(replyF, string) {
 	"ROOM_SKIN_MSG":nil,
 	"GUARD_ACHIEVEMENT_ROOM":nil,

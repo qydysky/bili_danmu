@@ -9,6 +9,7 @@ import (
 
 	p "github.com/qydysky/part"
 	reply "github.com/qydysky/bili_danmu/Reply"
+	c "github.com/qydysky/bili_danmu/Const"
 	F "github.com/qydysky/bili_danmu/F"
 )
 
@@ -16,6 +17,7 @@ const LogLevel = 1
 var danmulog = p.Logf().New().Open("danmu.log").Base(-1, "bili_danmu.go").Level(LogLevel)
 
 func Demo() {
+
 	danmulog.Base(-1, "测试")
 	defer danmulog.Base(0)
 	
@@ -43,7 +45,7 @@ func Demo() {
 		var break_sign bool
 		for !break_sign {
 			//获取房间相关信息
-			api := New_api(room).Get_host_Token()
+			api := New_api(room).Get_host_Token().Get_live()
 			if len(api.Url) == 0 || api.Roomid == 0 || api.Token == "" || api.Uid == 0 {
 				danmulog.E("some err")
 				return
@@ -75,9 +77,10 @@ func Demo() {
 								File:"cookie.txt",
 								Write:false,
 							})
-							//传输变量至Msg，以便响应弹幕"弹幕机在么"
-							reply.Msg_roomid = api.Roomid
-							reply.Msg_cookie = f
+							//传输变量，以便响应弹幕"弹幕机在么"
+							c.Roomid = api.Roomid
+							c.Live = api.Live
+							c.Cookie = f
 							{//附加功能 弹幕机 直播流保存
 								reply.Danmuji_auto(1)
 								go reply.Saveflvf()

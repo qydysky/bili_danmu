@@ -10,6 +10,7 @@ type api struct {
 	Roomid int
 	Uid int
 	Url []string
+	Live string
 	Token string
 }
 
@@ -42,24 +43,110 @@ func (i *api) Get_info() (o *api) {
 	})
 	//uid
 	if tmp := r.S(`"uid":`, `,`, 0, 0);tmp.Err != nil {
-		apilog.E("uid", tmp.Err)
-		return
+		// apilog.E("uid", tmp.Err)
 	} else if i,err := strconv.Atoi(tmp.RS); err != nil{
 		apilog.E("uid", err)
-		return
 	} else {
 		o.Uid = i
 	}
 	//roomid
 	if tmp := r.S(`"room_id":`, `,`, 0, 0);tmp.Err != nil {
-		apilog.E("room_id", tmp.Err)
-		return
+		// apilog.E("room_id", tmp.Err)
 	} else if i,err := strconv.Atoi(tmp.RS); err != nil{
 		apilog.E("room_id", err)
-		return
 	} else {
 		apilog.T("ok")
 		o.Roomid = i
+	}
+
+	if o.Roomid != 0 && o.Uid != 0 {return}
+
+	{
+		req := p.Req()
+		if err := req.Reqf(p.Rval{
+			Url:"https://api.live.bilibili.com/room/v1/Room/room_init?id=" + Roomid,
+			Referer:"https://live.bilibili.com/" + Roomid,
+			Timeout:10,
+			Retry:2,
+		});err != nil {
+			apilog.E(err)
+			return
+		}
+		res := string(req.Respon)
+		if msg := p.Json().GetValFrom(res, "msg");msg == nil || msg != "ok" {
+			apilog.E("msg", msg)
+			return
+		}
+		if Uid := p.Json().GetValFrom(res, "data.uid");Uid == nil {
+			apilog.E("data.uid", Uid)
+			return
+		} else {
+			o.Uid = int(Uid.(float64))
+		}
+
+		if room_id := p.Json().GetValFrom(res, "data.room_id");room_id == nil {
+			apilog.E("data.room_id", room_id)
+			return
+		} else {
+			apilog.T("ok")
+			o.Roomid = int(room_id.(float64))
+		}
+	}
+	return
+}
+
+func (i *api) Get_live() (o *api) {
+	o = i
+	if o.Roomid == 0 {
+		apilog.E("还未New_api")
+		return
+	}
+
+	{//html获取
+		r := p.Get(p.Rval{
+			Url:"https://live.bilibili.com/" + strconv.Itoa(o.Roomid),
+		})
+		if e := r.S(`"durl":[`, `]`, 0, 0).Err;e == nil {
+			if url := p.Json().GetValFromS("[" + r.RS + "]", "[0].url");url == nil {
+				apilog.E("url", url)
+			} else {
+				apilog.T("ok")
+				o.Live = url.(string)
+				return
+			}
+		}
+	}
+	{//api获取
+		req := p.Req()
+		if err := req.Reqf(p.Rval{
+			Url:"https://api.live.bilibili.com/xlive/web-room/v1/index/getRoomPlayInfo?play_url=1&mask=1&qn=0&platform=web&ptype=16&room_id=" + strconv.Itoa(o.Roomid),
+			Referer:"https://live.bilibili.com/" + strconv.Itoa(o.Roomid),
+			Timeout:10,
+			Retry:2,
+		});err != nil {
+			apilog.E(err)
+			return
+		}
+		res := string(req.Respon)
+		if code := p.Json().GetValFrom(res, "code");code == nil || code.(float64) != 0 {
+			apilog.E("code", code)
+			return
+		}
+		if live_status := p.Json().GetValFrom(res, "data.live_status");live_status == nil {
+			apilog.E("data.live_status", live_status)
+			return
+		} else if live_status == 0 {//未直播
+			apilog.W("未在直播")
+			return
+		}
+
+		if url := p.Json().GetValFrom(res, "data.play_url.durl.[0].url");url == nil {
+			apilog.E("url", url)
+			return
+		} else {
+			apilog.T("ok")
+			o.Live = url.(string)
+		}
 	}
 	return
 }
