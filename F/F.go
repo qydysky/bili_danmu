@@ -5,7 +5,7 @@ import (
 	"strconv"
 
 	p "github.com/qydysky/part"
-	. "github.com/qydysky/bili_danmu/Const"
+	. "github.com/qydysky/bili_danmu/CV"
 )
 
 var flog = p.Logf().New().Open("danmu.log").Base(-1, "F.go")

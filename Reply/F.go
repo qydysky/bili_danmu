@@ -9,7 +9,8 @@ import (
 	"time"
 	"os/exec"
 
-	c "github.com/qydysky/bili_danmu/Const"
+	c "github.com/qydysky/bili_danmu/CV"
+	F "github.com/qydysky/bili_danmu/F"
 	"github.com/christopher-dG/go-obs-websocket"
 	p "github.com/qydysky/part"
 )
@@ -106,7 +107,7 @@ var (
 	Ass_width = 1280
 	Ass_font = 50
 	Ass_T = 7
-	Ass_loc = 1//小键盘对应的位置
+	Ass_loc = 7//小键盘对应的位置
 )
 
 var ass = Ass {
@@ -121,21 +122,23 @@ PlayResY: `+strconv.Itoa(Ass_width)+`
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,,`+strconv.Itoa(Ass_font)+`,&H60FFFFFF,&H000017FF,&H80000000,&H79000000,0,0,0,0,100,100,0,0,1,1,1,`+strconv.Itoa(Ass_loc)+`,15,15,15,1
+Style: Default,,`+strconv.Itoa(Ass_font)+`,&H40FFFFFF,&H000017FF,&H80000000,&H70000000,0,0,0,0,100,100,0,0,1,4,4,`+strconv.Itoa(Ass_loc)+`,20,20,50,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 `,
 }
+func Ass_f(file string){
+	ass.file = file
+}
 
-func Assf(s,file string){
+func Assf(s string){
 	if !ass.Inuse {return}
-	if file == "" && ass.file == "" {return}
+	if ass.file == "" {return}
 
 	if ass.startT.Equal(time.Date(1, 1, 1, 0, 0, 0, 0, time.UTC)) {
-		p.Logf().New().Open("danmu.log").Base(1, "Ass").I("弹幕转Ass保存至", file + ".ass")
+		p.Logf().New().Open("danmu.log").Base(1, "Ass").I("弹幕转Ass保存至", ass.file + ".ass")
 
-		ass.file = file
 		p.File().FileWR(p.Filel{
 			File:ass.file + ".ass",
 			Write:true,
@@ -154,7 +157,7 @@ func Assf(s,file string){
 	// b += "Comment: " + strconv.Itoa(loc) + " "+ Dtos(showedt) + "\n"
 	b += `Dialogue: 0,`
 	b += Dtos(st) + `,` + Dtos(et)
-	b += `,Default,,0,0,0,,{\fad(500,500)\blur3}` + s + "\n"
+	b += `,Default,,0,0,0,,{\fad(200,500)\blur3}` + s + "\n"
 
 	p.File().FileWR(p.Filel{
 		File:ass.file + ".ass",
@@ -175,8 +178,8 @@ func Dtos(t time.Duration) string {
 type Saveflv struct {
 	Inuse bool
 	path string
-	wait chan bool
-	cancel chan interface{}
+	wait chan struct{}
+	cancel chan struct{}
 }
 
 var saveflv = Saveflv {
@@ -185,17 +188,21 @@ var saveflv = Saveflv {
 
 func Saveflvf(){
 	if !saveflv.Inuse || saveflv.path != "" {return}
-	l := p.Logf().New().Open("danmu.log").Base(1, "saveflv")
-	defer l.BC()
+	l := p.Logf().New().Open("danmu.log").Base(-1, "saveflv")
+	defer l.Base(0).BC()
 
 	if saveflv.path != "" || c.Live == "" {return}
+
+	api := F.New_api(c.Roomid).Get_host_Token().Get_live()
+	c.Live = api.Live
+	
 	saveflv.path = strconv.Itoa(c.Roomid) + "_" + time.Now().Format(time.RFC3339)
 	l.I("直播流保存到", saveflv.path)
 
-	saveflv.wait = make(chan bool,1)
-	saveflv.cancel = make(chan interface{},1)
+	saveflv.wait = make(chan struct{})
+	saveflv.cancel = make(chan struct{})
 	
-	Assf("",saveflv.path)//ass
+	Ass_f(saveflv.path)//ass
 	
 	rr := p.Req()
 	go func(){
@@ -209,8 +216,10 @@ func Saveflvf(){
 		SaveToPath:saveflv.path + ".flv",
 		Timeout:-1,
 	}); e != nil{l.E(e)}
-	Saveflv_transcode()
 	l.I("结束")
+	Ass_f("")//ass
+	Saveflv_transcode()
+	l.I("转码结束")
 	close(saveflv.wait)
 }
 
@@ -351,23 +360,25 @@ func Autobanf(s string) bool {
 	}()
 
 	var res []float32
+	{
+		pt := float32(len([]rune(s)))
+		if pt <= 5 {return false}//字数过少去除
+		res = append(res, pt)
+	}
+	{	
+		pt := selfcross(s);
+		// if pt > 0.5 {return false}//自身重复高去除
+		// res = append(res, pt)
 
-	pt := float32(len([]rune(s)))
-	if pt <= 5 {return false}//字数过少去除
-	res = append(res, pt)
-
-	pt = selfcross(s);
-	if pt > 0.5 {return false}//自身重复高去除
-	res = append(res, pt)
-
-	pt = cross(s, autoban.buf);
-	if pt > 0.7 {return false}//历史重复高去除
-	res = append(res, pt)
-
-	pt = cross(s, autoban.Banbuf);
-	if pt < 0.8 {return false}//ban字符重复低去除
-	res = append(res, pt)
-
+		pt1 := cross(s, autoban.buf);
+		if pt + pt1 > 0.5 {return false}//历史重复高去除
+		res = append(res, pt, pt1)
+	}
+	{
+		pt := cross(s, autoban.Banbuf);
+		if pt < 0.8 {return false}//ban字符重复低去除
+		res = append(res, pt)
+	}
 	l := p.Logf().New().Open("danmu.log").Base(1, "autoban")
 	l.W(res).Block()
 	return true

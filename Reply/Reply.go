@@ -8,7 +8,7 @@ import (
 	p "github.com/qydysky/part"
 	F "github.com/qydysky/bili_danmu/F"
 	S "github.com/qydysky/bili_danmu/Send"
-	c "github.com/qydysky/bili_danmu/Const"
+	c "github.com/qydysky/bili_danmu/CV"
 )
 
 var replylog = p.Logf().New().Open("danmu.log").Base(-1, "Reply.go")
@@ -81,7 +81,9 @@ func (replyF) special_gift(s string){
 	if content != nil {
 		sh = append(sh, "节奏风暴", content, "￥ 100")
 	}
-
+	{//额外
+		Assf(fmt.Sprintln(sh...))
+	}
 	fmt.Println("\n====")
 	fmt.Println(sh...)
 	fmt.Print("====\n\n")
@@ -105,7 +107,9 @@ func (replyF) guard_buy(s string){
 	if price != nil {
 		sh = append(sh, "￥", int(price.(float64)) / 1000)
 	}
-
+	{//额外 ass
+		Assf(fmt.Sprintln(sh...))
+	}
 	fmt.Println("\n====")
 	fmt.Println(sh...)
 	fmt.Print("====\n\n")
@@ -187,7 +191,9 @@ func (replyF) send_gift(s string){
 
 	//小于3万金瓜子
 	if allprice < 30000 {msglog.T(sh...);return}
-
+	{//额外
+		Assf(fmt.Sprintln(sh...))
+	}
 	fmt.Println("\n====")
 	fmt.Println(sh...)
 	fmt.Print("====\n\n")
@@ -271,7 +277,9 @@ func (replyF) super_chat_message(s string){
 	}
 	msglog.Fileonly(true)
 	defer msglog.Fileonly(false)
-
+	{//额外
+		Assf(fmt.Sprintln(sh...))
+	}
 	fmt.Println("\n====")
 	fmt.Println(sh...)
 	fmt.Print("====\n\n")
@@ -348,8 +356,8 @@ func (replyF) danmu(s string) {
 		{//附加功能 弹幕机 封禁 弹幕合并
 			Danmujif(msg)
 			if Autobanf(msg) {
-				fmt.Println("风险", msg)
-				msglog.Base(1, "风险").I(msg)
+				fmt.Println("风险", auth, ":", msg)
+				msglog.Base(1, "风险").I(auth, ":", msg)
 				return
 			}
 			if i := Autoskipf(msg, 50, 15); i > 0 {
@@ -373,7 +381,7 @@ func Msg_showdanmu(auth interface{}, msg string) {
 			return
 		}
 		msg = Shortdanmuf(msg)
-		Assf(msg,"")//ass
+		Assf(msg)//ass
 	}
 	fmt.Println(msg)
 	if auth != nil {msglog.I(auth, ":", msg)}

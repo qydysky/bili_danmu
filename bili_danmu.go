@@ -9,12 +9,11 @@ import (
 
 	p "github.com/qydysky/part"
 	reply "github.com/qydysky/bili_danmu/Reply"
-	c "github.com/qydysky/bili_danmu/Const"
+	c "github.com/qydysky/bili_danmu/CV"
 	F "github.com/qydysky/bili_danmu/F"
 )
 
-const LogLevel = 1
-var danmulog = p.Logf().New().Open("danmu.log").Base(-1, "bili_danmu.go").Level(LogLevel)
+var danmulog = p.Logf().New().Open("danmu.log").Base(-1, "bili_danmu.go").Level(c.LogLevel)
 
 func Demo() {
 
@@ -45,7 +44,7 @@ func Demo() {
 		var break_sign bool
 		for !break_sign {
 			//获取房间相关信息
-			api := New_api(room).Get_host_Token().Get_live()
+			api := F.New_api(room).Get_host_Token().Get_live()
 			if len(api.Url) == 0 || api.Roomid == 0 || api.Token == "" || api.Uid == 0 {
 				danmulog.E("some err")
 				return

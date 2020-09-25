@@ -5,6 +5,7 @@ import (
 
 	"github.com/gorilla/websocket"
 
+	c "github.com/qydysky/bili_danmu/CV"
 	p "github.com/qydysky/part"
 )
 
@@ -18,7 +19,7 @@ type ws struct {
 }
 
 func New_ws(url string) (o *ws) {
-	l := p.Logf().New().Base(-1, "ws.go>新建").Level(LogLevel).T("New_ws")
+	l := p.Logf().New().Base(-1, "ws.go>新建").Level(c.LogLevel).T("New_ws")
 	defer l.Block()
 
 	l.T("ok")
@@ -31,7 +32,7 @@ func New_ws(url string) (o *ws) {
 
 func (i *ws) Handle() (o *ws) {
 	o = i
-	l := p.Logf().New().Base(-1, "ws.go>处理").Level(LogLevel).T("*ws.handle")
+	l := p.Logf().New().Base(-1, "ws.go>处理").Level(c.LogLevel).T("*ws.handle")
 	defer l.Block()
 
 	if o.used {
@@ -118,7 +119,7 @@ func (i *ws) Handle() (o *ws) {
 
 func (i *ws) Heartbeat(Millisecond int, msg []byte) (o *ws) {
 	o = i
-	l := p.Logf().New().Base(-1, "ws.go>心跳").Level(LogLevel).T("*ws.heartbeat")
+	l := p.Logf().New().Base(-1, "ws.go>心跳").Level(c.LogLevel).T("*ws.heartbeat")
 	defer l.Block()
 
 	if !o.used {
@@ -147,7 +148,7 @@ func (i *ws) Heartbeat(Millisecond int, msg []byte) (o *ws) {
 }
 
 func (o *ws) Close() {
-	l := p.Logf().New().Base(-1, "ws.go>关闭").Level(LogLevel)
+	l := p.Logf().New().Base(-1, "ws.go>关闭").Level(c.LogLevel)
 	defer l.Block()
 
 	if !o.used {

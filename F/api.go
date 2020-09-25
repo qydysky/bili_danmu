@@ -1,8 +1,9 @@
-package bili_danmu
+package F
 
 import (
 	"strconv"
 
+	c "github.com/qydysky/bili_danmu/CV"
 	p "github.com/qydysky/part"
 )
 
@@ -14,7 +15,7 @@ type api struct {
 	Token string
 }
 
-var apilog = p.Logf().New().Base(-1, "api.go").Level(LogLevel)
+var apilog = p.Logf().New().Base(-1, "api.go").Level(c.LogLevel)
 func New_api(Roomid int) (o *api) {
 	apilog.Base(-1, "新建")
 	defer apilog.Base(0)

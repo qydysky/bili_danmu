@@ -1,5 +1,9 @@
 package constf
 
+const (
+	LogLevel  = 1
+)
+
 //from source/player-loader-2.0.7.min.js L2885
 const (
 	WS_OP_HEARTBEAT = 2
