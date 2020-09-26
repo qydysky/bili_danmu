@@ -14,6 +14,8 @@ import (
 var replylog = p.Logf().New().Open("danmu.log").Base(-1, "Reply.go")
 
 //返回数据分派
+//传入接受到的ws数据
+//判断进行解压，并对每个json对象进行分派
 func Reply(b []byte) {
 	replylog.Base(-1, "返回分派")
 	defer replylog.Base(0)
@@ -46,12 +48,16 @@ func Reply(b []byte) {
 	}
 }
 
+//所有的json对象处理子函数类
+//包含Msg和HeartBeat两大类
 type replyF struct {}
 
+//默认未识别Msg
 func (replyF) defaultMsg(s string){
 	msglog.Base(1, "Unknow").E(s)
 }
 
+//msg-通常是大航海购买续费
 func (replyF) user_toast_msg(s string){
 	username := p.Json().GetValFromS(s, "data.username");
 	op_type := p.Json().GetValFromS(s, "data.op_type");
@@ -97,13 +103,16 @@ func (replyF) user_toast_msg(s string){
 
 	msglog.Fileonly(true)
 	defer msglog.Fileonly(false)
-	msglog.Base(1, "礼").I(sh...)}
+	msglog.Base(1, "礼").I(sh...)
+}
 
+//HeartBeat-心跳用来传递人气值
 func (replyF) heartbeat(s string){
 	if s == "1" {return}//人气为1,不输出
 	heartlog.I("当前人气", s)
 }
 
+//Msg-房间特殊活动
 func (replyF) win_activity(s string){
 	msglog.Fileonly(true)
 	defer msglog.Fileonly(false)
@@ -114,6 +123,7 @@ func (replyF) win_activity(s string){
 	msglog.Base(1, "房").I("活动", title, "已开启")
 }
 
+//Msg-特殊礼物，当前仅观察到节奏风暴
 func (replyF) special_gift(s string){
 	msglog.Fileonly(true)
 	defer msglog.Fileonly(false)
@@ -139,6 +149,7 @@ func (replyF) special_gift(s string){
 
 }
 
+//Msg-大航海购买，由于信息少，用user_toast_msg进行替代
 func (replyF) guard_buy(s string){
 	username := p.Json().GetValFromS(s, "data.username");
 	gift_name := p.Json().GetValFromS(s, "data.gift_name");
@@ -167,6 +178,7 @@ func (replyF) guard_buy(s string){
 	msglog.Base(1, "礼").I(sh...)
 }
 
+//Msg-房间信息改变，标题等
 func (replyF) room_change(s string){
 	title := p.Json().GetValFromS(s, "data.title");
 	area_name := p.Json().GetValFromS(s, "data.area_name");
@@ -182,6 +194,7 @@ func (replyF) room_change(s string){
 	msglog.Base(1, "房").I(sh...)
 }
 
+//Msg-大航海欢迎信息
 func (replyF) welcome_guard(s string){
 
 	username := p.Json().GetValFromS(s, "data.username");
@@ -207,6 +220,7 @@ func (replyF) welcome_guard(s string){
 	msglog.Base(1, "房").Fileonly(true).I(sh...).Fileonly(false)
 }
 
+//Msg-礼物处理，对于小于30人民币的礼物不显示
 func (replyF) send_gift(s string){
 	// coin_type := p.Json().GetValFromS(s, "data.coin_type");
 	num := p.Json().GetValFromS(s, "data.num");
@@ -251,6 +265,7 @@ func (replyF) send_gift(s string){
 	msglog.Base(1, "礼").I(sh...)
 }
 
+//Msg-房间封禁信息
 func (replyF) room_block_msg(s string) {
 	msglog.Fileonly(true)
 	defer msglog.Fileonly(false)
@@ -264,6 +279,7 @@ func (replyF) room_block_msg(s string) {
 	}
 }
 
+//Msg-房间准备信息，通常出现在下播而不出现在开播
 func (replyF) preparing(s string) {
 	msglog.Base(1, "房")
 
@@ -283,6 +299,7 @@ func (replyF) preparing(s string) {
 	}
 }
 
+//Msg-房间开播信息
 func (replyF) live(s string) {
 	msglog.Base(1, "房")
 
@@ -303,6 +320,7 @@ func (replyF) live(s string) {
 	}
 }
 
+//Msg-超级留言处理
 func (replyF) super_chat_message(s string){
 	uname := p.Json().GetValFromS(s, "data.user_info.uname");
 	price := p.Json().GetValFromS(s, "data.price");
@@ -317,23 +335,25 @@ func (replyF) super_chat_message(s string){
 	if price != nil {
 		sh = append(sh, "￥", price)
 	}
+	fmt.Println("\n====")
+	fmt.Println(sh...)
 	if message != nil {
+		fmt.Println(message)
 		sh = append(sh, message)
 	}
 	if message_jpn != nil && message != message_jpn {
+		fmt.Println(message_jpn)
 		sh = append(sh, message_jpn)
 	}
-	msglog.Fileonly(true)
-	defer msglog.Fileonly(false)
+	fmt.Print("====\n\n")
+	
 	{//额外
 		Assf(fmt.Sprintln(sh...))
 	}
-	fmt.Println("\n====")
-	fmt.Println(sh...)
-	fmt.Print("====\n\n")
-	msglog.Base(1, "礼").I(sh...)
+	msglog.Base(1, "礼").Fileonly(true).I(sh...).Fileonly(false)
 }
 
+//Msg-分区排行
 func (replyF) panel(s string){
 	msglog.Fileonly(true).Base(1, "房")
 	defer msglog.Fileonly(false)
@@ -347,6 +367,7 @@ func (replyF) panel(s string){
 	}
 }
 
+//Msg-进入特效，大多为大航海进入，信息少，使用welcome_guard替代
 func (replyF) entry_effect(s string){
 	msglog.Fileonly(true).Base(-1, "房")
 	defer msglog.Base(0).Fileonly(false)
@@ -361,6 +382,7 @@ func (replyF) entry_effect(s string){
 
 }
 
+//Msg-房间禁言
 func (replyF) roomsilent(s string){
 	msglog.Base(1, "房")
 
@@ -373,6 +395,7 @@ func (replyF) roomsilent(s string){
 	}
 }
 
+//Msg-粉丝信息，常刷屏，不显示
 func (replyF) roominfo(s string){
 	fans := p.Json().GetValFromS(s, "data.fans");
 	fans_club := p.Json().GetValFromS(s, "data.fans_club");
@@ -389,6 +412,7 @@ func (replyF) roominfo(s string){
 	if len(sh) != 0 {msglog.Base(1, "粉").I(sh...)}
 }
 
+//Msg-弹幕处理
 func (replyF) danmu(s string) {
 	if info := p.Json().GetValFromS(s, "info");info == nil {
 		msglog.E("info", info)
@@ -417,11 +441,16 @@ func (replyF) danmu(s string) {
 	}
 }
 
+//弹幕发送
+//传入字符串即可发送
+//需要cookie
 func Msg_senddanmu(msg string){
 	if c.Cookie == "" || c.Roomid == 0 {return}
 	S.Danmu_s(msg, c.Cookie, c.Roomid)
 }
 
+//弹幕显示
+//由于额外功能有些需要显示，为了统一管理，使用此方法进行处理
 func Msg_showdanmu(auth interface{}, msg string) {
 	{//附加功能 更少弹幕
 		if Lessdanmuf(msg, 20) > 0.7 {//与前20条弹幕重复的字数占比度>0.7的屏蔽

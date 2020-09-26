@@ -3,11 +3,14 @@ package reply
 import (
 	p "github.com/qydysky/part"
 )
+
 /*
-	数据为WS_OP_MESSAGE类型的
+	数据为WS_OP_MESSAGE类型的数据分派
 */
 
 var msglog = p.Logf().New().Base(-1, "Msg.go").Open("danmu.log").Level(1)
+
+//Msg类型数据处理方法map
 var Msg_map = map[string]func(replyF, string) {
 	"PK_BATTLE_PRE":nil,//人气pk
 	"PK_BATTLE_START":nil,//人气pk
@@ -54,6 +57,8 @@ var Msg_map = map[string]func(replyF, string) {
 	"ROOM_REAL_TIME_MESSAGE_UPDATE":nil,//replyF.roominfo,//粉丝数
 }
 
+//Msg类型数据处理方法挑选
+//识别cmd字段类型，查找上述map中设置的方法，并将json转为字符串型传入
 func Msg(b []byte) {
 	s := string(b)
 	if cmd := p.Json().GetValFromS(s, "cmd");cmd == nil {

@@ -16,6 +16,10 @@ import (
 	p "github.com/qydysky/part"
 )
 
+/*
+	F额外功能区
+*/
+
 //功能开关
 var AllF = map[string]bool{
 	"Saveflv":true,//保存直播流(仅高清)
@@ -29,7 +33,7 @@ var AllF = map[string]bool{
 		obs https://obsproject.com/download
 		obs-websocket https://github.com/Palakis/obs-websocket/releases
 	*/
-	"Ass":true,//Ass弹幕生成
+	"Ass":true,//Ass弹幕生成，由于时间对应关系,仅开启流保存时生效
 	"Autoban":true,//自动封禁(仅提示，未完成)
 	"Jiezou":true,//带节奏预警，提示弹幕礼仪
 	"Danmuji":true,//反射型弹幕机，回应弹幕
@@ -40,13 +44,16 @@ var AllF = map[string]bool{
 	"Shortdanmu":true,//上下文相同文字缩减
 }
 
+//功能开关选取函数
 func IsOn(s string) bool {
 	if v, ok := AllF[s]; ok && v {
 		return true
 	}
 	return false
 }
-//公共
+
+//字符重复度检查
+//a在buf中出现的字符占a的百分数
 func cross(a string,buf []string) (float32) {
 	var s float32
 	var matched bool
@@ -62,6 +69,8 @@ func cross(a string,buf []string) (float32) {
 	}
 	return s / float32(len([]rune(a)))
 }
+
+//在a中仅出现一次出现的字符占a的百分数
 func selfcross(a string) (float32) {
 	buf := make(map[rune]bool)
 	for _,v := range a {
@@ -71,6 +80,11 @@ func selfcross(a string) (float32) {
 	}
 	return 1 - float32(len(buf)) / float32(len([]rune(a)))
 }
+
+//在a的每个字符串中
+//出现的字符次数最多的
+//占出现的字符总数的百分数
+//*单字符串中的重复出现计为1次
 func selfcross2(a []string) (float32, string) {
 	buf := make(map[rune]float32)
 	for _,v := range a {
@@ -92,23 +106,24 @@ func selfcross2(a []string) (float32, string) {
 	}
 	return max / all, maxS
 }
+
 //功能区
+
+//Ass 弹幕转字幕
 type Ass struct {
 	Inuse bool
 	
-	file string
-	startT time.Time
-	header string
-	rtb [7]time.Duration//通道是否被字节占用
-	ri int
+	file string//弹幕ass文件名
+	startT time.Time//开始记录的基准时间
+	header string//ass开头
 }
 
 var (
-	Ass_height = 720
-	Ass_width = 1280
-	Ass_font = 50
-	Ass_T = 7
-	Ass_loc = 7//小键盘对应的位置
+	Ass_height = 720//字幕高度
+	Ass_width = 1280//字幕宽度
+	Ass_font = 50//字幕字体大小
+	Ass_T = 7//单条字幕显示时间
+	Ass_loc = 7//字幕位置 小键盘对应的位置
 )
 
 var ass = Ass {
@@ -129,10 +144,13 @@ Style: Default,,`+strconv.Itoa(Ass_font)+`,&H40FFFFFF,&H000017FF,&H80000000,&H70
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 `,
 }
+
+//设定字幕文件名，为""时停止输出
 func Ass_f(file string){
 	ass.file = file
 }
 
+//传入要显示的单条字幕
 func Assf(s string){
 	if !ass.Inuse {return}
 	if ass.file == "" {return}
@@ -157,7 +175,7 @@ func Assf(s string){
 	var b string
 	// b += "Comment: " + strconv.Itoa(loc) + " "+ Dtos(showedt) + "\n"
 	b += `Dialogue: 0,`
-	b += Dtos(st) + `,` + Dtos(et)
+	b += dtos(st) + `,` + dtos(et)
 	b += `,Default,,0,0,0,,{\fad(200,500)\blur3}` + s + "\n"
 
 	p.File().FileWR(p.Filel{
@@ -168,7 +186,8 @@ func Assf(s string){
 	})
 }
 
-func Dtos(t time.Duration) string {
+//时间转化为0:00:00.00规格字符串
+func dtos(t time.Duration) string {
 	M := int(math.Floor(t.Minutes())) % 60
 	S := int(math.Floor(t.Seconds())) % 60
 	Ns := t.Nanoseconds() / int64(time.Millisecond) % 1000 / 10
@@ -176,6 +195,7 @@ func Dtos(t time.Duration) string {
 	return fmt.Sprintf("%d:%02d:%02d.%02d", int(math.Floor(t.Hours())), M, S, Ns)
 }
 
+//直播流保存
 type Saveflv struct {
 	Inuse bool
 	path string
@@ -187,6 +207,7 @@ var saveflv = Saveflv {
 	Inuse:IsOn("Saveflv"),
 }
 
+//已go func形式调用，将会获取直播流
 func Saveflvf(){
 	if !saveflv.Inuse {return}
 	l := p.Logf().New().Open("danmu.log").Base(-1, "saveflv")
@@ -239,6 +260,7 @@ func Saveflvf(){
 	}
 }
 
+//已func形式调用，将会停止保存直播流
 func Saveflv_wait(){
 	if !saveflv.Inuse {return}
 	saveflv.cancel.Done()

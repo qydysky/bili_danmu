@@ -6,7 +6,17 @@ golang go version go1.15.2 linux/amd64
 显示
 case 后有函数调用的为支持，为nil的为待完善，注释掉的调用为未启用
 
-var Msg_map = map[string]func(replayF, string) {
+//Msg类型数据处理方法map
+var Msg_map = map[string]func(replyF, string) {
+	"PK_BATTLE_PRE":nil,//人气pk
+	"PK_BATTLE_START":nil,//人气pk
+	"PK_BATTLE_PROCESS":nil,//人气pk
+	"PK_BATTLE_END":nil,//人气pk
+	"PK_BATTLE_RANK_CHANGE":nil,//人气pk
+	"PK_BATTLE_SETTLE_USER":nil,//人气pk
+	"PK_BATTLE_SETTLE_V2":nil,//人气pk
+	"PK_BATTLE_SETTLE":nil,//人气pk
+	"SYS_MSG":nil,//系统消息
 	"ROOM_SKIN_MSG":nil,
 	"GUARD_ACHIEVEMENT_ROOM":nil,
 	"ANCHOR_LOT_START":nil,//天选之人开始
@@ -23,23 +33,24 @@ var Msg_map = map[string]func(replayF, string) {
 	"HOUR_RANK_AWARDS":nil,
 	"ROOM_RANK":nil,
 	"ROOM_SHIELD":nil,
-	"USER_TOAST_MSG":nil,
-	"WIN_ACTIVITY":nil,
-	"GUARD_BUY":replayF.guard_buy,//大航海购买
-	"WELCOME_GUARD":replayF.welcome_guard,//大航海进入
-	"DANMU_MSG":replayF.danmu,//弹幕
-	"ROOM_CHANGE":replayF.room_change,//房间信息分区改变
-	"ROOM_SILENT_OFF":replayF.roomsilent,//禁言结束
-	"ROOM_SILENT_ON":replayF.roomsilent,//禁言开始
-	"SEND_GIFT":replayF.send_gift,//礼物
-	"ROOM_BLOCK_MSG":replayF.room_block_msg,//封禁
-	"PREPARING":replayF.preparing,//下播
-	"LIVE":replayF.live,//开播
-	"SUPER_CHAT_MESSAGE":nil,//replayF.super_chat_message,//打赏
-	"SUPER_CHAT_MESSAGE_JPN":replayF.super_chat_message,//打赏
-	"PANEL":replayF.panel,//排行榜
-	"ENTRY_EFFECT":nil,//replayF.entry_effect,//进入特效
-	"ROOM_REAL_TIME_MESSAGE_UPDATE":nil,//replayF.roominfo,//粉丝数
+	"USER_TOAST_MSG":replyF.user_toast_msg,//大航海购买信息
+	"WIN_ACTIVITY":replyF.win_activity,//活动
+	"SPECIAL_GIFT":replyF.special_gift,//节奏风暴
+	"GUARD_BUY":nil,//replyF.guard_buy,//大航海购买
+	"WELCOME_GUARD":replyF.welcome_guard,//大航海进入
+	"DANMU_MSG":replyF.danmu,//弹幕
+	"ROOM_CHANGE":replyF.room_change,//房间信息分区改变
+	"ROOM_SILENT_OFF":replyF.roomsilent,//禁言结束
+	"ROOM_SILENT_ON":replyF.roomsilent,//禁言开始
+	"SEND_GIFT":replyF.send_gift,//礼物
+	"ROOM_BLOCK_MSG":replyF.room_block_msg,//封禁
+	"PREPARING":replyF.preparing,//下播
+	"LIVE":replyF.live,//开播
+	"SUPER_CHAT_MESSAGE":nil,//replyF.super_chat_message,//SC
+	"SUPER_CHAT_MESSAGE_JPN":replyF.super_chat_message,//SC
+	"PANEL":replyF.panel,//排行榜
+	"ENTRY_EFFECT":nil,//replyF.entry_effect,//进入特效
+	"ROOM_REAL_TIME_MESSAGE_UPDATE":nil,//replyF.roominfo,//粉丝数
 }
 ```
 以下内容可能过时，点击查看[当前支持功能](https://github.com/qydysky/bili_danmu/blob/master/Reply/F.go#L16)
@@ -59,6 +70,7 @@ var AllF = map[string]bool{
 		obs https://obsproject.com/download
 		obs-websocket https://github.com/Palakis/obs-websocket/releases
 	*/
+	"Ass":true,//Ass弹幕生成，由于时间对应关系,仅开启流保存时生效
 	"Autoban":true,//自动封禁(仅提示，未完成)
 	"Jiezou":true,//带节奏预警，提示弹幕礼仪
 	"Danmuji":true,//反射型弹幕机，回应弹幕
@@ -79,6 +91,7 @@ go run main.go
 go run main.go -r=此处填房间ID
 ```
 以下内容可能过时，以实际运行为准
+- 命令窗口(以下为截取)
 ```
 $ go run main.go 
 输入房间号: 213
@@ -86,18 +99,49 @@ INFO: 2020/09/16 16:48:11 [bili_danmu.go 测试] [连接到房间 213]
 INFO: 2020/09/16 16:48:11 [bili_danmu.go 测试] [连接 wss://tx-sh-live-comet-01.chat.bilibili.com/sub]
 INFO: 2020/09/16 16:48:11 [bili_danmu.go 测试] [已连接到房间 213]
 INFO: 2020/09/16 16:48:11 [bili_danmu.go 测试] [开始心跳]
+```
+```
+//大航海进入
 >>> 欢迎 舰长 茶摊儿在森林喝碗山海 进入直播间
+```
+```
+//普通弹幕
 老鸡捉小鹰
 你快扒拉他
 你这好像是补刀
 吓人
+```
+```
+//礼物
 ====
 孤单猫与淋雨猪 投喂 1314 x 辣条 ( 131400 x 金瓜子 )
 ====
+```
+```
+//同字符串合并
 7 x 原神公测B服冲冲冲
+```
+```
+//同字符忽略
 原神公测B站冲冲冲
 ...B服冲冲冲
-
-ctrl+c退出，日志会同时追加记录到文件danmu.log中（文件记录完整信息,不会减少附加功能作用的弹幕）
 ```
+```
+//SC
+====
+SC:  吹舞火 ￥ 30
+我旁边的一万是幻觉吗？
+私の隣の一万は幻ですか？
+====
+```
+ctrl+c退出，会同时追加记录到文件danmu.log中（文件记录完整信息,不会减少附加功能作用的弹幕）
+- 流保存以及弹幕ass
+```
+结束后会保存为
+房间号_时间.mkv
+房间号_时间.ass
+```
+结束后的文件播放效果(显于左上)
+![](_Screenshot/Screenshot_20200926_173834.png)
+
 更多内容详见注释，如有疑问请发issues，欢迎pr
