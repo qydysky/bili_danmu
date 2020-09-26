@@ -4,7 +4,7 @@ const (
 	LogLevel  = 1
 )
 
-//from source/player-loader-2.0.7.min.js L2885
+//from source/player-loader-2.0.9.min.js
 const (
 	WS_OP_HEARTBEAT = 2
 	WS_OP_HEARTBEAT_REPLY = 3
@@ -24,4 +24,16 @@ const (
 	WS_HEADER_DEFAULT_SEQUENCE = 1
 	WS_AUTH_OK = 0
 	WS_AUTH_TOKEN_ERROR = -101
+)
+
+//from player-loader-2.0.9.min.js
+/*
+	customAuthParam
+*/
+const (
+	Uid = 0
+	Protover = 2
+	Platform = "web"
+	VERSION = "2.0.9"
+	Type = 2
 )

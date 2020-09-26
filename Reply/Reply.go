@@ -52,7 +52,55 @@ func (replyF) defaultMsg(s string){
 	msglog.Base(1, "Unknow").E(s)
 }
 
+func (replyF) user_toast_msg(s string){
+	username := p.Json().GetValFromS(s, "data.username");
+	op_type := p.Json().GetValFromS(s, "data.op_type");
+	role_name := p.Json().GetValFromS(s, "data.role_name");
+	num := p.Json().GetValFromS(s, "data.num");
+	unit := p.Json().GetValFromS(s, "data.unit");
+	// target_guard_count := p.Json().GetValFromS(s, "data.target_guard_count");
+	price := p.Json().GetValFromS(s, "data.price");
+
+	var sh []interface{}
+
+	if username != nil {
+		sh = append(sh, username)
+	}
+	if op_type != nil {
+		switch op_type.(float64) {
+		case 1:
+			sh = append(sh, "购买了")
+		case 2:
+			sh = append(sh, "续费了")
+		default:
+			sh = append(sh, op_type)
+		}
+	}
+	if num != nil {
+		sh = append(sh, num, "x")
+	}
+	if unit != nil {
+		sh = append(sh, unit)
+	}
+	if role_name != nil {
+		sh = append(sh, role_name)
+	}
+	if price != nil {
+		sh = append(sh, "￥", int(price.(float64)) / 1000)
+	}
+	{//额外 ass
+		Assf(fmt.Sprintln(sh...))
+	}
+	fmt.Println("\n====")
+	fmt.Println(sh...)
+	fmt.Print("====\n\n")
+
+	msglog.Fileonly(true)
+	defer msglog.Fileonly(false)
+	msglog.Base(1, "礼").I(sh...)}
+
 func (replyF) heartbeat(s string){
+	if s == "1" {return}//人气为1,不输出
 	heartlog.I("当前人气", s)
 }
 
@@ -380,7 +428,10 @@ func Msg_showdanmu(auth interface{}, msg string) {
 			if auth != nil {msglog.I(auth, ":", msg)}
 			return
 		}
-		msg = Shortdanmuf(msg)
+		if _msg := Shortdanmuf(msg); _msg == "" {
+			if auth != nil {msglog.I(auth, ":", msg)}
+			return
+		} else {msg = _msg}
 		Assf(msg)//ass
 	}
 	fmt.Println(msg)

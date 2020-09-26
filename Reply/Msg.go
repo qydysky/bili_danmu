@@ -9,6 +9,15 @@ import (
 
 var msglog = p.Logf().New().Base(-1, "Msg.go").Open("danmu.log").Level(1)
 var Msg_map = map[string]func(replyF, string) {
+	"PK_BATTLE_PRE":nil,//人气pk
+	"PK_BATTLE_START":nil,//人气pk
+	"PK_BATTLE_PROCESS":nil,//人气pk
+	"PK_BATTLE_END":nil,//人气pk
+	"PK_BATTLE_RANK_CHANGE":nil,//人气pk
+	"PK_BATTLE_SETTLE_USER":nil,//人气pk
+	"PK_BATTLE_SETTLE_V2":nil,//人气pk
+	"PK_BATTLE_SETTLE":nil,//人气pk
+	"SYS_MSG":nil,//系统消息
 	"ROOM_SKIN_MSG":nil,
 	"GUARD_ACHIEVEMENT_ROOM":nil,
 	"ANCHOR_LOT_START":nil,//天选之人开始
@@ -25,10 +34,10 @@ var Msg_map = map[string]func(replyF, string) {
 	"HOUR_RANK_AWARDS":nil,
 	"ROOM_RANK":nil,
 	"ROOM_SHIELD":nil,
-	"USER_TOAST_MSG":nil,
+	"USER_TOAST_MSG":replyF.user_toast_msg,//大航海购买信息
 	"WIN_ACTIVITY":replyF.win_activity,//活动
 	"SPECIAL_GIFT":replyF.special_gift,//节奏风暴
-	"GUARD_BUY":replyF.guard_buy,//大航海购买
+	"GUARD_BUY":nil,//replyF.guard_buy,//大航海购买
 	"WELCOME_GUARD":replyF.welcome_guard,//大航海进入
 	"DANMU_MSG":replyF.danmu,//弹幕
 	"ROOM_CHANGE":replyF.room_change,//房间信息分区改变

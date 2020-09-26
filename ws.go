@@ -73,7 +73,7 @@ func (i *ws) Handle() (o *ws) {
 					if e, ok := err.(*websocket.CloseError); ok {
 						switch e.Code {
 						case websocket.CloseNormalClosure:l.E("服务器关闭连接")
-						case websocket.CloseAbnormalClosure:l.E("服务器意外关闭连接")
+						case websocket.CloseAbnormalClosure:l.E("服务器中断连接")
 						default:l.E(err);
 						}
 					}

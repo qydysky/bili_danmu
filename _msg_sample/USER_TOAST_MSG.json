@@ -1,0 +1,48 @@
+[
+    {
+        "cmd": "USER_TOAST_MSG",
+        "data": {
+            "op_type": 1,
+            "uid": 12866881,
+            "username": "Miko家的兔肉煲",
+            "guard_level": 3,
+            "is_show": 0,
+            "anchor_show": true,
+            "user_show": true,
+            "toast_msg": "\u003c%Miko家的兔肉煲%\u003e 开通了舰长",
+            "num": 1,
+            "price": 198000,
+            "role_name": "舰长",
+            "unit": "月",
+            "start_time": 1601036832,
+            "end_time": 1601036832,
+            "target_guard_count": 138,
+            "color": "#00D1F1",
+            "payflow_id": "2009252026576872168811733",
+            "svga_block": 0
+        }
+    },
+    {
+        "cmd": "USER_TOAST_MSG",
+        "data": {
+            "op_type": 2,
+            "uid": 296394,
+            "username": "私はデブです",
+            "guard_level": 2,
+            "is_show": 0,
+            "anchor_show": true,
+            "user_show": true,
+            "toast_msg": "\u003c%私はデブです%\u003e 续费了提督",
+            "num": 1,
+            "price": 1598000,
+            "role_name": "提督",
+            "unit": "月",
+            "start_time": 1601037206,
+            "end_time": 1601037206,
+            "target_guard_count": 138,
+            "color": "#E17AFF",
+            "payflow_id": "2009252032523462163948355",
+            "svga_block": 0
+        }
+    }
+]

@@ -1,0 +1,268 @@
+[
+    {
+        "cmd": "PK_BATTLE_PRE",
+        "pk_status": 101,
+        "pk_id": 100219137,
+        "timestamp": 1601039165,
+        "data": {
+            "battle_type": 1,
+            "uname": "\u557e\u5173\u6ce8",
+            "face": "http:\/\/i1.hdslb.com\/bfs\/face\/506b609bdefb418c53f60832a5b955e99a4c9ac0.jpg",
+            "uid": 516436395,
+            "room_id": 21971294,
+            "season_id": 26,
+            "pre_timer": 10,
+            "pk_votes_name": "\u4e71\u6597\u503c",
+            "end_win_task": null
+        },
+        "roomid": 21449083
+    },
+    {
+        "cmd": "PK_BATTLE_START",
+        "pk_id": 100219137,
+        "pk_status": 201,
+        "timestamp": 1601039175,
+        "data": {
+            "battle_type": 1,
+            "final_hit_votes": 0,
+            "pk_start_time": 1601039175,
+            "pk_frozen_time": 1601039475,
+            "pk_end_time": 1601039485,
+            "pk_votes_type": 0,
+            "pk_votes_add": 0,
+            "pk_votes_name": "\u4e71\u6597\u503c"
+        }
+    },
+    {
+        "cmd": "PK_BATTLE_PROCESS",
+        "pk_id": 100219137,
+        "pk_status": 201,
+        "timestamp": 1601039201,
+        "data": {
+            "battle_type": 1,
+            "init_info": {
+                "room_id": 21449083,
+                "votes": 1,
+                "best_uname": "-\u6674\u5929\u597d\u5fc3\u60c5-"
+            },
+            "match_info": {
+                "room_id": 21971294,
+                "votes": 0,
+                "best_uname": ""
+            }
+        }
+    },
+    {
+        "cmd": "PK_BATTLE_END",
+        "pk_id": "100219137",
+        "pk_status": 401,
+        "timestamp": 1601039476,
+        "data": {
+            "battle_type": 1,
+            "timer": 10,
+            "init_info": {
+                "room_id": 21449083,
+                "votes": 362,
+                "winner_type": 2,
+                "best_uname": "\u5168\u97f3\u00b7\u9752"
+            },
+            "match_info": {
+                "room_id": 21971294,
+                "votes": 3,
+                "winner_type": -1,
+                "best_uname": "\u6697\u591c\u7f18\u4e4b\u661f"
+            }
+        }
+    },
+    {
+        "cmd": "PK_BATTLE_RANK_CHANGE",
+        "timestamp": 1601039476,
+        "data": {
+            "first_rank_img_url": "https:\/\/i0.hdslb.com\/bfs\/live\/bd6ca767900adbda7cd7148db06f72726bef7813.png",
+            "rank_name": "\u9752\u94dc\u840c\u65b0x1\u661f"
+        }
+    },
+    {
+        "cmd": "PK_BATTLE_SETTLE_USER",
+        "pk_id": 100219137,
+        "pk_status": 401,
+        "settle_status": 1,
+        "timestamp": 1601039476,
+        "data": {
+            "pk_id": "100219137",
+            "season_id": 26,
+            "settle_status": 1,
+            "result_type": "2",
+            "battle_type": 0,
+            "result_info": {
+                "total_score": 438,
+                "result_type_score": 438,
+                "pk_votes": 362,
+                "pk_votes_name": "\u4e71\u6597\u503c",
+                "pk_crit_score": -1,
+                "pk_resist_crit_score": -1,
+                "pk_extra_score_slot": "",
+                "pk_extra_value": 0,
+                "pk_extra_score": 0,
+                "pk_task_score": 0,
+                "pk_times_score": 0,
+                "pk_done_times": 1,
+                "pk_total_times": -1,
+                "win_count": 1,
+                "win_final_hit": -1,
+                "winner_count_score": 0,
+                "task_score_list": []
+            },
+            "winner": {
+                "room_id": 21449083,
+                "uid": 434565011,
+                "uname": "\u7269\u8ff0\u6709\u6816Official",
+                "face": "http:\/\/i0.hdslb.com\/bfs\/face\/b47463d917ec2dc7ef34951d51df490fa7f89531.jpg",
+                "face_frame": "https:\/\/i0.hdslb.com\/bfs\/vc\/176ef593de2f607856e43fcd0a8579fa4d3f30f5.png",
+                "exp": {
+                    "color": 9868950,
+                    "user_level": 1,
+                    "master_level": {
+                        "color": 16746162,
+                        "level": 39
+                    }
+                },
+                "best_user": {
+                    "uid": 923677,
+                    "uname": "\u5168\u97f3\u00b7\u9752",
+                    "face": "http:\/\/i2.hdslb.com\/bfs\/face\/cd38f3146e161c24512a01193558a1f8b0da72ca.jpg",
+                    "pk_votes": 100,
+                    "pk_votes_name": "\u4e71\u6597\u503c",
+                    "exp": {
+                        "color": 6406234,
+                        "level": 1
+                    },
+                    "face_frame": "http:\/\/i0.hdslb.com\/bfs\/live\/78e8a800e97403f1137c0c1b5029648c390be390.png",
+                    "badge": {
+                        "url": "http:\/\/i0.hdslb.com\/bfs\/live\/b5e9ebd5ddb979a482421ca4ea2f8c1cc593370b.png",
+                        "desc": "",
+                        "position": 3
+                    },
+                    "award_info": null,
+                    "award_info_list": [],
+                    "end_win_award_info_list": {
+                        "list": []
+                    }
+                }
+            },
+            "my_info": {
+                "room_id": 21449083,
+                "uid": 434565011,
+                "uname": "\u7269\u8ff0\u6709\u6816Official",
+                "face": "http:\/\/i0.hdslb.com\/bfs\/face\/b47463d917ec2dc7ef34951d51df490fa7f89531.jpg",
+                "face_frame": "https:\/\/i0.hdslb.com\/bfs\/vc\/176ef593de2f607856e43fcd0a8579fa4d3f30f5.png",
+                "exp": {
+                    "color": 9868950,
+                    "user_level": 1,
+                    "master_level": {
+                        "color": 16746162,
+                        "level": 39
+                    }
+                },
+                "best_user": {
+                    "uid": 923677,
+                    "uname": "\u5168\u97f3\u00b7\u9752",
+                    "face": "http:\/\/i2.hdslb.com\/bfs\/face\/cd38f3146e161c24512a01193558a1f8b0da72ca.jpg",
+                    "pk_votes": 100,
+                    "pk_votes_name": "\u4e71\u6597\u503c",
+                    "exp": {
+                        "color": 6406234,
+                        "level": 1
+                    },
+                    "face_frame": "http:\/\/i0.hdslb.com\/bfs\/live\/78e8a800e97403f1137c0c1b5029648c390be390.png",
+                    "badge": {
+                        "url": "http:\/\/i0.hdslb.com\/bfs\/live\/b5e9ebd5ddb979a482421ca4ea2f8c1cc593370b.png",
+                        "desc": "",
+                        "position": 3
+                    },
+                    "award_info": null,
+                    "award_info_list": [],
+                    "end_win_award_info_list": {
+                        "list": []
+                    }
+                }
+            },
+            "level_info": {
+                "first_rank_name": "\u9752\u94dc\u840c\u65b0",
+                "second_rank_num": 1,
+                "first_rank_img": "https:\/\/i0.hdslb.com\/bfs\/live\/bd6ca767900adbda7cd7148db06f72726bef7813.png",
+                "second_rank_icon": "https:\/\/i0.hdslb.com\/bfs\/live\/1f8c2a959f92592407514a1afeb705ddc55429cd.png"
+            }
+        }
+    },
+    {
+        "cmd": "PK_BATTLE_SETTLE_V2",
+        "pk_id": 100219137,
+        "pk_status": 401,
+        "settle_status": 1,
+        "timestamp": 1601039476,
+        "data": {
+            "pk_id": "100219137",
+            "season_id": 26,
+            "pk_type": "1",
+            "result_type": 2,
+            "result_info": {
+                "total_score": 438,
+                "pk_votes": 362,
+                "pk_votes_name": "\u4e71\u6597\u503c",
+                "pk_extra_value": 0
+            },
+            "level_info": {
+                "uid": "434565011",
+                "first_rank_name": "\u9752\u94dc\u840c\u65b0",
+                "second_rank_num": 1,
+                "first_rank_img": "https:\/\/i0.hdslb.com\/bfs\/live\/bd6ca767900adbda7cd7148db06f72726bef7813.png",
+                "second_rank_icon": "https:\/\/i0.hdslb.com\/bfs\/live\/1f8c2a959f92592407514a1afeb705ddc55429cd.png"
+            },
+            "assist_list": [
+                {
+                    "id": 923677,
+                    "uname": "\u5168\u97f3\u00b7\u9752",
+                    "face": "http:\/\/i2.hdslb.com\/bfs\/face\/cd38f3146e161c24512a01193558a1f8b0da72ca.jpg",
+                    "score": 100
+                },
+                {
+                    "id": 14769048,
+                    "uname": "HimawariAWSL",
+                    "face": "http:\/\/i1.hdslb.com\/bfs\/face\/631a2dba191346664d12df7dc1d6d369b3b2a2e4.jpg",
+                    "score": 99
+                },
+                {
+                    "id": 375095,
+                    "uname": "\u5948\u7279-\u5f25\u6258\u9edb\u62c9",
+                    "face": "http:\/\/i1.hdslb.com\/bfs\/face\/5e22b567d970ecebe07257f32f8fd67d1ff53822.jpg",
+                    "score": 49
+                },
+                {
+                    "id": 34842413,
+                    "uname": "\u6b64\u751f\u53ea\u8ba4dota",
+                    "face": "http:\/\/i0.hdslb.com\/bfs\/face\/a468fbe8eeb9f3205ca0684b061be9d040a6f1bb.jpg",
+                    "score": 30
+                },
+                {
+                    "id": 327140,
+                    "uname": "-\u6674\u5929\u597d\u5fc3\u60c5-",
+                    "face": "http:\/\/i2.hdslb.com\/bfs\/face\/97816891cf186606375377594e2b6cec4d1058bd.jpg",
+                    "score": 20
+                }
+            ]
+        }
+    },
+    {
+        "cmd": "PK_BATTLE_SETTLE",
+        "pk_id": 100219137,
+        "pk_status": 401,
+        "settle_status": 1,
+        "timestamp": 1601039476,
+        "data": {
+            "battle_type": 1,
+            "result_type": 2
+        },
+        "roomid": "21449083"
+    }
+]

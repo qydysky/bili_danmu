@@ -3,7 +3,6 @@ package F
 import (
 	"strconv"
 
-	c "github.com/qydysky/bili_danmu/CV"
 	p "github.com/qydysky/part"
 )
 
@@ -12,10 +11,12 @@ type api struct {
 	Uid int
 	Url []string
 	Live string
+	Live_status float64
+	Locked bool
 	Token string
 }
 
-var apilog = p.Logf().New().Base(-1, "api.go").Level(c.LogLevel)
+var apilog = p.Logf().New().Base(-1, "api.go").Level(2)
 func New_api(Roomid int) (o *api) {
 	apilog.Base(-1, "新建")
 	defer apilog.Base(0)
@@ -92,6 +93,14 @@ func (i *api) Get_info() (o *api) {
 			apilog.T("ok")
 			o.Roomid = int(room_id.(float64))
 		}
+		if is_locked := p.Json().GetValFrom(res, "data.is_locked");is_locked == nil {
+			apilog.E("data.is_locked", is_locked)
+			return
+		} else if is_locked.(bool) {
+			apilog.W("直播间封禁中")
+			o.Locked = true
+			return
+		}
 	}
 	return
 }
@@ -108,10 +117,9 @@ func (i *api) Get_live() (o *api) {
 			Url:"https://live.bilibili.com/" + strconv.Itoa(o.Roomid),
 		})
 		if e := r.S(`"durl":[`, `]`, 0, 0).Err;e == nil {
-			if url := p.Json().GetValFromS("[" + r.RS + "]", "[0].url");url == nil {
-				apilog.E("url", url)
-			} else {
-				apilog.T("ok")
+			if url := p.Json().GetValFromS("[" + r.RS + "]", "[0].url");url != nil {
+				apilog.W("直播中")
+				o.Live_status = 1
 				o.Live = url.(string)
 				return
 			}
@@ -133,12 +141,31 @@ func (i *api) Get_live() (o *api) {
 			apilog.E("code", code)
 			return
 		}
+		if is_locked := p.Json().GetValFrom(res, "data.is_locked");is_locked == nil {
+			apilog.E("data.is_locked", is_locked)
+			return
+		} else if is_locked.(bool) {
+			apilog.W("直播间封禁中")
+			o.Locked = true
+			return
+		}
 		if live_status := p.Json().GetValFrom(res, "data.live_status");live_status == nil {
 			apilog.E("data.live_status", live_status)
 			return
-		} else if live_status == 0 {//未直播
-			apilog.W("未在直播")
-			return
+		} else {
+			o.Live_status = live_status.(float64)
+			switch live_status.(float64) {
+			case 2:
+				apilog.W("轮播中")
+				return
+			case 0: //未直播
+				apilog.W("未在直播")
+				return
+			case 1:
+				apilog.W("直播中")
+			default:
+				apilog.W("live_status:", live_status)
+			}
 		}
 
 		if url := p.Json().GetValFrom(res, "data.play_url.durl.[0].url");url == nil {

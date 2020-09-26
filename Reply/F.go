@@ -1,6 +1,7 @@
 package reply
 
 import (
+	"os"
 	"fmt"
 	"strconv"
 	"strings"
@@ -137,7 +138,7 @@ func Assf(s string){
 	if ass.file == "" {return}
 
 	if ass.startT.Equal(time.Date(1, 1, 1, 0, 0, 0, 0, time.UTC)) {
-		p.Logf().New().Open("danmu.log").Base(1, "Ass").I("弹幕转Ass保存至", ass.file + ".ass")
+		p.Logf().New().Open("danmu.log").Base(1, "Ass").I("保存至", ass.file + ".ass")
 
 		p.File().FileWR(p.Filel{
 			File:ass.file + ".ass",
@@ -178,8 +179,8 @@ func Dtos(t time.Duration) string {
 type Saveflv struct {
 	Inuse bool
 	path string
-	wait chan struct{}
-	cancel chan struct{}
+	wait p.Signal
+	cancel p.Signal
 }
 
 var saveflv = Saveflv {
@@ -187,57 +188,62 @@ var saveflv = Saveflv {
 }
 
 func Saveflvf(){
-	if !saveflv.Inuse || saveflv.path != "" {return}
+	if !saveflv.Inuse {return}
 	l := p.Logf().New().Open("danmu.log").Base(-1, "saveflv")
-	defer l.Base(0).BC()
-
-	if saveflv.path != "" || c.Live == "" {return}
-
-	api := F.New_api(c.Roomid).Get_host_Token().Get_live()
-	c.Live = api.Live
 	
-	saveflv.path = strconv.Itoa(c.Roomid) + "_" + time.Now().Format(time.RFC3339)
-	l.I("直播流保存到", saveflv.path)
+	api := F.New_api(c.Roomid)
+	for api.Get_live().Live_status == 1 {
+		c.Live = api.Live
 
-	saveflv.wait = make(chan struct{})
-	saveflv.cancel = make(chan struct{})
-	
-	Ass_f(saveflv.path)//ass
-	
-	rr := p.Req()
-	go func(){
-		<- saveflv.cancel
-		rr.Close()
-	}()
-	if e := rr.Reqf(p.Rval{
-		Url:c.Live,
-		Retry:10,
-		SleepTime:5,
-		SaveToPath:saveflv.path + ".flv",
-		Timeout:-1,
-	}); e != nil{l.E(e)}
-	l.I("结束")
-	Ass_f("")//ass
-	Saveflv_transcode()
-	l.I("转码结束")
-	close(saveflv.wait)
-}
+		saveflv.path = strconv.Itoa(c.Roomid) + "_" + time.Now().Format(time.RFC3339)
+		l.I("直播流获取")
 
-func Saveflv_transcode(){
-	if !saveflv.Inuse || saveflv.path == "" {return}
-	if p.Checkfile().IsExist(saveflv.path+".flv"){
-		p.Exec().Run(false, "ffmpeg", "-i", saveflv.path+".flv", "-c", "copy", saveflv.path+".mkv")
-	} else if p.Checkfile().IsExist(saveflv.path+".flv.dtmp"){
-		p.Exec().Run(false, "ffmpeg", "-i", saveflv.path+".flv.dtmp", "-c", "copy", saveflv.path+".mkv")
+		saveflv.wait.Init()
+		saveflv.cancel.Init()
+		
+		Ass_f(saveflv.path)//ass
+		
+		rr := p.Req()
+		go func(){
+			saveflv.cancel.Wait()
+			rr.Close()
+			os.Rename(saveflv.path+".flv.dtmp", saveflv.path+".flv")
+		}()
+
+		if e := rr.Reqf(p.Rval{
+			Url:c.Live,
+			Retry:10,
+			SleepTime:5,
+			SaveToPath:saveflv.path + ".flv",
+			Timeout:-1,
+		}); e != nil{l.E(e)}
+
+		if p.Checkfile().GetFileSize(saveflv.path+".flv") == 0 {//刚开始直播断流
+			os.Remove(saveflv.path+".flv")
+			os.Remove(saveflv.path+".ass")
+			p.Sys().Timeoutf(5)
+			continue
+		}
+		l.I("直播流保存到", saveflv.path)
+		l.I("结束")
+		Ass_f("")//ass
+
+		if p.Checkfile().IsExist(saveflv.path+".flv"){
+			p.Exec().Run(false, "ffmpeg", "-i", saveflv.path+".flv", "-c", "copy", saveflv.path+".mkv")
+			os.Remove(saveflv.path+".flv")
+		}
+
+		l.I("转码结束")
+		saveflv.wait.Done()
+		saveflv.cancel.Done()
 	}
-	saveflv.path = ""
 }
 
 func Saveflv_wait(){
-	if !saveflv.Inuse || saveflv.path == "" {return}
-	close(saveflv.cancel)
-	p.Logf().New().Open("danmu.log").Base(1, "saveflv").I("等待转码").Block()
-	<- saveflv.wait
+	if !saveflv.Inuse {return}
+	saveflv.cancel.Done()
+	p.Logf().New().Open("danmu.log").Base(-1, "saveflv").I("等待").Block()
+	saveflv.wait.Wait()
 }
 
 type Obs struct {
@@ -567,7 +573,7 @@ func Shortdanmuf(s string) string {
 			break
 		}
 	}
-	if new == "" {new = "...."}
+	// if new == "" {new = "...."}
 	shortdanmu.lastdanmu = []rune(s)
 	return new
 }

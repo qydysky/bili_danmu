@@ -45,7 +45,7 @@ func Demo() {
 		for !break_sign {
 			//获取房间相关信息
 			api := F.New_api(room).Get_host_Token().Get_live()
-			if len(api.Url) == 0 || api.Roomid == 0 || api.Token == "" || api.Uid == 0 {
+			if len(api.Url) == 0 || api.Roomid == 0 || api.Token == "" || api.Uid == 0 || api.Locked {
 				danmulog.E("some err")
 				return
 			}
