@@ -2,7 +2,9 @@ package F
 
 import (
 	"strconv"
+	"strings"
 
+	c "github.com/qydysky/bili_danmu/CV"
 	p "github.com/qydysky/part"
 )
 
@@ -112,9 +114,19 @@ func (i *api) Get_live() (o *api) {
 		return
 	}
 
+	Cookie := c.Cookie
+	if i := strings.Index(Cookie, "PVID="); i != -1 {
+		if d := strings.Index(Cookie[i:], ";"); d == -1 {
+			Cookie = Cookie[:i]
+		} else {
+			Cookie = Cookie[:i] + Cookie[i + d + 1:]
+		}
+	}
+
 	{//html获取
 		r := p.Get(p.Rval{
 			Url:"https://live.bilibili.com/" + strconv.Itoa(o.Roomid),
+			Cookie:Cookie,
 		})
 		if e := r.S(`"durl":[`, `]`, 0, 0).Err;e == nil {
 			if url := p.Json().GetValFromS("[" + r.RS + "]", "[0].url");url != nil {
@@ -131,6 +143,7 @@ func (i *api) Get_live() (o *api) {
 			Url:"https://api.live.bilibili.com/xlive/web-room/v1/index/getRoomPlayInfo?play_url=1&mask=1&qn=0&platform=web&ptype=16&room_id=" + strconv.Itoa(o.Roomid),
 			Referer:"https://live.bilibili.com/" + strconv.Itoa(o.Roomid),
 			Timeout:10,
+			Cookie:Cookie,
 			Retry:2,
 		});err != nil {
 			apilog.E(err)

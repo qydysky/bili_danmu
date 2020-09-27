@@ -341,7 +341,7 @@ func (replyF) super_chat_message(s string){
 		fmt.Println(message)
 		sh = append(sh, message)
 	}
-	if message_jpn != nil && message != message_jpn {
+	if message_jpn != nil && message.(string) != message_jpn.(string) && message_jpn.(string) != "" {
 		fmt.Println(message_jpn)
 		sh = append(sh, message_jpn)
 	}

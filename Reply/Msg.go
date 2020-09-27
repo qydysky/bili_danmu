@@ -23,10 +23,10 @@ var Msg_map = map[string]func(replyF, string) {
 	"SYS_MSG":nil,//系统消息
 	"ROOM_SKIN_MSG":nil,
 	"GUARD_ACHIEVEMENT_ROOM":nil,
-	"ANCHOR_LOT_START":nil,//天选之人开始
+	// "ANCHOR_LOT_START":nil,//天选之人开始
 	"ANCHOR_LOT_CHECKSTATUS":nil,
 	"ANCHOR_LOT_END":nil,//天选之人结束
-	"ANCHOR_LOT_AWARD":nil,//天选之人获奖
+	// "ANCHOR_LOT_AWARD":nil,//天选之人获奖
 	"COMBO_SEND":nil,
 	"INTERACT_WORD":nil,
 	"ACTIVITY_BANNER_UPDATE_V2":nil,
@@ -50,6 +50,7 @@ var Msg_map = map[string]func(replyF, string) {
 	"ROOM_BLOCK_MSG":replyF.room_block_msg,//封禁
 	"PREPARING":replyF.preparing,//下播
 	"LIVE":replyF.live,//开播
+	"SUPER_CHAT_ENTRANCE":nil,//SC入口
 	"SUPER_CHAT_MESSAGE":nil,//replyF.super_chat_message,//SC
 	"SUPER_CHAT_MESSAGE_JPN":replyF.super_chat_message,//SC
 	"PANEL":replyF.panel,//排行榜

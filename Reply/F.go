@@ -22,7 +22,7 @@ import (
 
 //功能开关
 var AllF = map[string]bool{
-	"Saveflv":true,//保存直播流(仅高清)
+	"Saveflv":true,//保存直播流(默认高清，有cookie默认蓝光)
 	/*
 		Saveflv需要外部组件
 		ffmpeg http://ffmpeg.org/download.html
@@ -148,6 +148,9 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 //设定字幕文件名，为""时停止输出
 func Ass_f(file string){
 	ass.file = file
+	if file == "" {
+		ass.startT = time.Date(1, 1, 1, 0, 0, 0, 0, time.UTC)
+	}
 }
 
 //传入要显示的单条字幕
@@ -210,8 +213,10 @@ var saveflv = Saveflv {
 //已go func形式调用，将会获取直播流
 func Saveflvf(){
 	if !saveflv.Inuse {return}
-	l := p.Logf().New().Open("danmu.log").Base(-1, "saveflv")
+	if saveflv.cancel.Islive() {return}
 	
+	l := p.Logf().New().Open("danmu.log").Base(-1, "saveflv")
+
 	api := F.New_api(c.Roomid)
 	for api.Get_live().Live_status == 1 {
 		c.Live = api.Live
@@ -231,10 +236,20 @@ func Saveflvf(){
 			os.Rename(saveflv.path+".flv.dtmp", saveflv.path+".flv")
 		}()
 
+		Cookie := c.Cookie
+		if i := strings.Index(Cookie, "PVID="); i != -1 {
+			if d := strings.Index(Cookie[i:], ";"); d == -1 {
+				Cookie = Cookie[:i]
+			} else {
+				Cookie = Cookie[:i] + Cookie[i + d + 1:]
+			}
+		}	
+
 		if e := rr.Reqf(p.Rval{
 			Url:c.Live,
 			Retry:10,
 			SleepTime:5,
+			Cookie:Cookie,
 			SaveToPath:saveflv.path + ".flv",
 			Timeout:-1,
 		}); e != nil{l.E(e)}
