@@ -138,7 +138,7 @@ PlayResY: `+strconv.Itoa(Ass_width)+`
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,,`+strconv.Itoa(Ass_font)+`,&H40FFFFFF,&H000017FF,&H80000000,&H70000000,0,0,0,0,100,100,0,0,1,4,4,`+strconv.Itoa(Ass_loc)+`,20,20,50,1
+Style: Default,,`+strconv.Itoa(Ass_font)+`,&H40FFFFFF,&H000017FF,&H80000000,&H40000000,0,0,0,0,100,100,0,0,1,4,4,`+strconv.Itoa(Ass_loc)+`,20,20,50,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -146,29 +146,24 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 }
 
 //设定字幕文件名，为""时停止输出
-func Ass_f(file string){
+func Ass_f(file string, st time.Time){
 	ass.file = file
-	if file == "" {
-		ass.startT = time.Date(1, 1, 1, 0, 0, 0, 0, time.UTC)
-	}
+	if file == "" {return}
+	p.Logf().New().Open("danmu.log").Base(1, "Ass").I("保存至", ass.file + ".ass")
+
+	p.File().FileWR(p.Filel{
+		File:ass.file + ".ass",
+		Write:true,
+		Loc:0,
+		Context:[]interface{}{ass.header},
+	})
+	ass.startT = st
 }
 
 //传入要显示的单条字幕
 func Assf(s string){
 	if !ass.Inuse {return}
 	if ass.file == "" {return}
-
-	if ass.startT.Equal(time.Date(1, 1, 1, 0, 0, 0, 0, time.UTC)) {
-		p.Logf().New().Open("danmu.log").Base(1, "Ass").I("保存至", ass.file + ".ass")
-
-		p.File().FileWR(p.Filel{
-			File:ass.file + ".ass",
-			Write:true,
-			Loc:0,
-			Context:[]interface{}{ass.header},
-		})
-		ass.startT = time.Now()
-	}
 
 	if s == "" {return}
 
@@ -214,20 +209,17 @@ var saveflv = Saveflv {
 func Saveflvf(){
 	if !saveflv.Inuse {return}
 	if saveflv.cancel.Islive() {return}
-	
+
 	l := p.Logf().New().Open("danmu.log").Base(-1, "saveflv")
 
 	api := F.New_api(c.Roomid)
 	for api.Get_live().Live_status == 1 {
 		c.Live = api.Live
 
-		saveflv.path = strconv.Itoa(c.Roomid) + "_" + time.Now().Format(time.RFC3339)
-		l.I("直播流获取")
+		saveflv.path = strconv.Itoa(c.Roomid) + "_" + time.Now().Format("2006_01_02_15:04:05.000")
 
 		saveflv.wait.Init()
 		saveflv.cancel.Init()
-		
-		Ass_f(saveflv.path)//ass
 		
 		rr := p.Req()
 		go func(){
@@ -245,6 +237,17 @@ func Saveflvf(){
 			}
 		}	
 
+		ST := time.Now()
+		done := make(chan struct{})
+		go func(){
+			select{
+			case <-time.After(time.Duration(5) * time.Second):
+				l.I("直播流获取")
+				Ass_f(saveflv.path, ST)//ass
+			case <-done:;
+			}
+		}()
+
 		if e := rr.Reqf(p.Rval{
 			Url:c.Live,
 			Retry:10,
@@ -254,17 +257,19 @@ func Saveflvf(){
 			Timeout:-1,
 		}); e != nil{l.E(e)}
 
-		if p.Checkfile().GetFileSize(saveflv.path+".flv") == 0 {//刚开始直播断流
+		close(done)
+		if time.Since(ST) < time.Duration(5) * time.Second {//刚开始直播断流
+			l.I("重试直播流")
 			os.Remove(saveflv.path+".flv")
-			os.Remove(saveflv.path+".ass")
 			p.Sys().Timeoutf(5)
 			continue
 		}
 		l.I("直播流保存到", saveflv.path)
 		l.I("结束")
-		Ass_f("")//ass
+		Ass_f("", time.Now())//ass
 
 		if p.Checkfile().IsExist(saveflv.path+".flv"){
+			l.I("转码中")
 			p.Exec().Run(false, "ffmpeg", "-i", saveflv.path+".flv", "-c", "copy", saveflv.path+".mkv")
 			os.Remove(saveflv.path+".flv")
 		}

@@ -10,11 +10,10 @@ import (
 )
 
 type ws struct {
-	used bool
-	
+	Signal p.Signal
 	SendChan chan []byte
 	RecvChan chan []byte
-	interrupt chan struct{}
+	TO int
 	url string
 }
 
@@ -25,6 +24,7 @@ func New_ws(url string) (o *ws) {
 	l.T("ok")
 	o = new(ws)
 	o.url = url
+	o.TO = 300 * 1000
 	o.SendChan = make(chan []byte, 1e4)
 	o.RecvChan = make(chan []byte, 1e4)
 	return 
@@ -35,22 +35,19 @@ func (i *ws) Handle() (o *ws) {
 	l := p.Logf().New().Base(-1, "ws.go>处理").Level(c.LogLevel).T("*ws.handle")
 	defer l.Block()
 
-	if o.used {
-		l.E("o.used")
-		return
-	}
+	if o.Signal.Islive() {return}
+	o.Signal.Init()
 
 	if o.url == "" {
 		l.E("o.url == \"\"")
+		o.Signal.Done()
 		return
 	}
 
-	started := make(chan struct{})
-
-	go func() {
+	go func(){
 		defer func(){
 			close(o.RecvChan)
-			o.used = false
+			o.Signal.Done()
 		}()
 
 		c, _, err := websocket.DefaultDialer.Dial(o.url, nil)
@@ -59,15 +56,15 @@ func (i *ws) Handle() (o *ws) {
 			return
 		}
 		defer c.Close()
-
 		l.T("ok")
-		o.interrupt = make(chan struct{})
+
 		done := make(chan struct{})
 
 		go func() {
 			defer close(done)
-
+	
 			for {
+				c.SetReadDeadline(time.Now().Add(time.Millisecond*time.Duration(o.TO)))
 				_, message, err := c.ReadMessage()
 				if err != nil {
 					if e, ok := err.(*websocket.CloseError); ok {
@@ -82,9 +79,7 @@ func (i *ws) Handle() (o *ws) {
 				o.RecvChan <- message
 			}
 		}()
-
-		close(started)
-
+	
 		for {
 			select {
 			case <- done:
@@ -95,7 +90,8 @@ func (i *ws) Handle() (o *ws) {
 					l.E("write:", err)
 					return
 				}
-			case <- o.interrupt:
+				c.SetWriteDeadline(time.Now().Add(time.Millisecond*time.Duration(o.TO)))
+			case <- o.Signal.Chan:
 				l.I("捕获到中断")
 				// Cleanly close the connection by sending a close message and then
 				// waiting (with timeout) for the server to close the connection.
@@ -109,11 +105,8 @@ func (i *ws) Handle() (o *ws) {
 				}
 				return
 			}
-		}
+		}	
 	}()
-
-	<- started
-	o.used = true
 	return
 }
 
@@ -122,10 +115,9 @@ func (i *ws) Heartbeat(Millisecond int, msg []byte) (o *ws) {
 	l := p.Logf().New().Base(-1, "ws.go>心跳").Level(c.LogLevel).T("*ws.heartbeat")
 	defer l.Block()
 
-	if !o.used {
-		l.E("!o.used")
-		return
-	}
+	if !o.Signal.Islive() {return}
+	o.TO = Millisecond + 10 * 1000
+
 	o.SendChan <- msg
 	l.T("ok")
 
@@ -137,7 +129,7 @@ func (i *ws) Heartbeat(Millisecond int, msg []byte) (o *ws) {
 			select {
 				case <-ticker.C:
 					o.SendChan <- msg
-				case <- o.interrupt:
+				case <- o.Signal.Chan:
 					l.I("停止！")
 					return
 				}
@@ -148,19 +140,11 @@ func (i *ws) Heartbeat(Millisecond int, msg []byte) (o *ws) {
 }
 
 func (o *ws) Close() {
-	l := p.Logf().New().Base(-1, "ws.go>关闭").Level(c.LogLevel)
-	defer l.Block()
+	p.Logf().New().Base(-1, "ws.go>关闭").Level(c.LogLevel).I("关闭!").Block()
 
-	if !o.used {
-		l.E("未在使用的连接")
-		return
-	}
-	o.used = false
-
-	close(o.interrupt)
-	l.I("关闭!")
+	o.Signal.Done()
 }
 
 func (o *ws) Isclose() bool {
-	return !o.used
+	return !o.Signal.Islive()
 }

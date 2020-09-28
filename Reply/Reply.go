@@ -57,6 +57,50 @@ func (replyF) defaultMsg(s string){
 	msglog.Base(1, "Unknow").E(s)
 }
 
+//Msg-天选之人开始
+func (replyF) anchor_lot_start(s string){
+	award_name := p.Json().GetValFromS(s, "data.award_name");
+	var sh = []interface{}{">天选"}
+	if award_name != nil {
+		sh = append(sh, award_name, "开始")
+	}
+
+	{//额外 ass
+		Assf(fmt.Sprintln("天选之人", award_name, "开始"))
+	}
+	fmt.Println(sh...)
+
+	msglog.Base(1, "房").Fileonly(true).I(sh...).Fileonly(false)
+}
+
+//Msg-天选之人结束
+func (replyF) anchor_lot_award(s string){
+	award_name := p.Json().GetValFromS(s, "data.award_name");
+	award_users := p.Json().GetValFromS(s, "data.award_users");
+
+	var sh = []interface{}{">天选"}
+
+	if award_name != nil {
+		sh = append(sh, award_name, "获奖[")
+	}
+	if award_users != nil {
+		for _,v := range award_users.([]interface{}) {
+			uname := p.Json().GetValFrom(v, "uname");
+			uid := p.Json().GetValFrom(v, "uid");
+			if uname != nil && uid != nil {
+				sh = append(sh, uname, "(", uid, ")")
+			}
+		}
+	}
+	sh = append(sh, "]")
+	{//额外 ass
+		Assf(fmt.Sprintln("天选之人", award_name, "结束"))
+	}
+	fmt.Println(sh...)
+
+	msglog.Base(1, "房").Fileonly(true).I(sh...).Fileonly(false)
+}
+
 //msg-通常是大航海购买续费
 func (replyF) user_toast_msg(s string){
 	username := p.Json().GetValFromS(s, "data.username");
@@ -101,9 +145,7 @@ func (replyF) user_toast_msg(s string){
 	fmt.Println(sh...)
 	fmt.Print("====\n\n")
 
-	msglog.Fileonly(true)
-	defer msglog.Fileonly(false)
-	msglog.Base(1, "礼").I(sh...)
+	msglog.Base(1, "礼").Fileonly(true).I(sh...).Fileonly(false)
 }
 
 //HeartBeat-心跳用来传递人气值
@@ -173,9 +215,7 @@ func (replyF) guard_buy(s string){
 	fmt.Println(sh...)
 	fmt.Print("====\n\n")
 
-	msglog.Fileonly(true)
-	defer msglog.Fileonly(false)
-	msglog.Base(1, "礼").I(sh...)
+	msglog.Base(1, "礼").Fileonly(true).I(sh...).Fileonly(false)
 }
 
 //Msg-房间信息改变，标题等
@@ -222,12 +262,14 @@ func (replyF) welcome_guard(s string){
 
 //Msg-礼物处理，对于小于30人民币的礼物不显示
 func (replyF) send_gift(s string){
-	// coin_type := p.Json().GetValFromS(s, "data.coin_type");
+	coin_type := p.Json().GetValFromS(s, "data.coin_type");
+	if coin_type != nil && coin_type == "silver" {return}
+
 	num := p.Json().GetValFromS(s, "data.num");
 	uname := p.Json().GetValFromS(s, "data.uname");
 	action := p.Json().GetValFromS(s, "data.action");
 	giftName := p.Json().GetValFromS(s, "data.giftName");
-	price := p.Json().GetValFromS(s, "data.price");
+	total_coin := p.Json().GetValFromS(s, "data.total_coin");
 
 	var sh []interface{}
 	var allprice int64
@@ -244,15 +286,15 @@ func (replyF) send_gift(s string){
 	if giftName != nil {
 		sh = append(sh, giftName)
 	}
-	if price != nil {
-		allprice = int64(num.(float64) * price.(float64) / 1000)
+	if total_coin != nil {
+		allprice = int64(total_coin.(float64) / 1000)
 		sh = append(sh, "￥", allprice)
 	}
 
 	if len(sh) == 0 {return}
 
 	//小于3万金瓜子
-	if allprice < 30000 {msglog.T(sh...);return}
+	if allprice < 30 {msglog.T(sh...);return}
 	{//额外
 		Assf(fmt.Sprintln(sh...))
 	}
@@ -260,9 +302,7 @@ func (replyF) send_gift(s string){
 	fmt.Println(sh...)
 	fmt.Print("====\n\n")
 
-	msglog.Fileonly(true)
-	defer msglog.Fileonly(false)
-	msglog.Base(1, "礼").I(sh...)
+	msglog.Base(1, "礼").Fileonly(true).I(sh...).Fileonly(false)
 }
 
 //Msg-房间封禁信息
@@ -337,7 +377,7 @@ func (replyF) super_chat_message(s string){
 	}
 	fmt.Println("\n====")
 	fmt.Println(sh...)
-	if message != nil {
+	if message != nil && message.(string) != ""{
 		fmt.Println(message)
 		sh = append(sh, message)
 	}

@@ -23,10 +23,10 @@ var Msg_map = map[string]func(replyF, string) {
 	"SYS_MSG":nil,//系统消息
 	"ROOM_SKIN_MSG":nil,
 	"GUARD_ACHIEVEMENT_ROOM":nil,
-	// "ANCHOR_LOT_START":nil,//天选之人开始
+	"ANCHOR_LOT_START":replyF.anchor_lot_start,//天选之人开始
 	"ANCHOR_LOT_CHECKSTATUS":nil,
 	"ANCHOR_LOT_END":nil,//天选之人结束
-	// "ANCHOR_LOT_AWARD":nil,//天选之人获奖
+	"ANCHOR_LOT_AWARD":replyF.anchor_lot_award,//天选之人获奖
 	"COMBO_SEND":nil,
 	"INTERACT_WORD":nil,
 	"ACTIVITY_BANNER_UPDATE_V2":nil,
