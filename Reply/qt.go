@@ -53,6 +53,7 @@ func Qtdanmu() {
 		QtDanmuChan = make(chan string, 10)
 		QtOn = true
 		// var list []string
+		t.TextCursor().InsertText("==开始==")
 		for QtOn {
 			select{
 			case i :=<-QtDanmuChan:
@@ -100,10 +101,10 @@ func new(pare *widgets.QWidget, layouts *widgets.QGridLayout) (t *widgets.QTextE
 
 func text(s string, pare *widgets.QTextEdit) {
 	c := pare.TextCursor()
+	c.InsertBlock()
 	c.BeginEditBlock()
 	c.InsertText(s)
 	c.EndEditBlock()
-	c.InsertBlock()
 	if pare.Document().BlockCount() > Qt_MaxMun {
 		c.MovePosition(gui.QTextCursor__Start, gui.QTextCursor__MoveAnchor, 1)
 		// c.BeginEditBlock()
