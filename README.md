@@ -144,4 +144,7 @@ ctrl+c退出，会同时追加记录到文件danmu.log中（文件记录完整�
 结束后的文件播放效果(显于左上)
 ![](_Screenshot/Screenshot_20200926_173834.png)
 
+Qt弹幕窗
+![](_Screenshot/Screenshot_20201002_045627.png)
+
 更多内容详见注释，如有疑问请发issues，欢迎pr

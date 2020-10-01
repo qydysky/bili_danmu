@@ -22,6 +22,7 @@ import (
 
 //功能开关
 var AllF = map[string]bool{
+	"Qtd":true,//Qt弹幕窗口
 	"Saveflv":true,//保存直播流(默认高清，有cookie默认蓝光)
 	/*
 		Saveflv需要外部组件
@@ -108,6 +109,20 @@ func selfcross2(a []string) (float32, string) {
 }
 
 //功能区
+
+//Qtd 弹幕Qt窗口
+type Qtd struct {
+	Inuse bool
+}
+
+var qtd = Qtd {
+	Inuse:IsOn("Qtd"),
+}
+
+func Qtdf(){
+	if !qtd.Inuse {return}
+	go Qtdanmu()
+}
 
 //Ass 弹幕转字幕
 type Ass struct {
@@ -213,7 +228,9 @@ func Saveflvf(){
 	l := p.Logf().New().Open("danmu.log").Base(-1, "saveflv")
 
 	api := F.New_api(c.Roomid)
-	for api.Get_live().Live_status == 1 {
+	retry := 10
+	for api.Get_live().Live_status == 1 && retry > 0 {
+		retry -= 1
 		c.Live = api.Live
 
 		saveflv.path = strconv.Itoa(c.Roomid) + "_" + time.Now().Format("2006_01_02_15:04:05.000")
@@ -259,7 +276,7 @@ func Saveflvf(){
 
 		close(done)
 		if time.Since(ST) < time.Duration(5) * time.Second {//刚开始直播断流
-			l.I("重试直播流")
+			l.I("重试直播流", retry)
 			os.Remove(saveflv.path+".flv")
 			p.Sys().Timeoutf(5)
 			continue

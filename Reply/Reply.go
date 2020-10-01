@@ -3,6 +3,7 @@ package reply
 import (
 	"fmt"
 	"bytes"
+	"strconv"
 	"compress/zlib"
 
 	p "github.com/qydysky/part"
@@ -69,6 +70,7 @@ func (replyF) anchor_lot_start(s string){
 		Assf(fmt.Sprintln("天选之人", award_name, "开始"))
 	}
 	fmt.Println(sh...)
+	Qtshow(Itos(sh))
 
 	msglog.Base(1, "房").Fileonly(true).I(sh...).Fileonly(false)
 }
@@ -97,6 +99,7 @@ func (replyF) anchor_lot_award(s string){
 		Assf(fmt.Sprintln("天选之人", award_name, "结束"))
 	}
 	fmt.Println(sh...)
+	Qtshow(Itos(sh))
 
 	msglog.Base(1, "房").Fileonly(true).I(sh...).Fileonly(false)
 }
@@ -145,6 +148,10 @@ func (replyF) user_toast_msg(s string){
 	fmt.Println(sh...)
 	fmt.Print("====\n\n")
 
+	Qtshow("\n====")
+	Qtshow(Itos(sh))
+	Qtshow("====\n")
+
 	msglog.Base(1, "礼").Fileonly(true).I(sh...).Fileonly(false)
 }
 
@@ -187,6 +194,11 @@ func (replyF) special_gift(s string){
 	fmt.Println("\n====")
 	fmt.Println(sh...)
 	fmt.Print("====\n\n")
+
+	Qtshow("\n====")
+	Qtshow(Itos(sh))
+	Qtshow("====\n")
+
 	msglog.Base(1, "礼").I(sh...)
 
 }
@@ -231,6 +243,8 @@ func (replyF) room_change(s string){
 	if area_name != nil {
 		sh = append(sh, area_name)
 	}
+	Qtshow(Itos(sh))
+
 	msglog.Base(1, "房").I(sh...)
 }
 
@@ -256,6 +270,7 @@ func (replyF) welcome_guard(s string){
 
 	fmt.Print(">>> ")
 	fmt.Println(sh...)
+	Qtshow(Itos(append([]interface{}{">>> "}, sh...)))
 
 	msglog.Base(1, "房").Fileonly(true).I(sh...).Fileonly(false)
 }
@@ -302,6 +317,10 @@ func (replyF) send_gift(s string){
 	fmt.Println(sh...)
 	fmt.Print("====\n\n")
 
+	Qtshow("\n====")
+	Qtshow(Itos(sh))
+	Qtshow("====\n")
+	
 	msglog.Base(1, "礼").Fileonly(true).I(sh...).Fileonly(false)
 }
 
@@ -314,6 +333,7 @@ func (replyF) room_block_msg(s string) {
 		msglog.E("uname", uname)
 		return
 	} else {
+		Qtshow(Itos([]interface{}{"用户", uname, "已被封禁"}))
 		fmt.Println("用户", uname, "已被封禁")
 		msglog.Base(1, "封").I("用户", uname, "已被封禁")
 	}
@@ -332,9 +352,11 @@ func (replyF) preparing(s string) {
 			Obsf(false)
 		}
 		if p.Sys().Type(roomid) == "float64" {
+			Qtshow(Itos([]interface{}{"房间", roomid, "下播了"}))
 			msglog.I("房间", int(roomid.(float64)), "下播了")
 			return
 		}
+		Qtshow(Itos([]interface{}{"房间", roomid, "下播了"}))
 		msglog.I("房间", roomid, "下播了")
 	}
 }
@@ -353,9 +375,11 @@ func (replyF) live(s string) {
 			go Saveflvf()
 		}
 		if p.Sys().Type(roomid) == "float64" {
+			Qtshow(Itos([]interface{}{"房间", roomid, "开播了"}))
 			msglog.I("房间", int(roomid.(float64)), "开播了")
 			return
 		}
+		Qtshow(Itos([]interface{}{"房间", roomid, "开播了"}))
 		msglog.I("房间", roomid, "开播了")
 	}
 }
@@ -389,6 +413,9 @@ func (replyF) super_chat_message(s string){
 	
 	{//额外
 		Assf(fmt.Sprintln(sh...))
+		Qtshow("\n====")
+		Qtshow(Itos(sh))
+		Qtshow("====\n")
 	}
 	msglog.Base(1, "礼").Fileonly(true).I(sh...).Fileonly(false)
 }
@@ -468,6 +495,7 @@ func (replyF) danmu(s string) {
 		{//附加功能 弹幕机 封禁 弹幕合并
 			Danmujif(msg)
 			if Autobanf(msg) {
+				Qtshow(Itos([]interface{}{"风险", auth, ":", msg}))
 				fmt.Println("风险", auth, ":", msg)
 				msglog.Base(1, "风险").I(auth, ":", msg)
 				return
@@ -502,7 +530,28 @@ func Msg_showdanmu(auth interface{}, msg string) {
 			return
 		} else {msg = _msg}
 		Assf(msg)//ass
+		Qtshow(msg)
 	}
+	
 	fmt.Println(msg)
 	if auth != nil {msglog.I(auth, ":", msg)}
+}
+
+func Qtshow(m string){
+	if !QtOn {return}
+	QtDanmuChan <- m
+}
+
+func Itos(i []interface{}) string {
+	r := ""
+	for _,v := range i {
+		switch v.(type) {
+		case string:r += v.(string)
+		case int:r += strconv.Itoa(v.(int))
+		case int64: r += strconv.Itoa(int(v.(int64)))
+		case float64: r+= strconv.Itoa(int(v.(float64)))
+		default:fmt.Println("unkonw type", v)
+		}
+	}
+	return r
 }

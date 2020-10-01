@@ -4,7 +4,7 @@ const (
 	LogLevel  = 1
 )
 
-//from source/player-loader-2.0.9.min.js
+//from source/player-loader-2.0.11.min.js
 const (
 	WS_OP_HEARTBEAT = 2
 	WS_OP_HEARTBEAT_REPLY = 3
@@ -26,7 +26,7 @@ const (
 	WS_AUTH_TOKEN_ERROR = -101
 )
 
-//from player-loader-2.0.9.min.js
+//from player-loader-2.0.11.min.js
 /*
 	customAuthParam
 */
@@ -34,6 +34,6 @@ const (
 	Uid = 0
 	Protover = 2
 	Platform = "web"
-	VERSION = "2.0.9"
+	VERSION = "2.0.11"
 	Type = 2
 )
