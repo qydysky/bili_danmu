@@ -2,6 +2,7 @@ package reply
 
 import (
 	"os"
+	"strconv"
 
 	c "github.com/qydysky/bili_danmu/CV"
 	"github.com/therecipe/qt/core"
@@ -65,7 +66,7 @@ func Qtdanmu() {
 		QtDanmuChan = make(chan string, 10)
 		QtOn = true
 		// var list []string
-		t.TextCursor().InsertText("房间：", strconv.Itoa(c.Roomid))
+		t.TextCursor().InsertText("房间：" + strconv.Itoa(c.Roomid))
 		for QtOn {
 			select{
 			case i :=<-QtDanmuChan:

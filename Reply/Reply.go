@@ -554,7 +554,7 @@ func Itos(i []interface{}) string {
 		case float64: r+= strconv.Itoa(int(v.(float64)))
 		default:fmt.Println("unkonw type", v)
 		}
-		i += " "
+		r += " "
 	}
 	return r
 }
