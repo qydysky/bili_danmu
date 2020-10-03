@@ -3,6 +3,7 @@ package reply
 import (
 	"os"
 
+	c "github.com/qydysky/bili_danmu/CV"
 	"github.com/therecipe/qt/core"
 	"github.com/therecipe/qt/gui"
 	"github.com/therecipe/qt/widgets"
@@ -15,9 +16,20 @@ var (
 	Qt_MaxMun int = 30//danmu max limit
 	Qt_LineHeight float64 = 90//percent
 	Qt_BlockMargin float64 = 7
+	Qt_FontSize int = 18
+	Qt_FontWeight int = 63
+	Qt_Background []int = []int{0, 0, 0, 140}//rgba
 )
 
 func Qtdanmu() {
+	if QtOn {return}
+	Qt_MaxMun = qtd.Qt_MaxMun
+	Qt_LineHeight = qtd.Qt_LineHeight
+	Qt_BlockMargin = qtd.Qt_BlockMargin
+	Qt_FontSize = qtd.Qt_FontSize
+	Qt_FontWeight = qtd.Qt_FontWeight
+	Qt_Background = qtd.Qt_Background
+
 	widgets.NewQApplication(len(os.Args), os.Args)
 
 	//主窗口
@@ -53,7 +65,7 @@ func Qtdanmu() {
 		QtDanmuChan = make(chan string, 10)
 		QtOn = true
 		// var list []string
-		t.TextCursor().InsertText("==开始==")
+		t.TextCursor().InsertText("房间：", strconv.Itoa(c.Roomid))
 		for QtOn {
 			select{
 			case i :=<-QtDanmuChan:
@@ -69,7 +81,8 @@ func new(pare *widgets.QWidget, layouts *widgets.QGridLayout) (t *widgets.QTextE
 	t = widgets.NewQTextEdit(pare)
 	{
 		Qp := gui.NewQPalette()
-		Qp.SetColor2(gui.QPalette__Base, gui.NewQColor3(0, 0, 0, 140));
+		q := Qt_Background
+		Qp.SetColor2(gui.QPalette__Base, gui.NewQColor3(q[0], q[1], q[2], q[3]));
 		t.SetPalette(Qp)
 	}
 	t.SetVerticalScrollBarPolicy(core.Qt__ScrollBarAlwaysOff)
@@ -78,13 +91,14 @@ func new(pare *widgets.QWidget, layouts *widgets.QGridLayout) (t *widgets.QTextE
 	// t.SetMaximumBlockCount(100)
 	t.SetContentsMargins(0, 0, 0, 0)
 	// t.SetCenterOnScroll(false)
+	// t.SetTextInteractionFlags(core.Qt__TextEditable)
 	t.SetReadOnly(true)
 	{
 		t.SetTextBackgroundColor(gui.NewQColor3(0, 0, 0, 0))
 
 		f := gui.NewQFont()
-		f.SetPixelSize(18)
-		f.SetWeight(63)
+		f.SetPixelSize(Qt_FontSize)
+		f.SetWeight(Qt_FontWeight)
 		t.SetCurrentFont(f)
 	}
 	{
@@ -101,6 +115,7 @@ func new(pare *widgets.QWidget, layouts *widgets.QGridLayout) (t *widgets.QTextE
 
 func text(s string, pare *widgets.QTextEdit) {
 	c := pare.TextCursor()
+	c.MovePosition(gui.QTextCursor__End, gui.QTextCursor__MoveAnchor, 1)
 	c.InsertBlock()
 	c.BeginEditBlock()
 	c.InsertText(s)
@@ -115,6 +130,7 @@ func text(s string, pare *widgets.QTextEdit) {
 		c.MovePosition(gui.QTextCursor__End, gui.QTextCursor__MoveAnchor, 1)
 	}
 	// t := pare.ToPlainText()
+	pare.SetTextCursor(c)
 
 	pare.EnsureCursorVisible()
 	// pare.SetPlainText(s + "\n" + t)

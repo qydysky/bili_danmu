@@ -113,10 +113,33 @@ func selfcross2(a []string) (float32, string) {
 //Qtd 弹幕Qt窗口
 type Qtd struct {
 	Inuse bool
+	Qt_MaxMun int 
+	Qt_LineHeight float64 
+	Qt_BlockMargin float64 
+	Qt_FontSize int 
+	Qt_FontWeight int 
+	Qt_Background []int 
 }
 
 var qtd = Qtd {
 	Inuse:IsOn("Qtd"),
+	Qt_MaxMun:30,//danmu max limit
+	Qt_LineHeight:90,//percent
+	Qt_BlockMargin:7,
+	Qt_FontSize:16,//pixel
+	Qt_FontWeight:57,
+	/*
+	QFont__Thin       QFont__Weight = QFont__Weight(0)
+	QFont__ExtraLight QFont__Weight = QFont__Weight(12)
+	QFont__Light      QFont__Weight = QFont__Weight(25)
+	QFont__Normal     QFont__Weight = QFont__Weight(50)
+	QFont__Medium     QFont__Weight = QFont__Weight(57)
+	QFont__DemiBold   QFont__Weight = QFont__Weight(63)
+	QFont__Bold       QFont__Weight = QFont__Weight(75)
+	QFont__ExtraBold  QFont__Weight = QFont__Weight(81)
+	QFont__Black      QFont__Weight = QFont__Weight(87)
+	*/
+	Qt_Background:[]int{0, 0, 0, 140},//rgba
 }
 
 func Qtdf(){
@@ -288,13 +311,15 @@ func Saveflvf(){
 		if p.Checkfile().IsExist(saveflv.path+".flv"){
 			l.I("转码中")
 			p.Exec().Run(false, "ffmpeg", "-i", saveflv.path+".flv", "-c", "copy", saveflv.path+".mkv")
-			os.Remove(saveflv.path+".flv")
+			// os.Remove(saveflv.path+".flv")
 		}
 
 		l.I("转码结束")
 		saveflv.wait.Done()
 		saveflv.cancel.Done()
 	}
+	saveflv.wait.Done()
+	saveflv.cancel.Done()
 }
 
 //已func形式调用，将会停止保存直播流

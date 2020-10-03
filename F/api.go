@@ -53,6 +53,11 @@ func (i *api) Get_info() (o *api) {
 	} else {
 		o.Uid = i
 	}
+	//VERSION
+	if e := r.S(`player-loader-`, `.min`, 0, 0).Err;e == nil {
+		c.VERSION = r.RS
+	}
+	apilog.W("api version", c.VERSION)
 	//roomid
 	if tmp := r.S(`"room_id":`, `,`, 0, 0);tmp.Err != nil {
 		// apilog.E("room_id", tmp.Err)
@@ -136,6 +141,10 @@ func (i *api) Get_live() (o *api) {
 				return
 			}
 		}
+		if e := r.S(`player-loader-`, `.min`, 0, 0).Err;e == nil {
+			c.VERSION = r.RS
+		}
+		apilog.W("api version", c.VERSION)
 	}
 	{//api获取
 		req := p.Req()

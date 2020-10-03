@@ -401,20 +401,22 @@ func (replyF) super_chat_message(s string){
 	}
 	fmt.Println("\n====")
 	fmt.Println(sh...)
+	Qtshow("\n====")
+	Qtshow(Itos(sh))
 	if message != nil && message.(string) != ""{
 		fmt.Println(message)
+		Qtshow(message.(string))
 		sh = append(sh, message)
 	}
 	if message_jpn != nil && message.(string) != message_jpn.(string) && message_jpn.(string) != "" {
 		fmt.Println(message_jpn)
+		Qtshow(message_jpn.(string))
 		sh = append(sh, message_jpn)
 	}
 	fmt.Print("====\n\n")
 	
 	{//额外
 		Assf(fmt.Sprintln(sh...))
-		Qtshow("\n====")
-		Qtshow(Itos(sh))
 		Qtshow("====\n")
 	}
 	msglog.Base(1, "礼").Fileonly(true).I(sh...).Fileonly(false)
@@ -552,6 +554,7 @@ func Itos(i []interface{}) string {
 		case float64: r+= strconv.Itoa(int(v.(float64)))
 		default:fmt.Println("unkonw type", v)
 		}
+		i += " "
 	}
 	return r
 }

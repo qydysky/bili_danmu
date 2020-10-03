@@ -5,3 +5,11 @@ var (
 	Roomid int
 	Cookie string
 )
+
+//from player-loader-2.0.11.min.js
+/*
+	customAuthParam
+*/
+var (
+	VERSION = "2.0.11"
+)

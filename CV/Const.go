@@ -34,6 +34,5 @@ const (
 	Uid = 0
 	Protover = 2
 	Platform = "web"
-	VERSION = "2.0.11"
 	Type = 2
 )
