@@ -12,6 +12,10 @@ var msglog = p.Logf().New().Base(-1, "Msg.go").Open("danmu.log").Level(1)
 
 //Msg类型数据处理方法map
 var Msg_map = map[string]func(replyF, string) {
+	"MATCH_ROOM_CONF":nil,//赛事房间配置
+	"HOT_ROOM_NOTIFY":nil,//热点房间
+	"MATCH_TEAM_GIFT_RANK":nil,//赛事人气比拼
+	"ACTIVITY_MATCH_GIFT":nil,//赛事礼物
 	"PK_BATTLE_PRE":nil,//人气pk
 	"PK_BATTLE_START":nil,//人气pk
 	"PK_BATTLE_PROCESS":nil,//人气pk

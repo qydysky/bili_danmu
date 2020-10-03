@@ -1,0 +1,82 @@
+{
+    "cmd": "MATCH_ROOM_CONF",
+    "data": {
+        "type": "3",
+        "close_button": "0",
+        "force_push": "0",
+        "button_name": "",
+        "background": "https:\/\/i0.hdslb.com\/bfs\/live\/e766a84d78e01cc82d051351c55ac89b5dc2e6fe.jpg",
+        "conf_id": "7ac321b52b121919e075c10b103256fa",
+        "conf_name": "S10 \u4e3b\u623f\u95f4",
+        "rooms_info": [
+            {
+                "room_id": "7734200",
+                "room_name": "\u4e3b\u623f\u95f4",
+                "live_status": 1
+            },
+            {
+                "room_id": "8016907",
+                "room_name": "\u9ad8\u80fd\u89c2\u8d5b\u56e2",
+                "live_status": 1
+            },
+            {
+                "room_id": "22532177",
+                "room_name": "TES.\u4e0a\u8def",
+                "live_status": 1
+            },
+            {
+                "room_id": "22532179",
+                "room_name": "TES.\u6253\u91ce",
+                "live_status": 1
+            },
+            {
+                "room_id": "22532181",
+                "room_name": "TES.\u4e2d\u8def",
+                "live_status": 1
+            },
+            {
+                "room_id": "22532182",
+                "room_name": "TES.\u4e0b\u8def",
+                "live_status": 1
+            },
+            {
+                "room_id": "22532185",
+                "room_name": "TES.\u8f85\u52a9",
+                "live_status": 1
+            },
+            {
+                "room_id": "22532143",
+                "room_name": "FLY.\u4e0a\u8def",
+                "live_status": 1
+            },
+            {
+                "room_id": "22532159",
+                "room_name": "FLY.\u6253\u91ce",
+                "live_status": 1
+            },
+            {
+                "room_id": "22532163",
+                "room_name": "FLY.\u4e2d\u8def",
+                "live_status": 1
+            },
+            {
+                "room_id": "22532166",
+                "room_name": "FLY.\u4e0b\u8def",
+                "live_status": 1
+            },
+            {
+                "room_id": "22532173",
+                "room_name": "FLY.\u8f85\u52a9",
+                "live_status": 1
+            }
+        ],
+        "season_info": [],
+        "button_link": "",
+        "rooms_color": {
+            "font_color": "#ffffff",
+            "background_color": "#000000",
+            "border_color": "#ffffff"
+        },
+        "state": 0
+    }
+}

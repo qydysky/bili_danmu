@@ -1,0 +1,24 @@
+{
+    "cmd": "ACTIVITY_MATCH_GIFT",
+    "data": {
+        "action": "match_ing",
+        "status": 1,
+        "detail": {
+            "home": {
+                "ratio": "0.41",
+                "team_id": 664,
+                "score": 1000
+            },
+            "visit": {
+                "ratio": "99.59",
+                "team_id": 663,
+                "score": 240000
+            },
+            "match_id": 2956
+        },
+        "match_tab": {
+            "type": "match",
+            "desc": "\u5bf9\u6297"
+        }
+    }
+}

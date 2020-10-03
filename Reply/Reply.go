@@ -125,7 +125,10 @@ func (replyF) user_toast_msg(s string){
 			sh = append(sh, "购买了")
 		case 2:
 			sh = append(sh, "续费了")
+		case 3:
+			sh = append(sh, "自动续费了")
 		default:
+			msglog.W(s)
 			sh = append(sh, op_type)
 		}
 	}

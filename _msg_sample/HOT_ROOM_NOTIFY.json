@@ -1,0 +1,8 @@
+{
+    "cmd": "HOT_ROOM_NOTIFY",
+    "data": {
+        "ttl": 300,
+        "exit_no_refresh": 1,
+        "random_delay_req": []
+    }
+}

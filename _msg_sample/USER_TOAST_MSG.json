@@ -44,5 +44,28 @@
             "payflow_id": "2009252032523462163948355",
             "svga_block": 0
         }
+    },
+    {
+        "cmd": "USER_TOAST_MSG",
+        "data": {
+            "op_type": 3,
+            "uid": 34426186,
+            "username": "超心塞的信仰",
+            "guard_level": 3,
+            "is_show": 0,
+            "anchor_show": true,
+            "user_show": true,
+            "toast_msg": "\u003c%超心塞的信仰%\u003e 自动续费了舰长",
+            "num": 1,
+            "price": 138000,
+            "role_name": "舰长",
+            "unit": "月",
+            "start_time": 1601723267,
+            "end_time": 1601723267,
+            "target_guard_count": 16,
+            "color": "#00D1F1",
+            "payflow_id": "2010031907365752161865485",
+            "svga_block": 0
+        }
     }
 ]

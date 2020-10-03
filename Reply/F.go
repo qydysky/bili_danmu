@@ -24,17 +24,13 @@ import (
 var AllF = map[string]bool{
 	"Qtd":true,//Qt弹幕窗口
 	"Saveflv":true,//保存直播流(默认高清，有cookie默认蓝光)
-	/*
-		Saveflv需要外部组件
-		ffmpeg http://ffmpeg.org/download.html
-	*/
+	"Ass":true,//Ass弹幕生成，由于时间对应关系,仅开启流保存时生效
 	"Obs":false,//obs组件(仅录播)
 	/*
 		Obs需要外部组件:
 		obs https://obsproject.com/download
 		obs-websocket https://github.com/Palakis/obs-websocket/releases
 	*/
-	"Ass":true,//Ass弹幕生成，由于时间对应关系,仅开启流保存时生效
 	"Autoban":true,//自动封禁(仅提示，未完成)
 	"Jiezou":true,//带节奏预警，提示弹幕礼仪
 	"Danmuji":true,//反射型弹幕机，回应弹幕
@@ -251,9 +247,7 @@ func Saveflvf(){
 	l := p.Logf().New().Open("danmu.log").Base(-1, "saveflv")
 
 	api := F.New_api(c.Roomid)
-	retry := 10
-	for api.Get_live().Live_status == 1 && retry > 0 {
-		retry -= 1
+	for api.Get_live().Live_status == 1 {
 		c.Live = api.Live
 
 		saveflv.path = strconv.Itoa(c.Roomid) + "_" + time.Now().Format("2006_01_02_15:04:05.000")
@@ -275,18 +269,27 @@ func Saveflvf(){
 			} else {
 				Cookie = Cookie[:i] + Cookie[i + d + 1:]
 			}
-		}	
+		}
 
-		ST := time.Now()
-		done := make(chan struct{})
-		go func(){
-			select{
-			case <-time.After(time.Duration(5) * time.Second):
-				l.I("直播流获取")
-				Ass_f(saveflv.path, ST)//ass
-			case <-done:;
+		{//重试
+			retry := 20
+			for retry > 0 && rr.ResponseCode != 200 {
+				if e := rr.Reqf(p.Rval{
+					Url:c.Live,
+					Retry:10,
+					SleepTime:5,
+					Cookie:Cookie,
+					Timeout:-1,
+					JustResponseCode:true,
+				}); e != nil{l.W(e)}
+				p.Sys().Timeoutf(5)
+				retry -= 1
 			}
-		}()
+			if retry == 0 {continue}
+		}
+
+		Ass_f(saveflv.path, time.Now())
+		l.I("直播流保存到", saveflv.path)
 
 		if e := rr.Reqf(p.Rval{
 			Url:c.Live,
@@ -295,26 +298,22 @@ func Saveflvf(){
 			Cookie:Cookie,
 			SaveToPath:saveflv.path + ".flv",
 			Timeout:-1,
-		}); e != nil{l.E(e)}
+		}); e != nil{l.W(e)}
 
-		close(done)
-		if time.Since(ST) < time.Duration(5) * time.Second {//刚开始直播断流
-			l.I("重试直播流", retry)
-			os.Remove(saveflv.path+".flv")
-			p.Sys().Timeoutf(5)
-			continue
-		}
-		l.I("直播流保存到", saveflv.path)
 		l.I("结束")
 		Ass_f("", time.Now())//ass
 
-		if p.Checkfile().IsExist(saveflv.path+".flv"){
-			l.I("转码中")
-			p.Exec().Run(false, "ffmpeg", "-i", saveflv.path+".flv", "-c", "copy", saveflv.path+".mkv")
-			// os.Remove(saveflv.path+".flv")
-		}
+		/*
+			Saveflv需要外部组件
+			ffmpeg http://ffmpeg.org/download.html
+		*/
+		// if p.Checkfile().IsExist(saveflv.path+".flv"){
+		// 	l.I("转码中")
+		// 	p.Exec().Run(false, "ffmpeg", "-i", saveflv.path+".flv", "-c", "copy", saveflv.path+".mkv")
+		// 	if p.Checkfile().IsExist(saveflv.path+".mkv"){os.Remove(saveflv.path+".flv")}
+		// }
 
-		l.I("转码结束")
+		// l.I("转码结束")
 		saveflv.wait.Done()
 		saveflv.cancel.Done()
 	}
@@ -461,7 +460,7 @@ func Autobanf(s string) bool {
 		// res = append(res, pt)
 
 		pt1 := cross(s, autoban.buf);
-		if pt + pt1 > 0.5 {return false}//历史重复高去除
+		if pt + pt1 > 0.3 {return false}//历史重复高去除
 		res = append(res, pt, pt1)
 	}
 	{
