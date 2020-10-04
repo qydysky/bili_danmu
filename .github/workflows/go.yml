@@ -47,7 +47,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         # The URL for uploading assets to the release
-        upload_url: ${{ jobs.Release_Drafter.steps.create_release.outputs.upload_url }}
+        upload_url: ${{ job.Release_Drafter.steps.create_release.outputs.upload_url }}
         # The path to the asset you want to upload
         asset_path: ./release_ubuntu.zip
         # The name of the asset you want to upload
@@ -82,7 +82,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         # The URL for uploading assets to the release
-        upload_url: ${{ jobs.Release_Drafter.steps.create_release.outputs.upload_url }}
+        upload_url: ${{ job.Release_Drafter.steps.create_release.outputs.upload_url }}
         # The path to the asset you want to upload
         asset_path: ./release_windows.zip
         # The name of the asset you want to upload
