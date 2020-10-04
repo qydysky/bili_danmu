@@ -1,10 +1,13 @@
 name: Go
 
 on:
-  release:
-    types: [released,prereleased]
-    branches:
-    - master
+  push:
+    # Sequence of patterns matched against refs/heads
+    branches:    
+      # Push events on main branch
+      - main
+    tags:        
+      - v*
 
 jobs:
 
@@ -39,6 +42,17 @@ jobs:
     - name: zip
       run: zip -q -r amd64.zip *
       
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1.1.4
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        draft: false
+        prerelease: true
+    
     - name: Upload a Release Asset
       uses: actions/upload-release-asset@v1.0.2
       env:
