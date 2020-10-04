@@ -33,7 +33,7 @@ jobs:
       run: cd demo
       
     - name: Build
-      run: go build -v .
+      run: go build -v -o demo.run
       
     - name: zip
       run: zip -q -r amd64.zip *
