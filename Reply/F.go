@@ -282,10 +282,15 @@ func Saveflvf(){
 					Timeout:-1,
 					JustResponseCode:true,
 				}); e != nil{l.W(e)}
-				p.Sys().Timeoutf(5)
+				p.Sys().Timeoutf(2)
 				retry -= 1
 			}
-			if retry == 0 {continue}
+			if retry == 0 {
+				p.Sys().Timeoutf(5)
+				saveflv.wait.Done()
+				saveflv.cancel.Done()
+				continue
+			}
 		}
 
 		Ass_f(saveflv.path, time.Now())

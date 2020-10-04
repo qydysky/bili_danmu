@@ -11,3 +11,4 @@ demo/*.dtmp
 demo/*.ass
 demo/*.mkv
 demo/qtbox
+demo/main

@@ -67,6 +67,7 @@ func Qtdanmu() {
 		QtOn = true
 		// var list []string
 		t.TextCursor().InsertText("房间：" + strconv.Itoa(c.Roomid))
+		text(c.Title, t)
 		for QtOn {
 			select{
 			case i :=<-QtDanmuChan:

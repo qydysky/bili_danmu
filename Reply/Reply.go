@@ -242,6 +242,7 @@ func (replyF) room_change(s string){
 
 	if title != nil {
 		sh = append(sh, title)
+		c.Title = title.(string)
 	}
 	if area_name != nil {
 		sh = append(sh, area_name)

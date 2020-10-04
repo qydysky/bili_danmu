@@ -62,6 +62,7 @@ func Demo() {
 				ws.SendChan <- F.HelloGen(api.Roomid, api.Token)
 				if F.HelloChe(<- ws.RecvChan) {
 					danmulog.I("已连接到房间", room)
+					danmulog.I(c.Title)
 
 					//30s获取一次人气
 					go func(){

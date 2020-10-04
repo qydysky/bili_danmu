@@ -53,6 +53,10 @@ func (i *api) Get_info() (o *api) {
 	} else {
 		o.Uid = i
 	}
+	//Title
+	if e := r.S(`"title":"`, `",`, 0, 0).Err;e == nil {
+		c.Title = r.RS
+	}
 	//VERSION
 	if e := r.S(`player-loader-`, `.min`, 0, 0).Err;e == nil {
 		c.VERSION = r.RS

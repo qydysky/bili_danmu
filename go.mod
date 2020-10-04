@@ -6,7 +6,7 @@ require (
 	github.com/christopher-dG/go-obs-websocket v0.0.0-20200720193653-c4fed10356a5
 	github.com/gorilla/websocket v1.4.2
 	github.com/klauspost/compress v1.11.0 // indirect
-	github.com/qydysky/part v0.0.0-20200917071511-9f829642b501
+	github.com/qydysky/part v0.0.4
 	github.com/shirou/gopsutil v2.20.8+incompatible // indirect
 	golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a // indirect
 	golang.org/x/net v0.0.0-20200904194848-62affa334b73 // indirect
