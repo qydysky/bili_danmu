@@ -117,6 +117,7 @@ func new(pare *widgets.QWidget, layouts *widgets.QGridLayout) (t *widgets.QTextE
 
 func text(s string, pare *widgets.QTextEdit) {
 	c := pare.TextCursor()
+	if c.HasSelection() {return}//用户选择，暂停
 	c.MovePosition(gui.QTextCursor__End, gui.QTextCursor__MoveAnchor, 1)
 	c.InsertBlock()
 	c.BeginEditBlock()
