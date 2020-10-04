@@ -42,16 +42,13 @@ jobs:
     - name: zip
       run: zip -q -r amd64.zip *
       
-    - name: Create Release
+    - name: Release Drafter
+      # You may pin to the exact commit or the version.
+      # uses: release-drafter/release-drafter@06d4616a80cd7c09ea3cf12214165ad6c1859e67
       id: create_release
-      uses: actions/create-release@v1.1.4
+      uses: release-drafter/release-drafter@v5.11.0
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ github.ref }}
-        release_name: Release ${{ github.ref }}
-        draft: false
-        prerelease: true
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     
     - name: Upload a Release Asset
       uses: actions/upload-release-asset@v1.0.2
