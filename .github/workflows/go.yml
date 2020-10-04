@@ -24,10 +24,8 @@ jobs:
     - name: Build
       run: go build -v -o demo/demo.run -i demo/main.go
       
-    - name: Zip Release
-      uses: TheDoctor0/zip-release@0.4.1
-      with:
-        filename: 'release_ubuntu.zip'
+    - name: zip
+      run: zip -q -r release_ubuntu.zip *
       
     - name: Release Drafter
       # You may pin to the exact commit or the version.
@@ -68,10 +66,8 @@ jobs:
     - name: Build
       run: go build -v -o demo/demo.run -i demo/main.go
       
-    - name: Zip Release
-      uses: TheDoctor0/zip-release@0.4.1
-      with:
-        filename: 'release_windows.zip'
+    - name: zip
+      run: .\7za.exe x .\release_windows.zip
       
     - name: Release Drafter
       # You may pin to the exact commit or the version.
