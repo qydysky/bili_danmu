@@ -83,6 +83,7 @@ var AllF = map[string]bool{
 ```
 
 ### demo 
+- 已配置了[go环境](https://golang.google.cn/dl/)
 ```
 git clone https://github.com/qydysky/bili_danmu.git
 cd demo
@@ -90,6 +91,14 @@ go run main.go
 或
 go run main.go -r=此处填房间ID
 ```
+
+- 未配置[go环境](https://golang.google.cn/dl/)
+
+前往[releases](https://github.com/qydysky/bili_danmu/releases)页下载对应系统版本。解压后进入`demo`目录(文件夹)，运行`demo.run`(`demo.exe`)。
+
+**部分功能需要在`demo`目录(文件夹)下放置`cookie.txt`才可用**
+
+### 效果展示
 以下内容可能过时，以实际运行为准
 - 命令窗口(以下为截取)
 ```
