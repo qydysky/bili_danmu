@@ -18,8 +18,16 @@ jobs:
       id: create_release
       uses: release-drafter/release-drafter@v5.11.0
       env:
-          Release_Url: ${{ steps.create_release.outputs.upload_url }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: set upload_url
+      id: set_upload_url
+      uses: noobly314/share-data@v1
+      with:
+        share-id: release_url
+        mode: set
+        key: url
+        value: ${{ steps.create_release.outputs.upload_url }}
 
   ubuntu_build:
     name: ubuntu_build
@@ -41,14 +49,22 @@ jobs:
       
     - name: zip
       run: zip -q -r release_ubuntu.zip *
-      
+    
+    - name: get upload_url
+      id: get_upload_url
+      uses: noobly314/share-data@v1
+      with:
+        share-id: release_url
+        mode: get
+        key: url
+
     - name: Upload a Release Asset
       uses: actions/upload-release-asset@v1.0.2
       env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         # The URL for uploading assets to the release
-        upload_url: ${{ job.Release_Drafter.steps.create_release.env.Release_Url }}
+        upload_url: ${{ steps.get_upload_url.outputs.data }}
         # The path to the asset you want to upload
         asset_path: ./release_ubuntu.zip
         # The name of the asset you want to upload
@@ -76,14 +92,22 @@ jobs:
       
     - name: zip
       run: .\7za.exe a -r .\release_windows.zip ./
-    
+
+    - name: get upload_url
+      id: get_upload_url
+      uses: noobly314/share-data@v1
+      with:
+        share-id: release_url
+        mode: get
+        key: url
+
     - name: Upload a Release Asset
       uses: actions/upload-release-asset@v1.0.2
       env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         # The URL for uploading assets to the release
-        upload_url: ${{ job.Release_Drafter.steps.create_release.env.Release_Url }}
+        upload_url: ${{ steps.get_upload_url.outputs.data }}
         # The path to the asset you want to upload
         asset_path: ./release_windows.zip
         # The name of the asset you want to upload
