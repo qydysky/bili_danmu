@@ -7,8 +7,22 @@ on:
 
 jobs:
 
+  Release_Drafter:
+    name: Release_Drafter
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Release Drafter
+      # You may pin to the exact commit or the version.
+      # uses: release-drafter/release-drafter@06d4616a80cd7c09ea3cf12214165ad6c1859e67
+      id: create_release
+      uses: release-drafter/release-drafter@v5.11.0
+      env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   ubuntu_build:
     name: ubuntu_build
+    needs: Release_Drafter
     runs-on: ubuntu-latest
     steps:
 
@@ -27,21 +41,13 @@ jobs:
     - name: zip
       run: zip -q -r release_ubuntu.zip *
       
-    - name: Release Drafter
-      # You may pin to the exact commit or the version.
-      # uses: release-drafter/release-drafter@06d4616a80cd7c09ea3cf12214165ad6c1859e67
-      id: create_release
-      uses: release-drafter/release-drafter@v5.11.0
-      env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    
     - name: Upload a Release Asset
       uses: actions/upload-release-asset@v1.0.2
       env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         # The URL for uploading assets to the release
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        upload_url: ${{ jobs.Release_Drafter.steps.create_release.outputs.upload_url }}
         # The path to the asset you want to upload
         asset_path: ./release_ubuntu.zip
         # The name of the asset you want to upload
@@ -51,6 +57,7 @@ jobs:
 
   windows_build:
     name: windows_build
+    needs: Release_Drafter
     runs-on: windows-latest
     steps:
 
@@ -68,14 +75,6 @@ jobs:
       
     - name: zip
       run: .\7za.exe a -r .\release_windows.zip ./
-      
-    - name: Release Drafter
-      # You may pin to the exact commit or the version.
-      # uses: release-drafter/release-drafter@06d4616a80cd7c09ea3cf12214165ad6c1859e67
-      id: create_release
-      uses: release-drafter/release-drafter@v5.11.0
-      env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     
     - name: Upload a Release Asset
       uses: actions/upload-release-asset@v1.0.2
@@ -83,7 +82,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         # The URL for uploading assets to the release
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        upload_url: ${{ jobs.Release_Drafter.steps.create_release.outputs.upload_url }}
         # The path to the asset you want to upload
         asset_path: ./release_windows.zip
         # The name of the asset you want to upload
