@@ -1,10 +1,9 @@
 name: Go
 
 on:
-  release:
-    types: [released,prereleased]
-    branches:
-    - master
+  push:
+    paths:
+    - 'VERSION'
 
 jobs:
 
