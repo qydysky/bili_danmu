@@ -7,8 +7,31 @@ on:
 
 jobs:
 
+  Release_Drafter:
+    name: Release_Drafter
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Release Drafter
+      # You may pin to the exact commit or the version.
+      # uses: release-drafter/release-drafter@06d4616a80cd7c09ea3cf12214165ad6c1859e67
+      id: create_release
+      uses: release-drafter/release-drafter@v5.11.0
+      env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: set upload_url
+      id: set_upload_url
+      uses: noobly314/share-data@v1
+      with:
+        share-id: release_url
+        mode: set
+        key: url
+        value: ${{ steps.create_release.outputs.upload_url }}
+
   ubuntu_build:
-    name: Build
+    name: ubuntu_build
+    needs: Release_Drafter
     runs-on: ubuntu-latest
     steps:
 
@@ -24,26 +47,24 @@ jobs:
     - name: Build
       run: go build -v -o demo/demo.run -i demo/main.go
       
-    - name: Zip Release
-      uses: TheDoctor0/zip-release@0.4.1
-      with:
-        filename: 'release_ubuntu.zip'
-      
-    - name: Release Drafter
-      # You may pin to the exact commit or the version.
-      # uses: release-drafter/release-drafter@06d4616a80cd7c09ea3cf12214165ad6c1859e67
-      id: create_release
-      uses: release-drafter/release-drafter@v5.11.0
-      env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: zip
+      run: zip -q -r release_ubuntu.zip *
     
+    - name: get upload_url
+      id: get_upload_url
+      uses: noobly314/share-data@v1
+      with:
+        share-id: release_url
+        mode: get
+        key: url
+
     - name: Upload a Release Asset
       uses: actions/upload-release-asset@v1.0.2
       env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         # The URL for uploading assets to the release
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        upload_url: ${{ steps.get_upload_url.outputs.data }}
         # The path to the asset you want to upload
         asset_path: ./release_ubuntu.zip
         # The name of the asset you want to upload
@@ -52,7 +73,8 @@ jobs:
         asset_content_type: application/zip
 
   windows_build:
-    name: Build
+    name: windows_build
+    needs: Release_Drafter
     runs-on: windows-latest
     steps:
 
@@ -68,26 +90,24 @@ jobs:
     - name: Build
       run: go build -v -o demo/demo.run -i demo/main.go
       
-    - name: Zip Release
-      uses: TheDoctor0/zip-release@0.4.1
+    - name: zip
+      run: .\7za.exe a -r .\release_windows.zip ./
+
+    - name: get upload_url
+      id: get_upload_url
+      uses: noobly314/share-data@v1
       with:
-        filename: 'release_windows.zip'
-      
-    - name: Release Drafter
-      # You may pin to the exact commit or the version.
-      # uses: release-drafter/release-drafter@06d4616a80cd7c09ea3cf12214165ad6c1859e67
-      id: create_release
-      uses: release-drafter/release-drafter@v5.11.0
-      env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    
+        share-id: release_url
+        mode: get
+        key: url
+
     - name: Upload a Release Asset
       uses: actions/upload-release-asset@v1.0.2
       env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         # The URL for uploading assets to the release
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        upload_url: ${{ steps.get_upload_url.outputs.data }}
         # The path to the asset you want to upload
         asset_path: ./release_windows.zip
         # The name of the asset you want to upload
