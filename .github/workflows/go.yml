@@ -29,11 +29,8 @@ jobs:
             dep ensure
         fi
         
-    - name: cd demo
-      run: cd demo
-      
     - name: Build
-      run: go build -v -o demo.run
+      run: go build -v -o demo/demo.run -i demo/main.go
       
     - name: zip
       run: zip -q -r amd64.zip *

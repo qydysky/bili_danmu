@@ -8,6 +8,7 @@ require (
 	github.com/klauspost/compress v1.11.0 // indirect
 	github.com/qydysky/part v0.0.4
 	github.com/shirou/gopsutil v2.20.8+incompatible // indirect
+	github.com/therecipe/qt v0.0.0-20200904063919-c0c124a5770d
 	golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a // indirect
 	golang.org/x/net v0.0.0-20200904194848-62affa334b73 // indirect
 	golang.org/x/sys v0.0.0-20200917061948-648f2a039071 // indirect
