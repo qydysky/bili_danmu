@@ -294,7 +294,7 @@ func Saveflvf(){
 		}
 
 		Ass_f(saveflv.path, time.Now())
-		l.I("直播流保存到", saveflv.path)
+		l.I("保存到", saveflv.path + ".flv")
 
 		if e := rr.Reqf(p.Rval{
 			Url:c.Live,
