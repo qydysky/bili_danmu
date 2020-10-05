@@ -3,6 +3,7 @@ package reply
 import (
 	"os"
 	"strconv"
+	"os/signal"
 
 	c "github.com/qydysky/bili_danmu/CV"
 	"github.com/therecipe/qt/core"
@@ -31,7 +32,7 @@ func Qtdanmu() {
 	Qt_FontWeight = qtd.Qt_FontWeight
 	Qt_Background = qtd.Qt_Background
 
-	widgets.NewQApplication(len(os.Args), os.Args)
+	wq := widgets.NewQApplication(len(os.Args), os.Args)
 
 	//主窗口
 	mainWindow := widgets.NewQMainWindow(nil, 0)
@@ -61,7 +62,7 @@ func Qtdanmu() {
 	centralWidget.SetLayout(vbox)
 	mainWindow.SetCentralWidget(centralWidget)
 	mainWindow.ShowNormalDefault()
-
+	wq.SetActiveWindow(mainWindow)
 	go func(){
 		QtDanmuChan = make(chan string, 10)
 		QtOn = true
@@ -75,7 +76,16 @@ func Qtdanmu() {
 			}
 		}
 	}()
-	widgets.QApplication_Exec()
+
+	//ctrl+c退出
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, os.Interrupt)
+	go func(w *widgets.QApplication){
+		<-interrupt
+		close(interrupt)
+		w.CloseAllWindows()
+	}(wq)
+	wq.Exec()
 	QtOn = false
 }
 
