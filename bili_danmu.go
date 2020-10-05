@@ -113,7 +113,7 @@ func Demo() {
 			p.Sys().Timeoutf(1)
 		}
 
-		{//附加功能 直播流转码
+		{//附加功能 直播流
 			reply.Saveflv_wait()
 		}
 		danmulog.I("结束退出")

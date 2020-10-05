@@ -351,9 +351,10 @@ func (replyF) preparing(s string) {
 		msglog.E("roomid", roomid)
 		return
 	} else {
-		{//附加功能 obs结束
+		{//附加功能 obs结束 saveflv结束
 			Obs_R(false)
 			Obsf(false)
+			Saveflv_wait()
 		}
 		if p.Sys().Type(roomid) == "float64" {
 			Qtshow(Itos([]interface{}{"房间", roomid, "下播了"}))
