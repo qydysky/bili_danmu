@@ -1,4 +1,4 @@
-package constf
+package cv
 
 const (
 	LogLevel  = 1

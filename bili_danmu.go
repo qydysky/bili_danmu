@@ -15,7 +15,7 @@ import (
 
 var danmulog = p.Logf().New().Open("danmu.log").Base(-1, "bili_danmu.go").Level(c.LogLevel)
 
-func Demo() {
+func Demo(roomid ...int) {
 
 	danmulog.Base(-1, "测试")
 	defer danmulog.Base(0)
@@ -30,6 +30,10 @@ func Demo() {
 		flag.Parse()
 	
 		var room = *groomid
+		if room == 0 && len(roomid) != 0 {
+			room = roomid[0]
+		}
+
 		fmt.Printf("输入房间号: ")
 		if room == 0 {
 			_, err := fmt.Scanln(&room)
@@ -113,7 +117,8 @@ func Demo() {
 			p.Sys().Timeoutf(1)
 		}
 
-		{//附加功能 直播流转码
+		close(interrupt)
+		{//附加功能 直播流
 			reply.Saveflv_wait()
 		}
 		danmulog.I("结束退出")
