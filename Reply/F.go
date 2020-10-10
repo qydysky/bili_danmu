@@ -233,20 +233,10 @@ type Saveflv struct {
 	path string
 	wait p.Signal
 	cancel p.Signal
-
-	qn int
 }
 
 var saveflv = Saveflv {
 	Inuse:IsOn("Saveflv"),
-	qn:10000,
-	/*
-	10000 原画
-	400 蓝光
-	250 超清
-	150 高清
-	80 流畅
-	*/
 }
 
 //已go func形式调用，将会获取直播流
@@ -258,7 +248,7 @@ func Saveflvf(){
 
 	cuLinkIndex := 0
 	api := F.New_api(c.Roomid)
-	for api.Get_live(saveflv.qn).Live_status == 1 && !saveflv.cancel.Islive() {
+	for api.Get_live(c.Live_qn).Live_status == 1 {
 		c.Live = api.Live
 
 		saveflv.path = strconv.Itoa(c.Roomid) + "_" + time.Now().Format("2006_01_02_15:04:05.000")
@@ -320,7 +310,7 @@ func Saveflvf(){
 
 		l.I("结束")
 		Ass_f("", time.Now())//ass
-
+		if !saveflv.cancel.Islive() {break}//cancel
 		/*
 			Saveflv需要外部组件
 			ffmpeg http://ffmpeg.org/download.html

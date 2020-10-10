@@ -116,7 +116,7 @@ func (i *api) Get_info() (o *api) {
 	return
 }
 
-func (i *api) Get_live(qn ...int) (o *api) {
+func (i *api) Get_live(qn ...string) (o *api) {
 	o = i
 	if o.Roomid == 0 {
 		apilog.E("还未New_api")
@@ -131,10 +131,10 @@ func (i *api) Get_live(qn ...int) (o *api) {
 			Cookie = Cookie[:i] + Cookie[i + d + 1:]
 		}
 	} else {
-		qn = []int{}
+		qn = []string{}
 	}
 
-	if len(qn) == 0 || qn[0] == 0 {//html获取
+	if len(qn) == 0 || qn[0] == "0" {//html获取
 		r := p.Get(p.Rval{
 			Url:"https://live.bilibili.com/" + strconv.Itoa(o.Roomid),
 			Cookie:Cookie,
@@ -154,6 +154,8 @@ func (i *api) Get_live(qn ...int) (o *api) {
 		}
 		apilog.W("api version", c.VERSION)
 	}
+
+	cu_qn := "0"
 	{//api获取
 		req := p.Req()
 		if err := req.Reqf(p.Rval{
@@ -207,10 +209,17 @@ func (i *api) Get_live(qn ...int) (o *api) {
 				o.Live = append(o.Live, v.(string))
 			}
 		}
+		if i := p.Json().GetValFrom(res, "data.play_url.current_qn"); i != nil {
+			cu_qn = strconv.Itoa(int(i.(float64)))
+		}
 
-		if len(qn) != 0 && qn[0] != 0 {
+		if len(qn) != 0 && qn[0] != "0" {
+			if _,ok := c.Default_qn[qn[0]];!ok{
+				apilog.W("清晰度未找到", qn[0], ",使用默认")
+				return
+			}
 			if err := req.Reqf(p.Rval{
-				Url:"https://api.live.bilibili.com/xlive/web-room/v1/playUrl/playUrl?cid=" + strconv.Itoa(o.Roomid) + "&qn=" + strconv.Itoa(qn[0]) + "&platform=web&https_url_req=1&ptype=16",
+				Url:"https://api.live.bilibili.com/xlive/web-room/v1/playUrl/playUrl?cid=" + strconv.Itoa(o.Roomid) + "&qn=" + qn[0] + "&platform=web&https_url_req=1&ptype=16",
 				Referer:"https://live.bilibili.com/" + strconv.Itoa(o.Roomid),
 				Timeout:10,
 				Cookie:Cookie,
@@ -230,7 +239,15 @@ func (i *api) Get_live(qn ...int) (o *api) {
 					o.Live = append(o.Live, v.(string))
 				}
 			}
+			if i := p.Json().GetValFrom(res, "data.current_qn"); i != nil {
+				cu_qn = strconv.Itoa(int(i.(float64)))
+				c.Live_qn = cu_qn
+			}
 		}
+	}
+
+	if v,ok := c.Default_qn[cu_qn];ok {
+		apilog.W("当前清晰度:", v)
 	}
 	return
 }

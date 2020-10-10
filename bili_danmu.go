@@ -27,8 +27,11 @@ func Demo(roomid ...int) {
 
 	{
 		var groomid = flag.Int("r", 0, "roomid")
+		var live_qn = flag.String("q", "0", "qn")
 		flag.Parse()
 	
+		if _,ok := c.Default_qn[*live_qn]; ok{c.Live_qn = *live_qn}
+
 		var room = *groomid
 		if room == 0 && len(roomid) != 0 {
 			room = roomid[0]
