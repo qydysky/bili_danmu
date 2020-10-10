@@ -154,7 +154,7 @@ func (i *api) Get_live(qn ...int) (o *api) {
 		}
 		apilog.W("api version", c.VERSION)
 	}
-	{//api获取https://api.live.bilibili.com/xlive/web-room/v1/playUrl/playUrl?cid=4895312&qn=400&platform=web&https_url_req=1&ptype=16
+	{//api获取
 		req := p.Req()
 		if err := req.Reqf(p.Rval{
 			Url:"https://api.live.bilibili.com/xlive/web-room/v1/index/getRoomPlayInfo?play_url=1&mask=1&qn=0&platform=web&ptype=16&room_id=" + strconv.Itoa(o.Roomid),
@@ -202,6 +202,7 @@ func (i *api) Get_live(qn ...int) (o *api) {
 			return
 		} else {
 			apilog.T("ok")
+			o.Live = []string{}
 			for _,v := range urls {
 				o.Live = append(o.Live, v.(string))
 			}
@@ -224,6 +225,7 @@ func (i *api) Get_live(qn ...int) (o *api) {
 				return
 			} else {
 				apilog.T("ok")
+				o.Live = []string{}
 				for _,v := range urls {
 					o.Live = append(o.Live, v.(string))
 				}
