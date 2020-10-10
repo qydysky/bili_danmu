@@ -12,7 +12,7 @@ type api struct {
 	Roomid int
 	Uid int
 	Url []string
-	Live string
+	Live []string
 	Live_status float64
 	Locked bool
 	Token string
@@ -116,7 +116,7 @@ func (i *api) Get_info() (o *api) {
 	return
 }
 
-func (i *api) Get_live() (o *api) {
+func (i *api) Get_live(qn ...int) (o *api) {
 	o = i
 	if o.Roomid == 0 {
 		apilog.E("还未New_api")
@@ -130,18 +130,22 @@ func (i *api) Get_live() (o *api) {
 		} else {
 			Cookie = Cookie[:i] + Cookie[i + d + 1:]
 		}
+	} else {
+		qn = []int{}
 	}
 
-	{//html获取
+	if len(qn) == 0 || qn[0] == 0 {//html获取
 		r := p.Get(p.Rval{
 			Url:"https://live.bilibili.com/" + strconv.Itoa(o.Roomid),
 			Cookie:Cookie,
 		})
 		if e := r.S(`"durl":[`, `]`, 0, 0).Err;e == nil {
-			if url := p.Json().GetValFromS("[" + r.RS + "]", "[0].url");url != nil {
+			if urls := p.Json().GetArrayFrom("[" + r.RS + "]", "url");urls != nil {
 				apilog.W("直播中")
 				o.Live_status = 1
-				o.Live = url.(string)
+				for _,v := range urls {
+					o.Live = append(o.Live, v.(string))
+				}
 				return
 			}
 		}
@@ -150,7 +154,7 @@ func (i *api) Get_live() (o *api) {
 		}
 		apilog.W("api version", c.VERSION)
 	}
-	{//api获取
+	{//api获取https://api.live.bilibili.com/xlive/web-room/v1/playUrl/playUrl?cid=4895312&qn=400&platform=web&https_url_req=1&ptype=16
 		req := p.Req()
 		if err := req.Reqf(p.Rval{
 			Url:"https://api.live.bilibili.com/xlive/web-room/v1/index/getRoomPlayInfo?play_url=1&mask=1&qn=0&platform=web&ptype=16&room_id=" + strconv.Itoa(o.Roomid),
@@ -163,7 +167,7 @@ func (i *api) Get_live() (o *api) {
 			return
 		}
 		res := string(req.Respon)
-		if code := p.Json().GetValFrom(res, "code");code == nil || code.(float64) != 0 {
+		if code := p.Json().GetValFromS(res, "code");code == nil || code.(float64) != 0 {
 			apilog.E("code", code)
 			return
 		}
@@ -193,13 +197,37 @@ func (i *api) Get_live() (o *api) {
 				apilog.W("live_status:", live_status)
 			}
 		}
-
-		if url := p.Json().GetValFrom(res, "data.play_url.durl.[0].url");url == nil {
-			apilog.E("url", url)
+		if urls := p.Json().GetArrayFrom(p.Json().GetValFrom(res, "data.play_url.durl"), "url");urls == nil {
+			apilog.E("url", urls)
 			return
 		} else {
 			apilog.T("ok")
-			o.Live = url.(string)
+			for _,v := range urls {
+				o.Live = append(o.Live, v.(string))
+			}
+		}
+
+		if len(qn) != 0 && qn[0] != 0 {
+			if err := req.Reqf(p.Rval{
+				Url:"https://api.live.bilibili.com/xlive/web-room/v1/playUrl/playUrl?cid=" + strconv.Itoa(o.Roomid) + "&qn=" + strconv.Itoa(qn[0]) + "&platform=web&https_url_req=1&ptype=16",
+				Referer:"https://live.bilibili.com/" + strconv.Itoa(o.Roomid),
+				Timeout:10,
+				Cookie:Cookie,
+				Retry:2,
+			});err != nil {
+				apilog.E(err)
+				return
+			}
+			res = string(req.Respon)
+			if urls := p.Json().GetArrayFrom(p.Json().GetValFrom(res, "data.durl"), "url");urls == nil {
+				apilog.E("url", urls)
+				return
+			} else {
+				apilog.T("ok")
+				for _,v := range urls {
+					o.Live = append(o.Live, v.(string))
+				}
+			}
 		}
 	}
 	return

@@ -1,7 +1,7 @@
 package cv
  
 var (
-	Live string//直播链接
+	Live []string//直播链接
 	Roomid int
 	Cookie string
 	Title string

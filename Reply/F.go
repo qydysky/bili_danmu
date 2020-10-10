@@ -233,10 +233,20 @@ type Saveflv struct {
 	path string
 	wait p.Signal
 	cancel p.Signal
+
+	qn int
 }
 
 var saveflv = Saveflv {
 	Inuse:IsOn("Saveflv"),
+	qn:10000,
+	/*
+	10000 原画
+	400 蓝光
+	250 超清
+	150 高清
+	80 流畅
+	*/
 }
 
 //已go func形式调用，将会获取直播流
@@ -247,7 +257,7 @@ func Saveflvf(){
 	l := p.Logf().New().Open("danmu.log").Base(-1, "saveflv")
 
 	api := F.New_api(c.Roomid)
-	for api.Get_live().Live_status == 1 {
+	for api.Get_live(saveflv.qn).Live_status == 1 {
 		c.Live = api.Live
 
 		saveflv.path = strconv.Itoa(c.Roomid) + "_" + time.Now().Format("2006_01_02_15:04:05.000")
@@ -275,7 +285,7 @@ func Saveflvf(){
 			retry := 20
 			for retry > 0 && rr.ResponseCode != 200 {
 				if e := rr.Reqf(p.Rval{
-					Url:c.Live,
+					Url:c.Live[0],
 					Retry:10,
 					SleepTime:5,
 					Cookie:Cookie,
@@ -297,7 +307,7 @@ func Saveflvf(){
 		l.I("保存到", saveflv.path + ".flv")
 
 		if e := rr.Reqf(p.Rval{
-			Url:c.Live,
+			Url:c.Live[0],
 			Retry:10,
 			SleepTime:5,
 			Cookie:Cookie,
