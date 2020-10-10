@@ -256,8 +256,9 @@ func Saveflvf(){
 
 	l := p.Logf().New().Open("danmu.log").Base(-1, "saveflv")
 
+	cuLinkIndex := 0
 	api := F.New_api(c.Roomid)
-	for api.Get_live(saveflv.qn).Live_status == 1 {
+	for api.Get_live(saveflv.qn).Live_status == 1 && !saveflv.cancel.Islive() {
 		c.Live = api.Live
 
 		saveflv.path = strconv.Itoa(c.Roomid) + "_" + time.Now().Format("2006_01_02_15:04:05.000")
@@ -285,7 +286,7 @@ func Saveflvf(){
 			retry := 20
 			for retry > 0 && rr.ResponseCode != 200 {
 				if e := rr.Reqf(p.Rval{
-					Url:c.Live[0],
+					Url:c.Live[cuLinkIndex],
 					Retry:10,
 					SleepTime:5,
 					Cookie:Cookie,
@@ -299,6 +300,8 @@ func Saveflvf(){
 				p.Sys().Timeoutf(5)
 				saveflv.wait.Done()
 				saveflv.cancel.Done()
+				cuLinkIndex += 1
+				if cuLinkIndex >= len(c.Live) {cuLinkIndex = 0}
 				continue
 			}
 		}
@@ -307,7 +310,7 @@ func Saveflvf(){
 		l.I("保存到", saveflv.path + ".flv")
 
 		if e := rr.Reqf(p.Rval{
-			Url:c.Live[0],
+			Url:c.Live[cuLinkIndex],
 			Retry:10,
 			SleepTime:5,
 			Cookie:Cookie,
