@@ -25,6 +25,9 @@ var (
 
 func Qtdanmu() {
 	if QtOn {return}
+	defer func() {
+		if err := recover(); err != nil {os.Exit(0)}
+	}()
 	Qt_MaxMun = qtd.Qt_MaxMun
 	Qt_LineHeight = qtd.Qt_LineHeight
 	Qt_BlockMargin = qtd.Qt_BlockMargin

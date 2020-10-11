@@ -89,7 +89,7 @@ git clone https://github.com/qydysky/bili_danmu.git
 cd demo
 go run main.go
 或
-go run main.go -r=此处填房间ID
+go run main.go -q 清晰度 -r 房间ID
 ```
 
 - 未配置[go环境](https://golang.google.cn/dl/)

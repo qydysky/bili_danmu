@@ -14,6 +14,7 @@ import (
 	F "github.com/qydysky/bili_danmu/F"
 	"github.com/christopher-dG/go-obs-websocket"
 	p "github.com/qydysky/part"
+	s "github.com/qydysky/part/setting"
 )
 
 /*
@@ -22,7 +23,7 @@ import (
 
 //功能开关
 var AllF = map[string]bool{
-	"Qtd":true,//Qt弹幕窗口
+	"Qtd":false,//Qt弹幕窗口
 	"Saveflv":true,//保存直播流(默认高清，有cookie默认蓝光)
 	"Ass":true,//Ass弹幕生成，由于时间对应关系,仅开启流保存时生效
 	"Obs":false,//obs组件(仅录播)
@@ -39,6 +40,15 @@ var AllF = map[string]bool{
 	"Lessdanmu":true,//弹幕缩减，屏蔽与前n条弹幕重复的字数占比度高于阈值的弹幕
 	"Moredanmu":false,//弹幕增量
 	"Shortdanmu":true,//上下文相同文字缩减
+}
+
+//从config.json初始化
+func init(){
+	buf := s.New()
+	buf.Load("config.json")
+	for k,v := range buf.B {
+		AllF[k] = v.(bool)
+	}
 }
 
 //功能开关选取函数
@@ -108,7 +118,6 @@ func selfcross2(a []string) (float32, string) {
 
 //Qtd 弹幕Qt窗口
 type Qtd struct {
-	Inuse bool
 	Qt_MaxMun int 
 	Qt_LineHeight float64 
 	Qt_BlockMargin float64 
@@ -118,7 +127,6 @@ type Qtd struct {
 }
 
 var qtd = Qtd {
-	Inuse:IsOn("Qtd"),
 	Qt_MaxMun:30,//danmu max limit
 	Qt_LineHeight:90,//percent
 	Qt_BlockMargin:7,
@@ -139,13 +147,12 @@ var qtd = Qtd {
 }
 
 func Qtdf(){
-	if !qtd.Inuse {return}
+	if !IsOn("Qtd") {return}
 	go Qtdanmu()
 }
 
 //Ass 弹幕转字幕
 type Ass struct {
-	Inuse bool
 	
 	file string//弹幕ass文件名
 	startT time.Time//开始记录的基准时间
@@ -161,7 +168,6 @@ var (
 )
 
 var ass = Ass {
-	Inuse:IsOn("Ass"),
 header:`[Script Info]
 Title: Default Ass file
 ScriptType: v4.00+
@@ -196,7 +202,7 @@ func Ass_f(file string, st time.Time){
 
 //传入要显示的单条字幕
 func Assf(s string){
-	if !ass.Inuse {return}
+	if !IsOn("Ass") {return}
 	if ass.file == "" {return}
 
 	if s == "" {return}
@@ -229,25 +235,24 @@ func dtos(t time.Duration) string {
 
 //直播流保存
 type Saveflv struct {
-	Inuse bool
 	path string
 	wait p.Signal
 	cancel p.Signal
 }
 
 var saveflv = Saveflv {
-	Inuse:IsOn("Saveflv"),
 }
 
 //已go func形式调用，将会获取直播流
 func Saveflvf(){
-	if !saveflv.Inuse {return}
+	if !IsOn("Saveflv") {return}
 	if saveflv.cancel.Islive() {return}
 
 	l := p.Logf().New().Open("danmu.log").Base(-1, "saveflv")
 
+	cuLinkIndex := 0
 	api := F.New_api(c.Roomid)
-	for api.Get_live().Live_status == 1 {
+	for api.Get_live(c.Live_qn).Live_status == 1 {
 		c.Live = api.Live
 
 		saveflv.path = strconv.Itoa(c.Roomid) + "_" + time.Now().Format("2006_01_02_15:04:05.000")
@@ -275,7 +280,7 @@ func Saveflvf(){
 			retry := 20
 			for retry > 0 && rr.ResponseCode != 200 {
 				if e := rr.Reqf(p.Rval{
-					Url:c.Live,
+					Url:c.Live[cuLinkIndex],
 					Retry:10,
 					SleepTime:5,
 					Cookie:Cookie,
@@ -289,6 +294,8 @@ func Saveflvf(){
 				p.Sys().Timeoutf(5)
 				saveflv.wait.Done()
 				saveflv.cancel.Done()
+				cuLinkIndex += 1
+				if cuLinkIndex >= len(c.Live) {cuLinkIndex = 0}
 				continue
 			}
 		}
@@ -297,7 +304,7 @@ func Saveflvf(){
 		l.I("保存到", saveflv.path + ".flv")
 
 		if e := rr.Reqf(p.Rval{
-			Url:c.Live,
+			Url:c.Live[cuLinkIndex],
 			Retry:10,
 			SleepTime:5,
 			Cookie:Cookie,
@@ -307,7 +314,7 @@ func Saveflvf(){
 
 		l.I("结束")
 		Ass_f("", time.Now())//ass
-
+		if !saveflv.cancel.Islive() {break}//cancel
 		/*
 			Saveflv需要外部组件
 			ffmpeg http://ffmpeg.org/download.html
@@ -328,26 +335,24 @@ func Saveflvf(){
 
 //已func形式调用，将会停止保存直播流
 func Saveflv_wait(){
-	if !saveflv.Inuse {return}
+	if !IsOn("Saveflv") {return}
 	saveflv.cancel.Done()
 	p.Logf().New().Open("danmu.log").Base(-1, "saveflv").I("等待").Block()
 	saveflv.wait.Wait()
 }
 
 type Obs struct {
-	Inuse bool
 	c obsws.Client
 	Prog string//程序路径
 }
 
 var obs = Obs {
-	Inuse:IsOn("Obs"),
 	c:obsws.Client{Host: "127.0.0.1", Port: 4444},
 	Prog:"obs",
 }
 
 func Obsf(on bool){
-	if !obs.Inuse {return}
+	if !IsOn("Obs") {return}
 	l := p.Logf().New().Open("danmu.log").Base(1, "obs")
 	defer l.BC()
 
@@ -375,7 +380,7 @@ func Obsf(on bool){
 }
 
 func Obs_R(on bool){
-	if !obs.Inuse {return}
+	if !IsOn("Obs") {return}
 
 	l := p.Logf().New().Open("danmu.log").Base(1, "obs_R")
 	defer l.BC()
@@ -425,15 +430,13 @@ func Obs_R(on bool){
 type Autoban struct {
 	Banbuf []string
 	buf []string
-	Inuse bool
 }
 
 var autoban = Autoban {
-	Inuse:IsOn("Autoban"),
 }
 
 func Autobanf(s string) bool {
-	if !autoban.Inuse {return false}
+	if !IsOn("Autoban") {return false}
 
 	if len(autoban.Banbuf) == 0 {
 		f := p.File().FileWR(p.Filel{
@@ -480,14 +483,12 @@ func Autobanf(s string) bool {
 
 type Danmuji struct {
 	buf map[string]string
-	Inuse bool
 	Inuse_auto bool
 
 	mute bool
 }
 
 var danmuji = Danmuji{
-	Inuse:IsOn("Danmuji"),
 	Inuse_auto:IsOn("Danmuji_auto"),
 	buf:map[string]string{
 		"弹幕机在么":"在",
@@ -495,14 +496,14 @@ var danmuji = Danmuji{
 }
 
 func Danmujif(s string) {
-	if !danmuji.Inuse {return}
+	if !IsOn("Danmuji") {return}
 	if v, ok := danmuji.buf[s]; ok {
 		Msg_senddanmu(v)
 	}
 }
 
 func Danmuji_auto(sleep int) {
-	if !danmuji.Inuse || !danmuji.Inuse_auto || danmuji.mute {return}
+	if !IsOn("Danmuji") || !IsOn("Danmuji_auto") || danmuji.mute {return}
 	if sleep == 0 {return}
 
 	danmuji.mute = true
@@ -520,19 +521,17 @@ func Danmuji_auto(sleep int) {
 }
 
 type Autoskip struct {
-	Inuse bool
 	num int
 	buf sync.Map
 	bufbreak chan bool
 }
 
 var autoskip = Autoskip{
-	Inuse:IsOn("Autoskip"),
 	bufbreak:make(chan bool, 10),
 }
 
 func Autoskipf(s string, maxNum,muteSecond int) int {
-	if !autoskip.Inuse || s == "" || maxNum <= 0 || muteSecond <= 0 {return 0}
+	if !IsOn("Autoskip") || s == "" || maxNum <= 0 || muteSecond <= 0 {return 0}
 	if v, ok := autoskip.buf.LoadOrStore(s, 0); ok {
 		autoskip.buf.Store(s, v.(int) + 1)
 		return v.(int) + 1
@@ -554,16 +553,14 @@ func Autoskipf(s string, maxNum,muteSecond int) int {
 }
 
 type Lessdanmu struct {
-	Inuse bool
 	buf []string
 }
 
 var lessdanmu = Lessdanmu{
-	Inuse:IsOn("Lessdanmu"),
 }
 
 func Lessdanmuf(s string, bufsize int) float32 {
-	if !lessdanmu.Inuse {return 0}
+	if !IsOn("Lessdanmu") {return 0}
 	if len(lessdanmu.buf) < bufsize {
 		lessdanmu.buf = append(lessdanmu.buf, s)
 		return 0
@@ -583,12 +580,10 @@ func Lessdanmuf(s string, bufsize int) float32 {
 	原理：留存弹幕，称为buf。将当前若干弹幕在buf中的位置找出，根据位置聚集情况及该位置出现语句的频率，选择发送的弹幕
 */
 // type Moredanmu struct {
-// 	Inuse bool
 // 	buf []string
 // }
 
 // var moredanmu = Moredanmu{
-// 	Inuse:IsOn("Moredanmu"),
 // }
 // func moredanmuf(s string) {
 // 	if !moredanmu.Inuse {return}
@@ -634,16 +629,14 @@ func Lessdanmuf(s string, bufsize int) float32 {
 // }
 
 type Shortdanmu struct {
-	Inuse bool
 	lastdanmu []rune
 }
 
 var shortdanmu = Shortdanmu{
-	Inuse:IsOn("Shortdanmu"),
 }
 
 func Shortdanmuf(s string) string {
-	if !shortdanmu.Inuse {return s}
+	if !IsOn("Shortdanmu") {return s}
 	if len(shortdanmu.lastdanmu) == 0 {shortdanmu.lastdanmu = []rune(s);return s}
 
 	var new string
@@ -667,7 +660,6 @@ func Shortdanmuf(s string) string {
 }
 
 type Jiezou struct {
-	Inuse bool
 	alertdanmu string
 	skipS map[string]interface{}
 
@@ -677,7 +669,6 @@ type Jiezou struct {
 }
 
 var jiezou = Jiezou{
-	Inuse:IsOn("Jiezou"),
 	alertdanmu:"",
 	skipS:map[string]interface{}{//常见语气词忽略
 		"了":nil,
@@ -690,7 +681,7 @@ var jiezou = Jiezou{
 }
 
 func Jiezouf(s []string) bool {
-	if !jiezou.Inuse {return false}
+	if !IsOn("Jiezou") {return false}
 	now,S := selfcross2(s)
 	jiezou.avg = (8 * jiezou.avg + 2 * now)/10
 	if jiezou.turn < len(s) {jiezou.turn += 1;return false}
