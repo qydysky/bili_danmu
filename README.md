@@ -56,7 +56,7 @@ var Msg_map = map[string]func(replyF, string) {
 以下内容可能过时，点击查看[当前支持功能](https://github.com/qydysky/bili_danmu/blob/master/Reply/F.go#L16)
 ```
 其他功能
-自动化功能、挑选有价值的弹幕
+自动化功能、挑选有价值的弹幕，可在demo/config.json覆盖默认控制
 //功能开关
 var AllF = map[string]bool{
 	"Saveflv":true,//保存直播流(仅高清)
@@ -84,6 +84,7 @@ var AllF = map[string]bool{
 
 ### demo 
 - 已配置了[go环境](https://golang.google.cn/dl/)
+> 清晰度可取[数值](https://github.com/qydysky/bili_danmu/blob/028d6d8ed47df4631aca7df93871a4795bedda76/CV/Var.go#L19)
 ```
 git clone https://github.com/qydysky/bili_danmu.git
 cd demo
@@ -91,7 +92,6 @@ go run main.go
 或
 go run main.go -q 清晰度 -r 房间ID
 ```
-
 - 未配置[go环境](https://golang.google.cn/dl/)
 
 前往[releases](https://github.com/qydysky/bili_danmu/releases)页下载对应系统版本。解压后进入`demo`目录(文件夹)，运行`demo.run`(`demo.exe`)。
