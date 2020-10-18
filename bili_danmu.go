@@ -88,10 +88,11 @@ func Demo(roomid ...int) {
 							c.Roomid = api.Roomid
 							c.Live = api.Live
 							c.Cookie = f
-							{//附加功能 弹幕机 直播流保存 Qt窗口
+							{//附加功能 弹幕机 直播流保存 Qt窗口 Gtk窗口
 								reply.Danmuji_auto(1)
 								go reply.Saveflvf()
 								go reply.Qtdf()
+								go reply.Gtkf()
 							}
 						}
 					}()

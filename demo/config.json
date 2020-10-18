@@ -1,5 +1,6 @@
 {
-    "Qtd": true,
+    "Gtk": true,
+    "Qtd": false,
     "Saveflv": true,
     "Ass": true,
     "Obs": false,

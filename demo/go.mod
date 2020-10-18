@@ -5,6 +5,7 @@ go 1.14
 require (
 	github.com/christopher-dG/go-obs-websocket v0.0.0-20200720193653-c4fed10356a5 // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20200217142428-fce0ec30dd00 // indirect
+	github.com/gotk3/gotk3 v0.5.0 // indirect
 	github.com/klauspost/compress v1.11.1 // indirect
 	github.com/mitchellh/mapstructure v1.3.3 // indirect
 	github.com/qydysky/bili_danmu v0.0.0
