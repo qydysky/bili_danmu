@@ -134,7 +134,7 @@ func (i *api) Get_live(qn ...string) (o *api) {
 		qn = []string{}
 	}
 
-	if len(qn) == 0 || qn[0] == "0" {//html获取
+	if len(qn) == 0 || qn[0] == "0" || qn[0] == "" {//html获取
 		r := p.Get(p.Rval{
 			Url:"https://live.bilibili.com/" + strconv.Itoa(o.Roomid),
 			Cookie:Cookie,
@@ -213,7 +213,7 @@ func (i *api) Get_live(qn ...string) (o *api) {
 			cu_qn = strconv.Itoa(int(i.(float64)))
 		}
 
-		if len(qn) != 0 && qn[0] != "0" {
+		if len(qn) != 0 && qn[0] != "0" && qn[0] != "" {
 			if _,ok := c.Default_qn[qn[0]];!ok{
 				apilog.W("清晰度未找到", qn[0], ",使用默认")
 				return
