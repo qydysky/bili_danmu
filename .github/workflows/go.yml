@@ -91,8 +91,9 @@ jobs:
 
     - name: Setup MSYS2, Install Gtk
       run: |
-        echo "C:\msys64\usr\bin" >> $GITHUB_PATH
+        echo "C:\msys64" >> $GITHUB_PATH
         pacman -S --noconfirm mingw-w64-x86_64-gtk3 mingw-w64-x86_64-toolchain base-devel
+        echo "C:\msys64\usr\bin" >> $GITHUB_PATH
         echo "C:\msys64\mingw64\bin" >> $GITHUB_PATH
         
 
