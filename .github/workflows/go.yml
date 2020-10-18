@@ -89,12 +89,12 @@ jobs:
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
 
-    - name: Setup MSYS2
-      uses: msys2/setup-msys2@v2
-    - shell: msys2 {0}
+    - name: Setup MSYS2, Install Gtk
       run: |
-        pacman -S --noconfirm mingw-w64-x86_64-gtk3
+        echo "::add-path::C:\msys64"
+        pacman -S --noconfirm mingw-w64-x86_64-gtk3 mingw-w64-x86_64-toolchain base-devel
         
+
     - name: Build
       run: |
         go build -v -o demo/demo.exe -i demo/main.go
