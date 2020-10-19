@@ -85,7 +85,7 @@ jobs:
       with:
         msystem: MSYS
         update: true
-        install: 'mingw-w64-x86_64-gtk3 mingw-w64-x86_64-glib2 mingw-w64-x86_64-gobject-introspection mingw-w64-x86_64-toolchain base-devel mingw-w64-go'
+        install: 'mingw-w64-x86_64-gtk3 mingw-w64-x86_64-glib2 mingw-w64-x86_64-gobject-introspection mingw-w64-x86_64-toolchain base-devel mingw-w64-x86_64-go'
 
     - name: Check out code
       uses: actions/checkout@v2
