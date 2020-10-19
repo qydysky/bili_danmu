@@ -92,9 +92,9 @@ jobs:
 
     - shell: msys2 {0}
       run: |
-        set CGO_LDFLAGS_ALLOW="-Wl,-luuid"
-        set CGO_CFLAGS_ALLOW="-Wl,-luuid"
-        set CGO_CXXFLAGS_ALLOW="-Wl,-luuid"
+        set CGO_LDFLAGS_ALLOW="-Wl"
+        set CGO_CFLAGS_ALLOW="-Wl"
+        set CGO_CXXFLAGS_ALLOW="-Wl"
         go build -v -o demo/demo.exe -i demo/main.go
 
     - name: zip
