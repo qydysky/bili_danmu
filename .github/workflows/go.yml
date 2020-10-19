@@ -91,7 +91,6 @@ jobs:
       with:
         msystem: MSYS
         update: true
-        path-type: inherit
         install: 'mingw-w64-x86_64-gtk3 mingw-w64-x86_64-glib2 mingw-w64-x86_64-gobject-introspection mingw-w64-x86_64-toolchain base-devel'
 
     - name: Check out code
