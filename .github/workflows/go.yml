@@ -89,7 +89,7 @@ jobs:
     - name: Setup up MSYS2
       uses: msys2/setup-msys2@v2
       with:
-        msystem: MSYS
+        msystem: MINGW64
         update: true
         install: 'mingw-w64-x86_64-gtk3 mingw-w64-x86_64-gtk2 mingw-w64-x86_64-toolchain base-devel mingw-w64-x86_64-go'
 
