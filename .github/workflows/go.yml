@@ -80,12 +80,19 @@ jobs:
     runs-on: windows-latest
     steps:
 
+    - name: Set up Go 1.x
+      uses: actions/setup-go@v2
+      with:
+        go-version: ^1.15.2
+      id: go
+  
     - name: Setup up MSYS2
       uses: msys2/setup-msys2@v2
       with:
         msystem: MINGW64
+        path-type: inherit
         update: true
-        install: 'mingw-w64-x86_64-gtk3 mingw-w64-x86_64-gtk2 mingw-w64-x86_64-toolchain base-devel mingw-w64-x86_64-go'
+        install: 'mingw-w64-x86_64-gtk3 mingw-w64-x86_64-gtk2 mingw-w64-x86_64-toolchain base-devel'
 
     - name: Check out code
       uses: actions/checkout@v2
@@ -93,12 +100,8 @@ jobs:
     - shell: msys2 {0}
       run: |
         export CGO_LDFLAGS_ALLOW="-Wl.*"
-        echo $CGO_LDFLAGS_ALLOW
         export CGO_CFLAGS_ALLOW="-Wl.*"
-        echo $CGO_CFLAGS_ALLOW
         export CGO_CXXFLAGS_ALLOW="-Wl.*"
-        echo $CGO_CXXFLAGS_ALLOW
-
         go build -v -o demo/demo.exe -i demo/main.go
 
     - name: zip
