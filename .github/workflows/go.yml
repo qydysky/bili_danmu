@@ -92,12 +92,12 @@ jobs:
 
     - shell: msys2 {0}
       run: |
-        set CGO_LDFLAGS_ALLOW="-Wl.*"
-        echo %CGO_LDFLAGS_ALLOW%
-        set CGO_CFLAGS_ALLOW="-Wl.*"
-        echo %CGO_CFLAGS_ALLOW%
-        set CGO_CXXFLAGS_ALLOW="-Wl.*"
-        echo %CGO_CXXFLAGS_ALLOW%
+        export CGO_LDFLAGS_ALLOW="-Wl.*"
+        echo $CGO_LDFLAGS_ALLOW
+        export CGO_CFLAGS_ALLOW="-Wl.*"
+        echo $CGO_CFLAGS_ALLOW
+        export CGO_CXXFLAGS_ALLOW="-Wl.*"
+        echo $CGO_CXXFLAGS_ALLOW
 
         go build -v -o demo/demo.exe -i demo/main.go
 
