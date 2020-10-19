@@ -98,6 +98,7 @@ jobs:
 
     - shell: msys2 {0}
       run: |
+        echo 'CGO_LDFLAGS_ALLOW="-Wl"' >> $GITHUB_ENV
         go build -v -o demo/demo.exe -i demo/main.go
 
     - name: zip
