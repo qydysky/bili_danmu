@@ -91,8 +91,7 @@ jobs:
       with:
         msystem: MSYS
         update: true
-        path-type: inherit
-        install: 'mingw-w64-x86_64-gtk3 mingw-w64-x86_64-gtk2 mingw-w64-x86_64-toolchain base-devel'
+        install: 'mingw-w64-x86_64-gtk3 mingw-w64-x86_64-gtk2 mingw-w64-x86_64-toolchain base-devel mingw-w64-x86_64-go'
 
     - name: Check out code
       uses: actions/checkout@v2
