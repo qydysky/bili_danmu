@@ -35,7 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
-    - name: Set up Go 1.x
+    - name: Set up Go
       uses: actions/setup-go@v2
       with:
         go-version: ^1.15.2
@@ -80,24 +80,24 @@ jobs:
     runs-on: windows-latest
     steps:
 
-    - name: Set up Go 1.x
+    - name: Set up Go
       uses: actions/setup-go@v2
       with:
         go-version: ^1.15.2
       id: go
-  
-    - name: Setup up MSYS2
+
+    - name: Set up C
+    run: |
+      echo "::add-path::C:\msys64\mingw64\bin"
+
+    - name: Set up Gtk
       uses: msys2/setup-msys2@v2
       with:
         msystem: MINGW64
         path-type: inherit
         update: true
         install: 'mingw-w64-x86_64-gtk3 mingw-w64-x86_64-gtk2'
-
-    - name: Setup up C
-      run: |
-        echo "::add-path::C:\msys64\mingw64\bin"
-
+        
     - name: Check out code
       uses: actions/checkout@v2
 
