@@ -87,8 +87,8 @@ jobs:
       id: go
 
     - name: Set up C
-    run: |
-      echo "::add-path::C:\msys64\mingw64\bin"
+      run: |
+        echo "::add-path::C:\msys64\mingw64\bin"
 
     - name: Set up Gtk
       uses: msys2/setup-msys2@v2
@@ -97,7 +97,7 @@ jobs:
         path-type: inherit
         update: true
         install: 'mingw-w64-x86_64-gtk3 mingw-w64-x86_64-gtk2'
-        
+
     - name: Check out code
       uses: actions/checkout@v2
 
