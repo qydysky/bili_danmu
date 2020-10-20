@@ -70,7 +70,7 @@ func (replyF) anchor_lot_start(s string){
 		Assf(fmt.Sprintln("天选之人", award_name, "开始"))
 	}
 	fmt.Println(sh...)
-	Qtshow(Itos(sh))
+	Gui_show(Itos(sh))
 
 	msglog.Base(1, "房").Fileonly(true).I(sh...).Fileonly(false)
 }
@@ -99,7 +99,7 @@ func (replyF) anchor_lot_award(s string){
 		Assf(fmt.Sprintln("天选之人", award_name, "结束"))
 	}
 	fmt.Println(sh...)
-	Qtshow(Itos(sh))
+	Gui_show(Itos(sh))
 
 	msglog.Base(1, "房").Fileonly(true).I(sh...).Fileonly(false)
 }
@@ -151,9 +151,9 @@ func (replyF) user_toast_msg(s string){
 	fmt.Println(sh...)
 	fmt.Print("====\n\n")
 
-	Qtshow("\n====")
-	Qtshow(Itos(sh))
-	Qtshow("====\n")
+	Gui_show("\n====")
+	Gui_show(Itos(sh))
+	Gui_show("====\n")
 
 	msglog.Base(1, "礼").Fileonly(true).I(sh...).Fileonly(false)
 }
@@ -198,9 +198,9 @@ func (replyF) special_gift(s string){
 	fmt.Println(sh...)
 	fmt.Print("====\n\n")
 
-	Qtshow("\n====")
-	Qtshow(Itos(sh))
-	Qtshow("====\n")
+	Gui_show("\n====")
+	Gui_show(Itos(sh))
+	Gui_show("====\n")
 
 	msglog.Base(1, "礼").I(sh...)
 
@@ -247,7 +247,7 @@ func (replyF) room_change(s string){
 	if area_name != nil {
 		sh = append(sh, area_name)
 	}
-	Qtshow(Itos(sh))
+	Gui_show(Itos(sh))
 
 	msglog.Base(1, "房").I(sh...)
 }
@@ -274,7 +274,7 @@ func (replyF) welcome_guard(s string){
 
 	fmt.Print(">>> ")
 	fmt.Println(sh...)
-	Qtshow(Itos(append([]interface{}{">>> "}, sh...)))
+	Gui_show(Itos(append([]interface{}{">>> "}, sh...)))
 
 	msglog.Base(1, "房").Fileonly(true).I(sh...).Fileonly(false)
 }
@@ -321,9 +321,9 @@ func (replyF) send_gift(s string){
 	fmt.Println(sh...)
 	fmt.Print("====\n\n")
 
-	Qtshow("\n====")
-	Qtshow(Itos(sh))
-	Qtshow("====\n")
+	Gui_show("\n====")
+	Gui_show(Itos(sh))
+	Gui_show("====\n")
 	
 	msglog.Base(1, "礼").Fileonly(true).I(sh...).Fileonly(false)
 }
@@ -337,7 +337,7 @@ func (replyF) room_block_msg(s string) {
 		msglog.E("uname", uname)
 		return
 	} else {
-		Qtshow(Itos([]interface{}{"用户", uname, "已被封禁"}))
+		Gui_show(Itos([]interface{}{"用户", uname, "已被封禁"}))
 		fmt.Println("用户", uname, "已被封禁")
 		msglog.Base(1, "封").I("用户", uname, "已被封禁")
 	}
@@ -357,11 +357,11 @@ func (replyF) preparing(s string) {
 			Saveflv_wait()
 		}
 		if p.Sys().Type(roomid) == "float64" {
-			Qtshow(Itos([]interface{}{"房间", roomid, "下播了"}))
+			Gui_show(Itos([]interface{}{"房间", roomid, "下播了"}))
 			msglog.I("房间", int(roomid.(float64)), "下播了")
 			return
 		}
-		Qtshow(Itos([]interface{}{"房间", roomid, "下播了"}))
+		Gui_show(Itos([]interface{}{"房间", roomid, "下播了"}))
 		msglog.I("房间", roomid, "下播了")
 	}
 }
@@ -380,11 +380,11 @@ func (replyF) live(s string) {
 			go Saveflvf()
 		}
 		if p.Sys().Type(roomid) == "float64" {
-			Qtshow(Itos([]interface{}{"房间", roomid, "开播了"}))
+			Gui_show(Itos([]interface{}{"房间", roomid, "开播了"}))
 			msglog.I("房间", int(roomid.(float64)), "开播了")
 			return
 		}
-		Qtshow(Itos([]interface{}{"房间", roomid, "开播了"}))
+		Gui_show(Itos([]interface{}{"房间", roomid, "开播了"}))
 		msglog.I("房间", roomid, "开播了")
 	}
 }
@@ -406,23 +406,23 @@ func (replyF) super_chat_message(s string){
 	}
 	fmt.Println("\n====")
 	fmt.Println(sh...)
-	Qtshow("\n====")
-	Qtshow(Itos(sh))
+	Gui_show("\n====")
+	Gui_show(Itos(sh))
 	if message != nil && message.(string) != ""{
 		fmt.Println(message)
-		Qtshow(message.(string))
+		Gui_show(message.(string))
 		sh = append(sh, message)
 	}
 	if message_jpn != nil && message.(string) != message_jpn.(string) && message_jpn.(string) != "" {
 		fmt.Println(message_jpn)
-		Qtshow(message_jpn.(string))
+		Gui_show(message_jpn.(string))
 		sh = append(sh, message_jpn)
 	}
 	fmt.Print("====\n\n")
 	
 	{//额外
 		Assf(fmt.Sprintln(sh...))
-		Qtshow("====\n")
+		Gui_show("====\n")
 	}
 	msglog.Base(1, "礼").Fileonly(true).I(sh...).Fileonly(false)
 }
@@ -502,7 +502,7 @@ func (replyF) danmu(s string) {
 		{//附加功能 弹幕机 封禁 弹幕合并
 			Danmujif(msg)
 			if Autobanf(msg) {
-				Qtshow(Itos([]interface{}{"风险", auth, ":", msg}))
+				Gui_show(Itos([]interface{}{"风险", auth, ":", msg}))
 				fmt.Println("风险", auth, ":", msg)
 				msglog.Base(1, "风险").I(auth, ":", msg)
 				return
@@ -537,16 +537,16 @@ func Msg_showdanmu(auth interface{}, msg string) {
 			return
 		} else {msg = _msg}
 		Assf(msg)//ass
-		Qtshow(msg)
+		Gui_show(msg)
 	}
 	
 	fmt.Println(msg)
 	if auth != nil {msglog.I(auth, ":", msg)}
 }
 
-func Qtshow(m string){
-	if !QtOn {return}
-	QtDanmuChan <- m
+func Gui_show(m string){
+	if QtOn {QtDanmuChan <- m}
+	if Gtk_on {Gtk_danmuChan <- m}
 }
 
 func Itos(i []interface{}) string {

@@ -24,6 +24,7 @@ import (
 //功能开关
 var AllF = map[string]bool{
 	"Qtd":false,//Qt弹幕窗口
+	"Gtk":false,//Gtk弹幕窗口
 	"Saveflv":true,//保存直播流(默认高清，有cookie默认蓝光)
 	"Ass":true,//Ass弹幕生成，由于时间对应关系,仅开启流保存时生效
 	"Obs":false,//obs组件(仅录播)
@@ -115,6 +116,11 @@ func selfcross2(a []string) (float32, string) {
 }
 
 //功能区
+//Gtk 弹幕Gtk窗口
+func Gtkf(){
+	if!IsOn("Gtk") {return}
+	Gtk_danmu()
+}
 
 //Qtd 弹幕Qt窗口
 type Qtd struct {
@@ -527,7 +533,7 @@ type Autoskip struct {
 }
 
 var autoskip = Autoskip{
-	bufbreak:make(chan bool, 10),
+	bufbreak:make(chan bool, 100),
 }
 
 func Autoskipf(s string, maxNum,muteSecond int) int {
