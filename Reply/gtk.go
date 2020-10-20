@@ -4,7 +4,6 @@ import (
 	"container/list"
 	"errors"
 	"log"
-	"os"
 
 	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
@@ -130,7 +129,7 @@ func Gtk_danmu() {
 		Gtk_on = false
 	})
 
-	os.Exit(application.Run(nil))
+	application.Run(nil)
 }
 
 func isWindow(obj glib.IObject) (*gtk.Window, error) {
