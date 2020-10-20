@@ -79,21 +79,24 @@ func Demo(roomid ...int) {
 						ws.Heartbeat(1000 * heartinterval, heartbeatmsg)
 						
 						//打招呼
+						var q = p.Filel{
+							Write:false,
+						}
 						if p.Checkfile().IsExist("cookie.txt") {
-							f := p.File().FileWR(p.Filel{
-								File:"cookie.txt",
-								Write:false,
-							})
-							//传输变量，以便响应弹幕"弹幕机在么"
-							c.Roomid = api.Roomid
-							c.Live = api.Live
-							c.Cookie = f
-							{//附加功能 弹幕机 直播流保存 Qt窗口 Gtk窗口
-								reply.Danmuji_auto(1)
-								go reply.Saveflvf()
-								go reply.Qtdf()
-								go reply.Gtkf()
-							}
+							q.File = "cookie.txt"
+						}
+						f := p.File().FileWR(q)
+						//传输变量，以便响应弹幕"弹幕机在么"
+						c.Roomid = api.Roomid
+						c.Live = api.Live
+						c.Cookie = f
+						if p.Checkfile().IsExist("cookie.txt") {//附加功能 弹幕机
+							reply.Danmuji_auto(1)
+						}
+						{//附加功能 直播流保存 Qt窗口 Gtk窗口
+							go reply.Saveflvf()
+							go reply.Qtdf()
+							go reply.Gtkf()
 						}
 					}()
 				}
