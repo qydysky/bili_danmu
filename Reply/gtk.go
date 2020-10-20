@@ -15,6 +15,7 @@ var BList = list.New()
 
 var (
 	Gtk_on bool
+	Gtk_Tra bool
 	Gtk_danmuChan chan string = make(chan string, 10)
 )
 
@@ -52,6 +53,15 @@ func Gtk_danmu() {
 			}
 		}
 
+		var viewport0 *gtk.Viewport
+		{
+			obj, err := builder.GetObject("viewport0")
+			if err != nil {return}
+			if tmp,ok := obj.(*gtk.Viewport); ok {
+				viewport0 = tmp
+			}
+		}
+
 		var grid0 *gtk.Grid;
 		{
 			obj, err := builder.GetObject("grid0")
@@ -76,16 +86,24 @@ func Gtk_danmu() {
 				b.SetText(s)
 				t.HandlerDisconnect(handle)
 
-				tmp := scrolledwindow0.GetVAdjustment()
-				tmp.SetValue(tmp.GetUpper())
+				if Gtk_Tra {
+					tmp := scrolledwindow0.GetVAdjustment()
+					tmp.SetValue(tmp.GetUpper())
+				}
 				if len(Gtk_danmuChan) != 0 {y()}
 			})
-			
+
+			{
+				tmp := scrolledwindow0.GetVAdjustment()
+				h := viewport0.GetViewWindow().WindowGetHeight()
+				Gtk_Tra = tmp.GetUpper() - tmp.GetValue() < float64(h) + 10
+			}
+
 			tmp,_ := t.Container.Widget.Cast()
 			loc := int(grid0.Container.GetChildren().Length());
 			grid0.InsertRow(loc);
 			grid0.Attach(tmp, 0, loc, 1, 1)
-			if loc > 50 {
+			if Gtk_Tra && loc > 50 {
 				l,_ := grid0.GetChildAt(0, 0)
 				l.ToWidget().Destroy()
 				grid0.RemoveRow(0)

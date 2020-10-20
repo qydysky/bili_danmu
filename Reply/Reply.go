@@ -537,7 +537,7 @@ func Msg_showdanmu(auth interface{}, msg string) {
 			return
 		} else {msg = _msg}
 		Assf(msg)//ass
-		Gui_show(msg)
+		Gui_show(fmt.Sprint(auth) +`: `+ msg)
 	}
 	
 	fmt.Println(msg)
