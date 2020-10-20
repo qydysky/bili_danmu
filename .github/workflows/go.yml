@@ -47,7 +47,7 @@ jobs:
     - name: Build
       run: |
         sudo apt-get install libgtk-3-dev libcairo2-dev libglib2.0-dev
-        go build -v -o demo/demo.run -i demo/main.go
+        go build -v -buildmode=exe -o demo/demo.run -i demo/main.go
       
     - name: zip
       run: zip -q -r release_ubuntu.zip *
