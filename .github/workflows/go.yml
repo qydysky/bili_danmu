@@ -88,7 +88,7 @@ jobs:
 
     - name: Set up C
       run: |
-        echo "::add-path::C:\msys64\mingw64\bin"
+        echo "C:\msys64\mingw64\bin" >> $GITHUB_PATH
 
     - name: Set up Gtk
       uses: msys2/setup-msys2@v2
