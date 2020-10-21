@@ -283,21 +283,16 @@ func Saveflvf(){
 		}
 
 		{//重试
-			retry := 20
-			for retry > 0 && rr.ResponseCode != 200 {
-				if e := rr.Reqf(p.Rval{
-					Url:c.Live[cuLinkIndex],
-					Retry:10,
-					SleepTime:5,
-					Cookie:Cookie,
-					Timeout:-1,
-					JustResponseCode:true,
-				}); e != nil{l.W(e)}
-				p.Sys().Timeoutf(2)
-				retry -= 1
-			}
-			if retry == 0 {
-				p.Sys().Timeoutf(5)
+			if e := rr.Reqf(p.Rval{
+				Url:c.Live[cuLinkIndex],
+				Retry:10,
+				SleepTime:5,
+				Cookie:Cookie,
+				Timeout:-1,
+				JustResponseCode:true,
+			}); e != nil{l.W(e)}
+
+			if rr.ResponseCode != 200 {
 				saveflv.wait.Done()
 				saveflv.cancel.Done()
 				cuLinkIndex += 1

@@ -304,3 +304,36 @@ func (i *api) Get_host_Token() (o *api) {
 
 	return
 }
+
+var get_face_src_limit = p.Limit(1, 1000, 2000)
+
+func Get_face_src(uid string) (string) {
+	if uid == "" {return ""}
+	//等待令牌时阻塞，超时返回true
+	if get_face_src_limit.TO() {return ""}
+	apilog.Base(-1, "获取face")
+	defer apilog.Base(0)
+
+	req := p.Req()
+	if err := req.Reqf(p.Rval{
+		Url:"https://api.live.bilibili.com/xlive/web-room/v1/index/getDanmuMedalAnchorInfo?ruid=" + uid,
+		Referer:"https://live.bilibili.com/" + strconv.Itoa(c.Roomid),
+		Timeout:10,
+		Retry:2,
+	});err != nil {
+		apilog.E(err)
+		return ""
+	}
+	res := string(req.Respon)
+	if msg := p.Json().GetValFromS(res, "message");msg == nil || msg != "0" {
+		apilog.E("message", msg)
+		return ""
+	}
+
+	rface := p.Json().GetValFromS(res, "data.rface")
+	if rface == nil {
+		apilog.E("data.rface", rface)
+		return ""
+	}
+	return rface.(string) + `@58w_58h`
+}
