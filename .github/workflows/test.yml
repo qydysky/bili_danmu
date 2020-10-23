@@ -3,37 +3,15 @@ name: Go
 on:
   push:
     branches:
+    - '**'
     - '!master'
     paths:
     - 'VERSION'
 
 jobs:
 
-  Release_Drafter:
-    name: Release_Drafter
-    runs-on: ubuntu-latest
-    steps:
-
-    - name: Release Drafter
-      # You may pin to the exact commit or the version.
-      # uses: release-drafter/release-drafter@06d4616a80cd7c09ea3cf12214165ad6c1859e67
-      id: create_release
-      uses: release-drafter/release-drafter@v5.11.0
-      env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: set upload_url
-      id: set_upload_url
-      uses: noobly314/share-data@v1
-      with:
-        share-id: release_url
-        mode: set
-        key: url
-        value: ${{ steps.create_release.outputs.upload_url }}
-
   ubuntu_build:
     name: ubuntu_build
-    needs: Release_Drafter
     runs-on: ubuntu-latest
     steps:
 
@@ -61,7 +39,6 @@ jobs:
 
   windows_build:
     name: windows_build
-    needs: Release_Drafter
     runs-on: windows-latest
     steps:
 
