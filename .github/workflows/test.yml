@@ -3,7 +3,7 @@ name: Go
 on:
   push:
     branches:
-    - 'master'
+    - '!master'
     paths:
     - 'VERSION'
 
@@ -53,28 +53,11 @@ jobs:
       
     - name: zip
       run: zip -q -r release_ubuntu.zip *
-    
-    - name: get upload_url
-      id: get_upload_url
-      uses: noobly314/share-data@v1
+      
+    - name: Upload a Build Artifact
+      uses: actions/upload-artifact@v2.2.0
       with:
-        share-id: release_url
-        mode: get
-        key: url
-
-    - name: Upload a Release Asset
-      uses: actions/upload-release-asset@v1.0.2
-      env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        # The URL for uploading assets to the release
-        upload_url: ${{ steps.get_upload_url.outputs.data }}
-        # The path to the asset you want to upload
-        asset_path: ./release_ubuntu.zip
-        # The name of the asset you want to upload
-        asset_name: release_ubuntu.zip
-        # The content-type of the asset you want to upload. See the supported Media Types here: https://www.iana.org/assignments/media-types/media-types.xhtml for more information
-        asset_content_type: application/zip
+        path: ./release_ubuntu.zip
 
   windows_build:
     name: windows_build
@@ -113,24 +96,7 @@ jobs:
     - name: zip
       run: .\7za.exe a -r .\release_windows.zip ./
 
-    - name: get upload_url
-      id: get_upload_url
-      uses: noobly314/share-data@v1
+    - name: Upload a Build Artifact
+      uses: actions/upload-artifact@v2.2.0
       with:
-        share-id: release_url
-        mode: get
-        key: url
-
-    - name: Upload a Release Asset
-      uses: actions/upload-release-asset@v1.0.2
-      env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        # The URL for uploading assets to the release
-        upload_url: ${{ steps.get_upload_url.outputs.data }}
-        # The path to the asset you want to upload
-        asset_path: ./release_windows.zip
-        # The name of the asset you want to upload
-        asset_name: release_windows.zip
-        # The content-type of the asset you want to upload. See the supported Media Types here: https://www.iana.org/assignments/media-types/media-types.xhtml for more information
-        asset_content_type: application/zip
+        path: ./release_windows.zip
