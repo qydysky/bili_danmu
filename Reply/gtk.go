@@ -22,6 +22,16 @@ type gtk_list struct {
 var gtkGetList = list.New()
 
 var imgbuf = make(map[string](*gdk.Pixbuf))
+var keep int
+var keep_key = map[string]int{
+	"face/0buyguide":8,
+	"face/0gift":8,
+	"face/0jiezou":8,
+	"face/0level1":8,
+	"face/0level2":8,
+	"face/0level3":8,
+	"face/0superchat":13,
+}
 var (
 	Gtk_on bool
 	Gtk_Tra bool
@@ -124,7 +134,7 @@ func Gtk_danmu() {
 				var (
 					pixbuf *gdk.Pixbuf
 					e error
-				}
+				)
 				if v,ok := imgbuf[img_src];ok{
 					pixbuf,e = gdk.PixbufCopy(v)
 				} else {
@@ -135,12 +145,24 @@ func Gtk_danmu() {
 			}
 			{
 				loc := int(grid0.Container.GetChildren().Length())/2;
-				grid0.InsertRow(loc);
-				grid0.Attach(tmp_list.img, 0, loc, 1, 1)
-				grid0.Attach(tmp_list.text, 1, loc, 1, 1)
+
+				if sec,ok := keep_key[img_src];ok {
+					grid0.InsertRow(loc);
+					grid0.Attach(tmp_list.img, 0, loc, 1, 1)
+					grid0.Attach(tmp_list.text, 1, loc, 1, 1)
+					keep += 1
+					glib.TimeoutAdd(uint(sec * 1000),func()(o bool){
+						o = false
+						keep -= 1
+						return
+					})
+				}else{
+					grid0.InsertRow(loc - keep);
+					grid0.Attach(tmp_list.img, 0, loc - keep, 1, 1)
+					grid0.Attach(tmp_list.text, 1, loc - keep, 1, 1)
+				}
 
 				for loc > max {
-
 					if i,e := grid0.GetChildAt(0,0); e != nil{i.(*gtk.Widget).Destroy()}
 					if i,e := grid0.GetChildAt(1,0); e != nil{i.(*gtk.Widget).Destroy()}
 					grid0.RemoveRow(0)

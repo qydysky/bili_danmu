@@ -86,12 +86,14 @@ var AllF = map[string]bool{
 弹幕重连
 直播流开播自动下载
 直播流下载重连
+gtk弹幕窗自定义人/事件消息停留
 ...
 ```
 
 
 ### demo 
 - 已配置了[go环境](https://golang.google.cn/dl/)
+- 配置了[gtk](https://www.gtk.org/)
 > 清晰度可取[数值](https://github.com/qydysky/bili_danmu/blob/028d6d8ed47df4631aca7df93871a4795bedda76/CV/Var.go#L19)
 ```
 git clone https://github.com/qydysky/bili_danmu.git
