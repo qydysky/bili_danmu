@@ -13,136 +13,181 @@ import (
 )
 
 const appId = "com.github.qydysky.bili_danmu.reply"
-var BTList = list.New()
-var BIList = list.New()
+type gtk_list struct {
+	text *gtk.TextView
+	img *gtk.Image
+	handle glib.SignalHandle
+}
 
+type gtk_get struct {
+	src string
+	uid string
+}
+var gtkGetList = list.New()
+
+var imgbuf = make(map[string](*gdk.Pixbuf))
 var (
 	Gtk_on bool
 	Gtk_Tra bool
 	Gtk_img_path string = "face"
-	Gtk_danmuChan chan string = make(chan string, 100)
-	Gtk_danmuChan_uid chan string = make(chan string, 100)
+	Gtk_danmuChan chan string = make(chan string, 1000)
+	Gtk_danmuChan_uid chan string = make(chan string, 1000)
 )
 
 func Gtk_danmu() {
 	if Gtk_on {return}
 
+	var y func(string,string)
+	var win *gtk.Window
+	var scrolledwindow0 *gtk.ScrolledWindow
+	var viewport0 *gtk.Viewport
+
 	application, err := gtk.ApplicationNew(appId, glib.APPLICATION_FLAGS_NONE)
-	if err != nil {return}
+	if err != nil {log.Println(err);return}
 
 	application.Connect("startup", func() {
 		log.Println("application startup")	
+		var grid0 *gtk.Grid;
 
 		builder, err := gtk.BuilderNewFromFile("ui/1.glade")
-		if err != nil {return}
+		if err != nil {log.Println(err);return}
 
-		signals := map[string]interface{}{
-			"on_main_window_destroy": onMainWindowDestroy,
+		{
+			signals := map[string]interface{}{
+				"on_main_window_destroy": onMainWindowDestroy,
+			}
+			builder.ConnectSignals(signals)
 		}
-		builder.ConnectSignals(signals)
-
-		obj, err := builder.GetObject("main_window")
-		if err != nil {return}
-
-
-
-		win, err := isWindow(obj)
-		if err != nil {return}
-
-		var scrolledwindow0 *gtk.ScrolledWindow
+		{
+			obj, err := builder.GetObject("main_window")
+			if err != nil {log.Println(err);return}
+			win, err = isWindow(obj)
+			if err != nil {log.Println(err);return}
+			application.AddWindow(win)
+			defer win.ShowAll()
+		}
 		{
 			obj, err := builder.GetObject("scrolledwindow0")
-			if err != nil {return}
+			if err != nil {log.Println(err);return}
 			if tmp,ok := obj.(*gtk.ScrolledWindow); ok {
 				scrolledwindow0 = tmp
-			}
+			}else{log.Println("cant find #scrolledwindow0 in .glade");return}
 		}
 
-		var viewport0 *gtk.Viewport
 		{
 			obj, err := builder.GetObject("viewport0")
-			if err != nil {return}
+			if err != nil {log.Println(err);return}
 			if tmp,ok := obj.(*gtk.Viewport); ok {
 				viewport0 = tmp
-			}
+			}else{log.Println("cant find #viewport0 in .glade");return}
 		}
 
-		var grid0 *gtk.Grid;
 		{
 			obj, err := builder.GetObject("grid0")
-			if err != nil {return}
+			if err != nil {log.Println(err);return}
 			if tmp,ok := obj.(*gtk.Grid); ok {
 				grid0 = tmp
-			}
+			}else{log.Println("cant find #grid0 in .glade");return}
 		}
 
-		var y func(bool)
-		y = func(tra bool){
-			Gtk_Tra = true
-			
-			s:=<-Gtk_danmuChan
-			t,_ := gtk.TextViewNew();
-			BTList.PushBack(t)
-			t.SetMarginStart(5)
-			t.SetEditable(false)
-			t.SetHExpand(true)
-			t.SetVExpand(false)
-			t.SetWrapMode(gtk.WRAP_WORD_CHAR)
-			
-			img,_ :=gtk.ImageNew();
-			BIList.PushBack(img)
+		imgbuf["face/0default"],_ = gdk.PixbufNewFromFileAtSize("face/0default", 40, 40);
 
-			var handle glib.SignalHandle
-			handle,_ = t.Connect("size-allocate", func(){
-				Gtk_Tra = false
-				b,e := t.GetBuffer()
-				if e != nil {return}
-				b.SetText(s)
+		y = func(s,img_src string){
+			var tmp_list gtk_list
 
-				img_src := load_face(<-Gtk_danmuChan_uid)
-				pixbuf,e := gdk.PixbufNewFromFileAtSize(img_src, 40, 40);
-				if e != nil {return}
-				img.SetFromPixbuf(pixbuf)
-				t.HandlerDisconnect(handle)
+			tmp_list.text,_ = gtk.TextViewNew();
+			{
+				tmp_list.text.SetMarginStart(5)
+				tmp_list.text.SetEditable(false)
+				tmp_list.text.SetHExpand(true)
+				tmp_list.text.SetWrapMode(gtk.WRAP_WORD_CHAR)
+			}
+			{
+				var e error
+				tmp_list.handle,e = tmp_list.text.Connect("size-allocate", func(){
 
-				if tra {
-					handle,_ = t.Connect("size-allocate", func(){
-						tmp := scrolledwindow0.GetVAdjustment()
-						tmp.SetValue(tmp.GetUpper())
-						t.HandlerDisconnect(handle)
-					})
+					b,e := tmp_list.text.GetBuffer()
+					if e != nil {log.Println(e);return}
+					b.SetText(s)
+
+					{
+						var e error
+							tmp := scrolledwindow0.GetVAdjustment()
+							h := viewport0.GetViewWindow().WindowGetHeight()
+							if tmp.GetUpper() - tmp.GetValue() < float64(h) * 1.3 {
+								tmp.SetValue(tmp.GetUpper() - float64(h))
+							}
+						if e != nil {log.Println(e)}
+					}
+				})
+				if e != nil {log.Println(e)}
+			}
+
+			tmp_list.img,_ =gtk.ImageNew();
+			{
+				var pixbuf *gdk.Pixbuf
+				if v,ok := imgbuf[img_src];ok{
+					pixbuf,_ = gdk.PixbufCopy(v)
+				} else {
+					pixbuf,_ = gdk.PixbufNewFromFileAtSize(img_src, 40, 40);
+					imgbuf[img_src],_ = gdk.PixbufCopy(pixbuf)
 				}
-				if len(Gtk_danmuChan) != 0 {y(tra)}
+				tmp_list.img.SetFromPixbuf(pixbuf)
+			}
+			{
+				loc := int(grid0.Container.GetChildren().Length())/2;
+				grid0.InsertRow(loc);
+				grid0.Attach(tmp_list.img, 0, loc, 1, 1)
+				grid0.Attach(tmp_list.text, 1, loc, 1, 1)
+
+				for loc > 50 {
+
+					if i,e := grid0.GetChildAt(0,0); e != nil{i.(*gtk.Widget).Destroy()}
+					if i,e := grid0.GetChildAt(1,0); e != nil{i.(*gtk.Widget).Destroy()}
+					grid0.RemoveRow(0)
+					loc = int(grid0.Container.GetChildren().Length())/2;
+				}
+			}
+			
+			glib.TimeoutAdd(uint(3000), func()(o bool){
+				o = true
+
+				if gtkGetList.Len() == 0 {return}
+				el := gtkGetList.Front()
+				if el == nil {return}
+				if tmp_get,ok := gtkGetList.Remove(el).(gtk_get);ok{
+					req := p.Req()
+					if e := req.Reqf(p.Rval{
+						Url:tmp_get.src,
+						SaveToPath:Gtk_img_path + `/` + tmp_get.uid,
+						Timeout:3,
+					}); e != nil{log.Println(e);}
+				}
+
+				{
+					if len(imgbuf) > 100 {
+						for k,_ := range imgbuf {delete(imgbuf,k);break}
+					}
+				}
+				return
 			})
 
-			tmp,_ := t.Container.Widget.Cast()
-			loc := BTList.Len();
-			grid0.InsertRow(loc);
-			grid0.Attach(img, 0, loc - 1, 1, 1)
-			grid0.Attach(tmp, 1, loc - 1, 1, 1)
-			for tra && BTList.Len() > 50 {
-				BTList.Remove(BTList.Front()).(*gtk.TextView).Destroy()
-				BIList.Remove(BIList.Front()).(*gtk.Image).Destroy()
-				grid0.RemoveRow(0)
-			}
 			win.ShowAll()
 		}
 
-		glib.TimeoutAdd(uint(100), func() bool {
-			if !Gtk_Tra && len(Gtk_danmuChan) != 0 {
-				tmp := scrolledwindow0.GetVAdjustment()
-				h := viewport0.GetViewWindow().WindowGetHeight()
-				y(tmp.GetUpper() - tmp.GetValue() < float64(h) * 1.3)
-			}
-			return true
-		})
-		win.Show()
-		application.AddWindow(win)
 		Gtk_on = true
 	})
 
 	application.Connect("activate", func() {
 		log.Println("application activate")
+		glib.TimeoutAdd(uint(300),func()(o bool){
+			o = true
+			for len(Gtk_danmuChan) != 0 {
+				y(<-Gtk_danmuChan,load_face(<-Gtk_danmuChan_uid))
+			}
+			return
+		})
+
 	})
 
 	application.Connect("shutdown", func() {
@@ -164,17 +209,18 @@ func onMainWindowDestroy() {
 	log.Println("onMainWindowDestroy")
 }
 
-func load_face(uid string) string {
-	defaultuid := "0default"
-	if uid != "" && p.Checkfile().IsExist(Gtk_img_path + `/` + uid) {return Gtk_img_path + `/` + uid}
-	if src := F.Get_face_src(uid);src != "" {
-		req := p.Req()
-		if e := req.Reqf(p.Rval{
-			Url:src,
-			SaveToPath:Gtk_img_path + `/` + uid,
-			Timeout:3,
-		}); e != nil{log.Println(e);return Gtk_img_path + `/` + defaultuid}
-		return Gtk_img_path + `/` + uid
+func load_face(uid string) (loc string) {
+	loc = Gtk_img_path + `/` + "0default"
+	if uid != "" && p.Checkfile().IsExist(Gtk_img_path + `/` + uid) && p.Rand().MixRandom(1,100) > 5 {
+		loc = Gtk_img_path + `/` + uid
+		return
 	}
-	return Gtk_img_path + `/` + defaultuid
+	if src := F.Get_face_src(uid);src != "" {
+		if gtkGetList.Len() > 1000 {return}
+		gtkGetList.PushBack(gtk_get{
+			src:src,
+			uid:uid,
+		})
+	}
+	return
 }

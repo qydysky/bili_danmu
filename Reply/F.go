@@ -33,7 +33,7 @@ var AllF = map[string]bool{
 		obs https://obsproject.com/download
 		obs-websocket https://github.com/Palakis/obs-websocket/releases
 	*/
-	"Autoban":true,//自动封禁(仅提示，未完成)
+	"Autoban":false,//自动封禁(仅提示，未完成)
 	"Jiezou":true,//带节奏预警，提示弹幕礼仪
 	"Danmuji":true,//反射型弹幕机，回应弹幕
 	"Danmuji_auto":false,//自动型弹幕机，定时输出
@@ -154,7 +154,7 @@ var qtd = Qtd {
 
 func Qtdf(){
 	if !IsOn("Qtd") {return}
-	go Qtdanmu()
+	Qtdanmu()
 }
 
 //Ass 弹幕转字幕
