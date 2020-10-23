@@ -305,12 +305,8 @@ func (i *api) Get_host_Token() (o *api) {
 	return
 }
 
-var get_face_src_limit = p.Limit(1, 1000, 2000)
-
 func Get_face_src(uid string) (string) {
 	if uid == "" {return ""}
-	//等待令牌时阻塞，超时返回true
-	if get_face_src_limit.TO() {return ""}
 	apilog.Base(-1, "获取face")
 	defer apilog.Base(0)
 

@@ -11,7 +11,7 @@ import (
 	p "github.com/qydysky/part"
 	F "github.com/qydysky/bili_danmu/F"
 )
-
+const max = 100
 const appId = "com.github.qydysky.bili_danmu.reply"
 type gtk_list struct {
 	text *gtk.TextView
@@ -19,10 +19,6 @@ type gtk_list struct {
 	handle glib.SignalHandle
 }
 
-type gtk_get struct {
-	src string
-	uid string
-}
 var gtkGetList = list.New()
 
 var imgbuf = make(map[string](*gdk.Pixbuf))
@@ -114,7 +110,7 @@ func Gtk_danmu() {
 						var e error
 							tmp := scrolledwindow0.GetVAdjustment()
 							h := viewport0.GetViewWindow().WindowGetHeight()
-							if tmp.GetUpper() - tmp.GetValue() < float64(h) * 1.3 {
+							if tmp.GetUpper() - tmp.GetValue() < float64(h) * 1.5 {
 								tmp.SetValue(tmp.GetUpper() - float64(h))
 							}
 						if e != nil {log.Println(e)}
@@ -125,14 +121,17 @@ func Gtk_danmu() {
 
 			tmp_list.img,_ =gtk.ImageNew();
 			{
-				var pixbuf *gdk.Pixbuf
-				if v,ok := imgbuf[img_src];ok{
-					pixbuf,_ = gdk.PixbufCopy(v)
-				} else {
-					pixbuf,_ = gdk.PixbufNewFromFileAtSize(img_src, 40, 40);
-					imgbuf[img_src],_ = gdk.PixbufCopy(pixbuf)
+				var (
+					pixbuf *gdk.Pixbuf
+					e error
 				}
-				tmp_list.img.SetFromPixbuf(pixbuf)
+				if v,ok := imgbuf[img_src];ok{
+					pixbuf,e = gdk.PixbufCopy(v)
+				} else {
+					pixbuf,e = gdk.PixbufNewFromFileAtSize(img_src, 40, 40);
+					if e == nil {imgbuf[img_src],e = gdk.PixbufCopy(pixbuf)}
+				}
+				if e == nil {tmp_list.img.SetFromPixbuf(pixbuf)}
 			}
 			{
 				loc := int(grid0.Container.GetChildren().Length())/2;
@@ -140,7 +139,7 @@ func Gtk_danmu() {
 				grid0.Attach(tmp_list.img, 0, loc, 1, 1)
 				grid0.Attach(tmp_list.text, 1, loc, 1, 1)
 
-				for loc > 50 {
+				for loc > max {
 
 					if i,e := grid0.GetChildAt(0,0); e != nil{i.(*gtk.Widget).Destroy()}
 					if i,e := grid0.GetChildAt(1,0); e != nil{i.(*gtk.Widget).Destroy()}
@@ -155,17 +154,21 @@ func Gtk_danmu() {
 				if gtkGetList.Len() == 0 {return}
 				el := gtkGetList.Front()
 				if el == nil {return}
-				if tmp_get,ok := gtkGetList.Remove(el).(gtk_get);ok{
-					req := p.Req()
-					if e := req.Reqf(p.Rval{
-						Url:tmp_get.src,
-						SaveToPath:Gtk_img_path + `/` + tmp_get.uid,
-						Timeout:3,
-					}); e != nil{log.Println(e);}
+				if uid,ok := gtkGetList.Remove(el).(string);ok{
+					go func(){
+						src := F.Get_face_src(uid)
+						if src == "" {return}
+						req := p.Req()
+						if e := req.Reqf(p.Rval{
+							Url:src,
+							SaveToPath:Gtk_img_path + `/` + uid,
+							Timeout:3,
+						}); e != nil{log.Println(e);}
+					}()
 				}
 
 				{
-					if len(imgbuf) > 100 {
+					if len(imgbuf) > 1000 {
 						for k,_ := range imgbuf {delete(imgbuf,k);break}
 					}
 				}
@@ -182,7 +185,10 @@ func Gtk_danmu() {
 		log.Println("application activate")
 		glib.TimeoutAdd(uint(300),func()(o bool){
 			o = true
+			var tmax int = max
 			for len(Gtk_danmuChan) != 0 {
+				tmax -= 1
+				if tmax <= 0 {return}
 				y(<-Gtk_danmuChan,load_face(<-Gtk_danmuChan_uid))
 			}
 			return
@@ -211,16 +217,11 @@ func onMainWindowDestroy() {
 
 func load_face(uid string) (loc string) {
 	loc = Gtk_img_path + `/` + "0default"
-	if uid != "" && p.Checkfile().IsExist(Gtk_img_path + `/` + uid) && p.Rand().MixRandom(1,100) > 5 {
+	if uid != "" && p.Checkfile().IsExist(Gtk_img_path + `/` + uid) && p.Rand().MixRandom(1,100) > 1 {
 		loc = Gtk_img_path + `/` + uid
 		return
 	}
-	if src := F.Get_face_src(uid);src != "" {
-		if gtkGetList.Len() > 1000 {return}
-		gtkGetList.PushBack(gtk_get{
-			src:src,
-			uid:uid,
-		})
-	}
+	if gtkGetList.Len() > 1000 {return}
+	gtkGetList.PushBack(uid)
 	return
 }
