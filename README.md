@@ -166,9 +166,9 @@ ctrl+c退出，会同时追加记录到文件danmu.log中（文件记录完整�
 
 Gtk弹幕窗
 
-![](_Screenshot/Screenshot_20201021_082757.png)
+![](_Screenshot/Screenshot_20201023_232029.png)
 
-[截图地址](//zdir.ntsdtt.bid/ALL/Admin/Remote/%E5%9B%BE%E7%89%87/Screenshot_20201021_082757.png)
+[截图地址](//zdir.ntsdtt.bid/ALL/Admin/Remote/%E5%9B%BE%E7%89%87/Screenshot_20201023_232029.png)
 
 Qt弹幕窗
 ![](_Screenshot/Screenshot_20201002_045627.png)

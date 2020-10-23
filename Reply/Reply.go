@@ -403,9 +403,9 @@ func (replyF) super_chat_message(s string){
 		sh = append(sh, uname)
 	}
 	if price != nil {
-		sh = append(sh, "￥", price)
+		sh = append(sh, "￥", price, "\n")
 	}
-	fmt.Println("\n====")
+	fmt.Println("====")
 	fmt.Println(sh...)
 	// Gui_show("\n====")
 	if message != nil && message.(string) != ""{

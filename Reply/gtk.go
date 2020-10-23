@@ -3,6 +3,7 @@ package reply
 import (
 	"container/list"
 	"errors"
+	"time"
 	"log"
 
 	"github.com/gotk3/gotk3/glib"
@@ -11,25 +12,27 @@ import (
 	p "github.com/qydysky/part"
 	F "github.com/qydysky/bili_danmu/F"
 )
-const max = 100
+const max = 50
 const appId = "com.github.qydysky.bili_danmu.reply"
+
 type gtk_list struct {
 	text *gtk.TextView
 	img *gtk.Image
 	handle glib.SignalHandle
 }
-
+var pro_style *gtk.CssProvider
 var gtkGetList = list.New()
 
 var imgbuf = make(map[string](*gdk.Pixbuf))
 var keep int
+var keep_s int
 var keep_key = map[string]int{
 	"face/0buyguide":8,
 	"face/0gift":8,
 	"face/0jiezou":8,
-	"face/0level1":8,
-	"face/0level2":8,
-	"face/0level3":8,
+	"face/0level1":5,
+	"face/0level2":5,
+	"face/0level3":5,
 	"face/0superchat":13,
 }
 var (
@@ -98,6 +101,15 @@ func Gtk_danmu() {
 
 		imgbuf["face/0default"],_ = gdk.PixbufNewFromFileAtSize("face/0default", 40, 40);
 
+		{
+			var e error
+			if pro_style,e = gtk.CssProviderNew();e == nil{
+				if e = pro_style.LoadFromPath(`ui/1.css`);e != nil{
+					log.Println(e)
+				}
+			}else{log.Println(e)}
+		}
+
 		y = func(s,img_src string){
 			var tmp_list gtk_list
 
@@ -118,11 +130,11 @@ func Gtk_danmu() {
 
 					{
 						var e error
-							tmp := scrolledwindow0.GetVAdjustment()
-							h := viewport0.GetViewWindow().WindowGetHeight()
-							if tmp.GetUpper() - tmp.GetValue() < float64(h) * 1.5 {
-								tmp.SetValue(tmp.GetUpper() - float64(h))
-							}
+						tmp := scrolledwindow0.GetVAdjustment()
+						h := viewport0.GetViewWindow().WindowGetHeight()
+						if tmp.GetUpper() - tmp.GetValue() < float64(h) * 1.7 {
+							tmp.SetValue(tmp.GetUpper() - float64(h))
+						}
 						if e != nil {log.Println(e)}
 					}
 				})
@@ -147,11 +159,19 @@ func Gtk_danmu() {
 				loc := int(grid0.Container.GetChildren().Length())/2;
 
 				if sec,ok := keep_key[img_src];ok {
+					if sty,e := tmp_list.text.GetStyleContext();e == nil{
+						sty.AddClass("view")
+						sty.AddProvider(pro_style,gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+					}else{{log.Println(e)}}
+					
 					grid0.InsertRow(loc);
 					grid0.Attach(tmp_list.img, 0, loc, 1, 1)
 					grid0.Attach(tmp_list.text, 1, loc, 1, 1)
 					keep += 1
-					glib.TimeoutAdd(uint(sec * 1000),func()(o bool){
+					keep_s += sec
+					if keep_s > 20 {keep_s = 20}
+					
+					glib.TimeoutAdd(uint(keep_s * 1000),func()(o bool){
 						o = false
 						keep -= 1
 						return
@@ -162,14 +182,22 @@ func Gtk_danmu() {
 					grid0.Attach(tmp_list.text, 1, loc - keep, 1, 1)
 				}
 
+				loc = int(grid0.Container.GetChildren().Length())/2;
 				for loc > max {
 					if i,e := grid0.GetChildAt(0,0); e != nil{i.(*gtk.Widget).Destroy()}
 					if i,e := grid0.GetChildAt(1,0); e != nil{i.(*gtk.Widget).Destroy()}
 					grid0.RemoveRow(0)
-					loc = int(grid0.Container.GetChildren().Length())/2;
+					loc -= 1
 				}
 			}
 			
+			go func(){
+				for{
+					time.Sleep(time.Second)
+					if keep_s > 0 {keep_s -= 1}
+				}
+			}()
+
 			glib.TimeoutAdd(uint(3000), func()(o bool){
 				o = true
 
@@ -239,7 +267,8 @@ func onMainWindowDestroy() {
 
 func load_face(uid string) (loc string) {
 	loc = Gtk_img_path + `/` + "0default"
-	if uid != "" && p.Checkfile().IsExist(Gtk_img_path + `/` + uid) && p.Rand().MixRandom(1,100) > 1 {
+	if uid == "" {return}
+	if p.Checkfile().IsExist(Gtk_img_path + `/` + uid) && p.Rand().MixRandom(1,100) > 1 {
 		loc = Gtk_img_path + `/` + uid
 		return
 	}
