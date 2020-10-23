@@ -27,6 +27,8 @@ var imgbuf = make(map[string](*gdk.Pixbuf))
 var keep int
 var keep_s int
 var keep_key = map[string]int{
+	"face/0default":0,
+	"face/0room":0,
 	"face/0buyguide":8,
 	"face/0gift":8,
 	"face/0jiezou":8,
@@ -158,7 +160,7 @@ func Gtk_danmu() {
 			{
 				loc := int(grid0.Container.GetChildren().Length())/2;
 
-				if sec,ok := keep_key[img_src];ok {
+				if sec,ok := keep_key[img_src];ok && sec != 0 {
 					if sty,e := tmp_list.text.GetStyleContext();e == nil{
 						sty.AddClass("view")
 						sty.AddProvider(pro_style,gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
@@ -268,6 +270,10 @@ func onMainWindowDestroy() {
 func load_face(uid string) (loc string) {
 	loc = Gtk_img_path + `/` + "0default"
 	if uid == "" {return}
+	if _,ok := keep_key[uid];ok{
+		loc = Gtk_img_path + `/` + uid
+		return
+	}
 	if p.Checkfile().IsExist(Gtk_img_path + `/` + uid) && p.Rand().MixRandom(1,100) > 1 {
 		loc = Gtk_img_path + `/` + uid
 		return

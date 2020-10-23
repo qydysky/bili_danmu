@@ -307,8 +307,6 @@ func (i *api) Get_host_Token() (o *api) {
 
 func Get_face_src(uid string) (string) {
 	if uid == "" {return ""}
-	apilog.Base(-1, "获取face")
-	defer apilog.Base(0)
 
 	req := p.Req()
 	if err := req.Reqf(p.Rval{
@@ -317,18 +315,18 @@ func Get_face_src(uid string) (string) {
 		Timeout:10,
 		Retry:2,
 	});err != nil {
-		apilog.E(err)
+		apilog.Base(1, "获取face").E(err)
 		return ""
 	}
 	res := string(req.Respon)
 	if msg := p.Json().GetValFromS(res, "message");msg == nil || msg != "0" {
-		apilog.E("message", msg)
+		apilog.Base(1, "获取face").E("message", msg)
 		return ""
 	}
 
 	rface := p.Json().GetValFromS(res, "data.rface")
 	if rface == nil {
-		apilog.E("data.rface", rface)
+		apilog.Base(1, "获取face").E("data.rface", rface)
 		return ""
 	}
 	return rface.(string) + `@58w_58h`
