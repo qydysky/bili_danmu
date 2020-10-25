@@ -24,17 +24,17 @@ var pro_style *gtk.CssProvider
 var gtkGetList = list.New()
 
 var imgbuf = make(map[string](*gdk.Pixbuf))
-var keep int
-var keep_s int
+var keep_list = list.New()
+
 var keep_key = map[string]int{
 	"face/0default":0,
 	"face/0room":0,
-	"face/0buyguide":8,
+	"face/0buyguide":9,
 	"face/0gift":8,
 	"face/0jiezou":8,
 	"face/0level1":5,
-	"face/0level2":5,
-	"face/0level3":5,
+	"face/0level2":3,
+	"face/0level3":2,
 	"face/0superchat":13,
 }
 var (
@@ -159,30 +159,37 @@ func Gtk_danmu() {
 			}
 			{
 				loc := int(grid0.Container.GetChildren().Length())/2;
-
-				if sec,ok := keep_key[img_src];ok && sec != 0 {
+				sec := 0
+				if tsec,ok := keep_key[img_src];ok && tsec != 0 {
+					sec = tsec
 					if sty,e := tmp_list.text.GetStyleContext();e == nil{
 						sty.AddClass("view")
 						sty.AddProvider(pro_style,gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 					}else{{log.Println(e)}}
-					
-					grid0.InsertRow(loc);
-					grid0.Attach(tmp_list.img, 0, loc, 1, 1)
-					grid0.Attach(tmp_list.text, 1, loc, 1, 1)
-					keep += 1
-					keep_s += sec
-					if keep_s > 20 {keep_s = 20}
-					
-					glib.TimeoutAdd(uint(keep_s * 1000),func()(o bool){
-						o = false
-						keep -= 1
-						return
-					})
-				}else{
-					grid0.InsertRow(loc - keep);
-					grid0.Attach(tmp_list.img, 0, loc - keep, 1, 1)
-					grid0.Attach(tmp_list.text, 1, loc - keep, 1, 1)
+
 				}
+				/*
+					front
+					|
+					back index:0
+				*/
+				var InsertIndex int = keep_list.Len()
+				if sec != 0 {
+					var cu_To = time.Now().Add(time.Second * time.Duration(sec))
+					var hasInsert bool
+					for el := keep_list.Front(); el != nil; el = el.Next(){
+						if cu_To.After(el.Value.(time.Time)) {InsertIndex -= 1;continue}
+						keep_list.InsertBefore(cu_To,el)
+						hasInsert = true
+						break
+					}
+					if !hasInsert {
+						keep_list.PushBack(cu_To)
+					}
+				}
+				grid0.InsertRow(loc - InsertIndex);
+				grid0.Attach(tmp_list.img, 0, loc - InsertIndex, 1, 1)
+				grid0.Attach(tmp_list.text, 1, loc - InsertIndex, 1, 1)
 
 				loc = int(grid0.Container.GetChildren().Length())/2;
 				for loc > max {
@@ -192,13 +199,6 @@ func Gtk_danmu() {
 					loc -= 1
 				}
 			}
-			
-			go func(){
-				for{
-					time.Sleep(time.Second)
-					if keep_s > 0 {keep_s -= 1}
-				}
-			}()
 
 			glib.TimeoutAdd(uint(3000), func()(o bool){
 				o = true
@@ -235,17 +235,20 @@ func Gtk_danmu() {
 
 	application.Connect("activate", func() {
 		log.Println("application activate")
-		glib.TimeoutAdd(uint(300),func()(o bool){
-			o = true
-			var tmax int = max
-			for len(Gtk_danmuChan) != 0 {
-				tmax -= 1
-				if tmax <= 0 {return}
-				y(<-Gtk_danmuChan,load_face(<-Gtk_danmuChan_uid))
+		go func(){
+			for{
+				time.Sleep(time.Second)
+				for el := keep_list.Front(); el != nil && time.Now().After(el.Value.(time.Time));el = el.Next() {
+					keep_list.Remove(el)
+				}
+				if len(Gtk_danmuChan) == 0 {continue}
+				glib.TimeoutAdd(uint(1000 / (len(Gtk_danmuChan) + 1)),func()(bool){
+					if len(Gtk_danmuChan) == 0 {return false}
+					y(<-Gtk_danmuChan,load_face(<-Gtk_danmuChan_uid))
+					return true
+				})
 			}
-			return
-		})
-
+		}()
 	})
 
 	application.Connect("shutdown", func() {
@@ -270,7 +273,7 @@ func onMainWindowDestroy() {
 func load_face(uid string) (loc string) {
 	loc = Gtk_img_path + `/` + "0default"
 	if uid == "" {return}
-	if _,ok := keep_key[uid];ok{
+	if _,ok := keep_key[Gtk_img_path + `/` + uid];ok{
 		loc = Gtk_img_path + `/` + uid
 		return
 	}

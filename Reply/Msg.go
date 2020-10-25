@@ -12,6 +12,7 @@ var msglog = p.Logf().New().Base(-1, "Msg.go").Open("danmu.log").Level(1)
 
 //Msg类型数据处理方法map
 var Msg_map = map[string]func(replyF, string) {
+	"TRADING_SCORE":nil,//每日任务
 	"MATCH_ROOM_CONF":nil,//赛事房间配置
 	"HOT_ROOM_NOTIFY":nil,//热点房间
 	"MATCH_TEAM_GIFT_RANK":nil,//赛事人气比拼
@@ -55,6 +56,7 @@ var Msg_map = map[string]func(replyF, string) {
 	"PREPARING":replyF.preparing,//下播
 	"LIVE":replyF.live,//开播
 	"SUPER_CHAT_ENTRANCE":nil,//SC入口
+	"SUPER_CHAT_MESSAGE_DELETE":nil,//SC删除
 	"SUPER_CHAT_MESSAGE":nil,//replyF.super_chat_message,//SC
 	"SUPER_CHAT_MESSAGE_JPN":replyF.super_chat_message,//SC
 	"PANEL":replyF.panel,//排行榜

@@ -1,0 +1,51 @@
+{
+    "cmd": "SUPER_CHAT_MESSAGE_JPN",
+    "data": {
+        "id": "771519",
+        "uid": "17572451",
+        "price": 30,
+        "rate": 1000,
+        "message": "\u7406\u89e3\u7406\u89e3\uff0c\u5927\u5c0f\u59d0\u662f\u77e5\u9053\u6211\u559c\u6b22\u7684\u662f\u4eba\u59bb\u624d\u8fd9\u6837\u505a\u7684",
+        "message_jpn": "\u7406\u89e3\u3067\u304d\u307e\u3059\u3002\u304a\u5b22\u3055\u3093\u306f\u79c1\u304c\u597d\u304d\u306a\u306e\u306f\u4eba\u59bb\u3060\u3068\u77e5\u3063\u3066\u3044\u307e\u3059\u3002",
+        "is_ranked": 1,
+        "background_image": "https:\/\/i0.hdslb.com\/bfs\/live\/a712efa5c6ebc67bafbe8352d3e74b820a00c13e.png",
+        "background_color": "#EDF5FF",
+        "background_icon": "",
+        "background_price_color": "#7497CD",
+        "background_bottom_color": "#2A60B2",
+        "ts": 1603590464,
+        "token": "47BF2F57",
+        "medal_info": {
+            "icon_id": 0,
+            "target_id": 434662713,
+            "special": "",
+            "anchor_uname": "NoWorld_Official",
+            "anchor_roomid": 21448649,
+            "medal_level": 27,
+            "medal_name": "NO\u6c11",
+            "medal_color": "#6154c"
+        },
+        "user_info": {
+            "uname": "\u5c4a\u304b\u306a\u3044\u9ebb\u7f8e\u306e\u5f8c\u8f29",
+            "face": "http:\/\/i1.hdslb.com\/bfs\/face\/152b7547d6a00f4417d710bb0fbf8c86db51c321.jpg",
+            "face_frame": "http:\/\/i0.hdslb.com\/bfs\/live\/9b3cfee134611c61b71e38776c58ad67b253c40a.png",
+            "guard_level": 2,
+            "user_level": 21,
+            "level_color": "#5896de",
+            "is_vip": 0,
+            "is_svip": 0,
+            "is_main_vip": 1,
+            "title": "0",
+            "manager": 0
+        },
+        "time": 59,
+        "start_time": 1603590463,
+        "end_time": 1603590523,
+        "gift": {
+            "num": 1,
+            "gift_id": 12000,
+            "gift_name": "\u9192\u76ee\u7559\u8a00"
+        }
+    },
+    "roomid": "21448649"
+}
