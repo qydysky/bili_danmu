@@ -12,7 +12,12 @@ import (
 	p "github.com/qydysky/part"
 	F "github.com/qydysky/bili_danmu/F"
 )
-const max = 50
+const (
+	max = 50
+	max_keep = 5
+	max_img = 500
+)
+
 const appId = "com.github.qydysky.bili_danmu.reply"
 
 type gtk_list struct {
@@ -34,7 +39,7 @@ var keep_key = map[string]int{
 	"face/0jiezou":8,
 	"face/0level1":5,
 	"face/0level2":3,
-	"face/0level3":2,
+	"face/0level3":1,
 	"face/0superchat":13,
 }
 var (
@@ -47,12 +52,13 @@ var (
 
 func Gtk_danmu() {
 	if Gtk_on {return}
+	gtk.Init(nil)
 
 	var y func(string,string)
 	var win *gtk.Window
 	var scrolledwindow0 *gtk.ScrolledWindow
 	var viewport0 *gtk.Viewport
-
+	
 	application, err := gtk.ApplicationNew(appId, glib.APPLICATION_FLAGS_NONE)
 	if err != nil {log.Println(err);return}
 
@@ -174,7 +180,7 @@ func Gtk_danmu() {
 					back index:0
 				*/
 				var InsertIndex int = keep_list.Len()
-				if sec != 0 {
+				if sec > InsertIndex / max_keep {
 					var cu_To = time.Now().Add(time.Second * time.Duration(sec))
 					var hasInsert bool
 					for el := keep_list.Front(); el != nil; el = el.Next(){
@@ -220,7 +226,7 @@ func Gtk_danmu() {
 				}
 
 				{
-					if len(imgbuf) > 1000 {
+					if len(imgbuf) > max_img {
 						for k,_ := range imgbuf {delete(imgbuf,k);break}
 					}
 				}
@@ -238,10 +244,10 @@ func Gtk_danmu() {
 		go func(){
 			for{
 				time.Sleep(time.Second)
+				if len(Gtk_danmuChan) == 0 {continue}
 				for el := keep_list.Front(); el != nil && time.Now().After(el.Value.(time.Time));el = el.Next() {
 					keep_list.Remove(el)
 				}
-				if len(Gtk_danmuChan) == 0 {continue}
 				glib.TimeoutAdd(uint(1000 / (len(Gtk_danmuChan) + 1)),func()(bool){
 					if len(Gtk_danmuChan) == 0 {return false}
 					y(<-Gtk_danmuChan,load_face(<-Gtk_danmuChan_uid))

@@ -283,12 +283,13 @@ func Saveflvf(){
 		}
 
 		{//重试
+			l.I("尝试连接live")
 			if e := rr.Reqf(p.Rval{
 				Url:c.Live[cuLinkIndex],
 				Retry:10,
 				SleepTime:5,
 				Cookie:Cookie,
-				Timeout:-1,
+				Timeout:5,
 				JustResponseCode:true,
 			}); e != nil{l.W(e)}
 
