@@ -14,7 +14,7 @@ import (
 	F "github.com/qydysky/bili_danmu/F"
 	"github.com/christopher-dG/go-obs-websocket"
 	p "github.com/qydysky/part"
-	s "github.com/qydysky/part/setting"
+	s "github.com/qydysky/part/buf"
 )
 
 /*
@@ -288,12 +288,14 @@ func Saveflvf(){
 				Url:c.Live[cuLinkIndex],
 				Retry:10,
 				SleepTime:5,
-				Cookie:Cookie,
+				Header:map[string]string{
+					`Cookie`:Cookie,
+				},
 				Timeout:5,
 				JustResponseCode:true,
 			}); e != nil{l.W(e)}
 
-			if rr.ResponseCode != 200 {
+			if rr.Response.StatusCode != 200 {
 				saveflv.wait.Done()
 				saveflv.cancel.Done()
 				cuLinkIndex += 1
@@ -309,7 +311,9 @@ func Saveflvf(){
 			Url:c.Live[cuLinkIndex],
 			Retry:10,
 			SleepTime:5,
-			Cookie:Cookie,
+			Header:map[string]string{
+				`Cookie`:Cookie,
+			},
 			SaveToPath:saveflv.path + ".flv",
 			Timeout:-1,
 		}); e != nil{l.W(e)}

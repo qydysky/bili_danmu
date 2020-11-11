@@ -58,8 +58,10 @@ func Danmu_s(msg,Cookie string, roomid int) {
 		Url:"https://api.live.bilibili.com/msg/send",
 		PostStr:PostStr,
 		Timeout:5,
-		Referer:"https://live.bilibili.com/" + strconv.Itoa(roomid),
-		Cookie:Cookie,
+		Header:map[string]string{
+			`Referer`:"https://live.bilibili.com/" + strconv.Itoa(roomid),
+			`Cookie`:Cookie,
+		},
 	})
 	if err != nil {
 		l.E(err)
