@@ -52,5 +52,24 @@
         "data": {
             "count": 5
         }
+    },
+    {
+        "cmd": "ONLINE_RANK_TOP3",
+        "data": {
+            "list": [
+                {
+                    "msg": "恭喜 \u003c%Whale恰柠檬%\u003e 成为高能榜",
+                    "rank": 1
+                },
+                {
+                    "msg": "恭喜 \u003c%陆上笙菖蒲%\u003e 成为高能榜",
+                    "rank": 2
+                },
+                {
+                    "msg": "恭喜 \u003c%赤羽刹那EXIA%\u003e 成为高能榜",
+                    "rank": 3
+                }
+            ]
+        }
     }
 ]
