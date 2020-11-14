@@ -62,6 +62,9 @@ jobs:
     - name: Build
       shell: msys2 {0}
       run: |
+        export CGO_LDFLAGS_ALLOW="-Wl.*"
+        export CGO_CFLAGS_ALLOW="-Wl.*"
+        export CGO_CXXFLAGS_ALLOW="-Wl.*"
         go get github.com/gotk3/gotk3@master
         go build -v -buildmode=exe -tags gtk_3_22 -o demo/demo.exe -i demo/main.go
         
