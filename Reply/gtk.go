@@ -159,7 +159,12 @@ func Gtk_danmu() {
 					pixbuf,e = gdk.PixbufCopy(v)
 				} else {
 					pixbuf,e = gdk.PixbufNewFromFileAtSize(img_src, 40, 40);
-					if e == nil {imgbuf[img_src],e = gdk.PixbufCopy(pixbuf)}
+					if e == nil {
+						if len(imgbuf) > max_img {
+							for k,_ := range imgbuf {delete(imgbuf,k);break}
+						}
+						imgbuf[img_src],e = gdk.PixbufCopy(pixbuf)
+					}
 				}
 				if e == nil {tmp_list.img.SetFromPixbuf(pixbuf)}
 			}
@@ -206,33 +211,6 @@ func Gtk_danmu() {
 				}
 			}
 
-			glib.TimeoutAdd(uint(3000), func()(o bool){
-				o = true
-
-				if gtkGetList.Len() == 0 {return}
-				el := gtkGetList.Front()
-				if el == nil {return}
-				if uid,ok := gtkGetList.Remove(el).(string);ok{
-					go func(){
-						src := F.Get_face_src(uid)
-						if src == "" {return}
-						req := p.Req()
-						if e := req.Reqf(p.Rval{
-							Url:src,
-							SaveToPath:Gtk_img_path + `/` + uid,
-							Timeout:3,
-						}); e != nil{log.Println(e);}
-					}()
-				}
-
-				{
-					if len(imgbuf) > max_img {
-						for k,_ := range imgbuf {delete(imgbuf,k);break}
-					}
-				}
-				return
-			})
-
 			win.ShowAll()
 		}
 
@@ -255,6 +233,28 @@ func Gtk_danmu() {
 				})
 			}
 		}()
+		
+		glib.TimeoutAdd(uint(3000), func()(o bool){
+			o = true
+
+			if gtkGetList.Len() == 0 {return}
+			el := gtkGetList.Front()
+			if el == nil {return}
+			if uid,ok := gtkGetList.Remove(el).(string);ok{
+				go func(){
+					src := F.Get_face_src(uid)
+					if src == "" {return}
+					req := p.Req()
+					if e := req.Reqf(p.Rval{
+						Url:src,
+						SaveToPath:Gtk_img_path + `/` + uid,
+						Timeout:3,
+					}); e != nil{log.Println(e);}
+				}()
+			}
+
+			return
+		})
 	})
 
 	application.Connect("shutdown", func() {
