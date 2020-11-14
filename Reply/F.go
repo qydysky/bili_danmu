@@ -121,7 +121,7 @@ func ShowRecf(){
 	if!IsOn("ShowRec") {return}
 	for {
 		p.Sys().Timeoutf(60)
-		p.Logf().New().Open("danmu.log").Base(1, "Rec").I("营收 ￥", c.Rec)
+		p.Logf().New().Open("danmu.log").Base(1, "Rec").I("营收 ￥", c.Rev)
 	}
 }
 

@@ -1,4 +1,5 @@
 {
+    "ShowRec":true,
     "Gtk": true,
     "Qtd": false,
     "Saveflv": false,
