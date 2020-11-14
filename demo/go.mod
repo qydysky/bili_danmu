@@ -16,6 +16,6 @@ require (
 )
 
 replace (
-	github.com/qydysky/bili_danmu => ../
 	github.com/gotk3/gotk3 v0.5.0 => github.com/qydysky/gotk3 v0.5.1-0.20201114200959-3165c4dc990f
+	github.com/qydysky/bili_danmu => ../
 )

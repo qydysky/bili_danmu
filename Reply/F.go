@@ -23,7 +23,7 @@ import (
 
 //功能开关
 var AllF = map[string]bool{
-	`ShowRec`:true,//显示本次营收
+	`ShowRev`:true,//显示本次营收
 	"Gtk":false,//Gtk弹幕窗口
 	"Saveflv":true,//保存直播流(默认高清，有cookie默认蓝光)
 	"Ass":true,//Ass弹幕生成，由于时间对应关系,仅开启流保存时生效
@@ -116,12 +116,23 @@ func selfcross2(a []string) (float32, string) {
 }
 
 //功能区
-//ShowRec 显示h营收
-func ShowRecf(){
-	if!IsOn("ShowRec") {return}
+//ShowRev 显示h营收
+var (
+	ShowRev_old float64
+	ShowRev_start bool
+)
+
+func ShowRevf(){
+	if!IsOn("ShowRev") {return}
+	if ShowRev_start {
+		p.Logf().New().Open("danmu.log").Base(1, "Rev").I("营收 ￥", ShowRev)
+		return
+	}
+	ShowRev_start = true
 	for {
-		p.Sys().Timeoutf(60)
-		p.Logf().New().Open("danmu.log").Base(1, "Rec").I("营收 ￥", c.Rev)
+		p.Logf().New().Open("danmu.log").Base(1, "Rev").I("营收 ￥", ShowRev)
+		for c.Rev == ShowRev {p.Sys().Timeoutf(60)}
+		ShowRev = c.Rev
 	}
 }
 
