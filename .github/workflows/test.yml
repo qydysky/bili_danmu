@@ -47,10 +47,6 @@ jobs:
       uses: actions/setup-go@v2
       with:
         go-version: ${{ matrix.go }}
-      
-    - name: Set up C
-      run: |
-        echo "C:\msys64\mingw64\bin" >> $GITHUB_PATH
 
     - name: Set up Gtk
       uses: msys2/setup-msys2@v2
@@ -58,7 +54,7 @@ jobs:
         msystem: MINGW64
         path-type: inherit
         update: true
-        install: 'mingw-w64-x86_64-gtk3 mingw-w64-x86_64-gtk2'
+        install: 'mingw-w64-x86_64-gtk2 mingw-w64-x86_64-gtk3 mingw-w64-x86_64-pkg-config base-devel'
 
     - name: Check out code
       uses: actions/checkout@v2
