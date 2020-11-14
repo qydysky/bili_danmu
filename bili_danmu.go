@@ -96,7 +96,7 @@ func Demo(roomid ...int) {
 						{//附加功能 直播流保存 Gtk窗口 营收
 							go reply.Saveflvf()
 							go reply.Gtkf()
-							go reply.ShowRecf()
+							go reply.ShowRevf()
 						}
 					}()
 				}
