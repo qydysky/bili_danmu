@@ -31,21 +31,22 @@ jobs:
         key: url
         value: ${{ steps.create_release.outputs.upload_url }}
 
-  ubuntu_build:
-    name: ubuntu_build
+  u-build:
+    name: build_ubuntu_go${{ matrix.go }}
     needs: Release_Drafter
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go: [ '1.15' ]
     steps:
-
-    - name: Set up Go
+    - name: Set up Go${{ matrix.go }}
       uses: actions/setup-go@v2
       with:
-        go-version: ^1.15.4
-      id: go
+        go-version: ${{ matrix.go }}
 
     - name: Check out code
       uses: actions/checkout@v2
-        
+            
     - name: Build
       run: |
         sudo apt-get install libgtk-3-dev libcairo2-dev libglib2.0-dev
@@ -53,7 +54,7 @@ jobs:
         go build -v -buildmode=exe -o demo/demo.run -tags gtk_3_22 -i demo/main.go
       
     - name: zip
-      run: zip -q -r release_ubuntu.zip *
+      run: zip -q -r ubuntu_go${{ matrix.go }}.zip *
     
     - name: get upload_url
       id: get_upload_url
@@ -71,27 +72,24 @@ jobs:
         # The URL for uploading assets to the release
         upload_url: ${{ steps.get_upload_url.outputs.data }}
         # The path to the asset you want to upload
-        asset_path: ./release_ubuntu.zip
+        asset_path: ./ubuntu_go${{ matrix.go }}.zip
         # The name of the asset you want to upload
-        asset_name: release_ubuntu.zip
+        asset_name: ubuntu_go${{ matrix.go }}.zip
         # The content-type of the asset you want to upload. See the supported Media Types here: https://www.iana.org/assignments/media-types/media-types.xhtml for more information
         asset_content_type: application/zip
 
-  windows_build:
-    name: windows_build
+  w-build:
+    name: build_windows_go${{ matrix.go }}
     needs: Release_Drafter
     runs-on: windows-latest
+    strategy:
+      matrix:
+        go: [ '1.15' ]
     steps:
-
-    - name: Set up Go
+    - name: Set up Go${{ matrix.go }}
       uses: actions/setup-go@v2
       with:
-        go-version: ^1.15.4
-      id: go
-
-    - name: Set up C
-      run: |
-        echo "C:\msys64\mingw64\bin" >> $GITHUB_PATH
+        go-version: ${{ matrix.go }}
 
     - name: Set up Gtk
       uses: msys2/setup-msys2@v2
@@ -99,21 +97,23 @@ jobs:
         msystem: MINGW64
         path-type: inherit
         update: true
-        install: 'mingw-w64-x86_64-gtk3 mingw-w64-x86_64-gtk2'
+        install: 'mingw-w64-x86_64-gtk2 mingw-w64-x86_64-gtk3 mingw-w64-x86_64-pkg-config base-devel'
 
     - name: Check out code
       uses: actions/checkout@v2
 
-    - shell: msys2 {0}
+    - name: Build
+      shell: msys2 {0}
       run: |
         export CGO_LDFLAGS_ALLOW="-Wl.*"
         export CGO_CFLAGS_ALLOW="-Wl.*"
         export CGO_CXXFLAGS_ALLOW="-Wl.*"
         go get github.com/gotk3/gotk3@master
-        go build -v -buildmode=exe -o demo/demo.exe -tags gtk_3_22 -i demo/main.go
-
+        go build -v -buildmode=exe -tags gtk_3_22 -o demo/demo.exe -i demo/main.go
+        
     - name: zip
-      run: .\7za.exe a -r .\release_windows.zip ./
+      run: .\7za.exe a -r .\windows_go${{ matrix.go }}.zip ./
+
 
     - name: get upload_url
       id: get_upload_url
@@ -131,8 +131,8 @@ jobs:
         # The URL for uploading assets to the release
         upload_url: ${{ steps.get_upload_url.outputs.data }}
         # The path to the asset you want to upload
-        asset_path: ./release_windows.zip
+        asset_path: ./windows_go${{ matrix.go }}.zip
         # The name of the asset you want to upload
-        asset_name: release_windows.zip
+        asset_name: windows_go${{ matrix.go }}.zip
         # The content-type of the asset you want to upload. See the supported Media Types here: https://www.iana.org/assignments/media-types/media-types.xhtml for more information
         asset_content_type: application/zip
