@@ -112,9 +112,11 @@ func Gtk_danmu() {
 		{
 			var e error
 			if pro_style,e = gtk.CssProviderNew();e == nil{
-				if e = pro_style.LoadFromPath(`ui/1.css`);e != nil{
-					log.Println(e)
-				}
+				if e = pro_style.LoadFromPath(`ui/1.css`);e == nil{
+					if scr,e := gdk.ScreenGetDefault();e == nil {
+						gtk.AddProviderForScreen(scr,pro_style,gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+					}
+				}else{log.Println(e)}
 			}else{log.Println(e)}
 		}
 
@@ -174,10 +176,8 @@ func Gtk_danmu() {
 				if tsec,ok := keep_key[img_src];ok && tsec != 0 {
 					sec = tsec
 					if sty,e := tmp_list.text.GetStyleContext();e == nil{
-						sty.AddClass("view")
-						sty.AddProvider(pro_style,gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
-					}else{{log.Println(e)}}
-
+						sty.AddClass("highlight")
+					}
 				}
 				/*
 					front
@@ -214,6 +214,7 @@ func Gtk_danmu() {
 			win.ShowAll()
 		}
 
+
 		Gtk_on = true
 	})
 
@@ -236,7 +237,7 @@ func Gtk_danmu() {
 		
 		glib.TimeoutAdd(uint(3000), func()(o bool){
 			o = true
-
+			//y("sssss",load_face(""))
 			if gtkGetList.Len() == 0 {return}
 			el := gtkGetList.Front()
 			if el == nil {return}
