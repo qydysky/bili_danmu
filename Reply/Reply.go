@@ -359,7 +359,7 @@ func (replyF) preparing(s string) {
 			Obs_R(false)
 			Obsf(false)
 			Saveflv_wait()
-			go reply.ShowRecf()
+			go ShowRevf()
 		}
 		if p.Sys().Type(roomid) == "float64" {
 			Gui_show(Itos([]interface{}{"房间", roomid, "下播了"}), "0room")
