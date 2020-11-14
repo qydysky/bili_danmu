@@ -1,10 +1,11 @@
 {
+    "ShowRec":true,
     "Gtk": true,
     "Qtd": false,
-    "Saveflv": true,
+    "Saveflv": false,
     "Ass": true,
     "Obs": false,
-    "Autoban": true,
+    "Autoban": false,
     "Jiezou": true,
     "Danmuji": true,
     "Danmuji_auto": false,

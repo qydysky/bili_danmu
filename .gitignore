@@ -12,3 +12,5 @@ demo/*.ass
 demo/*.mkv
 demo/qtbox
 demo/main
+demo/face/*
+demo/demo.run

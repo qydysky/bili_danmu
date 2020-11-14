@@ -6,6 +6,7 @@ var (
 	Roomid int
 	Cookie string
 	Title string
+	Rev float64//营收
 )
 
 //from player-loader-2.0.11.min.js

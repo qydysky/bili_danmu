@@ -93,10 +93,10 @@ func Demo(roomid ...int) {
 						if p.Checkfile().IsExist("cookie.txt") {//附加功能 弹幕机
 							reply.Danmuji_auto(1)
 						}
-						{//附加功能 直播流保存 Qt窗口 Gtk窗口
+						{//附加功能 直播流保存 Gtk窗口 营收
 							go reply.Saveflvf()
-							go reply.Qtdf()
 							go reply.Gtkf()
+							go reply.ShowRevf()
 						}
 					}()
 				}

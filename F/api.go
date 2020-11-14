@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	c "github.com/qydysky/bili_danmu/CV"
+	g "github.com/qydysky/part/get"
 	p "github.com/qydysky/part"
 )
 
@@ -42,7 +43,7 @@ func (i *api) Get_info() (o *api) {
 	}
 	Roomid := strconv.Itoa(o.Roomid)
 
-	r := p.Get(p.Rval{
+	r := g.Get(p.Rval{
 		Url:"https://live.bilibili.com/" + Roomid,
 	})
 	//uid
@@ -78,7 +79,9 @@ func (i *api) Get_info() (o *api) {
 		req := p.Req()
 		if err := req.Reqf(p.Rval{
 			Url:"https://api.live.bilibili.com/room/v1/Room/room_init?id=" + Roomid,
-			Referer:"https://live.bilibili.com/" + Roomid,
+			Header:map[string]string{
+				`Referer`:"https://live.bilibili.com/" + Roomid,
+			},
 			Timeout:10,
 			Retry:2,
 		});err != nil {
@@ -135,9 +138,11 @@ func (i *api) Get_live(qn ...string) (o *api) {
 	}
 
 	if len(qn) == 0 || qn[0] == "0" || qn[0] == "" {//html获取
-		r := p.Get(p.Rval{
+		r := g.Get(p.Rval{
 			Url:"https://live.bilibili.com/" + strconv.Itoa(o.Roomid),
-			Cookie:Cookie,
+			Header:map[string]string{
+				`Cookie`:Cookie,
+			},
 		})
 		if e := r.S(`"durl":[`, `]`, 0, 0).Err;e == nil {
 			if urls := p.Json().GetArrayFrom("[" + r.RS + "]", "url");urls != nil {
@@ -160,9 +165,11 @@ func (i *api) Get_live(qn ...string) (o *api) {
 		req := p.Req()
 		if err := req.Reqf(p.Rval{
 			Url:"https://api.live.bilibili.com/xlive/web-room/v1/index/getRoomPlayInfo?play_url=1&mask=1&qn=0&platform=web&ptype=16&room_id=" + strconv.Itoa(o.Roomid),
-			Referer:"https://live.bilibili.com/" + strconv.Itoa(o.Roomid),
+			Header:map[string]string{
+				`Referer`:"https://live.bilibili.com/" + strconv.Itoa(o.Roomid),
+				`Cookie`:Cookie,
+			},
 			Timeout:10,
-			Cookie:Cookie,
 			Retry:2,
 		});err != nil {
 			apilog.E(err)
@@ -220,9 +227,11 @@ func (i *api) Get_live(qn ...string) (o *api) {
 			}
 			if err := req.Reqf(p.Rval{
 				Url:"https://api.live.bilibili.com/xlive/web-room/v1/playUrl/playUrl?cid=" + strconv.Itoa(o.Roomid) + "&qn=" + qn[0] + "&platform=web&https_url_req=1&ptype=16",
-				Referer:"https://live.bilibili.com/" + strconv.Itoa(o.Roomid),
+				Header:map[string]string{
+					`Cookie`:Cookie,
+					`Referer`:"https://live.bilibili.com/" + strconv.Itoa(o.Roomid),
+				},
 				Timeout:10,
-				Cookie:Cookie,
 				Retry:2,
 			});err != nil {
 				apilog.E(err)
@@ -267,7 +276,9 @@ func (i *api) Get_host_Token() (o *api) {
 	req := p.Req()
 	if err := req.Reqf(p.Rval{
 		Url:"https://api.live.bilibili.com/xlive/web-room/v1/index/getDanmuInfo?type=0&id=" + Roomid,
-		Referer:"https://live.bilibili.com/" + Roomid,
+		Header:map[string]string{
+			`Referer`:"https://live.bilibili.com/" + Roomid,
+		},
 		Timeout:10,
 		Retry:2,
 	});err != nil {
@@ -303,4 +314,33 @@ func (i *api) Get_host_Token() (o *api) {
 	}
 
 	return
+}
+
+func Get_face_src(uid string) (string) {
+	if uid == "" {return ""}
+
+	req := p.Req()
+	if err := req.Reqf(p.Rval{
+		Url:"https://api.live.bilibili.com/xlive/web-room/v1/index/getDanmuMedalAnchorInfo?ruid=" + uid,
+		Header:map[string]string{
+			`Referer`:"https://live.bilibili.com/" + strconv.Itoa(c.Roomid),
+		},
+		Timeout:10,
+		Retry:2,
+	});err != nil {
+		apilog.Base(1, "获取face").E(err)
+		return ""
+	}
+	res := string(req.Respon)
+	if msg := p.Json().GetValFromS(res, "message");msg == nil || msg != "0" {
+		apilog.Base(1, "获取face").E("message", msg)
+		return ""
+	}
+
+	rface := p.Json().GetValFromS(res, "data.rface")
+	if rface == nil {
+		apilog.Base(1, "获取face").E("data.rface", rface)
+		return ""
+	}
+	return rface.(string) + `@58w_58h`
 }

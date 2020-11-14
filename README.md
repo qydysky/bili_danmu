@@ -56,7 +56,7 @@ var Msg_map = map[string]func(replyF, string) {
 以下内容可能过时，点击查看[当前支持功能](https://github.com/qydysky/bili_danmu/blob/master/Reply/F.go#L16)
 ```
 其他功能
-自动化功能、挑选有价值的弹幕，可在demo/config.json覆盖默认控制
+自动化功能、挑选有价值的弹幕，可在demo/config_F.json覆盖默认控制
 //功能开关
 var AllF = map[string]bool{
 	"Saveflv":true,//保存直播流(仅高清)
@@ -81,9 +81,19 @@ var AllF = map[string]bool{
 	"Shortdanmu":true,//上下文相同文字缩减
 }
 ```
+以下内容可能过时,其他小功能
+```
+弹幕重连
+直播流开播自动下载
+直播流下载重连
+gtk弹幕窗自定义人/事件消息停留
+...
+```
+
 
 ### demo 
 - 已配置了[go环境](https://golang.google.cn/dl/)
+- 配置了[gtk](https://www.gtk.org/)
 > 清晰度可取[数值](https://github.com/qydysky/bili_danmu/blob/028d6d8ed47df4631aca7df93871a4795bedda76/CV/Var.go#L19)
 ```
 git clone https://github.com/qydysky/bili_danmu.git
@@ -153,6 +163,12 @@ ctrl+c退出，会同时追加记录到文件danmu.log中（文件记录完整�
 结束后的文件播放效果(显于左上)
 ![](_Screenshot/Screenshot_20200926_173834.png)
 [截图地址](//zdir.ntsdtt.bid/ALL/Admin/Remote/%E5%9B%BE%E7%89%87/Screenshot_20200926_173834.png)
+
+Gtk弹幕窗
+
+![](_Screenshot/Screenshot_20201023_232029.png)
+
+[截图地址](//zdir.ntsdtt.bid/ALL/Admin/Remote/%E5%9B%BE%E7%89%87/Screenshot_20201023_232029.png)
 
 Qt弹幕窗
 ![](_Screenshot/Screenshot_20201002_045627.png)
