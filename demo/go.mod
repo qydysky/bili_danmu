@@ -3,7 +3,7 @@ module github.com/qydysky/bili_danmu/demo
 go 1.14
 
 require (
-	github.com/gotk3/gotk3 v0.5.1-0.20201111061058-cdb396edc76f // indirect
+	github.com/gotk3/gotk3 v0.5.0 // indirect
 	github.com/klauspost/compress v1.11.2 // indirect
 	github.com/miekg/dns v1.1.35 // indirect
 	github.com/mitchellh/mapstructure v1.3.3 // indirect
@@ -17,5 +17,5 @@ require (
 
 replace (
 	github.com/qydysky/bili_danmu => ../
-	github.com/gotk3/gotk3 v0.5.1-0.20201111061058-cdb396edc76f => github.com/qydysky/gotk3 v0.5.1-0.20201114200959-3165c4dc990f
+	github.com/gotk3/gotk3 v0.5.0 => github.com/qydysky/gotk3 v0.5.1-0.20201114200959-3165c4dc990f
 )
