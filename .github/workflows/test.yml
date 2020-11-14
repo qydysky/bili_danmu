@@ -5,50 +5,49 @@ on:
     branches:
     - '**'
     - '!master'
-    paths:
-    - 'VERSION'
 
 jobs:
-
-  ubuntu_build:
-    name: ubuntu_build
+  u-build:
+    name: build_ubuntu_go${{ matrix.go }}
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go: [ '1.15' ]
     steps:
-
-    - name: Set up Go
+    - name: Set up Go${{ matrix.go }}
       uses: actions/setup-go@v2
       with:
-        go-version: ^1.15.4
-      id: go
+        go-version: ${{ matrix.go }}
 
     - name: Check out code
       uses: actions/checkout@v2
-        
+    
     - name: Build
       run: |
         sudo apt-get install libgtk-3-dev libcairo2-dev libglib2.0-dev
         go get github.com/gotk3/gotk3@master
-        go build -v -buildmode=exe -o demo/demo.run -tags gtk_3_22 -i demo/main.go
+        go build -v -buildmode=exe -tags gtk_3_22 -o demo/demo.run -i demo/main.go
       
     - name: zip
-      run: zip -q -r release_ubuntu.zip *
+      run: zip -q -r ubuntu_go${{ matrix.go }}.zip *
       
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v2.2.0
       with:
-        path: ./release_ubuntu.zip
-
-  windows_build:
-    name: windows_build
+        path: ./ubuntu_go${{ matrix.go }}.zip
+        
+  w-build:
+    name: build_windows_go${{ matrix.go }}
     runs-on: windows-latest
+    strategy:
+      matrix:
+        go: [ '1.15' ]
     steps:
-
-    - name: Set up Go
+    - name: Set up Go${{ matrix.go }}
       uses: actions/setup-go@v2
       with:
-        go-version: ^1.15.4
-      id: go
-
+        go-version: ${{ matrix.go }}
+      
     - name: Set up C
       run: |
         echo "C:\msys64\mingw64\bin" >> $GITHUB_PATH
@@ -63,19 +62,17 @@ jobs:
 
     - name: Check out code
       uses: actions/checkout@v2
-
-    - shell: msys2 {0}
+            
+    - name: Build
+      shell: msys2 {0}
       run: |
-        export CGO_LDFLAGS_ALLOW="-Wl.*"
-        export CGO_CFLAGS_ALLOW="-Wl.*"
-        export CGO_CXXFLAGS_ALLOW="-Wl.*"
         go get github.com/gotk3/gotk3@master
-        go build -v -buildmode=exe -o demo/demo.exe -tags gtk_3_22 -i demo/main.go
-
+        go build -v -buildmode=exe -tags gtk_3_22 -o demo/demo.exe -i demo/main.go
+        
     - name: zip
-      run: .\7za.exe a -r .\release_windows.zip ./
-
+      run: .\7za.exe a -r .\windows_go${{ matrix.go }}.zip ./
+      
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v2.2.0
       with:
-        path: ./release_windows.zip
+        path: ./windows_go${{ matrix.go }}.zip

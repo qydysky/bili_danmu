@@ -23,7 +23,6 @@ import (
 
 //功能开关
 var AllF = map[string]bool{
-	"Qtd":false,//Qt弹幕窗口
 	"Gtk":false,//Gtk弹幕窗口
 	"Saveflv":true,//保存直播流(默认高清，有cookie默认蓝光)
 	"Ass":true,//Ass弹幕生成，由于时间对应关系,仅开启流保存时生效
@@ -120,41 +119,6 @@ func selfcross2(a []string) (float32, string) {
 func Gtkf(){
 	if!IsOn("Gtk") {return}
 	Gtk_danmu()
-}
-
-//Qtd 弹幕Qt窗口
-type Qtd struct {
-	Qt_MaxMun int 
-	Qt_LineHeight float64 
-	Qt_BlockMargin float64 
-	Qt_FontSize int 
-	Qt_FontWeight int 
-	Qt_Background []int 
-}
-
-var qtd = Qtd {
-	Qt_MaxMun:30,//danmu max limit
-	Qt_LineHeight:90,//percent
-	Qt_BlockMargin:7,
-	Qt_FontSize:16,//pixel
-	Qt_FontWeight:57,
-	/*
-	QFont__Thin       QFont__Weight = QFont__Weight(0)
-	QFont__ExtraLight QFont__Weight = QFont__Weight(12)
-	QFont__Light      QFont__Weight = QFont__Weight(25)
-	QFont__Normal     QFont__Weight = QFont__Weight(50)
-	QFont__Medium     QFont__Weight = QFont__Weight(57)
-	QFont__DemiBold   QFont__Weight = QFont__Weight(63)
-	QFont__Bold       QFont__Weight = QFont__Weight(75)
-	QFont__ExtraBold  QFont__Weight = QFont__Weight(81)
-	QFont__Black      QFont__Weight = QFont__Weight(87)
-	*/
-	Qt_Background:[]int{0, 0, 0, 140},//rgba
-}
-
-func Qtdf(){
-	if !IsOn("Qtd") {return}
-	Qtdanmu()
 }
 
 //Ass 弹幕转字幕

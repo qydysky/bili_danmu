@@ -562,7 +562,6 @@ func Msg_showdanmu(auth interface{}, m ...string) {
 
 func Gui_show(m ...string){
 	//m[0]:msg m[1]:uid
-	if QtOn {QtDanmuChan <- m[0]}
 	if Gtk_on {
 		if len(m) > 1 {
 			Gtk_danmuChan_uid <- m[1]
