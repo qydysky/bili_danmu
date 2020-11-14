@@ -1,5 +1,5 @@
 ## bilibili 直播弹幕机
-golang go version go1.15.2 linux/amd64
+golang go version go1.15.4 linux/amd64
 ### 当前支持显示/功能
 以下内容可能过时，点击查看[当前支持显示](https://github.com/qydysky/bili_danmu/blob/master/Reply/Msg.go#L13)
 ```
@@ -87,24 +87,22 @@ var AllF = map[string]bool{
 直播流开播自动下载
 直播流下载重连
 gtk弹幕窗自定义人/事件消息停留
+营收统计
 ...
 ```
-
+### 构建
+本项目使用github action自动构建，构建过程详见[yml](https://github.com/qydysky/bili_danmu/blob/master/.github/workflows/go.yml)
 
 ### demo 
-- 已配置了[go环境](https://golang.google.cn/dl/)
-- 配置了[gtk](https://www.gtk.org/)
-> 清晰度可取[数值](https://github.com/qydysky/bili_danmu/blob/028d6d8ed47df4631aca7df93871a4795bedda76/CV/Var.go#L19)
-```
-git clone https://github.com/qydysky/bili_danmu.git
-cd demo
-go run main.go
-或
-go run main.go -q 清晰度 -r 房间ID
-```
-- 未配置[go环境](https://golang.google.cn/dl/)
-
 前往[releases](https://github.com/qydysky/bili_danmu/releases)页下载对应系统版本。解压后进入`demo`目录(文件夹)，运行`demo.run`(`demo.exe`)。
+```
+./demo.run -q 清晰度 -r 房间ID
+```
+
+> 清晰度可取[数值](https://github.com/qydysky/bili_danmu/blob/028d6d8ed47df4631aca7df93871a4795bedda76/CV/Var.go#L19)
+
+
+
 
 **部分功能需要在`demo`目录(文件夹)下放置`cookie.txt`才可用**
 
