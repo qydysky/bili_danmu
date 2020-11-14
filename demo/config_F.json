@@ -1,8 +1,8 @@
 {
-    "ShowRec":true,
+    "ShowRev":true,
     "Gtk": true,
     "Qtd": false,
-    "Saveflv": false,
+    "Saveflv": true,
     "Ass": true,
     "Obs": false,
     "Autoban": false,
