@@ -2,6 +2,7 @@ package reply
 
 import (
 	"fmt"
+	"time"
 	"bytes"
 	"strconv"
 	"compress/zlib"
@@ -359,8 +360,8 @@ func (replyF) preparing(s string) {
 			Obs_R(false)
 			Obsf(false)
 			Saveflv_wait()
-			c.Rev = 0
 			go ShowRevf()
+			c.Liveing = false
 		}
 		if p.Sys().Type(roomid) == "float64" {
 			Gui_show(Itos([]interface{}{"房间", roomid, "下播了"}), "0room")
@@ -384,6 +385,11 @@ func (replyF) live(s string) {
 			Obsf(true)
 			Obs_R(true)
 			go Saveflvf()
+		}
+		{
+			c.Rev = 0 //营收
+			c.Liveing = true //直播i标志
+			c.Live_Start_Time = time.Now() //开播h时间
 		}
 		if p.Sys().Type(roomid) == "float64" {
 			Gui_show(Itos([]interface{}{"房间", roomid, "开播了"}), "0room")

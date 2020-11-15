@@ -1,5 +1,9 @@
 package cv
- 
+
+import (
+	"time"
+)
+
 var (
 	Live []string//直播链接
 	Live_qn string
@@ -7,6 +11,8 @@ var (
 	Cookie string
 	Title string
 	Rev float64//营收
+	Live_Start_Time time.Time//直播开始时间
+	Liveing bool//是否在直播
 )
 
 //from player-loader-2.0.11.min.js

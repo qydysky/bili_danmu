@@ -5,12 +5,14 @@ import (
 	"errors"
 	"time"
 	"log"
+	"fmt"
 
 	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
 	"github.com/gotk3/gotk3/gdk"
 	p "github.com/qydysky/part"
 	F "github.com/qydysky/bili_danmu/F"
+	c "github.com/qydysky/bili_danmu/CV"
 )
 const (
 	max = 50
@@ -58,6 +60,8 @@ func Gtk_danmu() {
 	var win *gtk.Window
 	var scrolledwindow0 *gtk.ScrolledWindow
 	var viewport0 *gtk.Viewport
+	var w2_textView0 *gtk.TextView
+	var w2_textView1 *gtk.TextView
 	
 	application, err := gtk.ApplicationNew(appId, glib.APPLICATION_FLAGS_NONE)
 	if err != nil {log.Println(err);return}
@@ -68,13 +72,17 @@ func Gtk_danmu() {
 
 		builder, err := gtk.BuilderNewFromFile("ui/1.glade")
 		if err != nil {log.Println(err);return}
+		builder2, err := gtk.BuilderNewFromFile("ui/2.glade")
+		if err != nil {log.Println(err);return}
 
 		{
 			signals := map[string]interface{}{
 				"on_main_window_destroy": onMainWindowDestroy,
 			}
 			builder.ConnectSignals(signals)
+			builder2.ConnectSignals(signals)
 		}
+
 		{
 			obj, err := builder.GetObject("main_window")
 			if err != nil {log.Println(err);return}
@@ -82,6 +90,28 @@ func Gtk_danmu() {
 			if err != nil {log.Println(err);return}
 			application.AddWindow(win)
 			defer win.ShowAll()
+		}
+		{
+			obj, err := builder2.GetObject("main_window")
+			if err != nil {log.Println(err);return}
+			win2, err := isWindow(obj)
+			if err != nil {log.Println(err);return}
+			application.AddWindow(win2)
+			defer win2.ShowAll()
+		}
+		{//营收
+			obj, err := builder2.GetObject("t0")
+			if err != nil {log.Println(err);return}
+			if tmp,ok := obj.(*gtk.TextView); ok {
+				w2_textView0 = tmp
+			}else{log.Println("cant find #t0 in .glade");return}
+		}
+		{//直播时长
+			obj, err := builder2.GetObject("t1")
+			if err != nil {log.Println(err);return}
+			if tmp,ok := obj.(*gtk.TextView); ok {
+				w2_textView1 = tmp
+			}else{log.Println("cant find #t1 in .glade");return}
 		}
 		{
 			obj, err := builder.GetObject("scrolledwindow0")
@@ -113,7 +143,7 @@ func Gtk_danmu() {
 			var e error
 			if pro_style,e = gtk.CssProviderNew();e == nil{
 				if e = pro_style.LoadFromPath(`ui/1.css`);e == nil{
-					if scr,e := gdk.ScreenGetDefault();e == nil {
+					if scr := win.GetScreen();scr != nil {
 						gtk.AddProviderForScreen(scr,pro_style,gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
 					}
 				}else{log.Println(e)}
@@ -234,10 +264,30 @@ func Gtk_danmu() {
 				})
 			}
 		}()
-		
+
 		glib.TimeoutAdd(uint(3000), func()(o bool){
 			o = true
 			//y("sssss",load_face(""))
+			{//营收
+				if IsOn("ShowRev") {
+					b,e := w2_textView0.GetBuffer()
+					if e != nil {log.Println(e);return}
+					b.SetText(fmt.Sprintf("￥%.2f",c.Rev))					
+				}
+			}
+			{//时长
+				if c.Liveing {
+					b,e := w2_textView1.GetBuffer()
+					if e != nil {log.Println(e);return}
+					d := time.Since(c.Live_Start_Time).Round(time.Second)
+					h := d / time.Hour
+					d -= h * time.Hour
+					m := d / time.Minute
+					d -= m * time.Minute
+					s := d / time.Second
+					b.SetText(fmt.Sprintf("%02d:%02d:%02d", h, m, s))					
+				}
+			}
 			if gtkGetList.Len() == 0 {return}
 			el := gtkGetList.Front()
 			if el == nil {return}

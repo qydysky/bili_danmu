@@ -125,12 +125,12 @@ var (
 func ShowRevf(){
 	if!IsOn("ShowRev") {return}
 	if ShowRev_start {
-		p.Logf().New().Open("danmu.log").Base(1, "Rev").I("营收 ￥", c.Rev)
+		p.Logf().New().Open("danmu.log").Base(1, "Rev").I(fmt.Sprintf("营收 ￥%.2f",c.Rev))
 		return
 	}
 	ShowRev_start = true
 	for {
-		p.Logf().New().Open("danmu.log").Base(1, "Rev").I("营收 ￥", c.Rev)
+		p.Logf().New().Open("danmu.log").Base(1, "Rev").I(fmt.Sprintf("营收 ￥%.2f",c.Rev))
 		for c.Rev == ShowRev_old {p.Sys().Timeoutf(60)}
 		ShowRev_old = c.Rev
 	}
