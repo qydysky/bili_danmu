@@ -359,6 +359,7 @@ func (replyF) preparing(s string) {
 			Obs_R(false)
 			Obsf(false)
 			Saveflv_wait()
+			c.Rev = 0
 			go ShowRevf()
 		}
 		if p.Sys().Type(roomid) == "float64" {

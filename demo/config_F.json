@@ -2,7 +2,7 @@
     "ShowRev":true,
     "Gtk": true,
     "Qtd": false,
-    "Saveflv": true,
+    "Saveflv": false,
     "Ass": true,
     "Obs": false,
     "Autoban": false,
