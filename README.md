@@ -100,9 +100,7 @@ gtk弹幕窗自定义人/事件消息停留
 ```
 
 > 清晰度可取[数值](https://github.com/qydysky/bili_danmu/blob/028d6d8ed47df4631aca7df93871a4795bedda76/CV/Var.go#L19)
-
-
-
+> 弹幕及礼物会记录于danmu.log中
 
 **部分功能需要在`demo`目录(文件夹)下放置`cookie.txt`才可用**
 
