@@ -8,7 +8,7 @@ require (
 	github.com/miekg/dns v1.1.35 // indirect
 	github.com/mitchellh/mapstructure v1.3.3 // indirect
 	github.com/qydysky/bili_danmu v0.4.0
-	github.com/qydysky/part v0.2.2-0.20201117231944-b989fc77f39b // indirect
+	github.com/qydysky/part v0.2.2-0.20201118040602-e0a4255270c5 // indirect
 	github.com/shirou/gopsutil v3.20.10+incompatible // indirect
 	golang.org/x/crypto v0.0.0-20201016220609-9e8e0b390897 // indirect
 	golang.org/x/net v0.0.0-20201110031124-69a78807bb2b // indirect
