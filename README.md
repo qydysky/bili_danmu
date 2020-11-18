@@ -100,9 +100,7 @@ gtk弹幕窗自定义人/事件消息停留
 ```
 
 > 清晰度可取[数值](https://github.com/qydysky/bili_danmu/blob/028d6d8ed47df4631aca7df93871a4795bedda76/CV/Var.go#L19)
-
-
-
+> 弹幕及礼物会记录于danmu.log中
 
 **部分功能需要在`demo`目录(文件夹)下放置`cookie.txt`才可用**
 
@@ -162,14 +160,11 @@ ctrl+c退出，会同时追加记录到文件danmu.log中（文件记录完整�
 ![](_Screenshot/Screenshot_20200926_173834.png)
 [截图地址](//zdir.ntsdtt.bid/ALL/Admin/Remote/%E5%9B%BE%E7%89%87/Screenshot_20200926_173834.png)
 
-Gtk弹幕窗
+Gtk弹幕窗(Linux Only)
 
 ![](_Screenshot/Screenshot_20201023_232029.png)
 
 [截图地址](//zdir.ntsdtt.bid/ALL/Admin/Remote/%E5%9B%BE%E7%89%87/Screenshot_20201023_232029.png)
 
-Qt弹幕窗
-![](_Screenshot/Screenshot_20201002_045627.png)
-[截图地址](//zdir.ntsdtt.bid/ALL/Admin/Remote/%E5%9B%BE%E7%89%87/Screenshot_20201002_045627.png)
 
 更多内容详见注释，如有疑问请发issues，欢迎pr

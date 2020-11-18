@@ -2,11 +2,13 @@ package reply
 
 import (
 	"fmt"
+	"time"
 	"bytes"
 	"strconv"
 	"compress/zlib"
 
 	p "github.com/qydysky/part"
+	mq "github.com/qydysky/part/msgq"
 	F "github.com/qydysky/bili_danmu/F"
 	S "github.com/qydysky/bili_danmu/Send"
 	c "github.com/qydysky/bili_danmu/CV"
@@ -360,6 +362,7 @@ func (replyF) preparing(s string) {
 			Obsf(false)
 			Saveflv_wait()
 			go ShowRevf()
+			c.Liveing = false
 		}
 		if p.Sys().Type(roomid) == "float64" {
 			Gui_show(Itos([]interface{}{"房间", roomid, "下播了"}), "0room")
@@ -383,6 +386,11 @@ func (replyF) live(s string) {
 			Obsf(true)
 			Obs_R(true)
 			go Saveflvf()
+		}
+		{
+			c.Rev = 0 //营收
+			c.Liveing = true //直播i标志
+			c.Live_Start_Time = time.Now() //开播h时间
 		}
 		if p.Sys().Type(roomid) == "float64" {
 			Gui_show(Itos([]interface{}{"房间", roomid, "开播了"}), "0room")
@@ -565,14 +573,21 @@ func Msg_showdanmu(auth interface{}, m ...string) {
 	if auth != nil {msglog.I(auth, ":", msg)}
 }
 
+type Danmu_mq_t struct {
+	uid string
+	msg string
+}
+var Danmu_mq = mq.New()
+
 func Gui_show(m ...string){
 	//m[0]:msg m[1]:uid
-	if Gtk_on {
-		if len(m) > 1 {
-			Gtk_danmuChan_uid <- m[1]
-		} else {Gtk_danmuChan_uid <- ""}
-		Gtk_danmuChan <- m[0]
-	}
+	uid := ""
+	if len(m) > 1 {uid = m[1]}
+
+	Danmu_mq.Push(Danmu_mq_t{
+		uid:uid,
+		msg:m[0],
+	})
 }
 
 func Itos(i []interface{}) string {

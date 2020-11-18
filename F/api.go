@@ -1,6 +1,7 @@
 package F
 
 import (
+	"time"
 	"strconv"
 	"strings"
 
@@ -147,6 +148,7 @@ func (i *api) Get_live(qn ...string) (o *api) {
 		if e := r.S(`"durl":[`, `]`, 0, 0).Err;e == nil {
 			if urls := p.Json().GetArrayFrom("[" + r.RS + "]", "url");urls != nil {
 				apilog.W("直播中")
+				c.Liveing = true
 				o.Live_status = 1
 				for _,v := range urls {
 					o.Live = append(o.Live, v.(string))
@@ -156,6 +158,9 @@ func (i *api) Get_live(qn ...string) (o *api) {
 		}
 		if e := r.S(`player-loader-`, `.min`, 0, 0).Err;e == nil {
 			c.VERSION = r.RS
+		}
+		if e := r.S(`"live_time":"`, `"`, 0, 0).Err;e == nil {
+			c.Live_Start_Time,_ = time.Parse("2006-01-02 15:04:05", r.RS)
 		}
 		apilog.W("api version", c.VERSION)
 	}
@@ -201,6 +206,7 @@ func (i *api) Get_live(qn ...string) (o *api) {
 				apilog.W("未在直播")
 				return
 			case 1:
+				c.Liveing = true
 				apilog.W("直播中")
 			default:
 				apilog.W("live_status:", live_status)
@@ -219,7 +225,9 @@ func (i *api) Get_live(qn ...string) (o *api) {
 		if i := p.Json().GetValFrom(res, "data.play_url.current_qn"); i != nil {
 			cu_qn = strconv.Itoa(int(i.(float64)))
 		}
-
+		if i := p.Json().GetValFrom(res, "data.live_time"); i != nil {
+			c.Live_Start_Time = time.Unix(int64(i.(float64)),0).In(time.FixedZone("UTC-8", -8*60*60))
+		}
 		if len(qn) != 0 && qn[0] != "0" && qn[0] != "" {
 			if _,ok := c.Default_qn[qn[0]];!ok{
 				apilog.W("清晰度未找到", qn[0], ",使用默认")
