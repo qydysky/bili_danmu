@@ -1,3 +1,5 @@
+//+build gtk
+
 package reply
 
 import (
@@ -51,6 +53,18 @@ var (
 	Gtk_danmuChan chan string = make(chan string, 1000)
 	Gtk_danmuChan_uid chan string = make(chan string, 1000)
 )
+
+func init(){
+	if!IsOn("Gtk") {return}
+	go func(){
+		go Gtk_danmu()
+		for {
+			o := Danmu_mq.Pull().(Danmu_mq_t)
+			Gtk_danmuChan_uid <- o.uid 
+			Gtk_danmuChan <- o.msg
+		}
+	}()
+}
 
 func Gtk_danmu() {
 	if Gtk_on {return}

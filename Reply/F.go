@@ -14,7 +14,6 @@ import (
 	F "github.com/qydysky/bili_danmu/F"
 	"github.com/christopher-dG/go-obs-websocket"
 	p "github.com/qydysky/part"
-	s "github.com/qydysky/part/buf"
 )
 
 /*
@@ -24,7 +23,7 @@ import (
 //功能开关
 var AllF = map[string]bool{
 	`ShowRev`:true,//显示本次营收
-	"Gtk":false,//Gtk弹幕窗口
+	"Gtk":false,//Gtk弹幕窗口(使用go build -tags 'gtk gtk_3_24'编译,linux only)
 	"Saveflv":true,//保存直播流(默认高清，有cookie默认蓝光)
 	"Ass":true,//Ass弹幕生成，由于时间对应关系,仅开启流保存时生效
 	"Obs":false,//obs组件(仅录播)
@@ -41,15 +40,6 @@ var AllF = map[string]bool{
 	"Lessdanmu":true,//弹幕缩减，屏蔽与前n条弹幕重复的字数占比度高于阈值的弹幕
 	"Moredanmu":false,//弹幕增量
 	"Shortdanmu":true,//上下文相同文字缩减
-}
-
-//从config.json初始化
-func init(){
-	buf := s.New()
-	buf.Load("config_F.json")
-	for k,v := range buf.B {
-		AllF[k] = v.(bool)
-	}
 }
 
 //功能开关选取函数
@@ -134,12 +124,6 @@ func ShowRevf(){
 		for c.Rev == ShowRev_old {p.Sys().Timeoutf(60)}
 		ShowRev_old = c.Rev
 	}
-}
-
-//Gtk 弹幕Gtk窗口
-func Gtkf(){
-	if!IsOn("Gtk") {return}
-	Gtk_danmu()
 }
 
 //Ass 弹幕转字幕

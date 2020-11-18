@@ -8,6 +8,7 @@ import (
 	"compress/zlib"
 
 	p "github.com/qydysky/part"
+	mq "github.com/qydysky/part/msgq"
 	F "github.com/qydysky/bili_danmu/F"
 	S "github.com/qydysky/bili_danmu/Send"
 	c "github.com/qydysky/bili_danmu/CV"
@@ -572,14 +573,21 @@ func Msg_showdanmu(auth interface{}, m ...string) {
 	if auth != nil {msglog.I(auth, ":", msg)}
 }
 
+type Danmu_mq_t struct {
+	uid string
+	msg string
+}
+var Danmu_mq = mq.New()
+
 func Gui_show(m ...string){
 	//m[0]:msg m[1]:uid
-	if Gtk_on {
-		if len(m) > 1 {
-			Gtk_danmuChan_uid <- m[1]
-		} else {Gtk_danmuChan_uid <- ""}
-		Gtk_danmuChan <- m[0]
-	}
+	uid := ""
+	if len(m) > 1 {uid = m[1]}
+
+	Danmu_mq.Push(Danmu_mq_t{
+		uid:uid,
+		msg:m[0],
+	})
 }
 
 func Itos(i []interface{}) string {
