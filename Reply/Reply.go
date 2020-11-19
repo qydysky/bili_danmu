@@ -565,7 +565,7 @@ func Msg_showdanmu(auth interface{}, m ...string) {
 		if auth != nil {
 			Gui_show(fmt.Sprint(auth) +`: `+ msg, m[1])
 		} else {
-			Gui_show(msg)
+			Gui_show(m...)
 		}	
 	}
 	
