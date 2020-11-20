@@ -18,6 +18,10 @@ var (
 )
 
 //消息队列
+type Danmu_Main_mq_item struct {
+	Class string
+	Data interface{}
+}
 var Danmu_Main_mq = mq.New()
 
 //from player-loader-2.0.11.min.js

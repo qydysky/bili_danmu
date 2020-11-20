@@ -7,6 +7,7 @@ import (
 	"errors"
 	"strconv"
 	"time"
+	"strings"
 	"log"
 	"fmt"
 
@@ -91,7 +92,7 @@ func Gtk_danmu() {
 	var w2_textView1 *gtk.TextView
 	var w2_Entry0 *gtk.Entry
 	var w2_Entry0_editting bool
-	
+
 	application, err := gtk.ApplicationNew(appId, glib.APPLICATION_FLAGS_NONE)
 	if err != nil {log.Println(err);return}
 
@@ -142,6 +143,40 @@ func Gtk_danmu() {
 				w2_textView1 = tmp
 			}else{log.Println("cant find #t1 in .glade");return}
 		}
+		{//发送弹幕
+			var danmu_send_form string
+			{//发送弹幕格式
+				obj, err := builder2.GetObject("send_danmu_form")
+				if err != nil {log.Println(err);return}
+				if tmp,ok := obj.(*gtk.Entry); ok {
+					tmp.Connect("focus-out-event", func() {
+						if t,e := tmp.GetText();e == nil && t != ``{
+							danmu_send_form = t
+							log.Println("弹幕格式已设置为",danmu_send_form)
+						}
+					})
+				}else{log.Println("cant find #send_danmu in .glade");return}
+			}
+			obj, err := builder2.GetObject("send_danmu")
+			if err != nil {log.Println(err);return}
+			if tmp,ok := obj.(*gtk.Entry); ok {
+				tmp.Connect("key-release-event", func(entry *gtk.Entry, event *gdk.Event) {
+					eventKey := gdk.EventKeyNewFromEvent(event)
+					if eventKey.KeyVal() == gdk.KEY_Return {
+						if t,e := entry.GetText();e == nil && t != ``{
+							danmu_want_send := t
+							if danmu_send_form != `` {danmu_want_send = strings.ReplaceAll(danmu_send_form, "{D}", t)}
+							if len([]rune(danmu_want_send)) > 20 {
+								log.Println(`弹幕长度大于20,不做格式处理`)
+								danmu_want_send = t
+							} 
+							Msg_senddanmu(danmu_want_send)
+							entry.SetText(``)
+						}
+					}
+				})
+			}else{log.Println("cant find #send_danmu in .glade");return}
+		}
 		{//房间id
 			obj, err := builder2.GetObject("want_room_id")
 			if err != nil {log.Println(err);return}
@@ -167,7 +202,9 @@ func Gtk_danmu() {
 							y(`输入错误`,load_face("0room"))
 						} else {
 							c.Roomid =  i
-							c.Danmu_Main_mq.Push(`change_room`)
+							c.Danmu_Main_mq.Push(c.Danmu_Main_mq_item{
+								Class:`change_room`,
+							})
 						}
 					} else {
 						y(`房间号输入为空`,load_face("0room"))

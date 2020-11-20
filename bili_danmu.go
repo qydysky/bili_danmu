@@ -59,7 +59,8 @@ func Demo(roomid ...int) {
 			)
 			for {
 				data,sig = c.Danmu_Main_mq.Pull(sig)
-				if data.(string) != `change_room` {continue}
+				if d,ok := data.(c.Danmu_Main_mq_item);!ok || d.Class != `change_room` {continue}
+				c.Rev = 0 //营收
 				change_room_chan <- true
 			}
 		}()
