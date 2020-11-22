@@ -1,5 +1,16 @@
 ## bilibili 直播弹幕机
 golang go version go1.15.4 linux/amd64
+
+---
+### LICENSE
+使用了下述的项目，十分感谢
+- [golang](https://golang.org/) under [BSD](https://golang.org/LICENSE)
+- [github.com/gotk3/gotk3](https://github.com/gotk3/gotk3) under [ISC](https://raw.githubusercontent.com/gotk3/gotk3/master/LICENSE)
+- [github.com/qydysky/part](https://github.com/qydysky/part) under [MIT](https://raw.githubusercontent.com/qydysky/part/master/LICENSE)
+- [github.com/christopher-dG/go-obs-websocket](https://github.com/christopher-dG/go-obs-websocket) under [MIT](https://raw.githubusercontent.com/christopher-dG/go-obs-websocket/master/LICENSE)
+- [github.com/gorilla/websocket](https://github.com/gorilla/websocket) under [BSD 2-Clause](https://raw.githubusercontent.com/gorilla/websocket/master/LICENSE)
+---
+
 ### 当前支持显示/功能
 以下内容可能过时，点击查看[当前支持显示](https://github.com/qydysky/bili_danmu/blob/master/Reply/Msg.go#L13)
 ```
@@ -86,7 +97,7 @@ var AllF = map[string]bool{
 弹幕重连
 直播流开播自动下载
 直播流下载重连
-gtk弹幕窗自定义人/事件消息停留
+gtk弹幕窗自定义人/事件消息停留/房间切换/弹幕格式化发送
 营收统计
 ...
 ```
@@ -149,6 +160,17 @@ SC:  吹舞火 ￥ 30
 私の隣の一万は幻ですか？
 ====
 ```
+```
+//gtk的弹幕格式化发送
+2020/11/20 15:39:57 弹幕格式已设置为 [{D}]
+INFO: 2020/11/20 15:40:05 [弹幕发送] [发送 [就是这样] 至 394988]
+[就是这样]
+INFO: 2020/11/20 15:40:15 [弹幕发送] [发送 [你知道么] 至 394988]
+[你知道么]
+2020/11/20 15:42:38 弹幕长度大于20,不做格式处理
+INFO: 2020/11/20 15:42:38 [弹幕发送] [发送 11111111111111111111 至 394988]
+11111111111111111111
+```
 ctrl+c退出，会同时追加记录到文件danmu.log中（文件记录完整信息,不会减少附加功能作用的弹幕）
 - 流保存以及弹幕ass
 ```
@@ -160,11 +182,14 @@ ctrl+c退出，会同时追加记录到文件danmu.log中（文件记录完整�
 ![](_Screenshot/Screenshot_20200926_173834.png)
 [截图地址](//zdir.ntsdtt.bid/ALL/Admin/Remote/%E5%9B%BE%E7%89%87/Screenshot_20200926_173834.png)
 
-Gtk弹幕窗(Linux Only)
+- Gtk弹幕窗(Linux Only)
 
 ![](_Screenshot/Screenshot_20201023_232029.png)
 
 [截图地址](//zdir.ntsdtt.bid/ALL/Admin/Remote/%E5%9B%BE%E7%89%87/Screenshot_20201023_232029.png)
 
+![](_Screenshot/Screenshot_20201119_124329.png)
+
+[截图地址](//zdir.ntsdtt.bid/ALL/Admin/Remote/%E5%9B%BE%E7%89%87/Screenshot_20201119_124329.png)
 
 更多内容详见注释，如有疑问请发issues，欢迎pr

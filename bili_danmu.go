@@ -47,16 +47,41 @@ func Demo(roomid ...int) {
 		} else {
 			fmt.Print(strconv.Itoa(room), "\n")
 		}
+		c.Roomid = room
 
-		var break_sign bool
-		for !break_sign {
+		var exit_sign bool
+		var change_room_chan = make(chan bool)
+
+		go func(){
+			var (
+				sig = c.Danmu_Main_mq.Sig()
+				data interface{}
+			)
+			for {
+				data,sig = c.Danmu_Main_mq.Pull(sig)
+				if d,ok := data.(c.Danmu_Main_mq_item);!ok {
+					continue
+				} else {
+					switch d.Class {
+					case `change_room`:
+						c.Rev = 0 //营收
+						change_room_chan <- true
+					case `c.Rev_add`:
+						c.Rev += d.Data.(float64)
+					default:
+					}
+				}
+			}
+		}()
+
+		for !exit_sign {
 			//获取房间相关信息
-			api := F.New_api(room).Get_host_Token().Get_live()
+			api := F.New_api(c.Roomid).Get_host_Token().Get_live()
 			if len(api.Url) == 0 || api.Roomid == 0 || api.Token == "" || api.Uid == 0 || api.Locked {
 				danmulog.E("some err")
 				return
 			}
-			danmulog.I("连接到房间", room)
+			danmulog.I("连接到房间", c.Roomid)
 
 			//对每个弹幕服务器尝试
 			for _, v := range api.Url {
@@ -68,9 +93,12 @@ func Demo(roomid ...int) {
 				danmulog.I("连接", v)
 				ws.SendChan <- F.HelloGen(api.Roomid, api.Token)
 				if F.HelloChe(<- ws.RecvChan) {
-					danmulog.I("已连接到房间", room)
-					danmulog.I(c.Title)
-
+					danmulog.I("已连接到房间", c.Roomid)
+					reply.Gui_show(`进入直播间: `+strconv.Itoa(c.Roomid), `0room`)
+					if c.Title != `` {
+						danmulog.I(c.Title)
+						reply.Gui_show(`房间标题: `+c.Title, `0room`)
+					}
 					//30s获取一次人气
 					go func(){
 						danmulog.I("获取人气")
@@ -90,6 +118,9 @@ func Demo(roomid ...int) {
 						c.Roomid = api.Roomid
 						c.Live = api.Live
 						c.Cookie = f
+						//获取过往营收
+						go api.Get_OnlineGoldRank()
+
 						if p.Checkfile().IsExist("cookie.txt") {//附加功能 弹幕机
 							reply.Danmuji_auto(1)
 						}
@@ -101,6 +132,7 @@ func Demo(roomid ...int) {
 				}
 
 				var isclose bool
+				var break_sign bool
 				for !isclose {
 					select {
 					case i := <- ws.RecvChan:
@@ -110,6 +142,11 @@ func Demo(roomid ...int) {
 							go reply.Reply(i)
 						}
 					case <- interrupt:
+						ws.Close()
+						danmulog.I("停止，等待服务器断开连接")
+						break_sign = true
+						exit_sign = true
+					case <- change_room_chan:
 						ws.Close()
 						danmulog.I("停止，等待服务器断开连接")
 						break_sign = true

@@ -5,7 +5,9 @@ package reply
 import (
 	"container/list"
 	"errors"
+	"strconv"
 	"time"
+	"strings"
 	"log"
 	"fmt"
 
@@ -15,6 +17,7 @@ import (
 	p "github.com/qydysky/part"
 	F "github.com/qydysky/bili_danmu/F"
 	c "github.com/qydysky/bili_danmu/CV"
+	s "github.com/qydysky/part/buf"
 )
 const (
 	max = 50
@@ -57,11 +60,22 @@ var (
 func init(){
 	if!IsOn("Gtk") {return}
 	go func(){
+		{//加载特定信息驻留时长
+			buf := s.New()
+			buf.Load("config/config_gtk_keep_key.json")
+			for k,v := range buf.B {
+				keep_key[k] = int(v.(float64))
+			}
+		}
 		go Gtk_danmu()
+		var (
+			sig = Danmu_mq.Sig()
+			data interface{}
+		)
 		for {
-			o := Danmu_mq.Pull().(Danmu_mq_t)
-			Gtk_danmuChan_uid <- o.uid 
-			Gtk_danmuChan <- o.msg
+			data,sig = Danmu_mq.Pull(sig)
+			Gtk_danmuChan_uid <- data.(Danmu_mq_t).uid 
+			Gtk_danmuChan <- data.(Danmu_mq_t).msg
 		}
 	}()
 }
@@ -76,7 +90,9 @@ func Gtk_danmu() {
 	var viewport0 *gtk.Viewport
 	var w2_textView0 *gtk.TextView
 	var w2_textView1 *gtk.TextView
-	
+	var w2_Entry0 *gtk.Entry
+	var w2_Entry0_editting bool
+
 	application, err := gtk.ApplicationNew(appId, glib.APPLICATION_FLAGS_NONE)
 	if err != nil {log.Println(err);return}
 
@@ -126,6 +142,75 @@ func Gtk_danmu() {
 			if tmp,ok := obj.(*gtk.TextView); ok {
 				w2_textView1 = tmp
 			}else{log.Println("cant find #t1 in .glade");return}
+		}
+		{//发送弹幕
+			var danmu_send_form string
+			{//发送弹幕格式
+				obj, err := builder2.GetObject("send_danmu_form")
+				if err != nil {log.Println(err);return}
+				if tmp,ok := obj.(*gtk.Entry); ok {
+					tmp.Connect("focus-out-event", func() {
+						if t,e := tmp.GetText();e == nil && t != ``{
+							danmu_send_form = t
+							log.Println("弹幕格式已设置为",danmu_send_form)
+						}
+					})
+				}else{log.Println("cant find #send_danmu in .glade");return}
+			}
+			obj, err := builder2.GetObject("send_danmu")
+			if err != nil {log.Println(err);return}
+			if tmp,ok := obj.(*gtk.Entry); ok {
+				tmp.Connect("key-release-event", func(entry *gtk.Entry, event *gdk.Event) {
+					eventKey := gdk.EventKeyNewFromEvent(event)
+					if eventKey.KeyVal() == gdk.KEY_Return {
+						if t,e := entry.GetText();e == nil && t != ``{
+							danmu_want_send := t
+							if danmu_send_form != `` {danmu_want_send = strings.ReplaceAll(danmu_send_form, "{D}", t)}
+							if len([]rune(danmu_want_send)) > 20 {
+								log.Println(`弹幕长度大于20,不做格式处理`)
+								danmu_want_send = t
+							} 
+							Msg_senddanmu(danmu_want_send)
+							entry.SetText(``)
+						}
+					}
+				})
+			}else{log.Println("cant find #send_danmu in .glade");return}
+		}
+		{//房间id
+			obj, err := builder2.GetObject("want_room_id")
+			if err != nil {log.Println(err);return}
+			if tmp,ok := obj.(*gtk.Entry); ok {
+				w2_Entry0 = tmp
+				tmp.Connect("focus-in-event", func() {
+					w2_Entry0_editting = true
+				})
+				tmp.Connect("focus-out-event", func() {
+					w2_Entry0_editting = false
+				})
+			}else{log.Println("cant find #want_room_id in .glade");return}
+		}
+		{//房间id click
+			obj, err := builder2.GetObject("want_click")
+			if err != nil {log.Println(err);return}
+			if tmp,ok := obj.(*gtk.Button); ok {
+				tmp.Connect("clicked", func() {
+					if t,e := w2_Entry0.GetText();e != nil {
+						y("读取错误",load_face("0room"))
+					} else if t != `` {
+						if i,e := strconv.Atoi(t);e != nil {
+							y(`输入错误`,load_face("0room"))
+						} else {
+							c.Roomid =  i
+							c.Danmu_Main_mq.Push(c.Danmu_Main_mq_item{
+								Class:`change_room`,
+							})
+						}
+					} else {
+						y(`房间号输入为空`,load_face("0room"))
+					}
+				})
+			}else{log.Println("cant find #want_click in .glade");return}
 		}
 		{
 			obj, err := builder.GetObject("scrolledwindow0")
@@ -300,6 +385,13 @@ func Gtk_danmu() {
 					d -= m * time.Minute
 					s := d / time.Second
 					b.SetText(fmt.Sprintf("%02d:%02d:%02d", h, m, s))					
+				}
+			}
+			{//房间id
+				if !w2_Entry0_editting {
+					if t,e := w2_Entry0.GetText();e == nil && t == `` && c.Roomid != 0{
+						w2_Entry0.SetText(strconv.Itoa(c.Roomid))
+					}
 				}
 			}
 			if gtkGetList.Len() == 0 {return}

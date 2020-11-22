@@ -50,8 +50,7 @@ func Danmu_s(msg,Cookie string, roomid int) {
 		}
 	}
 
-	PostStr := `color=16777215&fontsize=25&mode=1&msg=` + msg + `&rnd=` + strconv.Itoa(int(p.Sys().GetMTime())) + `&roomid=` + strconv.Itoa(roomid) + `&bubble=0&csrf_token=` + csrf + `&csrf=` + csrf
-
+	PostStr := `color=16777215&fontsize=25&mode=1&msg=` + msg + `&rnd=` + strconv.Itoa(int(p.Sys().GetSTime())) + `&roomid=` + strconv.Itoa(roomid) + `&bubble=0&csrf_token=` + csrf + `&csrf=` + csrf
 	l.I("发送", msg, "至", roomid)
 	r := p.Req()
 	err := r.Reqf(p.Rval{
@@ -59,6 +58,16 @@ func Danmu_s(msg,Cookie string, roomid int) {
 		PostStr:PostStr,
 		Timeout:5,
 		Header:map[string]string{
+			`Host`: `api.live.bilibili.com`,
+			`User-Agent`: `Mozilla/5.0 (X11; Linux x86_64; rv:83.0) Gecko/20100101 Firefox/83.0`,
+			`Accept`: `application/json, text/javascript, */*; q=0.01`,
+			`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
+			`Accept-Encoding`: `gzip, deflate, br`,
+			`Content-Type`: `application/x-www-form-urlencoded; charset=UTF-8`,
+			`Origin`: `https://live.bilibili.com`,
+			`Connection`: `keep-alive`,
+			`Pragma`: `no-cache`,
+			`Cache-Control`: `no-cache`,
 			`Referer`:"https://live.bilibili.com/" + strconv.Itoa(roomid),
 			`Cookie`:Cookie,
 		},

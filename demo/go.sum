@@ -50,6 +50,10 @@ github.com/qydysky/part v0.2.2-0.20201117231944-b989fc77f39b h1:YxwA2XVfF3/6mWwO
 github.com/qydysky/part v0.2.2-0.20201117231944-b989fc77f39b/go.mod h1:93s9ohLtzULet5ZPEUUWrT9BELC30oDZgRpgGSiDye4=
 github.com/qydysky/part v0.2.2-0.20201118040602-e0a4255270c5 h1:VqAQccFpYPRNvrF6NECzMokcJkt1URo9voUiO5SKf1s=
 github.com/qydysky/part v0.2.2-0.20201118040602-e0a4255270c5/go.mod h1:93s9ohLtzULet5ZPEUUWrT9BELC30oDZgRpgGSiDye4=
+github.com/qydysky/part v0.2.2-0.20201118201147-5c672b694ad4 h1:ROhlxKQCiWfC/d4qnbC6E5v+HuY/01csmbH39OPQncM=
+github.com/qydysky/part v0.2.2-0.20201118201147-5c672b694ad4/go.mod h1:93s9ohLtzULet5ZPEUUWrT9BELC30oDZgRpgGSiDye4=
+github.com/qydysky/part v0.2.2-0.20201119032922-a6f2c3476095 h1:xMahJIwZcpiRWg3Lm2eBmDS6rB4aXdOX5nJXfF4AlME=
+github.com/qydysky/part v0.2.2-0.20201119032922-a6f2c3476095/go.mod h1:93s9ohLtzULet5ZPEUUWrT9BELC30oDZgRpgGSiDye4=
 github.com/shirou/gopsutil v2.20.7+incompatible/go.mod h1:5b4v6he4MtMOwMlS0TUMTu2PcXUg8+E1lC7eC3UO/RA=
 github.com/shirou/gopsutil v2.20.8+incompatible h1:8c7Atn0FAUZJo+f4wYbN0iVpdWniCQk7IYwGtgdh1mY=
 github.com/shirou/gopsutil v2.20.8+incompatible/go.mod h1:5b4v6he4MtMOwMlS0TUMTu2PcXUg8+E1lC7eC3UO/RA=
