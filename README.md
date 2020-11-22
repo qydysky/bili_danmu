@@ -2,7 +2,7 @@
 golang go version go1.15.4 linux/amd64
 
 ## LICENSE
-使用下述的项目，十分感谢
+使用了下述的项目，十分感谢
 - [golang](https://golang.org/) under [BSD](https://golang.org/LICENSE)
 - [github.com/gotk3/gotk3](https://github.com/gotk3/gotk3) under [ISC](https://raw.githubusercontent.com/gotk3/gotk3/master/LICENSE)
 - [github.com/qydysky/part](https://github.com/qydysky/part) under [MIT](https://raw.githubusercontent.com/qydysky/part/master/LICENSE)
