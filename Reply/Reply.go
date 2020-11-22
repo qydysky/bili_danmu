@@ -145,7 +145,10 @@ func (replyF) user_toast_msg(s string){
 	}
 	if price != nil {
 		sh = append(sh, "￥", int(price.(float64)) / 1000)
-		c.Rev += price.(float64) / 1000
+		c.Danmu_Main_mq.Push(c.Danmu_Main_mq_item{//传入消息队列
+			Class:`c.Rev_add`,
+			Data:price.(float64) / 1000,
+		})
 	}
 	{//额外 ass
 		Assf(fmt.Sprintln(sh...))
@@ -193,7 +196,10 @@ func (replyF) special_gift(s string){
 	}
 	if content != nil {
 		sh = append(sh, "节奏风暴", content, "￥ 100")
-		c.Rev += 100
+		c.Danmu_Main_mq.Push(c.Danmu_Main_mq_item{//传入消息队列
+			Class:`c.Rev_add`,
+			Data:100,
+		})
 	}
 	{//额外
 		Assf(fmt.Sprintln(sh...))
@@ -313,7 +319,10 @@ func (replyF) send_gift(s string){
 	if total_coin != nil {
 		allprice = int64(total_coin.(float64) / 1000)
 		sh = append(sh, "￥", allprice)
-		c.Rev += total_coin.(float64) / 1000
+		c.Danmu_Main_mq.Push(c.Danmu_Main_mq_item{//传入消息队列
+			Class:`c.Rev_add`,
+			Data:total_coin.(float64) / 1000,
+		})
 	}
 
 	if len(sh) == 0 {return}
@@ -425,7 +434,10 @@ func (replyF) super_chat_message(s string){
 	}
 	if price != nil {
 		sh = append(sh, "￥", price, "\n")
-		c.Rev += price.(float64)
+		c.Danmu_Main_mq.Push(c.Danmu_Main_mq_item{//传入消息队列
+			Class:`c.Rev_add`,
+			Data:price.(float64),
+		})
 	}
 	fmt.Println("====")
 	fmt.Println(sh...)

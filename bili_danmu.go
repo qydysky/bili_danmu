@@ -59,9 +59,18 @@ func Demo(roomid ...int) {
 			)
 			for {
 				data,sig = c.Danmu_Main_mq.Pull(sig)
-				if d,ok := data.(c.Danmu_Main_mq_item);!ok || d.Class != `change_room` {continue}
-				c.Rev = 0 //营收
-				change_room_chan <- true
+				if d,ok := data.(c.Danmu_Main_mq_item);!ok {
+					continue
+				} else {
+					switch d.Class {
+					case `change_room`:
+						c.Rev = 0 //营收
+						change_room_chan <- true
+					case `c.Rev_add`:
+						c.Rev += d.Data.(float64)
+					default:
+					}
+				}
 			}
 		}()
 
@@ -109,6 +118,9 @@ func Demo(roomid ...int) {
 						c.Roomid = api.Roomid
 						c.Live = api.Live
 						c.Cookie = f
+						//获取过往营收
+						go api.Get_OnlineGoldRank()
+
 						if p.Checkfile().IsExist("cookie.txt") {//附加功能 弹幕机
 							reply.Danmuji_auto(1)
 						}
