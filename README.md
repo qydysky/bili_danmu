@@ -1,13 +1,15 @@
 ## bilibili 直播弹幕机
 golang go version go1.15.4 linux/amd64
 
-## LICENSE
+---
+### LICENSE
 使用了下述的项目，十分感谢
 - [golang](https://golang.org/) under [BSD](https://golang.org/LICENSE)
 - [github.com/gotk3/gotk3](https://github.com/gotk3/gotk3) under [ISC](https://raw.githubusercontent.com/gotk3/gotk3/master/LICENSE)
 - [github.com/qydysky/part](https://github.com/qydysky/part) under [MIT](https://raw.githubusercontent.com/qydysky/part/master/LICENSE)
 - [github.com/christopher-dG/go-obs-websocket](https://github.com/christopher-dG/go-obs-websocket) under [MIT](https://raw.githubusercontent.com/christopher-dG/go-obs-websocket/master/LICENSE)
 - [github.com/gorilla/websocket](https://github.com/gorilla/websocket) under [BSD 2-Clause](https://raw.githubusercontent.com/gorilla/websocket/master/LICENSE)
+---
 
 ### 当前支持显示/功能
 以下内容可能过时，点击查看[当前支持显示](https://github.com/qydysky/bili_danmu/blob/master/Reply/Msg.go#L13)
