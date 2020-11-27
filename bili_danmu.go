@@ -65,9 +65,12 @@ func Demo(roomid ...int) {
 					switch d.Class {
 					case `change_room`:
 						c.Rev = 0 //营收
+						c.Renqi = 1//人气置1
 						change_room_chan <- true
 					case `c.Rev_add`:
 						c.Rev += d.Data.(float64)
+					case `c.Renqi`:
+						c.Renqi = d.Data.(int)
 					default:
 					}
 				}
@@ -118,8 +121,9 @@ func Demo(roomid ...int) {
 						c.Roomid = api.Roomid
 						c.Live = api.Live
 						c.Cookie = f
-						//获取过往营收
+						//获取过往营收 舰长数量
 						go api.Get_OnlineGoldRank()
+						go api.Get_guardNum()
 
 						if p.Checkfile().IsExist("cookie.txt") {//附加功能 弹幕机
 							reply.Danmuji_auto(1)

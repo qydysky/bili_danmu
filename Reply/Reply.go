@@ -72,7 +72,7 @@ func (replyF) anchor_lot_start(s string){
 		Assf(fmt.Sprintln("天选之人", award_name, "开始"))
 	}
 	fmt.Println(sh...)
-	Gui_show(Itos(sh))
+	Gui_show(Itos(sh),`0tianxuan`)
 
 	msglog.Base(1, "房").Fileonly(true).I(sh...).Fileonly(false)
 }
@@ -101,7 +101,7 @@ func (replyF) anchor_lot_award(s string){
 		Assf(fmt.Sprintln("天选之人", award_name, "结束"))
 	}
 	fmt.Println(sh...)
-	Gui_show(Itos(sh))
+	Gui_show(Itos(sh),`0tianxuan`)
 
 	msglog.Base(1, "房").Fileonly(true).I(sh...).Fileonly(false)
 }
@@ -125,10 +125,12 @@ func (replyF) user_toast_msg(s string){
 		switch op_type.(float64) {
 		case 1:
 			sh = append(sh, "购买了")
+			c.GuardNum += 1
 		case 2:
 			sh = append(sh, "续费了")
 		case 3:
 			sh = append(sh, "自动续费了")
+			c.GuardNum += 1
 		default:
 			msglog.W(s)
 			sh = append(sh, op_type)
@@ -165,8 +167,12 @@ func (replyF) user_toast_msg(s string){
 }
 
 //HeartBeat-心跳用来传递人气值
-func (replyF) heartbeat(s string){
-	if s == "1" {return}//人气为1,不输出
+func (replyF) heartbeat(s int){
+	c.Danmu_Main_mq.Push(c.Danmu_Main_mq_item{
+		Class:`c.Renqi`,
+		Data:s,
+	})
+	// if s == "1" {return}//人气为1,不输出
 	heartlog.I("当前人气", s)
 }
 
@@ -198,7 +204,7 @@ func (replyF) special_gift(s string){
 		sh = append(sh, "节奏风暴", content, "￥ 100")
 		c.Danmu_Main_mq.Push(c.Danmu_Main_mq_item{//传入消息队列
 			Class:`c.Rev_add`,
-			Data:100,
+			Data:float64(100),
 		})
 	}
 	{//额外
@@ -302,7 +308,7 @@ func (replyF) send_gift(s string){
 	total_coin := p.Json().GetValFromS(s, "data.total_coin");
 
 	var sh []interface{}
-	var allprice int64
+	var allprice float64
 
 	if uname != nil {
 		sh = append(sh, uname)
@@ -317,11 +323,11 @@ func (replyF) send_gift(s string){
 		sh = append(sh, giftName)
 	}
 	if total_coin != nil {
-		allprice = int64(total_coin.(float64) / 1000)
-		sh = append(sh, "￥", allprice)
+		allprice = total_coin.(float64) / 1000
+		sh = append(sh, fmt.Sprintf("￥%.1f",allprice))
 		c.Danmu_Main_mq.Push(c.Danmu_Main_mq_item{//传入消息队列
 			Class:`c.Rev_add`,
-			Data:total_coin.(float64) / 1000,
+			Data:allprice,
 		})
 	}
 
@@ -432,8 +438,10 @@ func (replyF) super_chat_message(s string){
 	if uname != nil {
 		sh = append(sh, uname)
 	}
+	logg := sh
 	if price != nil {
 		sh = append(sh, "￥", price, "\n")
+		logg = append(logg, "￥", price)
 		c.Danmu_Main_mq.Push(c.Danmu_Main_mq_item{//传入消息队列
 			Class:`c.Rev_add`,
 			Data:price.(float64),
@@ -446,11 +454,13 @@ func (replyF) super_chat_message(s string){
 		fmt.Println(message)
 		// Gui_show(message.(string))
 		sh = append(sh, message)
+		logg = append(logg, message)
 	}
 	if message_jpn != nil && message.(string) != message_jpn.(string) && message_jpn.(string) != "" {
 		fmt.Println(message_jpn)
 		// Gui_show(message_jpn.(string))
 		sh = append(sh, message_jpn)
+		logg = append(logg, message_jpn)
 	}
 	fmt.Print("====\n\n")
 	
@@ -459,7 +469,7 @@ func (replyF) super_chat_message(s string){
 		// Gui_show("====\n")
 		Gui_show(Itos(sh), "0superchat")
 	}
-	msglog.Base(1, "礼").Fileonly(true).I(sh...).Fileonly(false)
+	msglog.Base(1, "礼").Fileonly(true).I(logg...).Fileonly(false)
 }
 
 //Msg-分区排行
@@ -556,7 +566,10 @@ func (replyF) danmu(s string) {
 //传入字符串即可发送
 //需要cookie
 func Msg_senddanmu(msg string){
-	if c.Cookie == "" || c.Roomid == 0 {return}
+	if c.Cookie == "" || c.Roomid == 0 {
+		msglog.I(`c.Cookie == "" || c.Roomid == 0`)
+		return
+	}
 	S.Danmu_s(msg, c.Cookie, c.Roomid)
 }
 

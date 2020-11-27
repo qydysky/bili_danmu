@@ -12,6 +12,7 @@ var msglog = p.Logf().New().Base(-1, "Msg.go").Open("danmu.log").Level(1)
 
 //Msg类型数据处理方法map
 var Msg_map = map[string]func(replyF, string) {
+	`WIDGET_BANNER`:nil,//每日任务
 	`ROOM_ADMINS`:nil,//房管列表
 	`room_admin_entrance`:nil,
 	`ONLINE_RANK_TOP3`:nil,
