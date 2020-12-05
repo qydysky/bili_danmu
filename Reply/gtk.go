@@ -25,7 +25,7 @@ const (
 	max_img = 500
 )
 
-const appId = "com.github.qydysky.bili_danmu.reply"
+var appId = "com.github.qydysky.bili_danmu.reply"+p.Sys().GetTime()//时间戳允许多开
 
 type gtk_list struct {
 	text *gtk.TextView
@@ -86,6 +86,10 @@ func Gtk_danmu() {
 	gtk.Init(nil)
 
 	var y func(string,string)
+	var (
+		danmu_win_running bool//弹幕窗体是否正在运行
+		contrl_win_running bool//控制窗体是否正在运行
+	)
 	var win *gtk.Window
 	var scrolledwindow0 *gtk.ScrolledWindow
 	var viewport0 *gtk.Viewport
@@ -101,7 +105,6 @@ func Gtk_danmu() {
 	if err != nil {log.Println(err);return}
 
 	application.Connect("startup", func() {
-		log.Println("application startup")	
 		var grid0 *gtk.Grid;
 
 		builder, err := gtk.BuilderNewFromFile("ui/1.glade")
@@ -122,6 +125,11 @@ func Gtk_danmu() {
 			if err != nil {log.Println(err);return}
 			win, err = isWindow(obj)
 			if err != nil {log.Println(err);return}
+			danmu_win_running = true
+			win.Connect("delete-event", func() {
+				log.Println(`弹幕窗已关闭`)
+				danmu_win_running = false//关闭后置空
+			})
 			application.AddWindow(win)
 			defer win.ShowAll()
 		}
@@ -130,6 +138,11 @@ func Gtk_danmu() {
 			if err != nil {log.Println(err);return}
 			win2, err := isWindow(obj)
 			if err != nil {log.Println(err);return}
+			contrl_win_running = true
+			win2.Connect("delete-event", func() {
+				log.Println(`弹幕信息窗已关闭`)
+				contrl_win_running = false//关闭后置空
+			})
 			application.AddWindow(win2)
 			defer win2.ShowAll()
 		}
@@ -367,10 +380,8 @@ func Gtk_danmu() {
 	})
 
 	application.Connect("activate", func() {
-		log.Println("application activate")
 		go func(){
-			for{
-				time.Sleep(time.Second)
+			for danmu_win_running {
 				if len(Gtk_danmuChan) == 0 {continue}
 				for el := keep_list.Front(); el != nil && time.Now().After(el.Value.(time.Time));el = el.Next() {
 					keep_list.Remove(el)
@@ -380,11 +391,12 @@ func Gtk_danmu() {
 					y(<-Gtk_danmuChan,load_face(<-Gtk_danmuChan_uid))
 					return true
 				})
+				time.Sleep(time.Second)
 			}
 		}()
 
 		glib.TimeoutAdd(uint(3000), func()(o bool){
-			o = true
+			o = contrl_win_running
 			//y("sssss",load_face(""))
 			{//营收
 				if IsOn("ShowRev") {

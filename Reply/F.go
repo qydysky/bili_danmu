@@ -264,7 +264,8 @@ func Saveflvf(){
 				JustResponseCode:true,
 			}); e != nil{l.W(e)}
 
-			if rr.Response.StatusCode != 200 {
+			if rr.Response == nil ||
+			rr.Response.StatusCode != 200 {
 				saveflv.wait.Done()
 				saveflv.cancel.Done()
 				cuLinkIndex += 1

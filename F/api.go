@@ -2,6 +2,7 @@ package F
 
 import (
 	"time"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -355,7 +356,6 @@ func Get_face_src(uid string) (string) {
 	return rface.(string) + `@58w_58h`
 }
 
-var user_score_map = make(map[string]float64)
 func (i *api) Get_OnlineGoldRank() {
 	if i.Uid == 0 || c.Roomid == 0 {
 		apilog.Base(1, "Get_OnlineGoldRank").E("i.Uid == 0 || c.Roomid == 0")
@@ -432,7 +432,7 @@ func (i *api) Get_OnlineGoldRank() {
 
 	// apilog.Base(1, "获取score").E("score", self_loop(1))
 	self_loop(1)
-	apilog.Base(1, "获取score").W("以往营收获取成功", c.Rev)
+	apilog.Base(1, "获取score").W("以往营收获取成功", fmt.Sprintf("%.2f", c.Rev))
 	// c.Danmu_Main_mq.Push(c.Danmu_Main_mq_item{//传入消息队列
 	// 	Class:`c.Rev_add`,
 	// 	Data:self_loop(1),
