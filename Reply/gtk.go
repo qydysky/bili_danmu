@@ -32,6 +32,12 @@ type gtk_list struct {
 	img *gtk.Image
 	handle glib.SignalHandle
 }
+type gtk_item_source struct {
+	text string
+	img string
+	time time.Time
+}
+
 var pro_style *gtk.CssProvider
 var gtkGetList = list.New()
 
@@ -78,7 +84,7 @@ func Gtk_danmu() {
 	if Gtk_on {return}
 	gtk.Init(nil)
 
-	var y func(string,string)
+	var y func(string,string,...int)
 	var (
 		danmu_win_running bool//弹幕窗体是否正在运行
 		contrl_win_running bool//控制窗体是否正在运行
@@ -289,7 +295,7 @@ func Gtk_danmu() {
 			}else{log.Println(e)}
 		}
 
-		y = func(s,img_src string){
+		y = func(s,img_src string,to_grid ...int){
 			var tmp_list gtk_list
 
 			tmp_list.text,_ = gtk.TextViewNew();
@@ -338,6 +344,14 @@ func Gtk_danmu() {
 						sty.AddClass("highlight")
 					}
 				}
+				if len(to_grid) != 0 && to_grid[0] == 0 {//突出显示结束后，显示在普通弹幕区
+					loc := int(grid0.Container.GetChildren().Length())/2;
+					grid0.InsertRow(loc);
+					grid0.Attach(tmp_list.img, 0, loc, 1, 1)
+					grid0.Attach(tmp_list.text, 1, loc, 1, 1)
+					win.ShowAll()
+					return
+				}
 				/*
 					front
 					|
@@ -348,13 +362,21 @@ func Gtk_danmu() {
 					var cu_To = time.Now().Add(time.Second * time.Duration(sec))
 					var hasInsert bool
 					for el := keep_list.Front(); el != nil; el = el.Next(){
-						if cu_To.After(el.Value.(time.Time)) {InsertIndex -= 1;continue}
-						keep_list.InsertBefore(cu_To,el)
+						if cu_To.After(el.Value.(gtk_item_source).time) {InsertIndex -= 1;continue}
+						keep_list.InsertBefore(gtk_item_source{
+							text:s,
+							img:img_src,
+							time:cu_To,
+						},el)
 						hasInsert = true
 						break
 					}
 					if !hasInsert {
-						keep_list.PushBack(cu_To)
+						keep_list.PushBack(gtk_item_source{
+							text:s,
+							img:img_src,
+							time:cu_To,
+						})
 					}
 					loc := int(grid1.Container.GetChildren().Length())/2;
 					grid1.InsertRow(loc - InsertIndex);
@@ -383,19 +405,20 @@ func Gtk_danmu() {
 		go func(){
 			for danmu_win_running {
 				time.Sleep(time.Second)
-				if len(Gtk_danmuChan) == 0 {continue}
-				el := keep_list.Front()
 				glib.TimeoutAdd(uint(10),func()(value bool){
-					value = el != nil && time.Now().After(el.Value.(time.Time))
+					el := keep_list.Front()
+					value = el != nil && time.Now().After(el.Value.(gtk_item_source).time)
 					if value {
 						if i,e := grid1.GetChildAt(0,0); e != nil{i.(*gtk.Widget).Destroy()}
 						if i,e := grid1.GetChildAt(1,0); e != nil{i.(*gtk.Widget).Destroy()}
 						grid1.RemoveRow(0)
+						y(el.Value.(gtk_item_source).text,el.Value.(gtk_item_source).img, 0)
 						keep_list.Remove(el)
 						el = el.Next()
 					}
 					return
 				})
+				if len(Gtk_danmuChan) == 0 {continue}
 				glib.TimeoutAdd(uint(1000 / (len(Gtk_danmuChan) + 1)),func()(bool){
 					if len(Gtk_danmuChan) == 0 {return false}
 					y(<-Gtk_danmuChan,load_face(<-Gtk_danmuChan_uid))
