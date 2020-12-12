@@ -382,6 +382,7 @@ func Gtk_danmu() {
 	application.Connect("activate", func() {
 		go func(){
 			for danmu_win_running {
+				time.Sleep(time.Second)
 				if len(Gtk_danmuChan) == 0 {continue}
 				for el := keep_list.Front(); el != nil && time.Now().After(el.Value.(time.Time));el = el.Next() {
 					keep_list.Remove(el)
@@ -391,7 +392,6 @@ func Gtk_danmu() {
 					y(<-Gtk_danmuChan,load_face(<-Gtk_danmuChan_uid))
 					return true
 				})
-				time.Sleep(time.Second)
 			}
 		}()
 

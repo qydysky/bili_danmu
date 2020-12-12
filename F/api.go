@@ -440,11 +440,13 @@ func (i *api) Get_OnlineGoldRank() {
 	return
 }
 
+var guard_num_get_limit = p.Limit(1,1000,2000)//频率限制1次/1s，最大等待时间2s
 func (i *api) Get_guardNum() {
 	if i.Uid == 0 || c.Roomid == 0 {
 		apilog.Base(1, "Get_guardNum").E("i.Uid == 0 || c.Roomid == 0")
 		return
 	}
+	if guard_num_get_limit.TO() {return}//超额请求阻塞，超时将取消
 
 	req := p.Req()
 	if err := req.Reqf(p.Rval{

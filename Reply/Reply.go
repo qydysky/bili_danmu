@@ -125,12 +125,10 @@ func (replyF) user_toast_msg(s string){
 		switch op_type.(float64) {
 		case 1:
 			sh = append(sh, "购买了")
-			c.GuardNum += 1
 		case 2:
 			sh = append(sh, "续费了")
 		case 3:
 			sh = append(sh, "自动续费了")
-			c.GuardNum += 1
 		default:
 			msglog.W(s)
 			sh = append(sh, op_type)
@@ -154,6 +152,9 @@ func (replyF) user_toast_msg(s string){
 	}
 	{//额外 ass
 		Assf(fmt.Sprintln(sh...))
+		c.Danmu_Main_mq.Push(c.Danmu_Main_mq_item{//使用连续付费的新舰长无法区分，刷新舰长数
+			Class:`guard_update`,
+		})
 	}
 	fmt.Println("\n====")
 	fmt.Println(sh...)
@@ -201,11 +202,7 @@ func (replyF) special_gift(s string){
 		return
 	}
 	if content != nil {
-		sh = append(sh, "节奏风暴", content, "￥ 100")
-		c.Danmu_Main_mq.Push(c.Danmu_Main_mq_item{//传入消息队列
-			Class:`c.Rev_add`,
-			Data:float64(100),
-		})
+		sh = append(sh, "节奏风暴", content)
 	}
 	{//额外
 		Assf(fmt.Sprintln(sh...))
@@ -332,6 +329,7 @@ func (replyF) send_gift(s string){
 	}
 
 	if len(sh) == 0 {return}
+	msglog.Base(1, "礼").Fileonly(true).I(sh...).Fileonly(false)
 
 	//小于3万金瓜子
 	if allprice < 30 {msglog.T(sh...);return}
@@ -345,8 +343,6 @@ func (replyF) send_gift(s string){
 	// Gui_show("\n====")
 	Gui_show(Itos(sh), "0gift")
 	// Gui_show("====\n")
-	
-	msglog.Base(1, "礼").Fileonly(true).I(sh...).Fileonly(false)
 }
 
 //Msg-房间封禁信息
@@ -403,7 +399,7 @@ func (replyF) live(s string) {
 			go Saveflvf()
 		}
 		{
-			c.Rev = 0 //营收
+			c.Rev = 0.0 //营收
 			c.Liveing = true //直播i标志
 			c.Live_Start_Time = time.Now() //开播h时间
 		}
