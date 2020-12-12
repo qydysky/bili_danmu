@@ -2,6 +2,7 @@ package F
 
 import (
 	"time"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -200,9 +201,11 @@ func (i *api) Get_live(qn ...string) (o *api) {
 			o.Live_status = live_status.(float64)
 			switch live_status.(float64) {
 			case 2:
+				c.Liveing = false
 				apilog.W("轮播中")
 				return
 			case 0: //未直播
+				c.Liveing = false
 				apilog.W("未在直播")
 				return
 			case 1:
@@ -359,8 +362,8 @@ func (i *api) Get_OnlineGoldRank() {
 		return
 	}
 	var session_roomid = c.Roomid
-	var self_loop func(page int)(score float64)
-	self_loop = func(page int)(score float64){
+	var self_loop func(page int)
+	self_loop = func(page int){
 		if page <= 0 || session_roomid != c.Roomid{return}
 		// apilog.Base(1, "self_loop").E(page)
 
@@ -396,10 +399,11 @@ func (i *api) Get_OnlineGoldRank() {
 		} else {
 			tmp_onlineNum := onlineNum.(float64)
 			if tmp_onlineNum == 0 {
-				apilog.Base(1, "获取tmp_onlineNum").E("tmp_onlineNum", tmp_onlineNum)
+				// apilog.Base(1, "获取tmp_onlineNum").E("tmp_onlineNum", tmp_onlineNum)
 				return
 			}
 
+			var score = 0.0
 			if tmp_score_list := p.Json().GetArrayFrom(p.Json().GetValFromS(res, "data.OnlineRankItem"), "score");len(tmp_score_list) != 0 {
 				for _,v := range tmp_score_list {
 					score += v.(float64)/10
@@ -410,10 +414,10 @@ func (i *api) Get_OnlineGoldRank() {
 				Data:score,
 			})
 
-			if rank_list := p.Json().GetArrayFrom(p.Json().GetValFromS(res, "data.OnlineRankItem"), "userRank");len(rank_list) == 0 {
+			if rank_list := p.Json().GetArrayFrom(p.Json().GetValFromS(res, "data.OnlineRankItem"), "userRank");rank_list == nil {
 				apilog.Base(1, "获取 rank_list").E("rank_list", len(rank_list))
 				return
-			} else if rank_list[len(rank_list)-1].(float64) == tmp_onlineNum {
+			} else if len(rank_list) == 0 {
 				// apilog.Base(1, "获取 rank_list").E("rank_list == tmp_onlineNum")
 				return
 			} else {
@@ -428,10 +432,54 @@ func (i *api) Get_OnlineGoldRank() {
 
 	// apilog.Base(1, "获取score").E("score", self_loop(1))
 	self_loop(1)
-	apilog.Base(1, "获取score").E("以往营收获取成功")
+	apilog.Base(1, "获取score").W("以往营收获取成功", fmt.Sprintf("%.2f", c.Rev))
 	// c.Danmu_Main_mq.Push(c.Danmu_Main_mq_item{//传入消息队列
 	// 	Class:`c.Rev_add`,
 	// 	Data:self_loop(1),
 	// })
+	return
+}
+
+var guard_num_get_limit = p.Limit(1,1000,2000)//频率限制1次/1s，最大等待时间2s
+func (i *api) Get_guardNum() {
+	if i.Uid == 0 || c.Roomid == 0 {
+		apilog.Base(1, "Get_guardNum").E("i.Uid == 0 || c.Roomid == 0")
+		return
+	}
+	if guard_num_get_limit.TO() {return}//超额请求阻塞，超时将取消
+
+	req := p.Req()
+	if err := req.Reqf(p.Rval{
+		Url:`https://api.live.bilibili.com/xlive/app-room/v2/guardTab/topList?roomid=`+strconv.Itoa(c.Roomid)+`&page=1&ruid=`+strconv.Itoa(i.Uid)+`&page_size=29`,
+		Header:map[string]string{
+			`Host`: `api.live.bilibili.com`,
+			`User-Agent`: `Mozilla/5.0 (X11; Linux x86_64; rv:83.0) Gecko/20100101 Firefox/83.0`,
+			`Accept`: `application/json, text/plain, */*`,
+			`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
+			`Accept-Encoding`: `gzip, deflate, br`,
+			`Origin`: `https://live.bilibili.com`,
+			`Connection`: `keep-alive`,
+			`Pragma`: `no-cache`,
+			`Cache-Control`: `no-cache`,
+			`Referer`:"https://live.bilibili.com/" + strconv.Itoa(c.Roomid),
+		},
+		Timeout:3,
+		Retry:2,
+	});err != nil {
+		apilog.Base(1, "获取guardNum").E(err)
+		return
+	}
+	res := string(req.Respon)
+	if msg := p.Json().GetValFromS(res, "message");msg == nil || msg != "0" {
+		apilog.Base(1, "获取guardNum").E("message", msg)
+		return
+	}
+	if num := p.Json().GetValFromS(res, "data.info.num");num == nil {
+		apilog.Base(1, "获取num").E("num", num)
+		return
+	} else {
+		c.GuardNum = int(num.(float64))
+		apilog.Base(1, "获取guardNum").W("舰长数获取成功", c.GuardNum)
+	}
 	return
 }

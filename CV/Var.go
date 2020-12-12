@@ -13,6 +13,8 @@ var (
 	Cookie string
 	Title string
 	Rev float64//营收
+	Renqi int//人气
+	GuardNum int//舰长数
 	Live_Start_Time time.Time//直播开始时间
 	Liveing bool//是否在直播
 )

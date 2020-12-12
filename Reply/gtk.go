@@ -25,7 +25,7 @@ const (
 	max_img = 500
 )
 
-const appId = "com.github.qydysky.bili_danmu.reply"
+var appId = "com.github.qydysky.bili_danmu.reply"+p.Sys().GetTime()//时间戳允许多开
 
 type gtk_list struct {
 	text *gtk.TextView
@@ -48,6 +48,7 @@ var keep_key = map[string]int{
 	"face/0level2":3,
 	"face/0level3":1,
 	"face/0superchat":13,
+	"face/0tianxuan":5,
 }
 var (
 	Gtk_on bool
@@ -85,11 +86,18 @@ func Gtk_danmu() {
 	gtk.Init(nil)
 
 	var y func(string,string)
+	var (
+		danmu_win_running bool//弹幕窗体是否正在运行
+		contrl_win_running bool//控制窗体是否正在运行
+	)
 	var win *gtk.Window
 	var scrolledwindow0 *gtk.ScrolledWindow
 	var viewport0 *gtk.Viewport
 	var w2_textView0 *gtk.TextView
 	var w2_textView1 *gtk.TextView
+	var w2_textView2 *gtk.TextView
+	var w2_textView3 *gtk.TextView
+	var renqi_old = 1
 	var w2_Entry0 *gtk.Entry
 	var w2_Entry0_editting bool
 
@@ -97,7 +105,6 @@ func Gtk_danmu() {
 	if err != nil {log.Println(err);return}
 
 	application.Connect("startup", func() {
-		log.Println("application startup")	
 		var grid0 *gtk.Grid;
 
 		builder, err := gtk.BuilderNewFromFile("ui/1.glade")
@@ -118,6 +125,11 @@ func Gtk_danmu() {
 			if err != nil {log.Println(err);return}
 			win, err = isWindow(obj)
 			if err != nil {log.Println(err);return}
+			danmu_win_running = true
+			win.Connect("delete-event", func() {
+				log.Println(`弹幕窗已关闭`)
+				danmu_win_running = false//关闭后置空
+			})
 			application.AddWindow(win)
 			defer win.ShowAll()
 		}
@@ -126,6 +138,11 @@ func Gtk_danmu() {
 			if err != nil {log.Println(err);return}
 			win2, err := isWindow(obj)
 			if err != nil {log.Println(err);return}
+			contrl_win_running = true
+			win2.Connect("delete-event", func() {
+				log.Println(`弹幕信息窗已关闭`)
+				contrl_win_running = false//关闭后置空
+			})
 			application.AddWindow(win2)
 			defer win2.ShowAll()
 		}
@@ -142,6 +159,20 @@ func Gtk_danmu() {
 			if tmp,ok := obj.(*gtk.TextView); ok {
 				w2_textView1 = tmp
 			}else{log.Println("cant find #t1 in .glade");return}
+		}
+		{//人气值
+			obj, err := builder2.GetObject("t2")
+			if err != nil {log.Println(err);return}
+			if tmp,ok := obj.(*gtk.TextView); ok {
+				w2_textView2 = tmp
+			}else{log.Println("cant find #t2 in .glade");return}
+		}
+		{//舰长数
+			obj, err := builder2.GetObject("t3")
+			if err != nil {log.Println(err);return}
+			if tmp,ok := obj.(*gtk.TextView); ok {
+				w2_textView3 = tmp
+			}else{log.Println("cant find #t3 in .glade");return}
 		}
 		{//发送弹幕
 			var danmu_send_form string
@@ -202,6 +233,7 @@ func Gtk_danmu() {
 							y(`输入错误`,load_face("0room"))
 						} else {
 							c.Roomid =  i
+							renqi_old = 1//人气置1
 							c.Danmu_Main_mq.Push(c.Danmu_Main_mq_item{
 								Class:`change_room`,
 							})
@@ -348,9 +380,8 @@ func Gtk_danmu() {
 	})
 
 	application.Connect("activate", func() {
-		log.Println("application activate")
 		go func(){
-			for{
+			for danmu_win_running {
 				time.Sleep(time.Second)
 				if len(Gtk_danmuChan) == 0 {continue}
 				for el := keep_list.Front(); el != nil && time.Now().After(el.Value.(time.Time));el = el.Next() {
@@ -365,7 +396,7 @@ func Gtk_danmu() {
 		}()
 
 		glib.TimeoutAdd(uint(3000), func()(o bool){
-			o = true
+			o = contrl_win_running
 			//y("sssss",load_face(""))
 			{//营收
 				if IsOn("ShowRev") {
@@ -374,17 +405,51 @@ func Gtk_danmu() {
 					b.SetText(fmt.Sprintf("￥%.2f",c.Rev))					
 				}
 			}
+			{//舰长
+				b,e := w2_textView3.GetBuffer()
+				if e != nil {log.Println(e);return}
+				b.SetText(fmt.Sprintf("%d",c.GuardNum))
+			}
 			{//时长
+				b,e := w2_textView1.GetBuffer()
+				if e != nil {log.Println(e);return}
 				if c.Liveing {
-					b,e := w2_textView1.GetBuffer()
-					if e != nil {log.Println(e);return}
 					d := time.Since(c.Live_Start_Time).Round(time.Second)
 					h := d / time.Hour
 					d -= h * time.Hour
 					m := d / time.Minute
 					d -= m * time.Minute
 					s := d / time.Second
-					b.SetText(fmt.Sprintf("%02d:%02d:%02d", h, m, s))					
+					b.SetText(fmt.Sprintf("%02d:%02d:%02d", h, m, s))
+				} else {
+					b.SetText("00:00:00")
+				}
+			}
+			{//人气
+				b,e := w2_textView2.GetBuffer()
+				if e != nil {log.Println(e);return}
+				if c.Liveing {
+					if c.Renqi != renqi_old {
+						var Renqi string = strconv.Itoa(c.Renqi)
+						L:=len([]rune(Renqi))
+
+						var tmp string
+						if renqi_old != 1 {
+							if c.Renqi > renqi_old {tmp += `+`}
+							tmp += fmt.Sprintf("%.1f",100*float64(c.Renqi - renqi_old)/float64(renqi_old)) + `% | `
+						}
+						if c.Renqi != 0 {renqi_old = c.Renqi}
+
+						for k,v := range []rune(Renqi) {
+							tmp += string(v)
+							if (L - k)%3 == 1 && L - k != 1{
+								tmp += `,`
+							}
+						}
+						b.SetText(tmp)
+					}
+				} else {
+					b.SetText(`0`)
 				}
 			}
 			{//房间id

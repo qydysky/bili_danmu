@@ -32,25 +32,29 @@ func Demo(roomid ...int) {
 	
 		if _,ok := c.Default_qn[*live_qn]; ok{c.Live_qn = *live_qn}
 
-		var room = *groomid
-		if room == 0 && len(roomid) != 0 {
-			room = roomid[0]
-		}
-
-		fmt.Printf("输入房间号: ")
-		if room == 0 {
-			_, err := fmt.Scanln(&room)
-			if err != nil {
-				danmulog.E("输入错误", err)
-				return
-			}
-		} else {
-			fmt.Print(strconv.Itoa(room), "\n")
-		}
-		c.Roomid = room
-
 		var exit_sign bool
-		var change_room_chan = make(chan bool)
+		var change_room_chan = make(chan bool,1)
+
+		go func(){
+			var room = *groomid
+			if room == 0 && len(roomid) != 0 {
+				room = roomid[0]
+			}
+			if room == 0 {
+				fmt.Printf("输入房间号: ")
+				_, err := fmt.Scanln(&room)
+				if err != nil {
+					danmulog.E("输入错误", err)
+					return
+				}
+			} else {
+				fmt.Print("房间号: ", strconv.Itoa(room), "\n")
+			}
+			if c.Roomid == 0 {
+				c.Roomid = room
+				change_room_chan <- true
+			}
+		}()
 
 		go func(){
 			var (
@@ -64,15 +68,22 @@ func Demo(roomid ...int) {
 				} else {
 					switch d.Class {
 					case `change_room`:
-						c.Rev = 0 //营收
+						c.Rev = 0.0 //营收
+						c.Renqi = 1//人气置1
 						change_room_chan <- true
 					case `c.Rev_add`:
 						c.Rev += d.Data.(float64)
+					case `c.Renqi`:
+						if tmp,ok := d.Data.(int);ok{
+							c.Renqi = tmp
+						}
 					default:
 					}
 				}
 			}
 		}()
+
+		<-change_room_chan
 
 		for !exit_sign {
 			//获取房间相关信息
@@ -118,8 +129,30 @@ func Demo(roomid ...int) {
 						c.Roomid = api.Roomid
 						c.Live = api.Live
 						c.Cookie = f
-						//获取过往营收
-						go api.Get_OnlineGoldRank()
+						//获取过往营收 舰长数量
+						// go api.Get_OnlineGoldRank()//高能榜显示的是在线观众的打赏
+
+						go func(){//订阅消息，以便刷新舰长数
+							api.Get_guardNum()
+							var (
+								sig = c.Danmu_Main_mq.Sig()
+								data interface{}
+							)
+							for {
+								data,sig = c.Danmu_Main_mq.Pull(sig)
+								if d,ok := data.(c.Danmu_Main_mq_item);!ok {
+									continue
+								} else {
+									switch d.Class {
+									case `guard_update`:
+										go api.Get_guardNum()
+									case `change_room`:
+										return//换房时退出当前房间
+									default:
+									}
+								}
+							}
+						}()
 
 						if p.Checkfile().IsExist("cookie.txt") {//附加功能 弹幕机
 							reply.Danmuji_auto(1)
