@@ -185,12 +185,12 @@ ctrl+c退出，会同时追加记录到文件danmu.log中（文件记录完整�
 
 - Gtk弹幕窗(Linux Only)
 
-![](_Screenshot/Screenshot_20201023_232029.png)
+![](_Screenshot/2020-12-12_16-43-09.gif)
 
-[截图地址](//zdir.ntsdtt.bid/ALL/Admin/Remote/%E5%9B%BE%E7%89%87/Screenshot_20201023_232029.png)
+[截图地址](//zdir.ntsdtt.bid/ALL/Admin/Remote/%E5%9B%BE%E7%89%87/2020-12-12_16-43-09.gif)
 
-![](_Screenshot/Screenshot_20201119_124329.png)
+![](_Screenshot/Screenshot_20201212_164610.png)
 
-[截图地址](//zdir.ntsdtt.bid/ALL/Admin/Remote/%E5%9B%BE%E7%89%87/Screenshot_20201119_124329.png)
+[截图地址](//zdir.ntsdtt.bid/ALL/Admin/Remote/%E5%9B%BE%E7%89%87/Screenshot_20201212_164610.png)
 
 更多内容详见注释，如有疑问请发issues，欢迎pr
