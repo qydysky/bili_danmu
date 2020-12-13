@@ -429,17 +429,17 @@ func Gtk_danmu() {
 		var old_cu float64
 		{//平滑滚动效果
 			tmp := scrolledwindow0.GetVAdjustment()
-			h := viewport0.GetViewWindow().WindowGetHeight()
 			glib.TimeoutAdd(uint(30),func()(true_value bool){
 				true_value = true
 				if !in_smooth_roll {return}
-				g1h := viewport1.GetViewWindow().WindowGetHeight()
-				max := tmp.GetUpper() - float64(h - g1h)
+				h := viewport0.GetViewWindow().WindowGetHeight()
+				// g1h := viewport1.GetViewWindow().WindowGetHeight()
+				max := tmp.GetUpper() - float64(h)
 				cu := tmp.GetValue()
 				
 				//用户在回看
 				if old_cu != 0 &&//非初始
-				max - 100 > cu &&//当前位置低于max-100
+				max - cu > 100 &&//当前位置低于100
 				old_cu != cu {//上一次滚动有移动
 					return
 				}

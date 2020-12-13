@@ -105,6 +105,20 @@ gtk弹幕窗自定义人/事件消息停留/房间切换/弹幕格式化发送
 ### 构建
 本项目使用github action自动构建，构建过程详见[yml](https://github.com/qydysky/bili_danmu/blob/master/.github/workflows/go.yml)
 
+构建tts需要ffplay,先行安装[ffmpeg](http://ffmpeg.org/download.html)
+
+```
+编译命令
+cd demo
+go build -v -tags `tts` -o demo.exe -i main.go
+```
+
+构建gtk需要gtk3,先行安装[gtk](https://www.gtk.org/)
+```
+编译命令
+cd demo
+go build -v -tags `gtk gtk_3_24` -o demo.exe -i main.go
+```
 ### demo 
 前往[releases](https://github.com/qydysky/bili_danmu/releases)页下载对应系统版本。解压后进入`demo`目录(文件夹)，运行`demo.run`(`demo.exe`)。
 ```
