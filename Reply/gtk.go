@@ -90,6 +90,7 @@ func Gtk_danmu() {
 		contrl_win_running bool//控制窗体是否正在运行
 	)
 	var win *gtk.Window
+	var win2 *gtk.Window
 	var scrolledwindow0 *gtk.ScrolledWindow
 	var viewport0 *gtk.Viewport
 	var viewport1 *gtk.Viewport
@@ -133,12 +134,11 @@ func Gtk_danmu() {
 				danmu_win_running = false//关闭后置空
 			})
 			application.AddWindow(win)
-			defer win.ShowAll()
 		}
 		{
 			obj, err := builder2.GetObject("main_window")
 			if err != nil {log.Println(err);return}
-			win2, err := isWindow(obj)
+			win2, err = isWindow(obj)
 			if err != nil {log.Println(err);return}
 			contrl_win_running = true
 			win2.Connect("delete-event", func() {
@@ -146,7 +146,6 @@ func Gtk_danmu() {
 				contrl_win_running = false//关闭后置空
 			})
 			application.AddWindow(win2)
-			defer win2.ShowAll()
 		}
 		{//营收
 			obj, err := builder2.GetObject("t0")
@@ -396,6 +395,9 @@ func Gtk_danmu() {
 			win.ShowAll()
 		}
 
+		//先展示弹幕信息窗
+		win.ShowAll()
+		win2.ShowAll()
 
 		Gtk_on = true
 	})
@@ -446,6 +448,7 @@ func Gtk_danmu() {
 
 				step := 0.1 * (max - cu)
 				if step > 0.5 {
+					if step > 50 {step = 50}//限制最大滚动速度
 					tmp.SetValue(step + cu)
 				} else {
 					in_smooth_roll = false
