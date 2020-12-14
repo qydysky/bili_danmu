@@ -71,6 +71,7 @@ func Demo(roomid ...int) {
 						c.Rev = 0.0 //营收
 						c.Renqi = 1//人气置1
 						c.Title = ``
+						reply.Saveflv_wait()//停止保存直播流
 						change_room_chan <- true
 					case `c.Rev_add`:
 						c.Rev += d.Data.(float64)
