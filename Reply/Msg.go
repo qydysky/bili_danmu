@@ -2,6 +2,7 @@ package reply
 
 import (
 	p "github.com/qydysky/part"
+	s "github.com/qydysky/part/buf"
 )
 
 /*
@@ -69,6 +70,17 @@ var Msg_map = map[string]func(replyF, string) {
 	"PANEL":replyF.panel,//排行榜
 	"ENTRY_EFFECT":nil,//replyF.entry_effect,//进入特效
 	"ROOM_REAL_TIME_MESSAGE_UPDATE":nil,//replyF.roominfo,//粉丝数
+}
+
+//屏蔽不需要的消息
+func init(){
+	{//加载不需要的消息
+		buf := s.New()
+		buf.Load("config/config_disable_msg.json")
+		for k,v := range buf.B {
+			if able,ok := v.(bool);ok && !able {Msg_map[k] = nil}
+		}
+	}
 }
 
 //Msg类型数据处理方法挑选

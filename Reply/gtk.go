@@ -448,7 +448,7 @@ func Gtk_danmu() {
 
 				step := 0.1 * (max - cu)
 				if step > 0.5 {
-					if step > 50 {step = 50}//限制最大滚动速度
+					if step > 10 {step = 10}//限制最大滚动速度
 					tmp.SetValue(step + cu)
 				} else {
 					in_smooth_roll = false
