@@ -14,6 +14,7 @@ import (
 	F "github.com/qydysky/bili_danmu/F"
 	"github.com/christopher-dG/go-obs-websocket"
 	p "github.com/qydysky/part"
+	s "github.com/qydysky/part/signal"
 )
 
 /*
@@ -211,8 +212,8 @@ func dtos(t time.Duration) string {
 //直播流保存
 type Saveflv struct {
 	path string
-	wait p.Signal
-	cancel p.Signal
+	wait *s.Signal
+	cancel *s.Signal
 }
 
 var saveflv = Saveflv {
@@ -232,8 +233,8 @@ func Saveflvf(){
 
 		saveflv.path = strconv.Itoa(c.Roomid) + "_" + time.Now().Format("2006_01_02_15:04:05.000")
 
-		saveflv.wait.Init()
-		saveflv.cancel.Init()
+		saveflv.wait = s.Init()
+		saveflv.cancel = s.Init()
 		
 		rr := p.Req()
 		go func(){
@@ -523,7 +524,7 @@ func Autoskipf(s string, maxNum,muteSecond int) int {
 		}
 		autoskip.num -= 1
 		i, ok := autoskip.buf.LoadAndDelete(s);
-		if ok && i.(int) > 1 {Msg_showdanmu(nil, strconv.Itoa(i.(int)) + " x " + s)}
+		if ok && i.(int) > 1 {Msg_showdanmu(nil, strconv.Itoa(i.(int)) + " x " + s,`0multi`)}//多人重复提示
 	}()
 	return 0
 }

@@ -10,7 +10,8 @@ require (
 	github.com/miekg/dns v1.1.35 // indirect
 	github.com/mitchellh/mapstructure v1.4.0 // indirect
 	github.com/qydysky/bili_danmu v0.5.2
-	github.com/qydysky/part v0.3.1 // indirect
+	github.com/qydysky/part v0.3.3 // indirect
+	github.com/qydysky/part/msgq v0.0.0-20201213031129-ca3253dc72ad // indirect
 	github.com/shirou/gopsutil v3.20.11+incompatible // indirect
 	golang.org/x/crypto v0.0.0-20201203163018-be400aefbc4c // indirect
 	golang.org/x/net v0.0.0-20201202161906-c7110b5ffcbb // indirect

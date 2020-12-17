@@ -75,12 +75,12 @@ func (i *api) Get_info() (o *api) {
 		o.Roomid = i
 	}
 
-	if o.Roomid != 0 && o.Uid != 0 {return}
+	if o.Roomid != 0 && o.Uid != 0 && c.Title != ``{return}
 
-	{
+	{//使用其他api
 		req := p.Req()
 		if err := req.Reqf(p.Rval{
-			Url:"https://api.live.bilibili.com/room/v1/Room/room_init?id=" + Roomid,
+			Url:"https://api.live.bilibili.com/xlive/web-room/v1/index/getInfoByRoom?room_id=" + Roomid,
 			Header:map[string]string{
 				`Referer`:"https://live.bilibili.com/" + Roomid,
 			},
@@ -91,28 +91,35 @@ func (i *api) Get_info() (o *api) {
 			return
 		}
 		res := string(req.Respon)
-		if msg := p.Json().GetValFrom(res, "msg");msg == nil || msg != "ok" {
-			apilog.E("msg", msg)
+		if code := p.Json().GetValFrom(res, "code");code == nil || code.(float64) != 0 {
+			apilog.E("code", code, p.Json().GetValFrom(res, "message"))
 			return
 		}
-		if Uid := p.Json().GetValFrom(res, "data.uid");Uid == nil {
-			apilog.E("data.uid", Uid)
+		if Uid := p.Json().GetValFrom(res, "data.room_info.uid");Uid == nil {
+			apilog.E("data.room_info.uid", Uid)
 			return
 		} else {
 			o.Uid = int(Uid.(float64))
 		}
 
-		if room_id := p.Json().GetValFrom(res, "data.room_id");room_id == nil {
-			apilog.E("data.room_id", room_id)
+		if room_id := p.Json().GetValFrom(res, "data.room_info.room_id");room_id == nil {
+			apilog.E("data.room_info.room_id", room_id)
 			return
 		} else {
 			apilog.T("ok")
 			o.Roomid = int(room_id.(float64))
 		}
-		if is_locked := p.Json().GetValFrom(res, "data.is_locked");is_locked == nil {
-			apilog.E("data.is_locked", is_locked)
+		if title := p.Json().GetValFrom(res, "data.room_info.title");title == nil {
+			apilog.E("data.room_info.title", title)
 			return
-		} else if is_locked.(bool) {
+		} else {
+			apilog.T("ok")
+			c.Title = title.(string)
+		}
+		if is_locked := p.Json().GetValFrom(res, "data.room_info.lock_status");is_locked == nil {
+			apilog.E("data.room_info.is_locked", is_locked)
+			return
+		} else if is_locked.(float64) == 1 {
 			apilog.W("直播间封禁中")
 			o.Locked = true
 			return
@@ -170,7 +177,7 @@ func (i *api) Get_live(qn ...string) (o *api) {
 	{//api获取
 		req := p.Req()
 		if err := req.Reqf(p.Rval{
-			Url:"https://api.live.bilibili.com/xlive/web-room/v1/index/getRoomPlayInfo?play_url=1&mask=1&qn=0&platform=web&ptype=16&room_id=" + strconv.Itoa(o.Roomid),
+			Url:"https://api.live.bilibili.com/xlive/web-room/v2/index/getRoomPlayInfo?no_playurl=0&mask=1&qn=0&platform=web&protocol=0,1&format=0,2&codec=0,1&room_id=" + strconv.Itoa(o.Roomid),
 			Header:map[string]string{
 				`Referer`:"https://live.bilibili.com/" + strconv.Itoa(o.Roomid),
 				`Cookie`:Cookie,
@@ -215,29 +222,49 @@ func (i *api) Get_live(qn ...string) (o *api) {
 				apilog.W("live_status:", live_status)
 			}
 		}
-		if urls := p.Json().GetArrayFrom(p.Json().GetValFrom(res, "data.play_url.durl"), "url");urls == nil {
-			apilog.E("url", urls)
-			return
-		} else {
-			apilog.T("ok")
-			o.Live = []string{}
-			for _,v := range urls {
-				o.Live = append(o.Live, v.(string))
+		if codec0 := p.Json().GetValFrom(res, "data.playurl_info.playurl.stream.[0].format.[0].codec.[0]");codec0 != nil {//直播流链接
+			base_url := p.Json().GetValFrom(codec0, "base_url")
+			if base_url == nil {return}
+			url_info := p.Json().GetValFrom(codec0, "url_info")
+			if v,ok := url_info.([]interface{});!ok || len(v) == 0 {return}
+			for _,v := range url_info.([]interface{}) {
+				host := p.Json().GetValFrom(v, "host")
+				extra := p.Json().GetValFrom(v, "extra")
+				if host == nil || extra == nil {continue}
+				o.Live = append(o.Live, host.(string) + base_url.(string) + extra.(string))
 			}
 		}
-		if i := p.Json().GetValFrom(res, "data.play_url.current_qn"); i != nil {
+		if len(o.Live) == 0 {apilog.E("live url is nil");return}
+
+		if i := p.Json().GetValFrom(res, "data.playurl_info.playurl.stream.[0].format.[0].codec.[0].current_qn"); i != nil {
 			cu_qn = strconv.Itoa(int(i.(float64)))
 		}
 		if i := p.Json().GetValFrom(res, "data.live_time"); i != nil {
 			c.Live_Start_Time = time.Unix(int64(i.(float64)),0).In(time.FixedZone("UTC-8", -8*60*60))
 		}
+
 		if len(qn) != 0 && qn[0] != "0" && qn[0] != "" {
+			var (
+				accept_qn_request bool
+				tmp_qn int
+				e error
+			)
+			if tmp_qn,e = strconv.Atoi(qn[0]);e != nil {apilog.E(`qn error`,e);return}
+			if i,ok := p.Json().GetValFrom(res, "data.playurl_info.playurl.stream.[0].format.[0].codec.[0].accept_qn").([]interface{}); ok && len(i) != 0 {
+				for _,v := range i {
+					if o,ok := v.(float64);ok && int(o) == tmp_qn {accept_qn_request = true}
+				}
+			}
+			if !accept_qn_request {
+				apilog.E(`qn不在accept_qn中`);
+				return
+			}
 			if _,ok := c.Default_qn[qn[0]];!ok{
 				apilog.W("清晰度未找到", qn[0], ",使用默认")
 				return
 			}
 			if err := req.Reqf(p.Rval{
-				Url:"https://api.live.bilibili.com/xlive/web-room/v1/playUrl/playUrl?cid=" + strconv.Itoa(o.Roomid) + "&qn=" + qn[0] + "&platform=web&https_url_req=1&ptype=16",
+				Url:"https://api.live.bilibili.com/xlive/web-room/v2/index/getRoomPlayInfo?no_playurl=0&mask=1&platform=web&protocol=0,1&format=0,2&codec=0,1&room_id=" + strconv.Itoa(o.Roomid) + "&qn=" + qn[0],
 				Header:map[string]string{
 					`Cookie`:Cookie,
 					`Referer`:"https://live.bilibili.com/" + strconv.Itoa(o.Roomid),
@@ -249,19 +276,22 @@ func (i *api) Get_live(qn ...string) (o *api) {
 				return
 			}
 			res = string(req.Respon)
-			if urls := p.Json().GetArrayFrom(p.Json().GetValFrom(res, "data.durl"), "url");urls == nil {
-				apilog.E("url", urls)
-				return
-			} else {
-				apilog.T("ok")
-				o.Live = []string{}
-				for _,v := range urls {
-					o.Live = append(o.Live, v.(string))
+			if codec0 := p.Json().GetValFrom(res, "data.playurl_info.playurl.stream.[0].format.[0].codec.[0]");codec0 != nil {//直播流链接
+				base_url := p.Json().GetValFrom(codec0, "base_url")
+				if base_url == nil {return}
+				url_info := p.Json().GetValFrom(codec0, "url_info")
+				if v,ok := url_info.([]interface{});!ok || len(v) == 0 {return}
+				for _,v := range url_info.([]interface{}) {
+					host := p.Json().GetValFrom(v, "host")
+					extra := p.Json().GetValFrom(v, "extra")
+					if host == nil || extra == nil {continue}
+					o.Live = append(o.Live, host.(string) + base_url.(string) + extra.(string))
 				}
 			}
-			if i := p.Json().GetValFrom(res, "data.current_qn"); i != nil {
+			if len(o.Live) == 0 {apilog.E("live url is nil");return}
+	
+			if i := p.Json().GetValFrom(res, "data.playurl_info.playurl.stream.[0].format.[0].codec.[0].current_qn"); i != nil {
 				cu_qn = strconv.Itoa(int(i.(float64)))
-				c.Live_qn = cu_qn
 			}
 		}
 	}

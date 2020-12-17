@@ -7,10 +7,11 @@ import (
 
 	c "github.com/qydysky/bili_danmu/CV"
 	p "github.com/qydysky/part"
+	s "github.com/qydysky/part/signal"
 )
 
 type ws struct {
-	Signal p.Signal
+	Signal *s.Signal
 	SendChan chan []byte
 	RecvChan chan []byte
 	TO int
@@ -36,7 +37,7 @@ func (i *ws) Handle() (o *ws) {
 	defer l.Block()
 
 	if o.Signal.Islive() {return}
-	o.Signal.Init()
+	o.Signal = s.Init()
 
 	if o.url == "" {
 		l.E("o.url == \"\"")

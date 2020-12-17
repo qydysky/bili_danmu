@@ -105,6 +105,20 @@ gtk弹幕窗自定义人/事件消息停留/房间切换/弹幕格式化发送
 ### 构建
 本项目使用github action自动构建，构建过程详见[yml](https://github.com/qydysky/bili_danmu/blob/master/.github/workflows/go.yml)
 
+构建tts需要ffplay,先行安装[ffmpeg](http://ffmpeg.org/download.html)
+
+```
+编译命令
+cd demo
+go build -v -tags `tts` -o demo.exe -i main.go
+```
+
+构建gtk需要gtk3,先行安装[gtk](https://www.gtk.org/)
+```
+编译命令
+cd demo
+go build -v -tags `gtk gtk_3_24` -o demo.exe -i main.go
+```
 ### demo 
 前往[releases](https://github.com/qydysky/bili_danmu/releases)页下载对应系统版本。解压后进入`demo`目录(文件夹)，运行`demo.run`(`demo.exe`)。
 ```
@@ -185,12 +199,12 @@ ctrl+c退出，会同时追加记录到文件danmu.log中（文件记录完整�
 
 - Gtk弹幕窗(Linux Only)
 
-![](_Screenshot/Screenshot_20201023_232029.png)
+![](_Screenshot/2020-12-12_16-43-09.gif)
 
-[截图地址](//zdir.ntsdtt.bid/ALL/Admin/Remote/%E5%9B%BE%E7%89%87/Screenshot_20201023_232029.png)
+[截图地址](//zdir.ntsdtt.bid/ALL/Admin/Remote/%E5%9B%BE%E7%89%87/2020-12-12_16-43-09.gif)
 
-![](_Screenshot/Screenshot_20201119_124329.png)
+![](_Screenshot/Screenshot_20201212_164610.png)
 
-[截图地址](//zdir.ntsdtt.bid/ALL/Admin/Remote/%E5%9B%BE%E7%89%87/Screenshot_20201119_124329.png)
+[截图地址](//zdir.ntsdtt.bid/ALL/Admin/Remote/%E5%9B%BE%E7%89%87/Screenshot_20201212_164610.png)
 
 更多内容详见注释，如有疑问请发issues，欢迎pr

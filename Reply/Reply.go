@@ -117,6 +117,7 @@ func (replyF) user_toast_msg(s string){
 	price := p.Json().GetValFromS(s, "data.price");
 
 	var sh []interface{}
+	var sh_log []interface{}
 
 	if username != nil {
 		sh = append(sh, username)
@@ -135,7 +136,7 @@ func (replyF) user_toast_msg(s string){
 		}
 	}
 	if num != nil {
-		sh = append(sh, num, "x")
+		sh = append(sh, num, "个")
 	}
 	if unit != nil {
 		sh = append(sh, unit)
@@ -144,7 +145,7 @@ func (replyF) user_toast_msg(s string){
 		sh = append(sh, role_name)
 	}
 	if price != nil {
-		sh = append(sh, "￥", int(price.(float64)) / 1000)
+		sh_log = append(sh, "￥", int(price.(float64)) / 1000)//不在界面显示价格
 		c.Danmu_Main_mq.Push(c.Danmu_Main_mq_item{//传入消息队列
 			Class:`c.Rev_add`,
 			Data:price.(float64) / 1000,
@@ -164,7 +165,7 @@ func (replyF) user_toast_msg(s string){
 	Gui_show(Itos(sh), "0buyguide")
 	// Gui_show("====\n")
 
-	msglog.Base(1, "礼").Fileonly(true).I(sh...).Fileonly(false)
+	msglog.Base(1, "礼").Fileonly(true).I(sh_log...).Fileonly(false)
 }
 
 //HeartBeat-心跳用来传递人气值
@@ -226,6 +227,7 @@ func (replyF) guard_buy(s string){
 	price := p.Json().GetValFromS(s, "data.price");
 
 	var sh []interface{}
+	var sh_log []interface{}
 
 	if username != nil {
 		sh = append(sh, username)
@@ -234,7 +236,7 @@ func (replyF) guard_buy(s string){
 		sh = append(sh, "购买了", gift_name)
 	}
 	if price != nil {
-		sh = append(sh, "￥", int(price.(float64)) / 1000)
+		sh_log = append(sh, "￥", int(price.(float64)) / 1000)//不在界面显示价格
 	}
 	{//额外 ass
 		Assf(fmt.Sprintln(sh...))
@@ -242,8 +244,8 @@ func (replyF) guard_buy(s string){
 	fmt.Println("\n====")
 	fmt.Println(sh...)
 	fmt.Print("====\n\n")
+	msglog.Base(1, "礼").Fileonly(true).I(sh_log...).Fileonly(false)
 
-	msglog.Base(1, "礼").Fileonly(true).I(sh...).Fileonly(false)
 }
 
 //Msg-房间信息改变，标题等
@@ -305,6 +307,7 @@ func (replyF) send_gift(s string){
 	total_coin := p.Json().GetValFromS(s, "data.total_coin");
 
 	var sh []interface{}
+	var sh_log []interface{}
 	var allprice float64
 
 	if uname != nil {
@@ -314,14 +317,14 @@ func (replyF) send_gift(s string){
 		sh = append(sh, action)
 	}
 	if num != nil {
-		sh = append(sh, num, "x")
+		sh = append(sh, num, "个")
 	}
 	if giftName != nil {
 		sh = append(sh, giftName)
 	}
 	if total_coin != nil {
 		allprice = total_coin.(float64) / 1000
-		sh = append(sh, fmt.Sprintf("￥%.1f",allprice))
+		sh_log = append(sh, fmt.Sprintf("￥%.1f",allprice))//不在界面显示价格
 		c.Danmu_Main_mq.Push(c.Danmu_Main_mq_item{//传入消息队列
 			Class:`c.Rev_add`,
 			Data:allprice,
@@ -329,7 +332,7 @@ func (replyF) send_gift(s string){
 	}
 
 	if len(sh) == 0 {return}
-	msglog.Base(1, "礼").Fileonly(true).I(sh...).Fileonly(false)
+	msglog.Base(1, "礼").Fileonly(true).I(sh_log...).Fileonly(false)
 
 	//小于3万金瓜子
 	if allprice < 30 {msglog.T(sh...);return}
@@ -436,7 +439,7 @@ func (replyF) super_chat_message(s string){
 	}
 	logg := sh
 	if price != nil {
-		sh = append(sh, "￥", price, "\n")
+		sh = append(sh, "\n")//界面不显示价格
 		logg = append(logg, "￥", price)
 		c.Danmu_Main_mq.Push(c.Danmu_Main_mq_item{//传入消息队列
 			Class:`c.Rev_add`,
@@ -598,7 +601,7 @@ type Danmu_mq_t struct {
 	uid string
 	msg string
 }
-var Danmu_mq = mq.New()
+var Danmu_mq = mq.New(10)
 
 func Gui_show(m ...string){
 	//m[0]:msg m[1]:uid

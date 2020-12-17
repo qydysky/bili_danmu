@@ -24,7 +24,7 @@ type Danmu_Main_mq_item struct {
 	Class string
 	Data interface{}
 }
-var Danmu_Main_mq = mq.New()
+var Danmu_Main_mq = mq.New(10)
 
 //from player-loader-2.0.11.min.js
 /*
@@ -36,6 +36,8 @@ var (
 
 var Default_qn = map[string]string{
 	"10000":"原画",
+	"800":"4K",
+	"401":"蓝光(杜比)",
 	"400":"蓝光",
 	"250":"超清",
 	"150":"高清",
