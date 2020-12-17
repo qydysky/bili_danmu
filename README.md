@@ -94,14 +94,19 @@ var AllF = map[string]bool{
 }
 ```
 以下内容可能过时,其他小功能
-```
-弹幕重连
+
+弹幕自动重连
+
 直播流开播自动下载
+
 直播流下载重连
+
 gtk弹幕窗自定义人/事件消息停留/房间切换/弹幕格式化发送
-营收统计
-...
-```
+
+营收/舰长/时长统计
+
+自定义语音提醒
+
 ### 构建
 本项目使用github action自动构建，构建过程详见[yml](https://github.com/qydysky/bili_danmu/blob/master/.github/workflows/go.yml)
 
