@@ -41,7 +41,7 @@ var Msg_map = map[string]func(replyF, string) {
 	"ANCHOR_LOT_END":nil,//天选之人结束
 	"ANCHOR_LOT_AWARD":replyF.anchor_lot_award,//天选之人获奖
 	"COMBO_SEND":nil,
-	"INTERACT_WORD":nil,
+	"INTERACT_WORD":replyF.interact_word,//进入信息，包含直播间关注提示
 	"ACTIVITY_BANNER_UPDATE_V2":nil,
 	"NOTICE_MSG":nil,
 	"ROOM_BANNER":nil,
@@ -78,7 +78,13 @@ func init(){
 		buf := s.New()
 		buf.Load("config/config_disable_msg.json")
 		for k,v := range buf.B {
-			if able,ok := v.(bool);ok && !able {Msg_map[k] = nil}
+			if able,ok := v.(bool);ok {//设置为true时，使用默认显示
+				if able {
+					Msg_map[k] = replyF.defaultMsg
+				} else {
+					Msg_map[k] = nil
+				}
+			}
 		}
 	}
 }

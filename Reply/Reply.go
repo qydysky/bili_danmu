@@ -60,6 +60,26 @@ func (replyF) defaultMsg(s string){
 	msglog.Base(1, "Unknow").E(s)
 }
 
+//msg-直播间进入信息，此处用来提示关注
+func (replyF) interact_word(s string){
+	msg_type := p.Json().GetValFromS(s, "data.msg_type");
+	if v,ok := msg_type.(float64);!ok || v < 2 {return}//关注时为2,进入时为1
+	uname := p.Json().GetValFromS(s, "data.uname");
+	if v,ok := uname.(string);ok {
+		{//语言tts
+			c.Danmu_Main_mq.Push(c.Danmu_Main_mq_item{
+				Class:`tts`,
+				Data:Danmu_mq_t{
+					uid:`0follow`,
+					msg:fmt.Sprintln(v + `关注了直播间`),
+				},
+			})
+		}
+		Gui_show(v + `关注了直播间`,`0follow`)
+		msglog.Base(1, "房").Fileonly(true).I(v + `关注了直播间`).Fileonly(false)
+	}
+}
+
 //Msg-天选之人开始
 func (replyF) anchor_lot_start(s string){
 	award_name := p.Json().GetValFromS(s, "data.award_name");
@@ -92,7 +112,11 @@ func (replyF) anchor_lot_award(s string){
 			uname := p.Json().GetValFrom(v, "uname");
 			uid := p.Json().GetValFrom(v, "uid");
 			if uname != nil && uid != nil {
-				sh = append(sh, uname, "(", uid, ")")
+				if v,ok := uid.(float64);ok {//uid可能为float型
+					sh = append(sh, uname, "(", strconv.Itoa(int(v)), ")")
+				} else {
+					sh = append(sh, uname, "(", uid, ")")
+				}
 			}
 		}
 	}
@@ -151,6 +175,15 @@ func (replyF) user_toast_msg(s string){
 			Data:price.(float64) / 1000,
 		})
 	}
+	{//语言tts
+		c.Danmu_Main_mq.Push(c.Danmu_Main_mq_item{
+			Class:`tts`,
+			Data:Danmu_mq_t{
+				uid:`0guard_update`,
+				msg:fmt.Sprintln(sh...),
+			},
+		})
+	}
 	{//额外 ass
 		Assf(fmt.Sprintln(sh...))
 		c.Danmu_Main_mq.Push(c.Danmu_Main_mq_item{//使用连续付费的新舰长无法区分，刷新舰长数
@@ -174,7 +207,7 @@ func (replyF) heartbeat(s int){
 		Class:`c.Renqi`,
 		Data:s,
 	})
-	// if s == "1" {return}//人气为1,不输出
+	if s == 1 {return}//人气为1,不输出
 	heartlog.I("当前人气", s)
 }
 
@@ -287,7 +320,15 @@ func (replyF) welcome_guard(s string){
 	if username != nil {
 		sh = append(sh, username, "进入直播间")
 	}
-
+	{//语言tts
+		c.Danmu_Main_mq.Push(c.Danmu_Main_mq_item{
+			Class:`tts`,
+			Data:Danmu_mq_t{
+				uid:img,
+				msg:fmt.Sprintln(sh...),
+			},
+		})
+	}
 	fmt.Print(">>> ")
 	fmt.Println(sh...)
 	Gui_show(Itos(append([]interface{}{">>> "}, sh...)), img)
@@ -336,6 +377,15 @@ func (replyF) send_gift(s string){
 
 	//小于3万金瓜子
 	if allprice < 30 {msglog.T(sh...);return}
+	{//语言tts
+		c.Danmu_Main_mq.Push(c.Danmu_Main_mq_item{
+			Class:`tts`,
+			Data:Danmu_mq_t{
+				uid:`0gift`,
+				msg:fmt.Sprintln(sh...),
+			},
+		})
+	}
 	{//额外
 		Assf(fmt.Sprintln(sh...))
 	}
@@ -454,6 +504,15 @@ func (replyF) super_chat_message(s string){
 		// Gui_show(message.(string))
 		sh = append(sh, message)
 		logg = append(logg, message)
+	}
+	{//语言tts
+		c.Danmu_Main_mq.Push(c.Danmu_Main_mq_item{
+			Class:`tts`,
+			Data:Danmu_mq_t{
+				uid:`0superchat`,
+				msg:fmt.Sprintln(sh...),
+			},
+		})
 	}
 	if message_jpn != nil && message.(string) != message_jpn.(string) && message_jpn.(string) != "" {
 		fmt.Println(message_jpn)
@@ -592,7 +651,17 @@ func Msg_showdanmu(auth interface{}, m ...string) {
 			Gui_show(m...)
 		}	
 	}
-	
+	{//语言tts
+		if len(m) > 1 {
+			c.Danmu_Main_mq.Push(c.Danmu_Main_mq_item{
+				Class:`tts`,
+				Data:Danmu_mq_t{
+					uid:m[1],
+					msg:msg,
+				},
+			})
+		}
+	}
 	fmt.Println(msg)
 	if auth != nil {msglog.I(auth, ":", msg)}
 }

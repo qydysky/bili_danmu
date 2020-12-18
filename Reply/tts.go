@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strings"
 	p "github.com/qydysky/part"
+	c "github.com/qydysky/bili_danmu/CV"
 	s "github.com/qydysky/part/buf"
 )
 
@@ -28,21 +29,30 @@ func init(){
 		}
 	}
 	go func(){
-		var (
-			sig = Danmu_mq.Sig()
-			data interface{}
-		)
 		go func(){
 			for{
 				e := <- tts_List
 				TTS(e.(Danmu_mq_t).uid, e.(Danmu_mq_t).msg)
 			}
 		}()
-
+		
+		//消息队列接收tts类消息，并传送到TTS朗读
+		var (
+			sig = c.Danmu_Main_mq.Sig()
+			data interface{}
+		)
 		for {
-			data,sig = Danmu_mq.Pull(sig)
-			if _,ok := tts_setting[data.(Danmu_mq_t).uid];!ok {continue}
-			tts_List <- data
+			data,sig = c.Danmu_Main_mq.Pull(sig)
+			if d,ok := data.(c.Danmu_Main_mq_item);!ok {
+				continue
+			} else {
+				switch d.Class {
+				case `tts`:
+					if _,ok := tts_setting[d.Data.(Danmu_mq_t).uid];!ok {continue}
+					tts_List <- d.Data
+				default:
+				}
+			}
 		}
 	}()
 }
