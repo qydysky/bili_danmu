@@ -2,6 +2,28 @@
 golang go version go1.15.5 linux/amd64
 
 ---
+### 目录释义
+|目录|说明|
+|-|-|
+|./|项目根|
+|CV/|全局变常量|
+|F/|项目小工具(ws消息生成、api、整数字节转换)|
+|Replay/|接收的数据处理区|
+|Send/|弹幕发送|
+|_Screenshot/|截图保存目录|
+|_msg_sample/|ws接收数据示例|
+|_source/|bilijs文件示例|
+|demo/|运行目录|
+|.gitignore|项目忽略文件|
+|7za.exe|githubAction的windows打包程序|
+|LICENSE|许可|
+|VERSION|项目版本|
+|bili_danmu.go|主运行文件|
+|go.mod|goMod文件|
+|ws.go|websocks连接模块|
+---
+
+---
 ### LICENSE
 使用了下述的项目，十分感谢
 - [golang](https://golang.org/) under [BSD](https://golang.org/LICENSE)
