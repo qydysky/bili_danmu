@@ -511,7 +511,7 @@ func (i *api) Get_Version() {
 	var player_js_url string
 	{//获取player_js_url
 		r := g.Get(p.Rval{
-			Url:"https://live.bilibili.com/" + Roomid,
+			Url:"https://live.bilibili.com/blanc/" + Roomid,
 		})
 
 		if r.Err != nil {
