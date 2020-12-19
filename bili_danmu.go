@@ -90,6 +90,8 @@ func Demo(roomid ...int) {
 		for !exit_sign {
 			//获取房间相关信息
 			api := F.New_api(c.Roomid).Get_host_Token().Get_live()
+			//获取用户版本
+			api.Get_Version()
 			if len(api.Url) == 0 || api.Roomid == 0 || api.Token == "" || api.Uid == 0 || api.Locked {
 				danmulog.E("some err")
 				return

@@ -51,24 +51,19 @@ func (i *api) Get_info() (o *api) {
 	//uid
 	if tmp := r.S(`"uid":`, `,`, 0, 0);tmp.Err != nil {
 		// apilog.E("uid", tmp.Err)
-	} else if i,err := strconv.Atoi(tmp.RS); err != nil{
+	} else if i,err := strconv.Atoi(tmp.RS[0]); err != nil{
 		apilog.E("uid", err)
 	} else {
 		o.Uid = i
 	}
 	//Title
 	if e := r.S(`"title":"`, `",`, 0, 0).Err;e == nil {
-		c.Title = r.RS
+		c.Title = r.RS[0]
 	}
-	//VERSION
-	if e := r.S(`player-loader-`, `.min`, 0, 0).Err;e == nil {
-		c.VERSION = r.RS
-	}
-	apilog.W("api version", c.VERSION)
 	//roomid
 	if tmp := r.S(`"room_id":`, `,`, 0, 0);tmp.Err != nil {
 		// apilog.E("room_id", tmp.Err)
-	} else if i,err := strconv.Atoi(tmp.RS); err != nil{
+	} else if i,err := strconv.Atoi(tmp.RS[0]); err != nil{
 		apilog.E("room_id", err)
 	} else {
 		apilog.T("ok")
@@ -154,7 +149,7 @@ func (i *api) Get_live(qn ...string) (o *api) {
 			},
 		})
 		if e := r.S(`"durl":[`, `]`, 0, 0).Err;e == nil {
-			if urls := p.Json().GetArrayFrom("[" + r.RS + "]", "url");urls != nil {
+			if urls := p.Json().GetArrayFrom("[" + r.RS[0] + "]", "url");urls != nil {
 				apilog.W("直播中")
 				c.Liveing = true
 				o.Live_status = 1
@@ -164,13 +159,9 @@ func (i *api) Get_live(qn ...string) (o *api) {
 				return
 			}
 		}
-		if e := r.S(`player-loader-`, `.min`, 0, 0).Err;e == nil {
-			c.VERSION = r.RS
-		}
 		if e := r.S(`"live_time":"`, `"`, 0, 0).Err;e == nil {
-			c.Live_Start_Time,_ = time.Parse("2006-01-02 15:04:05", r.RS)
+			c.Live_Start_Time,_ = time.Parse("2006-01-02 15:04:05", r.RS[0])
 		}
-		apilog.W("api version", c.VERSION)
 	}
 
 	cu_qn := "0"
@@ -512,4 +503,59 @@ func (i *api) Get_guardNum() {
 		apilog.Base(1, "获取guardNum").W("舰长数获取成功", c.GuardNum)
 	}
 	return
+}
+
+func (i *api) Get_Version() {
+	Roomid := strconv.Itoa(i.Roomid)
+
+	var player_js_url string
+	{//获取player_js_url
+		r := g.Get(p.Rval{
+			Url:"https://live.bilibili.com/" + Roomid,
+		})
+
+		if r.Err != nil {
+			apilog.Base(1, "Get_Version").E(r.Err)
+			return
+		}
+
+		r.S2(`<script src=`,`.js`)
+		if r.Err != nil {
+			apilog.Base(1, "Get_Version").E(r.Err)
+			return
+		}
+
+		for _,v := range r.RS {
+			tmp := string(v) + `.js`
+			if strings.Contains(tmp,`http`) {continue}
+			tmp = `https:` + tmp
+			if strings.Contains(tmp,`player-loader`) {
+				player_js_url = tmp
+				break
+			}
+		}
+		if player_js_url == `` {
+			apilog.Base(1, "Get_Version").E(`no found player-loader js`)
+			return
+		}
+	}
+
+	{//获取VERSION
+		r := g.Get(p.Rval{
+			Url:player_js_url,
+		})
+
+		if r.Err != nil {
+			apilog.Base(1, "Get_Version").E(r.Err)
+			return
+		}
+
+		r.S(`version={html5:{web:"`,`"`,0,0)
+		if r.Err != nil {
+			apilog.Base(1, "Get_Version").E(r.Err)
+			return
+		}
+		c.VERSION = r.RS[0]
+		apilog.W("api version", c.VERSION)
+	}
 }

@@ -9,13 +9,12 @@ require (
 	github.com/klauspost/compress v1.11.3 // indirect
 	github.com/miekg/dns v1.1.35 // indirect
 	github.com/mitchellh/mapstructure v1.4.0 // indirect
-	github.com/qydysky/bili_danmu v0.5.2
-	github.com/qydysky/part v0.3.3 // indirect
-	github.com/qydysky/part/msgq v0.0.0-20201213031129-ca3253dc72ad // indirect
+	github.com/qydysky/bili_danmu v0.5.4
+	github.com/qydysky/part v0.3.4 // indirect
 	github.com/shirou/gopsutil v3.20.11+incompatible // indirect
-	golang.org/x/crypto v0.0.0-20201203163018-be400aefbc4c // indirect
-	golang.org/x/net v0.0.0-20201202161906-c7110b5ffcbb // indirect
-	golang.org/x/sys v0.0.0-20201204225414-ed752295db88 // indirect
+	golang.org/x/crypto v0.0.0-20201217014255-9d1352758620 // indirect
+	golang.org/x/net v0.0.0-20201216054612-986b41b23924 // indirect
+	golang.org/x/sys v0.0.0-20201218084310-7d0127a74742 // indirect
 )
 
 replace (
