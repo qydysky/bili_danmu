@@ -71,7 +71,7 @@ func (replyF) interact_word(s string){
 				Class:`tts`,
 				Data:Danmu_mq_t{
 					uid:`0follow`,
-					msg:fmt.Sprintln(v + `关注了直播间`),
+					msg:fmt.Sprint(v + `关注了直播间`),
 				},
 			})
 		}
@@ -179,8 +179,8 @@ func (replyF) user_toast_msg(s string){
 		c.Danmu_Main_mq.Push(c.Danmu_Main_mq_item{
 			Class:`tts`,
 			Data:Danmu_mq_t{
-				uid:`0guard_update`,
-				msg:fmt.Sprintln(sh...),
+				uid:`0buyguide`,
+				msg:fmt.Sprint(sh...),
 			},
 		})
 	}
@@ -539,6 +539,7 @@ func (replyF) panel(s string){
 		msglog.E("note", note)
 		return
 	} else {
+		if v,ok := note.(string);ok{c.Note = v}
 		fmt.Println("排行", note)
 		msglog.I("排行", note)
 	}

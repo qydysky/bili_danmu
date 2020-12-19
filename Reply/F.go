@@ -524,7 +524,13 @@ func Autoskipf(s string, maxNum,muteSecond int) int {
 		}
 		autoskip.num -= 1
 		i, ok := autoskip.buf.LoadAndDelete(s);
-		if ok && i.(int) > 1 {Msg_showdanmu(nil, strconv.Itoa(i.(int)) + " x " + s,`0multi`)}//多人重复提示
+		if ok {//多人重复提示
+			switch i.(int) {
+			case 0,1:
+			case 2,3:Msg_showdanmu(nil, strconv.Itoa(i.(int)) + " x " + s,`0default`)
+			default:Msg_showdanmu(nil, strconv.Itoa(i.(int)) + " x " + s,`0multi`)
+			}
+		}
 	}()
 	return 0
 }

@@ -106,7 +106,7 @@ go build -v -tags `gtk gtk_3_24` -o demo.exe -i main.go
 ./demo.run -q 清晰度 -r 房间ID
 ```
 
-> 清晰度可取[数值](https://github.com/qydysky/bili_danmu/blob/028d6d8ed47df4631aca7df93871a4795bedda76/CV/Var.go#L19)
+> 清晰度可取[数值](https://github.com/qydysky/bili_danmu/blob/cf52498a88e885fb66dbc94fb8652cb6fa35fb26/CV/Var.go#L37)
 > 弹幕及礼物会记录于danmu.log中
 
 **部分功能需要在`demo`目录(文件夹)下放置`cookie.txt`才可用**

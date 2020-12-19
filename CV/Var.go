@@ -15,6 +15,7 @@ var (
 	Rev float64//营收
 	Renqi int//人气
 	GuardNum int//舰长数
+	Note string//分区排行
 	Live_Start_Time time.Time//直播开始时间
 	Liveing bool//是否在直播
 )

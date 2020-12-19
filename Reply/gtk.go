@@ -98,6 +98,7 @@ func Gtk_danmu() {
 	var w2_textView1 *gtk.TextView
 	var w2_textView2 *gtk.TextView
 	var w2_textView3 *gtk.TextView
+	var w2_textView4 *gtk.TextView
 	var renqi_old = 1
 	var w2_Entry0 *gtk.Entry
 	var w2_Entry0_editting bool
@@ -175,6 +176,13 @@ func Gtk_danmu() {
 				w2_textView3 = tmp
 			}else{log.Println("cant find #t3 in .glade");return}
 		}
+		{//排名
+			obj, err := builder2.GetObject("t4")
+			if err != nil {log.Println(err);return}
+			if tmp,ok := obj.(*gtk.TextView); ok {
+				w2_textView4 = tmp
+			}else{log.Println("cant find #t4 in .glade");return}
+		}
 		{//发送弹幕
 			var danmu_send_form string
 			{//发送弹幕格式
@@ -234,7 +242,6 @@ func Gtk_danmu() {
 							y(`输入错误`,load_face("0room"))
 						} else {
 							c.Roomid =  i
-							renqi_old = 1//人气置1
 							c.Danmu_Main_mq.Push(c.Danmu_Main_mq_item{
 								Class:`change_room`,
 							})
@@ -446,14 +453,15 @@ func Gtk_danmu() {
 					return
 				}
 
+				loc := int(grid0.Container.GetChildren().Length())/2;
 				step := 0.1 * (max - cu)
 				if step > 0.5 {
-					if step > 10 {step = 10}//限制最大滚动速度
+					if step > 5 {step = 5}//限制最大滚动速度
+					if loc > max_danmu {step += float64(loc - max_danmu) / 10}
 					tmp.SetValue(step + cu)
 				} else {
 					in_smooth_roll = false
 					tmp.SetValue(max)
-					loc := int(grid0.Container.GetChildren().Length())/2;
 					for loc > max_danmu {
 						if i,e := grid0.GetChildAt(0,0); e != nil{i.(*gtk.Widget).Destroy()}
 						if i,e := grid0.GetChildAt(1,0); e != nil{i.(*gtk.Widget).Destroy()}
@@ -487,6 +495,11 @@ func Gtk_danmu() {
 				b,e := w2_textView3.GetBuffer()
 				if e != nil {log.Println(e);return}
 				b.SetText(fmt.Sprintf("%d",c.GuardNum))
+			}
+			{//分区排行
+				b,e := w2_textView4.GetBuffer()
+				if e != nil {log.Println(e);return}
+				b.SetText(c.Note)
 			}
 			{//时长
 				b,e := w2_textView1.GetBuffer()

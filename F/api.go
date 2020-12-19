@@ -46,7 +46,7 @@ func (i *api) Get_info() (o *api) {
 	Roomid := strconv.Itoa(o.Roomid)
 
 	r := g.Get(p.Rval{
-		Url:"https://live.bilibili.com/" + Roomid,
+		Url:"https://live.bilibili.com/blanc/" + Roomid,
 	})
 	//uid
 	if tmp := r.S(`"uid":`, `,`, 0, 0);tmp.Err != nil {
@@ -59,6 +59,10 @@ func (i *api) Get_info() (o *api) {
 	//Title
 	if e := r.S(`"title":"`, `",`, 0, 0).Err;e == nil {
 		c.Title = r.RS[0]
+	}
+	//排行
+	if e := r.S(`"rank_desc":"`, `",`, 0, 0).Err;e == nil {
+		c.Note = r.RS[0]
 	}
 	//roomid
 	if tmp := r.S(`"room_id":`, `,`, 0, 0);tmp.Err != nil {
@@ -89,6 +93,10 @@ func (i *api) Get_info() (o *api) {
 		if code := p.Json().GetValFrom(res, "code");code == nil || code.(float64) != 0 {
 			apilog.E("code", code, p.Json().GetValFrom(res, "message"))
 			return
+		}
+		//排行
+		if rank_desc,ok := p.Json().GetValFrom(res, "data.rankdb_info.rank_desc").(string);ok {
+			c.Note = rank_desc
 		}
 		if Uid := p.Json().GetValFrom(res, "data.room_info.uid");Uid == nil {
 			apilog.E("data.room_info.uid", Uid)
@@ -143,7 +151,7 @@ func (i *api) Get_live(qn ...string) (o *api) {
 
 	if len(qn) == 0 || qn[0] == "0" || qn[0] == "" {//html获取
 		r := g.Get(p.Rval{
-			Url:"https://live.bilibili.com/" + strconv.Itoa(o.Roomid),
+			Url:"https://live.bilibili.com/blanc/" + strconv.Itoa(o.Roomid),
 			Header:map[string]string{
 				`Cookie`:Cookie,
 			},

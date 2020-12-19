@@ -3,7 +3,7 @@
 package reply
 
 import (
-	"log"
+	"fmt"
 	"net/url"
 	"strings"
 	p "github.com/qydysky/part"
@@ -60,7 +60,7 @@ func init(){
 
 func TTS(uid,msg string) {
 	if tts_limit.TO() {return}
-	log.Println(`TTS:`, uid, msg)
+	fmt.Println(`TTS:`, uid, msg)
 	req := p.Req()
 	if v,ok := tts_setting[uid];ok{
 		msg = strings.ReplaceAll(v, "{D}", msg)
@@ -72,7 +72,7 @@ func TTS(uid,msg string) {
 		Retry:1,
 		SleepTime:500,
 	});err != nil {
-		log.Println(`TTS:`, err)
+		fmt.Println(`TTS:`, err)
 		return
 	}
 	p.Exec().Run(false, "ffplay", p.Sys().Cdir()+"/tts.mp3","-autoexit","-nodisp")

@@ -70,6 +70,8 @@ func Demo(roomid ...int) {
 					case `change_room`:
 						c.Rev = 0.0 //营收
 						c.Renqi = 1//人气置1
+						c.GuardNum = 0//舰长数
+						c.Note = ``//分区排行
 						c.Title = ``
 						reply.Saveflv_wait()//停止保存直播流
 						change_room_chan <- true
