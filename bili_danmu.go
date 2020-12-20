@@ -89,6 +89,18 @@ func Demo(roomid ...int) {
 
 		<-change_room_chan
 
+		//cookies
+		{
+			var q = p.Filel{
+				Write:false,
+			}
+			if p.Checkfile().IsExist("cookie.txt") {
+				q.File = "cookie.txt"
+			}
+			f := p.File().FileWR(q)
+			c.Cookie = f
+		}
+
 		for !exit_sign {
 			//获取房间相关信息
 			api := F.New_api(c.Roomid).Get_host_Token().Get_live()
@@ -103,7 +115,9 @@ func Demo(roomid ...int) {
 			//对每个弹幕服务器尝试
 			for _, v := range api.Url {
 				//ws启动
-				ws := New_ws(v).Handle()
+				ws := New_ws(v,map[string][]string{
+					"Cookie":[]string{c.Cookie},
+				}).Handle()
 	
 				//SendChan 传入发送[]byte
 				//RecvChan 接收[]byte
@@ -122,19 +136,10 @@ func Demo(roomid ...int) {
 						p.Sys().MTimeoutf(500)//500ms
 						heartbeatmsg, heartinterval := F.Heartbeat()
 						ws.Heartbeat(1000 * heartinterval, heartbeatmsg)
-						
-						//打招呼
-						var q = p.Filel{
-							Write:false,
-						}
-						if p.Checkfile().IsExist("cookie.txt") {
-							q.File = "cookie.txt"
-						}
-						f := p.File().FileWR(q)
+
 						//传输变量，以便响应弹幕"弹幕机在么"
 						c.Roomid = api.Roomid
 						c.Live = api.Live
-						c.Cookie = f
 						//获取过往营收 舰长数量
 						// go api.Get_OnlineGoldRank()//高能榜显示的是在线观众的打赏
 

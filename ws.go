@@ -16,15 +16,17 @@ type ws struct {
 	RecvChan chan []byte
 	TO int
 	url string
+	Header map[string][]string
 }
 
-func New_ws(url string) (o *ws) {
+func New_ws(url string,Header map[string][]string) (o *ws) {
 	l := p.Logf().New().Base(-1, "ws.go>新建").Level(c.LogLevel).T("New_ws")
 	defer l.Block()
 
 	l.T("ok")
 	o = new(ws)
 	o.url = url
+	o.Header = Header
 	o.TO = 300 * 1000
 	o.SendChan = make(chan []byte, 1e4)
 	o.RecvChan = make(chan []byte, 1e4)
@@ -51,7 +53,7 @@ func (i *ws) Handle() (o *ws) {
 			o.Signal.Done()
 		}()
 
-		c, _, err := websocket.DefaultDialer.Dial(o.url, nil)
+		c, _, err := websocket.DefaultDialer.Dial(o.url, o.Header)
 		if err != nil {
 			l.E(err)
 			return
