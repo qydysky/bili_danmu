@@ -90,21 +90,32 @@ func Demo(roomid ...int) {
 
 		<-change_room_chan
 
-		//cookies
-		{
-			var q = p.Filel{
-				Write:false,
-			}
-			if p.Checkfile().IsExist("cookie.txt") {
-				q.File = "cookie.txt"
-			}
-			f := p.File().FileWR(q)
-			c.Cookie = f
-		}
-
 		for !exit_sign {
 			//获取房间相关信息
 			api := F.New_api(c.Roomid).Get_host_Token().Get_live()
+			//获取cookies
+			{
+				var q = p.Filel{
+					Write:false,
+				}
+				if p.Checkfile().IsExist("cookie.txt") {
+					q.File = "cookie.txt"
+					f := p.File().FileWR(q)
+					c.Cookie = f
+				} else {
+					danmulog.I("未检测到cookie.txt，如果需要登录请在本机打开以下网址扫码登录，不需要请忽略")
+					go func(){//获取cookie
+						api.Get_cookie()
+						if c.Cookie != `` {
+							danmulog.I("你已登录，刷新房间！")
+							c.Danmu_Main_mq.Push(c.Danmu_Main_mq_item{//刷新
+								Class:`change_room`,
+							})
+						}
+					}()
+					p.Sys().Timeoutf(3)
+				}
+			}
 			//获取用户版本
 			api.Get_Version()
 			if len(api.Url) == 0 || api.Roomid == 0 || api.Token == "" || api.Uid == 0 || api.Locked {

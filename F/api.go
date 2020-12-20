@@ -3,9 +3,13 @@ package F
 import (
 	"time"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
+    "context"
+	"net/http"
 
+	qr "github.com/skip2/go-qrcode"
 	c "github.com/qydysky/bili_danmu/CV"
 	g "github.com/qydysky/part/get"
 	p "github.com/qydysky/part"
@@ -573,5 +577,124 @@ func (i *api) Get_Version() {
 		}
 		c.VERSION = r.RS[0]
 		apilog.W("api version", c.VERSION)
+	}
+}
+
+func (i *api) Get_cookie() {
+	var img_url string
+	var oauth string
+	{//获取二维码
+		r := p.Req()
+		if e := r.Reqf(p.Rval{
+			Url:`https://passport.bilibili.com/qrcode/getLoginUrl`,
+		});e != nil {
+			apilog.Base(1,`Get_cookie`).E(e)
+			return
+		}
+		res := string(r.Respon)
+		if v,ok := p.Json().GetValFromS(res, "status").(bool);!ok || !v {
+			apilog.Base(1,`Get_cookie`).E(`getLoginUrl status failed!`)
+			return
+		} else {
+			if v,ok := p.Json().GetValFromS(res, "data.url").(string);ok {
+				img_url = v
+			}
+			if v,ok := p.Json().GetValFromS(res, "data.oauthKey").(string);ok {
+				oauth = v
+			}
+		}
+		if img_url == `` || oauth == `` {
+			apilog.Base(1,`Get_cookie`).E(`img_url:`,img_url,` oauth:`,oauth)
+			return
+		}
+	}
+	var server *http.Server
+	{//生成二维码
+		qr.WriteFile(img_url,qr.Medium,256,`qr.png`)
+		if !p.Checkfile().IsExist(`qr.png`) {
+			apilog.Base(1,`Get_cookie`).E(`qr error`)
+			return
+		}
+		go func(){//启动web
+			web :=  http.NewServeMux()
+			web.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Access-Control-Allow-Origin", "*")             //允许访问所有域
+				w.Header().Add("Access-Control-Allow-Headers", "Content-Type") //header的类型
+				var path string = r.URL.Path[1:]
+				http.ServeFile(w, r,`./`+path)
+			})
+			server = &http.Server{
+				Addr:         `127.0.0.1:`+strconv.Itoa(p.Sys().GetFreePort()),
+				WriteTimeout: time.Second * 10,
+				Handler:      web,
+			}
+			apilog.Base(1,`Get_cookie`).W(`打开链接扫码登录：`,`http://`+server.Addr+`/qr.png`)
+			server.ListenAndServe()
+		}()
+	}
+	var cookie string
+	{//3s刷新查看是否通过
+		max_try := 20
+		for max_try > 0 {
+			max_try -= 1
+			p.Sys().Timeoutf(3)
+			r := p.Req()
+			if e := r.Reqf(p.Rval{
+				Url:`https://passport.bilibili.com/qrcode/getLoginInfo`,
+				PostStr:`oauthKey=`+oauth,
+				Header:map[string]string{
+					`Content-Type`:`application/x-www-form-urlencoded; charset=UTF-8`,
+					`Referer`: `https://passport.bilibili.com/login`,
+				},
+			});e != nil {
+				apilog.Base(1,`Get_cookie`).E(e)
+				return
+			}
+			res := string(r.Respon)
+			if v,ok := p.Json().GetValFromS(res, "status").(bool);!ok {
+				apilog.Base(1,`Get_cookie`).E(`getLoginInfo status false`)
+				return
+			} else if !v {
+				if v,ok := p.Json().GetValFromS(res, "message").(string);ok {
+					apilog.Base(1,`Get_cookie`).W(`登录中`,v)
+				}
+				continue
+			} else {
+				apilog.Base(1,`Get_cookie`).W(`登录，并保存了cookie`)
+				if v := r.Response.Cookies();len(v) == 0 {
+					apilog.Base(1,`Get_cookie`).E(`getLoginInfo cookies len == 0`)
+					return
+				} else {
+					cookie = p.Map_2_Cookies_String(p.Cookies_List_2_Map(v))//cookie to string
+				}
+				if cookie == `` {
+					apilog.Base(1,`Get_cookie`).E(`getLoginInfo cookies ""`)
+					return
+				} else {break}
+			}
+		}
+		if max_try <= 0 {
+			apilog.Base(1,`Get_cookie`).W(`登录取消`)
+			return
+		}
+	}
+	{//写入cookie.txt
+		c.Cookie = cookie
+		f := p.File()
+		f.FileWR(p.Filel{
+			File:`cookie.txt`,
+			Write:true,
+			Loc:0,
+			Context:[]interface{}{cookie},
+		})
+	}
+	{//关闭web
+		if err := server.Shutdown(context.Background()); err != nil {
+			apilog.Base(1,`Get_cookie`).E("HTTP server Shutdown:", err.Error())
+		}
+		if p.Checkfile().IsExist(`qr.png`) {
+			os.RemoveAll(`qr.png`)
+			return
+		}
 	}
 }

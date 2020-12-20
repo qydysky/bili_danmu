@@ -27,10 +27,7 @@ func Danmu_s(msg,Cookie string, roomid int) {
 		return
 	}
 
-	if i := strings.Index(Cookie, "PVID="); i == -1 {
-		l.E("Cookie错误,无PVID=")
-		return
-	} else {
+	if i := strings.Index(Cookie, "PVID="); i != -1 {//删除PVID
 		if d := strings.Index(Cookie[i:], ";"); d == -1 {
 			Cookie = Cookie[:i]
 		} else {
