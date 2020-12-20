@@ -72,6 +72,7 @@ func Demo(roomid ...int) {
 						c.Renqi = 1//人气置1
 						c.GuardNum = 0//舰长数
 						c.Note = ``//分区排行
+						c.Uname = ``//主播id
 						c.Title = ``
 						reply.Saveflv_wait()//停止保存直播流
 						change_room_chan <- true
@@ -124,8 +125,8 @@ func Demo(roomid ...int) {
 				danmulog.I("连接", v)
 				ws.SendChan <- F.HelloGen(api.Roomid, api.Token)
 				if F.HelloChe(<- ws.RecvChan) {
-					danmulog.I("已连接到房间", c.Roomid)
-					reply.Gui_show(`进入直播间: `+strconv.Itoa(c.Roomid), `0room`)
+					danmulog.I("已连接到房间", c.Uname, `(`, c.Roomid, `)`)
+					reply.Gui_show(`进入直播间: `+c.Uname+` (`+strconv.Itoa(c.Roomid)+`)`, `0room`)
 					if c.Title != `` {
 						danmulog.I(c.Title)
 						reply.Gui_show(`房间标题: `+c.Title, `0room`)
@@ -165,7 +166,7 @@ func Demo(roomid ...int) {
 							}
 						}()
 
-						if p.Checkfile().IsExist("cookie.txt") {//附加功能 弹幕机
+						if c.Cookie != `` {//附加功能 弹幕机 无cookie无法发送弹幕
 							reply.Danmuji_auto(1)
 						}
 						{//附加功能 直播流保存 营收

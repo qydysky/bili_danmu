@@ -11,7 +11,8 @@ var (
 	Live_qn string
 	Roomid int
 	Cookie string
-	Title string
+	Title string//直播标题
+	Uname string//主播id
 	Rev float64//营收
 	Renqi int//人气
 	GuardNum int//舰长数

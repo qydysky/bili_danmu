@@ -60,6 +60,10 @@ func (i *api) Get_info() (o *api) {
 	if e := r.S(`"title":"`, `",`, 0, 0).Err;e == nil {
 		c.Title = r.RS[0]
 	}
+	//主播id
+	if e := r.S(`"base_info":{"uname":"`, `",`, 0, 0).Err;e == nil {
+		c.Uname = r.RS[0]
+	}
 	//排行
 	if e := r.S(`"rank_desc":"`, `",`, 0, 0).Err;e == nil {
 		c.Note = r.RS[0]
@@ -94,8 +98,12 @@ func (i *api) Get_info() (o *api) {
 			apilog.E("code", code, p.Json().GetValFrom(res, "message"))
 			return
 		}
+		//主播id
+		if Uname,ok := p.Json().GetValFrom(res, "data.anchor_info.base_info.uname").(string);ok && c.Uname == `` {
+			c.Uname = Uname
+		}
 		//排行
-		if rank_desc,ok := p.Json().GetValFrom(res, "data.rankdb_info.rank_desc").(string);ok {
+		if rank_desc,ok := p.Json().GetValFrom(res, "data.rankdb_info.rank_desc").(string);ok && c.Note == `` {//有时会返回`小时总榜`
 			c.Note = rank_desc
 		}
 		if Uid := p.Json().GetValFrom(res, "data.room_info.uid");Uid == nil {
