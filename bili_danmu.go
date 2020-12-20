@@ -93,6 +93,8 @@ func Demo(roomid ...int) {
 		for !exit_sign {
 			//获取房间相关信息
 			api := F.New_api(c.Roomid).Get_host_Token().Get_live()
+			c.Roomid = api.Roomid
+
 			//获取cookies
 			{
 				var q = p.Filel{
@@ -118,6 +120,8 @@ func Demo(roomid ...int) {
 			}
 			//获取用户版本
 			api.Get_Version()
+			//切换粉丝牌，只在cookie存在时启用
+			api.Switch_FansMedal()
 			if len(api.Url) == 0 || api.Roomid == 0 || api.Token == "" || api.Uid == 0 || api.Locked {
 				danmulog.E("some err")
 				return
@@ -134,7 +138,7 @@ func Demo(roomid ...int) {
 				//SendChan 传入发送[]byte
 				//RecvChan 接收[]byte
 				danmulog.I("连接", v)
-				ws.SendChan <- F.HelloGen(api.Roomid, api.Token)
+				ws.SendChan <- F.HelloGen(c.Roomid, api.Token)
 				if F.HelloChe(<- ws.RecvChan) {
 					danmulog.I("已连接到房间", c.Uname, `(`, c.Roomid, `)`)
 					reply.Gui_show(`进入直播间: `+c.Uname+` (`+strconv.Itoa(c.Roomid)+`)`, `0room`)
@@ -150,7 +154,6 @@ func Demo(roomid ...int) {
 						ws.Heartbeat(1000 * heartinterval, heartbeatmsg)
 
 						//传输变量，以便响应弹幕"弹幕机在么"
-						c.Roomid = api.Roomid
 						c.Live = api.Live
 						//获取过往营收 舰长数量
 						// go api.Get_OnlineGoldRank()//高能榜显示的是在线观众的打赏

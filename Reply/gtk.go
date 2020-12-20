@@ -544,7 +544,7 @@ func Gtk_danmu() {
 			}
 			{//房间id
 				if !w2_Entry0_editting {
-					if t,e := w2_Entry0.GetText();e == nil && t == `` && c.Roomid != 0{
+					if t,e := w2_Entry0.GetText();e == nil && t != strconv.Itoa(c.Roomid) {//未编辑时，显示为长id
 						w2_Entry0.SetText(strconv.Itoa(c.Roomid))
 					}
 				}

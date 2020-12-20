@@ -12,7 +12,7 @@ var (
 	Roomid int
 	Cookie string
 	Title string//直播标题
-	Uname string//主播id
+	Uname string//主播名
 	Rev float64//营收
 	Renqi int//人气
 	GuardNum int//舰长数

@@ -26,6 +26,8 @@ type api struct {
 }
 
 var apilog = p.Logf().New().Base(-1, "api.go").Level(2)
+var api_limit = p.Limit(1,2000,15000)//频率限制1次/2s，最大等待时间15s
+
 func New_api(Roomid int) (o *api) {
 	apilog.Base(-1, "新建")
 	defer apilog.Base(0)
@@ -47,6 +49,8 @@ func (i *api) Get_info() (o *api) {
 		apilog.E("还未New_api")
 		return
 	}
+	if api_limit.TO() {return}//超额请求阻塞，超时将取消
+
 	Roomid := strconv.Itoa(o.Roomid)
 
 	r := g.Get(p.Rval{
@@ -149,6 +153,7 @@ func (i *api) Get_live(qn ...string) (o *api) {
 		apilog.E("还未New_api")
 		return
 	}
+	if api_limit.TO() {return}//超额请求阻塞，超时将取消
 
 	Cookie := c.Cookie
 	if i := strings.Index(Cookie, "PVID="); i != -1 {
@@ -323,6 +328,7 @@ func (i *api) Get_host_Token() (o *api) {
 		return
 	}
 	Roomid := strconv.Itoa(o.Roomid)
+	if api_limit.TO() {return}//超额请求阻塞，超时将取消
 
 
 	req := p.Req()
@@ -370,6 +376,7 @@ func (i *api) Get_host_Token() (o *api) {
 
 func Get_face_src(uid string) (string) {
 	if uid == "" {return ""}
+	if api_limit.TO() {return ""}//超额请求阻塞，超时将取消
 
 	req := p.Req()
 	if err := req.Reqf(p.Rval{
@@ -402,6 +409,8 @@ func (i *api) Get_OnlineGoldRank() {
 		apilog.Base(1, "Get_OnlineGoldRank").E("i.Uid == 0 || c.Roomid == 0")
 		return
 	}
+	if api_limit.TO() {return}//超额请求阻塞，超时将取消
+
 	var session_roomid = c.Roomid
 	var self_loop func(page int)
 	self_loop = func(page int){
@@ -481,13 +490,12 @@ func (i *api) Get_OnlineGoldRank() {
 	return
 }
 
-var guard_num_get_limit = p.Limit(1,1000,2000)//频率限制1次/1s，最大等待时间2s
 func (i *api) Get_guardNum() {
 	if i.Uid == 0 || c.Roomid == 0 {
 		apilog.Base(1, "Get_guardNum").E("i.Uid == 0 || c.Roomid == 0")
 		return
 	}
-	if guard_num_get_limit.TO() {return}//超额请求阻塞，超时将取消
+	if api_limit.TO() {return}//超额请求阻塞，超时将取消
 
 	req := p.Req()
 	if err := req.Reqf(p.Rval{
@@ -527,6 +535,7 @@ func (i *api) Get_guardNum() {
 
 func (i *api) Get_Version() {
 	Roomid := strconv.Itoa(i.Roomid)
+	if api_limit.TO() {return}//超额请求阻塞，超时将取消
 
 	var player_js_url string
 	{//获取player_js_url
@@ -581,12 +590,16 @@ func (i *api) Get_Version() {
 }
 
 func (i *api) Get_cookie() {
+	if api_limit.TO() {return}//超额请求阻塞，超时将取消
+
 	var img_url string
 	var oauth string
 	{//获取二维码
 		r := p.Req()
 		if e := r.Reqf(p.Rval{
 			Url:`https://passport.bilibili.com/qrcode/getLoginUrl`,
+			Timeout:10,
+			Retry:2,
 		});e != nil {
 			apilog.Base(1,`Get_cookie`).E(e)
 			return
@@ -646,6 +659,8 @@ func (i *api) Get_cookie() {
 					`Content-Type`:`application/x-www-form-urlencoded; charset=UTF-8`,
 					`Referer`: `https://passport.bilibili.com/login`,
 				},
+				Timeout:10,
+				Retry:2,	
 			});e != nil {
 				apilog.Base(1,`Get_cookie`).E(e)
 				return
@@ -695,6 +710,108 @@ func (i *api) Get_cookie() {
 		if p.Checkfile().IsExist(`qr.png`) {
 			os.RemoveAll(`qr.png`)
 			return
+		}
+	}
+}
+
+func (i *api) Switch_FansMedal() {
+	if c.Cookie == `` {return}
+	if api_limit.TO() {return}//超额请求阻塞，超时将取消
+
+	{//验证是否本直播间牌子
+		r := p.Req()
+		if e := r.Reqf(p.Rval{
+			Url:`https://api.live.bilibili.com/live_user/v1/UserInfo/get_weared_medal`,
+			Header:map[string]string{
+				`Cookie`:c.Cookie,
+			},
+			Timeout:10,
+			Retry:2,
+		});e != nil {
+			apilog.Base(1,`Switch_FansMedal`).E(e)
+			return
+		}
+		res := string(r.Respon)
+		if v,ok := p.Json().GetValFromS(res, "data.roominfo.room_id").(float64);ok && int(v) == c.Roomid {
+			return
+		}
+	}
+	var medal_id int
+	{//获取牌子列表
+		r := p.Req()
+		if e := r.Reqf(p.Rval{
+			Url:`https://api.live.bilibili.com/fans_medal/v1/FansMedal/get_list_in_room`,
+			Header:map[string]string{
+				`Cookie`:c.Cookie,
+			},
+			Timeout:10,
+			Retry:2,
+		});e != nil {
+			apilog.Base(1,`Switch_FansMedal`).E(e)
+			return
+		}
+		res := string(r.Respon)
+		if v,ok := p.Json().GetValFromS(res, "code").(float64);!ok || v != 0 {
+			apilog.Base(1,`Switch_FansMedal`).E(`Get_FansMedal get_list_in_room code`, v)
+			return
+		} else {
+			if v,ok := p.Json().GetValFromS(res, "data").([]interface{});ok{
+				for _,item := range v {
+					if room_id,ok := p.Json().GetValFrom(item, "room_id").(float64);!ok || int(room_id) != c.Roomid {
+						continue
+					} else {
+						if tmp_medal_id,ok := p.Json().GetValFrom(item, "medal_id").(float64);!ok {
+							apilog.Base(1,`Switch_FansMedal`).E(`medal_id error`)
+							return
+						} else {
+							medal_id = int(tmp_medal_id)
+							break
+						}
+					}
+				}
+			} else {
+				apilog.Base(1,`Switch_FansMedal`).E(`data error`)
+				return
+			}
+		}
+		if medal_id == 0 {return}
+	}
+	{//切换牌子
+		var csrf string
+		if i := strings.Index(c.Cookie, "bili_jct="); i == -1 {
+			apilog.Base(1,`Switch_FansMedal`).E("Cookie错误,无bili_jct=")
+			return
+		} else {
+			if d := strings.Index(c.Cookie[i + 9:], ";"); d == -1 {
+				csrf = c.Cookie[i + 9:]
+			} else {
+				csrf = c.Cookie[i + 9:][:d]
+			}
+		}
+		r := p.Req()
+		if e := r.Reqf(p.Rval{
+			Url:`https://api.live.bilibili.com/xlive/web-room/v1/fansMedal/wear`,
+			PostStr:`medal_id=`+strconv.Itoa(medal_id)+`&csrf_token=`+csrf+`&csrf=`+csrf,
+			Header:map[string]string{
+				`Cookie`:c.Cookie,
+				`Content-Type`:`application/x-www-form-urlencoded; charset=UTF-8`,
+				`Referer`: `https://passport.bilibili.com/login`,
+			},
+			Timeout:10,
+			Retry:2,
+		});e != nil {
+			apilog.Base(1,`Switch_FansMedal`).E(e)
+			return
+		}
+		res := string(r.Respon)
+		if v,ok := p.Json().GetValFromS(res, "code").(float64);ok && v == 0 {
+			apilog.Base(1,`Switch_FansMedal`).W(`自动切换粉丝牌`)
+			return
+		}
+		if v,ok := p.Json().GetValFromS(res, "message").(string);ok {
+			apilog.Base(1,`Switch_FansMedal`).E(`Get_FansMedal wear message`, v)
+		} else {
+			apilog.Base(1,`Switch_FansMedal`).E(`Get_FansMedal wear message nil`)
 		}
 	}
 }
