@@ -453,15 +453,14 @@ func Gtk_danmu() {
 					return
 				}
 
-				loc := int(grid0.Container.GetChildren().Length())/2;
-				step := 0.1 * (max - cu)
-				if step > 0.5 {
-					if step > 5 {step = 5}//限制最大滚动速度
-					if loc > max_danmu {step += float64(loc - max_danmu) / 10}
-					tmp.SetValue(step + cu)
+				step := (max - cu) / 30
+				if step > 0.5 && max - cu < float64(h){
+					if step > 5 {step = 5}
+					tmp.SetValue(cu + step)
 				} else {
 					in_smooth_roll = false
 					tmp.SetValue(max)
+					loc := int(grid0.Container.GetChildren().Length())/2;
 					for loc > max_danmu {
 						if i,e := grid0.GetChildAt(0,0); e != nil{i.(*gtk.Widget).Destroy()}
 						if i,e := grid0.GetChildAt(1,0); e != nil{i.(*gtk.Widget).Destroy()}
