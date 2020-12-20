@@ -58,6 +58,7 @@ golang go version go1.15.5 linux/amd64
 
 #### 当前支持功能
 以下内容可能过时，点击查看[当前支持功能](https://github.com/qydysky/bili_danmu/blob/master/Reply/F.go#L16)
+- [x] 自动切换粉丝牌
 - [x] 扫码登录
 - [x] 自定义语音提醒
 - [x] GTK弹幕窗

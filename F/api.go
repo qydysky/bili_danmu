@@ -774,9 +774,12 @@ func (i *api) Switch_FansMedal() {
 				return
 			}
 		}
-		if medal_id == 0 {return}
 	}
-	{//切换牌子
+	var (
+		post_url string
+		post_str string
+	)
+	{//生成佩戴信息
 		var csrf string
 		if i := strings.Index(c.Cookie, "bili_jct="); i == -1 {
 			apilog.Base(1,`Switch_FansMedal`).E("Cookie错误,无bili_jct=")
@@ -788,10 +791,19 @@ func (i *api) Switch_FansMedal() {
 				csrf = c.Cookie[i + 9:][:d]
 			}
 		}
+		post_str = `csrf_token=`+csrf+`&csrf=`+csrf
+		if medal_id == 0 {//无牌，不佩戴牌子
+			post_url = `https://api.live.bilibili.com/xlive/web-room/v1/fansMedal/take_off`
+		} else {
+			post_url = `https://api.live.bilibili.com/xlive/web-room/v1/fansMedal/wear`
+			post_str = `medal_id=`+strconv.Itoa(medal_id)+`&`+post_str
+		}
+	}
+	{//切换牌子
 		r := p.Req()
 		if e := r.Reqf(p.Rval{
-			Url:`https://api.live.bilibili.com/xlive/web-room/v1/fansMedal/wear`,
-			PostStr:`medal_id=`+strconv.Itoa(medal_id)+`&csrf_token=`+csrf+`&csrf=`+csrf,
+			Url:post_url,
+			PostStr:post_str,
 			Header:map[string]string{
 				`Cookie`:c.Cookie,
 				`Content-Type`:`application/x-www-form-urlencoded; charset=UTF-8`,
