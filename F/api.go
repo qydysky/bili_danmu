@@ -94,6 +94,7 @@ func (i *api) Get_info() (o *api) {
 			Url:"https://api.live.bilibili.com/xlive/web-room/v1/index/getInfoByRoom?room_id=" + Roomid,
 			Header:map[string]string{
 				`Referer`:"https://live.bilibili.com/" + Roomid,
+				`Cookie`:c.Cookie,
 			},
 			Timeout:10,
 			Retry:2,
@@ -336,6 +337,7 @@ func (i *api) Get_host_Token() (o *api) {
 		Url:"https://api.live.bilibili.com/xlive/web-room/v1/index/getDanmuInfo?type=0&id=" + Roomid,
 		Header:map[string]string{
 			`Referer`:"https://live.bilibili.com/" + Roomid,
+			`Cookie`:c.Cookie,
 		},
 		Timeout:10,
 		Retry:2,
@@ -383,6 +385,7 @@ func Get_face_src(uid string) (string) {
 		Url:"https://api.live.bilibili.com/xlive/web-room/v1/index/getDanmuMedalAnchorInfo?ruid=" + uid,
 		Header:map[string]string{
 			`Referer`:"https://live.bilibili.com/" + strconv.Itoa(c.Roomid),
+			`Cookie`:c.Cookie,
 		},
 		Timeout:10,
 		Retry:2,
@@ -431,6 +434,7 @@ func (i *api) Get_OnlineGoldRank() {
 				`Pragma`: `no-cache`,
 				`Cache-Control`: `no-cache`,
 				`Referer`:"https://live.bilibili.com/" + strconv.Itoa(c.Roomid),
+				`Cookie`:c.Cookie,
 			},
 			Timeout:3,
 			Retry:2,
@@ -511,6 +515,7 @@ func (i *api) Get_guardNum() {
 			`Pragma`: `no-cache`,
 			`Cache-Control`: `no-cache`,
 			`Referer`:"https://live.bilibili.com/" + strconv.Itoa(c.Roomid),
+			`Cookie`:c.Cookie,
 		},
 		Timeout:3,
 		Retry:2,
@@ -623,6 +628,10 @@ func (i *api) Get_cookie() {
 	}
 	var server *http.Server
 	{//生成二维码
+		if p.Checkfile().IsExist(`qr.png`) {
+			apilog.Base(1,`Get_cookie`).E(`qr.png已存在`)
+			return
+		}
 		qr.WriteFile(img_url,qr.Medium,256,`qr.png`)
 		if !p.Checkfile().IsExist(`qr.png`) {
 			apilog.Base(1,`Get_cookie`).E(`qr error`)
@@ -658,6 +667,7 @@ func (i *api) Get_cookie() {
 				Header:map[string]string{
 					`Content-Type`:`application/x-www-form-urlencoded; charset=UTF-8`,
 					`Referer`: `https://passport.bilibili.com/login`,
+					`Cookie`:c.Cookie,
 				},
 				Timeout:10,
 				Retry:2,	

@@ -4,12 +4,14 @@ import (
 	"fmt"
 	"flag"
 	"time"
+	"net/url"
 	"strconv"
 	"os"
 	"os/signal"
 
 	p "github.com/qydysky/part"
 	ws "github.com/qydysky/part/websocket"
+	g "github.com/qydysky/part/get"
 	reply "github.com/qydysky/bili_danmu/Reply"
 	c "github.com/qydysky/bili_danmu/CV"
 	F "github.com/qydysky/bili_danmu/F"
@@ -93,10 +95,6 @@ func Demo(roomid ...int) {
 		<-change_room_chan
 
 		for !exit_sign {
-			//获取房间相关信息
-			api := F.New_api(c.Roomid).Get_host_Token().Get_live()
-			c.Roomid = api.Roomid
-
 			//获取cookies
 			{
 				var q = p.Filel{
@@ -106,10 +104,15 @@ func Demo(roomid ...int) {
 					q.File = "cookie.txt"
 					f := p.File().FileWR(q)
 					c.Cookie = f
+					if tmp_uid,e := g.SS(f,`DedeUserID=`,`;`,0,0);e == nil {
+						if v,e := strconv.Atoi(tmp_uid);e == nil {
+							c.Uid = v
+						} else {danmulog.E(e)}
+					} else {danmulog.E(e)}
 				} else {
 					danmulog.I("未检测到cookie.txt，如果需要登录请在本机打开以下网址扫码登录，不需要请忽略")
 					go func(){//获取cookie
-						api.Get_cookie()
+						F.New_api(c.Roomid).Get_cookie()
 						if c.Cookie != `` {
 							danmulog.I("你已登录，刷新房间！")
 							c.Danmu_Main_mq.Push(c.Danmu_Main_mq_item{//刷新
@@ -120,6 +123,11 @@ func Demo(roomid ...int) {
 					p.Sys().Timeoutf(3)
 				}
 			}
+			
+			//获取房间相关信息
+			api := F.New_api(c.Roomid).Get_host_Token().Get_live()
+			c.Roomid = api.Roomid
+
 			//获取用户版本
 			api.Get_Version()
 			//切换粉丝牌，只在cookie存在时启用
@@ -133,13 +141,21 @@ func Demo(roomid ...int) {
 			//对每个弹幕服务器尝试
 			for _, v := range api.Url {
 				//ws启动
+				u, _ := url.Parse(v)
 				ws_c := ws.New_client(ws.Client{
 					Url:v,
 					TO:35 * 1000,
 					Func_abort_close:func(){danmulog.I(`服务器连接中断`)},
 					Func_normal_close:func(){danmulog.I(`服务器连接关闭`)},
-					Header:map[string][]string{
-						"Cookie":[]string{c.Cookie},
+					Header: map[string]string{
+						`Cookie`:c.Cookie,
+						`Host`: u.Hostname(),
+						`User-Agent`: `Mozilla/5.0 (X11; Linux x86_64; rv:84.0) Gecko/20100101 Firefox/84.0`,
+						`Accept`: `*/*`,
+						`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
+						`Origin`: `https://live.bilibili.com`,
+						`Pragma`: `no-cache`,
+						`Cache-Control`: `no-cache`,
 					},
 				}).Handle()
 				if ws_c.Isclose() {

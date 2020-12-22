@@ -31,7 +31,6 @@ const (
 	customAuthParam
 */
 const (
-	Uid = 0
 	Protover = 2
 	Platform = "web"
 	Type = 2

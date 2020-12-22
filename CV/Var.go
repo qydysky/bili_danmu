@@ -7,6 +7,8 @@ import (
 
 
 var (
+	Uid = 0//client uid
+
 	Live []string//直播链接
 	Live_qn string
 	Roomid int
