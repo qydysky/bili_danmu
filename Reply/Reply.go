@@ -67,12 +67,9 @@ func (replyF) interact_word(s string){
 	uname := p.Json().GetValFromS(s, "data.uname");
 	if v,ok := uname.(string);ok {
 		{//语言tts
-			c.Danmu_Main_mq.Push(c.Danmu_Main_mq_item{
-				Class:`tts`,
-				Data:Danmu_mq_t{
-					uid:`0follow`,
-					msg:fmt.Sprint(v + `关注了直播间`),
-				},
+			c.Danmu_Main_mq.Push_tag(`tts`,Danmu_mq_t{
+				uid:`0follow`,
+				msg:fmt.Sprint(v + `关注了直播间`),
 			})
 		}
 		Gui_show(v + `关注了直播间`,`0follow`)
@@ -170,25 +167,17 @@ func (replyF) user_toast_msg(s string){
 	}
 	if price != nil {
 		sh_log = append(sh, "￥", int(price.(float64)) / 1000)//不在界面显示价格
-		c.Danmu_Main_mq.Push(c.Danmu_Main_mq_item{//传入消息队列
-			Class:`c.Rev_add`,
-			Data:price.(float64) / 1000,
-		})
+		c.Danmu_Main_mq.Push_tag(`c.Rev_add`,price.(float64) / 1000)
 	}
 	{//语言tts
-		c.Danmu_Main_mq.Push(c.Danmu_Main_mq_item{
-			Class:`tts`,
-			Data:Danmu_mq_t{
-				uid:`0buyguide`,
-				msg:fmt.Sprint(sh...),
-			},
+		c.Danmu_Main_mq.Push_tag(`tts`,Danmu_mq_t{//传入消息队列
+			uid:`0buyguide`,
+			msg:fmt.Sprint(sh...),
 		})
 	}
 	{//额外 ass
 		Assf(fmt.Sprintln(sh...))
-		c.Danmu_Main_mq.Push(c.Danmu_Main_mq_item{//使用连续付费的新舰长无法区分，刷新舰长数
-			Class:`guard_update`,
-		})
+		c.Danmu_Main_mq.Push_tag(`guard_update`,nil)//使用连续付费的新舰长无法区分，刷新舰长数
 	}
 	fmt.Println("\n====")
 	fmt.Println(sh...)
@@ -203,10 +192,7 @@ func (replyF) user_toast_msg(s string){
 
 //HeartBeat-心跳用来传递人气值
 func (replyF) heartbeat(s int){
-	c.Danmu_Main_mq.Push(c.Danmu_Main_mq_item{
-		Class:`c.Renqi`,
-		Data:s,
-	})
+	c.Danmu_Main_mq.Push_tag(`c.Renqi`,s)//使用连续付费的新舰长无法区分，刷新舰长数
 	if s == 1 {return}//人气为1,不输出
 	heartlog.I("当前人气", s)
 }
@@ -321,12 +307,9 @@ func (replyF) welcome_guard(s string){
 		sh = append(sh, username, "进入直播间")
 	}
 	{//语言tts
-		c.Danmu_Main_mq.Push(c.Danmu_Main_mq_item{
-			Class:`tts`,
-			Data:Danmu_mq_t{
-				uid:img,
-				msg:fmt.Sprintln(sh...),
-			},
+		c.Danmu_Main_mq.Push_tag(`tts`,Danmu_mq_t{//传入消息队列
+			uid:img,
+			msg:fmt.Sprintln(sh...),
 		})
 	}
 	fmt.Print(">>> ")
@@ -366,10 +349,7 @@ func (replyF) send_gift(s string){
 	if total_coin != nil {
 		allprice = total_coin.(float64) / 1000
 		sh_log = append(sh, fmt.Sprintf("￥%.1f",allprice))//不在界面显示价格
-		c.Danmu_Main_mq.Push(c.Danmu_Main_mq_item{//传入消息队列
-			Class:`c.Rev_add`,
-			Data:allprice,
-		})
+		c.Danmu_Main_mq.Push_tag(`c.Rev_add`,allprice)
 	}
 
 	if len(sh) == 0 {return}
@@ -378,12 +358,9 @@ func (replyF) send_gift(s string){
 	//小于3万金瓜子
 	if allprice < 30 {msglog.T(sh...);return}
 	{//语言tts
-		c.Danmu_Main_mq.Push(c.Danmu_Main_mq_item{
-			Class:`tts`,
-			Data:Danmu_mq_t{
-				uid:`0gift`,
-				msg:fmt.Sprintln(sh...),
-			},
+		c.Danmu_Main_mq.Push_tag(`tts`,Danmu_mq_t{//传入消息队列
+			uid:`0gift`,
+			msg:fmt.Sprintln(sh...),
 		})
 	}
 	{//额外
@@ -491,10 +468,7 @@ func (replyF) super_chat_message(s string){
 	if price != nil {
 		sh = append(sh, "\n")//界面不显示价格
 		logg = append(logg, "￥", price)
-		c.Danmu_Main_mq.Push(c.Danmu_Main_mq_item{//传入消息队列
-			Class:`c.Rev_add`,
-			Data:price.(float64),
-		})
+		c.Danmu_Main_mq.Push_tag(`c.Rev_add`,price.(float64))
 	}
 	fmt.Println("====")
 	fmt.Println(sh...)
@@ -506,12 +480,9 @@ func (replyF) super_chat_message(s string){
 		logg = append(logg, message)
 	}
 	{//语言tts
-		c.Danmu_Main_mq.Push(c.Danmu_Main_mq_item{
-			Class:`tts`,
-			Data:Danmu_mq_t{
-				uid:`0superchat`,
-				msg:fmt.Sprintln(sh...),
-			},
+		c.Danmu_Main_mq.Push_tag(`tts`,Danmu_mq_t{//传入消息队列
+			uid:`0superchat`,
+			msg:fmt.Sprintln(sh...),
 		})
 	}
 	if message_jpn != nil && message.(string) != message_jpn.(string) && message_jpn.(string) != "" {
@@ -654,12 +625,9 @@ func Msg_showdanmu(auth interface{}, m ...string) {
 	}
 	{//语言tts
 		if len(m) > 1 {
-			c.Danmu_Main_mq.Push(c.Danmu_Main_mq_item{
-				Class:`tts`,
-				Data:Danmu_mq_t{
-					uid:m[1],
-					msg:msg,
-				},
+			c.Danmu_Main_mq.Push_tag(`tts`,Danmu_mq_t{//传入消息队列
+				uid:m[1],
+				msg:msg,
 			})
 		}
 	}
@@ -678,7 +646,7 @@ func Gui_show(m ...string){
 	uid := ""
 	if len(m) > 1 {uid = m[1]}
 
-	Danmu_mq.Push(Danmu_mq_t{
+	Danmu_mq.Push_tag(`danmu`,Danmu_mq_t{
 		uid:uid,
 		msg:m[0],
 	})

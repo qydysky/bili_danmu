@@ -29,32 +29,22 @@ func init(){
 		}
 	}
 	go func(){
-		go func(){
-			for{
-				e := <- tts_List
-				TTS(e.(Danmu_mq_t).uid, e.(Danmu_mq_t).msg)
-			}
-		}()
-		
-		//消息队列接收tts类消息，并传送到TTS朗读
-		var (
-			sig = c.Danmu_Main_mq.Sig()
-			data interface{}
-		)
-		for {
-			data,sig = c.Danmu_Main_mq.Pull(sig)
-			if d,ok := data.(c.Danmu_Main_mq_item);!ok {
-				continue
-			} else {
-				switch d.Class {
-				case `tts`:
-					if _,ok := tts_setting[d.Data.(Danmu_mq_t).uid];!ok {continue}
-					tts_List <- d.Data
-				default:
-				}
-			}
+		for{
+			e := <- tts_List
+			TTS(e.(Danmu_mq_t).uid, e.(Danmu_mq_t).msg)
 		}
 	}()
+	
+	//消息队列接收tts类消息，并传送到TTS朗读
+	//使用带tag的消息队列在功能间传递消息
+	c.Danmu_Main_mq.Pull_tag(map[string]func(interface{})(bool){
+		`tts`:func(data interface{})(bool){//tts
+			if _,ok := tts_setting[data.(Danmu_mq_t).uid];ok {
+				tts_List <- data
+			}
+			return false
+		},
+	})
 }
 
 

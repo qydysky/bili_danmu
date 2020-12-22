@@ -66,18 +66,15 @@ var (
 
 func init(){
 	if!IsOn("Gtk") {return}
-	go func(){
-		go Gtk_danmu()
-		var (
-			sig = Danmu_mq.Sig()
-			data interface{}
-		)
-		for {
-			data,sig = Danmu_mq.Pull(sig)
-			Gtk_danmuChan_uid <- data.(Danmu_mq_t).uid 
+	go Gtk_danmu()
+	//使用带tag的消息队列在功能间传递消息
+	Danmu_mq.Pull_tag(map[string]func(interface{})(bool){
+		`danmu`:func(data interface{})(bool){//弹幕
+			Gtk_danmuChan_uid <- data.(Danmu_mq_t).uid
 			Gtk_danmuChan <- data.(Danmu_mq_t).msg
-		}
-	}()
+			return false
+		},
+	})
 }
 
 func Gtk_danmu() {
@@ -245,9 +242,7 @@ func Gtk_danmu() {
 							y(`输入错误`,load_face("0room"))
 						} else {
 							c.Roomid =  i
-							c.Danmu_Main_mq.Push(c.Danmu_Main_mq_item{
-								Class:`change_room`,
-							})
+							c.Danmu_Main_mq.Push_tag(`change_room`,nil)
 						}
 					} else {
 						y(`房间号输入为空`,load_face("0room"))

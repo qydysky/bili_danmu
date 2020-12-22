@@ -463,10 +463,8 @@ func (i *api) Get_OnlineGoldRank() {
 					score += v.(float64)/10
 				}
 			}
-			c.Danmu_Main_mq.Push(c.Danmu_Main_mq_item{//传入消息队列
-				Class:`c.Rev_add`,
-				Data:score,
-			})
+			//传入消息队列
+			c.Danmu_Main_mq.Push_tag(`c.Rev_add`,score)
 
 			if rank_list := p.Json().GetArrayFrom(p.Json().GetValFromS(res, "data.OnlineRankItem"), "userRank");rank_list == nil {
 				apilog.Base(1, "获取 rank_list").E("rank_list", len(rank_list))
@@ -594,7 +592,7 @@ func (i *api) Get_Version() {
 	}
 }
 
-func (i *api) Get_cookie() {
+func Get_cookie() {
 	if api_limit.TO() {return}//超额请求阻塞，超时将取消
 
 	var img_url string
