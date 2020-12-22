@@ -190,7 +190,7 @@ func Gtk_danmu() {
 				if err != nil {log.Println(err);return}
 				if tmp,ok := obj.(*gtk.Entry); ok {
 					tmp.Connect("focus-out-event", func() {
-						if t,e := tmp.GetText();e == nil && t != ``{
+						if t,e := tmp.GetText();e == nil {//可设置为空
 							danmu_send_form = t
 							log.Println("弹幕格式已设置为",danmu_send_form)
 						}
@@ -226,7 +226,10 @@ func Gtk_danmu() {
 					w2_Entry0_editting = true
 				})
 				tmp.Connect("focus-out-event", func() {
-					w2_Entry0_editting = false
+					glib.TimeoutAdd(uint(3000), func()bool{//3s后才解除，避免刚想切换又变回去
+						w2_Entry0_editting = false
+						return false
+					})
 				})
 			}else{log.Println("cant find #want_room_id in .glade");return}
 		}

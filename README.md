@@ -20,7 +20,6 @@ golang go version go1.15.5 linux/amd64
 |VERSION|项目版本|
 |bili_danmu.go|主运行文件|
 |go.mod|goMod文件|
-|ws.go|websocks连接模块|
 ---
 
 ---

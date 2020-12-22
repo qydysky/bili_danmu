@@ -3,11 +3,13 @@ package bili_danmu
 import (
 	"fmt"
 	"flag"
+	"time"
 	"strconv"
 	"os"
 	"os/signal"
 
 	p "github.com/qydysky/part"
+	ws "github.com/qydysky/part/websocket"
 	reply "github.com/qydysky/bili_danmu/Reply"
 	c "github.com/qydysky/bili_danmu/CV"
 	F "github.com/qydysky/bili_danmu/F"
@@ -131,15 +133,25 @@ func Demo(roomid ...int) {
 			//对每个弹幕服务器尝试
 			for _, v := range api.Url {
 				//ws启动
-				ws := New_ws(v,map[string][]string{
-					"Cookie":[]string{c.Cookie},
+				ws_c := ws.New_client(ws.Client{
+					Url:v,
+					TO:35 * 1000,
+					Func_abort_close:func(){danmulog.I(`服务器连接中断`)},
+					Func_normal_close:func(){danmulog.I(`服务器连接关闭`)},
+					Header:map[string][]string{
+						"Cookie":[]string{c.Cookie},
+					},
 				}).Handle()
-	
+				if ws_c.Isclose() {
+					danmulog.E("连接错误", ws_c.Error())
+					continue
+				}
+
 				//SendChan 传入发送[]byte
 				//RecvChan 接收[]byte
 				danmulog.I("连接", v)
-				ws.SendChan <- F.HelloGen(c.Roomid, api.Token)
-				if F.HelloChe(<- ws.RecvChan) {
+				ws_c.SendChan <- F.HelloGen(c.Roomid, api.Token)
+				if F.HelloChe(<- ws_c.RecvChan) {
 					danmulog.I("已连接到房间", c.Uname, `(`, c.Roomid, `)`)
 					reply.Gui_show(`进入直播间: `+c.Uname+` (`+strconv.Itoa(c.Roomid)+`)`, `0room`)
 					if c.Title != `` {
@@ -148,10 +160,15 @@ func Demo(roomid ...int) {
 					}
 					//30s获取一次人气
 					go func(){
-						danmulog.I("获取人气")
 						p.Sys().MTimeoutf(500)//500ms
-						heartbeatmsg, heartinterval := F.Heartbeat()
-						ws.Heartbeat(1000 * heartinterval, heartbeatmsg)
+						danmulog.I("获取人气")
+						go func(){
+							heartbeatmsg, heartinterval := F.Heartbeat()
+							for !ws_c.Isclose() {
+								ws_c.SendChan <- heartbeatmsg
+								time.Sleep(time.Millisecond*time.Duration(heartinterval))
+							}
+						}()
 
 						//传输变量，以便响应弹幕"弹幕机在么"
 						c.Live = api.Live
@@ -194,19 +211,19 @@ func Demo(roomid ...int) {
 				var break_sign bool
 				for !isclose {
 					select {
-					case i := <- ws.RecvChan:
-						if len(i) == 0 && ws.Isclose() {
+					case i := <- ws_c.RecvChan:
+						if len(i) == 0 && ws_c.Isclose() {
 							isclose = true
 						} else {
 							go reply.Reply(i)
 						}
 					case <- interrupt:
-						ws.Close()
+						ws_c.Close()
 						danmulog.I("停止，等待服务器断开连接")
 						break_sign = true
 						exit_sign = true
 					case <- change_room_chan:
-						ws.Close()
+						ws_c.Close()
 						danmulog.I("停止，等待服务器断开连接")
 						break_sign = true
 					}
