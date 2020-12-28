@@ -86,6 +86,8 @@ github.com/qydysky/part v0.3.5-0.20201225074608-a39a85b8977d h1:AzdeFwLFNkfgQ/3Z
 github.com/qydysky/part v0.3.5-0.20201225074608-a39a85b8977d/go.mod h1:SxxNav0Z7DbsDLoG5uxo0wW5EKU/JBu2CAkZzZeLnX0=
 github.com/qydysky/part v0.3.5-0.20201225142344-1a031040ceff h1:KB3WnVkhUMg3WONvUkt/MjRywHRWGORt9i0E2wrGJtE=
 github.com/qydysky/part v0.3.5-0.20201225142344-1a031040ceff/go.mod h1:SxxNav0Z7DbsDLoG5uxo0wW5EKU/JBu2CAkZzZeLnX0=
+github.com/qydysky/part v0.3.5-0.20201228153342-9ad523c2bef4 h1:0A7uj8u2PTn2DXeathl8gNNgnFR2EzQ7FnzwHiFaqvk=
+github.com/qydysky/part v0.3.5-0.20201228153342-9ad523c2bef4/go.mod h1:SxxNav0Z7DbsDLoG5uxo0wW5EKU/JBu2CAkZzZeLnX0=
 github.com/qydysky/part/msgq v0.0.0-20201213031129-ca3253dc72ad h1:Jtzf509lQrkUMGTV0Sc6IDCAiR1VrBcHrIban7hpye4=
 github.com/qydysky/part/msgq v0.0.0-20201213031129-ca3253dc72ad/go.mod h1:w32TkJNVtTJd4LOS09cq+4uYG6itcN2vsqw+slp44Rg=
 github.com/qydysky/part/msgq v0.0.0-20201213120821-f36e49c32bba h1:1ew9dRpc0Rux0WkWeT/4AE15ynYWmL2D7onJEJIFOB8=
