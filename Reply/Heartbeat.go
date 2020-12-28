@@ -1,7 +1,6 @@
 package reply
 
 import (
-	p "github.com/qydysky/part"
 	F "github.com/qydysky/bili_danmu/F"
 )
 
@@ -9,9 +8,6 @@ import (
 	HeartBeat数据分派
 */
 
-var heartlog = p.Logf().New().Base(-1, "Heart.go").Open("danmu.log").Fileonly(true)
-
-//HeartBeat类型处理方法map
 var Heart_map = map[string]func(replyF, int) {
 	"heartbeat":replyF.heartbeat,//人气
 }

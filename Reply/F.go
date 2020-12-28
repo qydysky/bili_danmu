@@ -116,12 +116,12 @@ var (
 func ShowRevf(){
 	if!IsOn("ShowRev") {return}
 	if ShowRev_start {
-		p.Logf().New().Open("danmu.log").Base(1, "Rev").I(fmt.Sprintf("营收 ￥%.2f",c.Rev))
+		c.Log.Base(`功能`).L(`I: `, fmt.Sprintf("营收 ￥%.2f",c.Rev))
 		return
 	}
 	ShowRev_start = true
 	for {
-		p.Logf().New().Open("danmu.log").Base(1, "Rev").I(fmt.Sprintf("营收 ￥%.2f",c.Rev))
+		c.Log.Base(`功能`).L(`I: `, fmt.Sprintf("营收 ￥%.2f",c.Rev))
 		for c.Rev == ShowRev_old {p.Sys().Timeoutf(60)}
 		ShowRev_old = c.Rev
 	}
@@ -524,7 +524,13 @@ func Autoskipf(s string, maxNum,muteSecond int) int {
 		}
 		autoskip.num -= 1
 		i, ok := autoskip.buf.LoadAndDelete(s);
-		if ok && i.(int) > 1 {Msg_showdanmu(nil, strconv.Itoa(i.(int)) + " x " + s,`0multi`)}//多人重复提示
+		if ok {//多人重复提示
+			switch i.(int) {
+			case 0,1:
+			case 2,3:Msg_showdanmu(nil, strconv.Itoa(i.(int)) + " x " + s,`0default`)
+			default:Msg_showdanmu(nil, strconv.Itoa(i.(int)) + " x " + s,`0multi`)
+			}
+		}
 	}()
 	return 0
 }

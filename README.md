@@ -2,6 +2,27 @@
 golang go version go1.15.5 linux/amd64
 
 ---
+### 目录释义
+|目录|说明|
+|-|-|
+|./|项目根|
+|CV/|全局变常量|
+|F/|项目小工具(ws消息生成、api、整数字节转换)|
+|Replay/|接收的数据处理区|
+|Send/|弹幕发送|
+|_Screenshot/|截图保存目录|
+|_msg_sample/|ws接收数据示例|
+|_source/|bilijs文件示例|
+|demo/|运行目录|
+|.gitignore|项目忽略文件|
+|7za.exe|githubAction的windows打包程序|
+|LICENSE|许可|
+|VERSION|项目版本|
+|bili_danmu.go|主运行文件|
+|go.mod|goMod文件|
+---
+
+---
 ### LICENSE
 使用了下述的项目，十分感谢
 - [golang](https://golang.org/) under [BSD](https://golang.org/LICENSE)
@@ -9,108 +30,64 @@ golang go version go1.15.5 linux/amd64
 - [github.com/qydysky/part](https://github.com/qydysky/part) under [MIT](https://raw.githubusercontent.com/qydysky/part/master/LICENSE)
 - [github.com/christopher-dG/go-obs-websocket](https://github.com/christopher-dG/go-obs-websocket) under [MIT](https://raw.githubusercontent.com/christopher-dG/go-obs-websocket/master/LICENSE)
 - [github.com/gorilla/websocket](https://github.com/gorilla/websocket) under [BSD 2-Clause](https://raw.githubusercontent.com/gorilla/websocket/master/LICENSE)
+- [github.com/skip2/go-qrcode](https://github.com/skip2/go-qrcode) under [MIT](https://github.com/skip2/go-qrcode/blob/master/LICENSE)
 - [7z](https://www.7-zip.org/) under [LICENSE](https://www.7-zip.org/license.txt)
 ---
 
 ### 当前支持显示/功能
+
+#### 当前支持显示
 以下内容可能过时，点击查看[当前支持显示](https://github.com/qydysky/bili_danmu/blob/master/Reply/Msg.go#L13)
-```
-显示
-case 后有函数调用的为支持，为nil的为待完善，注释掉的调用为未启用
+- [x] 人气
+- [x] 天选之人开始
+- [x] 天选之人获奖
+- [x] 直播间关注提示
+- [x] 大航海购买
+- [x] 节奏风暴
+- [x] 大航海进入
+- [x] 弹幕
+- [x] 房间信息分区改变
+- [x] 禁言
+- [x] 礼物
+- [x] 封禁
+- [x] 下播
+- [x] 开播
+- [x] SC
+- [x] 排行榜
 
-//Msg类型数据处理方法map
-var Msg_map = map[string]func(replyF, string) {
-	"PK_BATTLE_PRE":nil,//人气pk
-	"PK_BATTLE_START":nil,//人气pk
-	"PK_BATTLE_PROCESS":nil,//人气pk
-	"PK_BATTLE_END":nil,//人气pk
-	"PK_BATTLE_RANK_CHANGE":nil,//人气pk
-	"PK_BATTLE_SETTLE_USER":nil,//人气pk
-	"PK_BATTLE_SETTLE_V2":nil,//人气pk
-	"PK_BATTLE_SETTLE":nil,//人气pk
-	"SYS_MSG":nil,//系统消息
-	"ROOM_SKIN_MSG":nil,
-	"GUARD_ACHIEVEMENT_ROOM":nil,
-	"ANCHOR_LOT_START":nil,//天选之人开始
-	"ANCHOR_LOT_CHECKSTATUS":nil,
-	"ANCHOR_LOT_END":nil,//天选之人结束
-	"ANCHOR_LOT_AWARD":nil,//天选之人获奖
-	"COMBO_SEND":nil,
-	"INTERACT_WORD":nil,
-	"ACTIVITY_BANNER_UPDATE_V2":nil,
-	"NOTICE_MSG":nil,
-	"ROOM_BANNER":nil,
-	"ONLINERANK":nil,
-	"WELCOME":nil,
-	"HOUR_RANK_AWARDS":nil,
-	"ROOM_RANK":nil,
-	"ROOM_SHIELD":nil,
-	"USER_TOAST_MSG":replyF.user_toast_msg,//大航海购买信息
-	"WIN_ACTIVITY":replyF.win_activity,//活动
-	"SPECIAL_GIFT":replyF.special_gift,//节奏风暴
-	"GUARD_BUY":nil,//replyF.guard_buy,//大航海购买
-	"WELCOME_GUARD":replyF.welcome_guard,//大航海进入
-	"DANMU_MSG":replyF.danmu,//弹幕
-	"ROOM_CHANGE":replyF.room_change,//房间信息分区改变
-	"ROOM_SILENT_OFF":replyF.roomsilent,//禁言结束
-	"ROOM_SILENT_ON":replyF.roomsilent,//禁言开始
-	"SEND_GIFT":replyF.send_gift,//礼物
-	"ROOM_BLOCK_MSG":replyF.room_block_msg,//封禁
-	"PREPARING":replyF.preparing,//下播
-	"LIVE":replyF.live,//开播
-	"SUPER_CHAT_MESSAGE":nil,//replyF.super_chat_message,//SC
-	"SUPER_CHAT_MESSAGE_JPN":replyF.super_chat_message,//SC
-	"PANEL":replyF.panel,//排行榜
-	"ENTRY_EFFECT":nil,//replyF.entry_effect,//进入特效
-	"ROOM_REAL_TIME_MESSAGE_UPDATE":nil,//replyF.roominfo,//粉丝数
-}
-```
+#### 当前支持功能
 以下内容可能过时，点击查看[当前支持功能](https://github.com/qydysky/bili_danmu/blob/master/Reply/F.go#L16)
-```
-其他功能
-自动化功能、挑选有价值的弹幕，可在demo/config_F.json覆盖默认控制
-//功能开关
-var AllF = map[string]bool{
-	"Saveflv":true,//保存直播流(仅高清)
-	/*
-		Saveflv需要外部组件
-		ffmpeg http://ffmpeg.org/download.html
-	*/
-	"Obs":false,//obs组件(仅录播)
-	/*
-		Obs需要外部组件:
-		obs https://obsproject.com/download
-		obs-websocket https://github.com/Palakis/obs-websocket/releases
-	*/
-	"Ass":true,//Ass弹幕生成，由于时间对应关系,仅开启流保存时生效
-	"Autoban":true,//自动封禁(仅提示，未完成)
-	"Jiezou":true,//带节奏预警，提示弹幕礼仪
-	"Danmuji":true,//反射型弹幕机，回应弹幕
-	"Danmuji_auto":false,//自动型弹幕机，定时输出
-	"Autoskip":true,//刷屏缩减，相同合并
-	"Lessdanmu":true,//弹幕缩减，屏蔽与前n条弹幕重复的字数占比度高于阈值的弹幕
-	"Moredanmu":false,//弹幕增量
-	"Shortdanmu":true,//上下文相同文字缩减
-}
-```
-以下内容可能过时,其他小功能
+- [x] 自动切换粉丝牌
+- [x] 扫码登录
+- [x] 自定义语音提醒
+- [x] GTK弹幕窗
+- [x] GTK信息窗
+- [x] 营收统计
+- [x] 舰长数统计
+- [x] 直播流保存
+- [x] ASS字幕生成
+- [x] OBS调用
+- [x] 节奏提示
+- [x] 反射型弹幕机
+- [x] 自动型弹幕机
+- [x] 相同弹幕合并
+- [x] 重复度高弹幕屏蔽
+- [x] 弹幕开头字符相同缩减
 
-弹幕自动重连
 
-直播流开播自动下载
+#### 其他特性
 
-直播流下载重连
-
-gtk弹幕窗自定义人/事件消息停留/房间切换/弹幕格式化发送
-
-营收/舰长/时长统计
-
-自定义语音提醒
+- [x] 弹幕自动重连（30s）
+- [x] 直播流开播自动下载
+- [x] 直播流断流再保存
+- [x] GTK信息窗支持房间切换、弹幕格式化发送、时长统计
+- [x] GTK弹幕窗支持自定义人/事件消息停留
 
 ### 构建
 本项目使用github action自动构建，构建过程详见[yml](https://github.com/qydysky/bili_danmu/blob/master/.github/workflows/go.yml)
 
-构建tts需要ffplay,先行安装[ffmpeg](http://ffmpeg.org/download.html)
+#### 语音
+调用tts需要ffplay,先行安装[ffmpeg](http://ffmpeg.org/download.html)
 
 ```
 编译命令
@@ -118,6 +95,7 @@ cd demo
 go build -v -tags `tts` -o demo.exe -i main.go
 ```
 
+#### 弹幕窗
 构建gtk需要gtk3,先行安装[gtk](https://www.gtk.org/)
 ```
 编译命令
@@ -130,7 +108,7 @@ go build -v -tags `gtk gtk_3_24` -o demo.exe -i main.go
 ./demo.run -q 清晰度 -r 房间ID
 ```
 
-> 清晰度可取[数值](https://github.com/qydysky/bili_danmu/blob/028d6d8ed47df4631aca7df93871a4795bedda76/CV/Var.go#L19)
+> 清晰度可取[数值](https://github.com/qydysky/bili_danmu/blob/cf52498a88e885fb66dbc94fb8652cb6fa35fb26/CV/Var.go#L37)
 > 弹幕及礼物会记录于danmu.log中
 
 **部分功能需要在`demo`目录(文件夹)下放置`cookie.txt`才可用**

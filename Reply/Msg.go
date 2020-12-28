@@ -2,6 +2,7 @@ package reply
 
 import (
 	p "github.com/qydysky/part"
+	c "github.com/qydysky/bili_danmu/CV"
 	s "github.com/qydysky/part/buf"
 )
 
@@ -9,7 +10,7 @@ import (
 	数据为WS_OP_MESSAGE类型的数据分派
 */
 
-var msglog = p.Logf().New().Base(-1, "Msg.go").Open("danmu.log").Level(1)
+var msglog = c.Log.Base(`Msg`)
 
 //Msg类型数据处理方法map
 var Msg_map = map[string]func(replyF, string) {
@@ -41,7 +42,7 @@ var Msg_map = map[string]func(replyF, string) {
 	"ANCHOR_LOT_END":nil,//天选之人结束
 	"ANCHOR_LOT_AWARD":replyF.anchor_lot_award,//天选之人获奖
 	"COMBO_SEND":nil,
-	"INTERACT_WORD":nil,
+	"INTERACT_WORD":replyF.interact_word,//进入信息，包含直播间关注提示
 	"ACTIVITY_BANNER_UPDATE_V2":nil,
 	"NOTICE_MSG":nil,
 	"ROOM_BANNER":nil,
@@ -78,7 +79,13 @@ func init(){
 		buf := s.New()
 		buf.Load("config/config_disable_msg.json")
 		for k,v := range buf.B {
-			if able,ok := v.(bool);ok && !able {Msg_map[k] = nil}
+			if able,ok := v.(bool);ok {//设置为true时，使用默认显示
+				if able {
+					Msg_map[k] = replyF.defaultMsg
+				} else {
+					Msg_map[k] = nil
+				}
+			}
 		}
 	}
 }
@@ -88,7 +95,7 @@ func init(){
 func Msg(b []byte) {
 	s := string(b)
 	if cmd := p.Json().GetValFromS(s, "cmd");cmd == nil {
-		msglog.E("cmd", s)
+		msglog.L(`E: `,"cmd", s)
 		return
 	} else {
 		var f replyF

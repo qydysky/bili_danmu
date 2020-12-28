@@ -3,10 +3,11 @@
 package reply
 
 import (
-	"log"
+	"fmt"
 	"net/url"
 	"strings"
 	p "github.com/qydysky/part"
+	c "github.com/qydysky/bili_danmu/CV"
 	s "github.com/qydysky/part/buf"
 )
 
@@ -28,29 +29,28 @@ func init(){
 		}
 	}
 	go func(){
-		var (
-			sig = Danmu_mq.Sig()
-			data interface{}
-		)
-		go func(){
-			for{
-				e := <- tts_List
-				TTS(e.(Danmu_mq_t).uid, e.(Danmu_mq_t).msg)
-			}
-		}()
-
-		for {
-			data,sig = Danmu_mq.Pull(sig)
-			if _,ok := tts_setting[data.(Danmu_mq_t).uid];!ok {continue}
-			tts_List <- data
+		for{
+			e := <- tts_List
+			TTS(e.(Danmu_mq_t).uid, e.(Danmu_mq_t).msg)
 		}
 	}()
+	
+	//消息队列接收tts类消息，并传送到TTS朗读
+	//使用带tag的消息队列在功能间传递消息
+	c.Danmu_Main_mq.Pull_tag(map[string]func(interface{})(bool){
+		`tts`:func(data interface{})(bool){//tts
+			if _,ok := tts_setting[data.(Danmu_mq_t).uid];ok {
+				tts_List <- data
+			}
+			return false
+		},
+	})
 }
 
 
 func TTS(uid,msg string) {
 	if tts_limit.TO() {return}
-	log.Println(`TTS:`, uid, msg)
+	fmt.Println(`TTS:`, uid, msg)
 	req := p.Req()
 	if v,ok := tts_setting[uid];ok{
 		msg = strings.ReplaceAll(v, "{D}", msg)
@@ -62,7 +62,7 @@ func TTS(uid,msg string) {
 		Retry:1,
 		SleepTime:500,
 	});err != nil {
-		log.Println(`TTS:`, err)
+		fmt.Println(`TTS:`, err)
 		return
 	}
 	p.Exec().Run(false, "ffplay", p.Sys().Cdir()+"/tts.mp3","-autoexit","-nodisp")

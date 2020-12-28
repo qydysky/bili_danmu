@@ -1,5 +1,4 @@
 {
     "help":"禁用指定消息类型",
-    "PK_BATTLE_PRE":false,
-    "DANMU_MSG":true
+    "PK_BATTLE_PRE":false
 }

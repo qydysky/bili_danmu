@@ -66,18 +66,15 @@ var (
 
 func init(){
 	if!IsOn("Gtk") {return}
-	go func(){
-		go Gtk_danmu()
-		var (
-			sig = Danmu_mq.Sig()
-			data interface{}
-		)
-		for {
-			data,sig = Danmu_mq.Pull(sig)
-			Gtk_danmuChan_uid <- data.(Danmu_mq_t).uid 
+	go Gtk_danmu()
+	//使用带tag的消息队列在功能间传递消息
+	Danmu_mq.Pull_tag(map[string]func(interface{})(bool){
+		`danmu`:func(data interface{})(bool){//弹幕
+			Gtk_danmuChan_uid <- data.(Danmu_mq_t).uid
 			Gtk_danmuChan <- data.(Danmu_mq_t).msg
-		}
-	}()
+			return false
+		},
+	})
 }
 
 func Gtk_danmu() {
@@ -98,6 +95,7 @@ func Gtk_danmu() {
 	var w2_textView1 *gtk.TextView
 	var w2_textView2 *gtk.TextView
 	var w2_textView3 *gtk.TextView
+	var w2_textView4 *gtk.TextView
 	var renqi_old = 1
 	var w2_Entry0 *gtk.Entry
 	var w2_Entry0_editting bool
@@ -175,6 +173,13 @@ func Gtk_danmu() {
 				w2_textView3 = tmp
 			}else{log.Println("cant find #t3 in .glade");return}
 		}
+		{//排名
+			obj, err := builder2.GetObject("t4")
+			if err != nil {log.Println(err);return}
+			if tmp,ok := obj.(*gtk.TextView); ok {
+				w2_textView4 = tmp
+			}else{log.Println("cant find #t4 in .glade");return}
+		}
 		{//发送弹幕
 			var danmu_send_form string
 			{//发送弹幕格式
@@ -182,7 +187,7 @@ func Gtk_danmu() {
 				if err != nil {log.Println(err);return}
 				if tmp,ok := obj.(*gtk.Entry); ok {
 					tmp.Connect("focus-out-event", func() {
-						if t,e := tmp.GetText();e == nil && t != ``{
+						if t,e := tmp.GetText();e == nil {//可设置为空
 							danmu_send_form = t
 							log.Println("弹幕格式已设置为",danmu_send_form)
 						}
@@ -218,7 +223,10 @@ func Gtk_danmu() {
 					w2_Entry0_editting = true
 				})
 				tmp.Connect("focus-out-event", func() {
-					w2_Entry0_editting = false
+					glib.TimeoutAdd(uint(3000), func()bool{//3s后才解除，避免刚想切换又变回去
+						w2_Entry0_editting = false
+						return false
+					})
 				})
 			}else{log.Println("cant find #want_room_id in .glade");return}
 		}
@@ -234,10 +242,7 @@ func Gtk_danmu() {
 							y(`输入错误`,load_face("0room"))
 						} else {
 							c.Roomid =  i
-							renqi_old = 1//人气置1
-							c.Danmu_Main_mq.Push(c.Danmu_Main_mq_item{
-								Class:`change_room`,
-							})
+							c.Danmu_Main_mq.Push_tag(`change_room`,nil)
 						}
 					} else {
 						y(`房间号输入为空`,load_face("0room"))
@@ -446,10 +451,10 @@ func Gtk_danmu() {
 					return
 				}
 
-				step := 0.1 * (max - cu)
-				if step > 0.5 {
-					if step > 10 {step = 10}//限制最大滚动速度
-					tmp.SetValue(step + cu)
+				step := (max - cu) / 30
+				if step > 0.5 && max - cu < float64(h){
+					if step > 5 {step = 5}
+					tmp.SetValue(cu + step)
 				} else {
 					in_smooth_roll = false
 					tmp.SetValue(max)
@@ -487,6 +492,11 @@ func Gtk_danmu() {
 				b,e := w2_textView3.GetBuffer()
 				if e != nil {log.Println(e);return}
 				b.SetText(fmt.Sprintf("%d",c.GuardNum))
+			}
+			{//分区排行
+				b,e := w2_textView4.GetBuffer()
+				if e != nil {log.Println(e);return}
+				b.SetText(c.Note)
 			}
 			{//时长
 				b,e := w2_textView1.GetBuffer()
@@ -532,7 +542,7 @@ func Gtk_danmu() {
 			}
 			{//房间id
 				if !w2_Entry0_editting {
-					if t,e := w2_Entry0.GetText();e == nil && t == `` && c.Roomid != 0{
+					if t,e := w2_Entry0.GetText();e == nil && t != strconv.Itoa(c.Roomid) {//未编辑时，显示为长id
 						w2_Entry0.SetText(strconv.Itoa(c.Roomid))
 					}
 				}

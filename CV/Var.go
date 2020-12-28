@@ -3,18 +3,23 @@ package cv
 import (
 	"time"
 	mq "github.com/qydysky/part/msgq"
+	log "github.com/qydysky/part/log"
 )
 
 
 var (
+	Uid = 0//client uid
+
 	Live []string//直播链接
 	Live_qn string
 	Roomid int
 	Cookie string
-	Title string
+	Title string//直播标题
+	Uname string//主播名
 	Rev float64//营收
 	Renqi int//人气
 	GuardNum int//舰长数
+	Note string//分区排行
 	Live_Start_Time time.Time//直播开始时间
 	Liveing bool//是否在直播
 )
@@ -25,6 +30,18 @@ type Danmu_Main_mq_item struct {
 	Data interface{}
 }
 var Danmu_Main_mq = mq.New(10)
+
+//日志
+var Log = log.New(log.Config{
+	File:`danmu.log`,
+	Stdout:true,
+	Prefix_string:map[string]struct{}{
+		`T: `:log.On,
+		`I: `:log.On,
+		`N: `:log.On,
+		`E: `:log.On,
+	},
+})
 
 //from player-loader-2.0.11.min.js
 /*
