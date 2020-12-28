@@ -3,6 +3,7 @@ package cv
 import (
 	"time"
 	mq "github.com/qydysky/part/msgq"
+	log "github.com/qydysky/part/log"
 )
 
 
@@ -29,6 +30,18 @@ type Danmu_Main_mq_item struct {
 	Data interface{}
 }
 var Danmu_Main_mq = mq.New(10)
+
+//日志
+var Log = log.New(log.Config{
+	File:`danmu.log`,
+	Stdout:true,
+	Prefix_string:map[string]struct{}{
+		`T: `:log.On,
+		`I: `:log.On,
+		`N: `:log.On,
+		`E: `:log.On,
+	},
+})
 
 //from player-loader-2.0.11.min.js
 /*

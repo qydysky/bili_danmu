@@ -17,12 +17,8 @@ import (
 	F "github.com/qydysky/bili_danmu/F"
 )
 
-var danmulog = p.Logf().New().Open("danmu.log").Base(-1, "bili_danmu.go").Level(c.LogLevel)
-
 func Demo(roomid ...int) {
-
-	danmulog.Base(-1, "测试")
-	defer danmulog.Base(0)
+	var danmulog = c.Log.Base(`bilidanmu Demo`)
 	
 	//ctrl+c退出
 	interrupt := make(chan os.Signal, 1)
@@ -48,7 +44,7 @@ func Demo(roomid ...int) {
 				fmt.Printf("输入房间号: ")
 				_, err := fmt.Scanln(&room)
 				if err != nil {
-					danmulog.E("输入错误", err)
+					danmulog.L(`E: `, "输入错误", err)
 					return
 				}
 			} else {
@@ -100,14 +96,14 @@ func Demo(roomid ...int) {
 					if tmp_uid,e := g.SS(f,`DedeUserID=`,`;`,0,0);e == nil {
 						if v,e := strconv.Atoi(tmp_uid);e == nil {
 							c.Uid = v
-						} else {danmulog.E(e)}
-					} else {danmulog.E(e)}
+						} else {danmulog.L(`E: `, e)}
+					} else {danmulog.L(`E: `, e)}
 				} else {
-					danmulog.I("未检测到cookie.txt，如果需要登录请在本机打开以下网址扫码登录，不需要请忽略")
+					danmulog.L(`I: `, "未检测到cookie.txt，如果需要登录请在本机打开以下网址扫码登录，不需要请忽略")
 					go func(){//获取cookie
 						F.Get_cookie()
 						if c.Cookie != `` {
-							danmulog.I("你已登录，刷新房间！")
+							danmulog.L(`I: `,"你已登录，刷新房间！")
 							//刷新
 							c.Danmu_Main_mq.Push_tag(`change_room`,nil)
 						}
@@ -125,10 +121,10 @@ func Demo(roomid ...int) {
 			//切换粉丝牌，只在cookie存在时启用
 			api.Switch_FansMedal()
 			if len(api.Url) == 0 || api.Roomid == 0 || api.Token == "" || api.Uid == 0 || api.Locked {
-				danmulog.E("some err")
+				danmulog.L(`E: `,"some err")
 				return
 			}
-			danmulog.I("连接到房间", c.Roomid)
+			danmulog.L(`I: `,"连接到房间", c.Roomid)
 
 			//对每个弹幕服务器尝试
 			for _, v := range api.Url {
@@ -137,8 +133,8 @@ func Demo(roomid ...int) {
 				ws_c := ws.New_client(ws.Client{
 					Url:v,
 					TO:35 * 1000,
-					Func_abort_close:func(){danmulog.I(`服务器连接中断`)},
-					Func_normal_close:func(){danmulog.I(`服务器连接关闭`)},
+					Func_abort_close:func(){danmulog.L(`I: `,`服务器连接中断`)},
+					Func_normal_close:func(){danmulog.L(`I: `,`服务器连接关闭`)},
 					Header: map[string]string{
 						`Cookie`:c.Cookie,
 						`Host`: u.Hostname(),
@@ -151,30 +147,30 @@ func Demo(roomid ...int) {
 					},
 				}).Handle()
 				if ws_c.Isclose() {
-					danmulog.E("连接错误", ws_c.Error())
+					danmulog.L(`E: `,"连接错误", ws_c.Error())
 					continue
 				}
 
 				//SendChan 传入发送[]byte
 				//RecvChan 接收[]byte
-				danmulog.I("连接", v)
+				danmulog.L(`I: `,"连接", v)
 				ws_c.SendChan <- F.HelloGen(c.Roomid, api.Token)
 				if F.HelloChe(<- ws_c.RecvChan) {
-					danmulog.I("已连接到房间", c.Uname, `(`, c.Roomid, `)`)
+					danmulog.L(`I: `,"已连接到房间", c.Uname, `(`, c.Roomid, `)`)
 					reply.Gui_show(`进入直播间: `+c.Uname+` (`+strconv.Itoa(c.Roomid)+`)`, `0room`)
 					if c.Title != `` {
-						danmulog.I(c.Title)
+						danmulog.L(`I: `,c.Title)
 						reply.Gui_show(`房间标题: `+c.Title, `0room`)
 					}
 					//30s获取一次人气
 					go func(){
 						p.Sys().MTimeoutf(500)//500ms
-						danmulog.I("获取人气")
+						danmulog.L(`I: `,"获取人气")
 						go func(){
 							heartbeatmsg, heartinterval := F.Heartbeat()
 							for !ws_c.Isclose() {
 								ws_c.SendChan <- heartbeatmsg
-								time.Sleep(time.Millisecond*time.Duration(heartinterval))
+								time.Sleep(time.Millisecond*time.Duration(heartinterval*1000))
 							}
 						}()
 
@@ -218,12 +214,12 @@ func Demo(roomid ...int) {
 						}
 					case <- interrupt:
 						ws_c.Close()
-						danmulog.I("停止，等待服务器断开连接")
+						danmulog.L(`I: `,"停止，等待服务器断开连接")
 						break_sign = true
 						exit_sign = true
 					case <- change_room_chan:
 						ws_c.Close()
-						danmulog.I("停止，等待服务器断开连接")
+						danmulog.L(`I: `,"停止，等待服务器断开连接")
 						break_sign = true
 					}
 
@@ -239,7 +235,7 @@ func Demo(roomid ...int) {
 		{//附加功能 直播流
 			reply.Saveflv_wait()
 		}
-		danmulog.I("结束退出")
+		danmulog.L(`I: `,"结束退出")
 	}
 }
 

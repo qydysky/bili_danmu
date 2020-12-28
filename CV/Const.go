@@ -1,9 +1,5 @@
 package cv
 
-const (
-	LogLevel  = 1
-)
-
 //from source/player-loader-2.0.11.min.js
 const (
 	WS_OP_HEARTBEAT = 2

@@ -2,6 +2,7 @@ package reply
 
 import (
 	p "github.com/qydysky/part"
+	c "github.com/qydysky/bili_danmu/CV"
 	s "github.com/qydysky/part/buf"
 )
 
@@ -9,7 +10,7 @@ import (
 	数据为WS_OP_MESSAGE类型的数据分派
 */
 
-var msglog = p.Logf().New().Base(-1, "Msg.go").Open("danmu.log").Level(1)
+var msglog = c.Log.Base(`Msg`)
 
 //Msg类型数据处理方法map
 var Msg_map = map[string]func(replyF, string) {
@@ -94,7 +95,7 @@ func init(){
 func Msg(b []byte) {
 	s := string(b)
 	if cmd := p.Json().GetValFromS(s, "cmd");cmd == nil {
-		msglog.E("cmd", s)
+		msglog.L(`E: `,"cmd", s)
 		return
 	} else {
 		var f replyF

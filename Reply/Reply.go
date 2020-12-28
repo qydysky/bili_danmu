@@ -14,37 +14,36 @@ import (
 	c "github.com/qydysky/bili_danmu/CV"
 )
 
-var replylog = p.Logf().New().Open("danmu.log").Base(-1, "Reply.go")
+var reply_log = c.Log.Base(`Reply`)
 
 //返回数据分派
 //传入接受到的ws数据
 //判断进行解压，并对每个json对象进行分派
 func Reply(b []byte) {
-	replylog.Base(-1, "返回分派")
-	defer replylog.Base(0)
+	reply_log := reply_log.Base_add(`返回分派`)
 
 	head := F.HeadChe(b[:c.WS_PACKAGE_HEADER_TOTAL_LENGTH])
-	if int(head.PackL) > len(b) {replylog.E("包缺损");return}
+	if int(head.PackL) > len(b) {reply_log.L(`E: `,"包缺损");return}
 
 	if head.BodyV == c.WS_BODY_PROTOCOL_VERSION_DEFLATE {
 		readc, err := zlib.NewReader(bytes.NewReader(b[16:]))
-		if err != nil {replylog.E("解压错误");return}
+		if err != nil {reply_log.L(`E: `,"解压错误");return}
 		defer readc.Close()
 		
 		buf := bytes.NewBuffer(nil)
-		if _, err := buf.ReadFrom(readc);err != nil {replylog.E("解压错误");return}
+		if _, err := buf.ReadFrom(readc);err != nil {reply_log.L(`E: `,"解压错误");return}
 		b = buf.Bytes()
 	}
 
 	for len(b) != 0 {
 		head := F.HeadChe(b[:c.WS_PACKAGE_HEADER_TOTAL_LENGTH])
-		if int(head.PackL) > len(b) {replylog.E("包缺损");return}
+		if int(head.PackL) > len(b) {reply_log.L(`E: `,"包缺损");return}
 		
 		contain := b[c.WS_PACKAGE_HEADER_TOTAL_LENGTH:head.PackL]
 		switch head.OpeaT {
 		case c.WS_OP_MESSAGE:Msg(contain)
 		case c.WS_OP_HEARTBEAT_REPLY:Heart(contain)
-		default :replylog.W("unknow reply", contain)
+		default :reply_log.L(`W: `,"unknow reply", contain)
 		}
 
 		b = b[head.PackL:]
@@ -57,7 +56,7 @@ type replyF struct {}
 
 //默认未识别Msg
 func (replyF) defaultMsg(s string){
-	msglog.Base(1, "Unknow").E(s)
+	msglog.Base_add("Unknow").L(`E: `, s)
 }
 
 //msg-直播间进入信息，此处用来提示关注
@@ -73,7 +72,7 @@ func (replyF) interact_word(s string){
 			})
 		}
 		Gui_show(v + `关注了直播间`,`0follow`)
-		msglog.Base(1, "房").Fileonly(true).I(v + `关注了直播间`).Fileonly(false)
+		msglog.Base_add("房").Log_show_control(false).L(`I`, v + `关注了直播间`)
 	}
 }
 
@@ -91,7 +90,7 @@ func (replyF) anchor_lot_start(s string){
 	fmt.Println(sh...)
 	Gui_show(Itos(sh),`0tianxuan`)
 
-	msglog.Base(1, "房").Fileonly(true).I(sh...).Fileonly(false)
+	msglog.Base_add("房").Log_show_control(false).L(`I`, sh...)
 }
 
 //Msg-天选之人结束
@@ -124,7 +123,7 @@ func (replyF) anchor_lot_award(s string){
 	fmt.Println(sh...)
 	Gui_show(Itos(sh),`0tianxuan`)
 
-	msglog.Base(1, "房").Fileonly(true).I(sh...).Fileonly(false)
+	msglog.Base_add("房").Log_show_control(false).L(`I`, sh...)
 }
 
 //msg-通常是大航海购买续费
@@ -152,7 +151,7 @@ func (replyF) user_toast_msg(s string){
 		case 3:
 			sh = append(sh, "自动续费了")
 		default:
-			msglog.W(s)
+			msglog.L(`W`, s)
 			sh = append(sh, op_type)
 		}
 	}
@@ -187,32 +186,27 @@ func (replyF) user_toast_msg(s string){
 	Gui_show(Itos(sh), "0buyguide")
 	// Gui_show("====\n")
 
-	msglog.Base(1, "礼").Fileonly(true).I(sh_log...).Fileonly(false)
+	msglog.Base_add("礼").Log_show_control(false).L(`I: `,sh_log...)
 }
 
 //HeartBeat-心跳用来传递人气值
 func (replyF) heartbeat(s int){
 	c.Danmu_Main_mq.Push_tag(`c.Renqi`,s)//使用连续付费的新舰长无法区分，刷新舰长数
 	if s == 1 {return}//人气为1,不输出
-	heartlog.I("当前人气", s)
+	reply_log.Base_add(`人气`).L(`I: `,"当前人气", s)
 }
 
 //Msg-房间特殊活动
 func (replyF) win_activity(s string){
-	msglog.Fileonly(true)
-	defer msglog.Fileonly(false)
-
 	title := p.Json().GetValFromS(s, "data.title");
 
 	fmt.Println("活动", title, "已开启")
-	msglog.Base(1, "房").I("活动", title, "已开启")
+	msglog.Base_add("房").Log_show_control(false).L(`I: `,"活动", title, "已开启")
 }
 
 //Msg-特殊礼物，当前仅观察到节奏风暴
 func (replyF) special_gift(s string){
-	msglog.Fileonly(true)
-	defer msglog.Fileonly(false)
-
+	
 	content := p.Json().GetValFromS(s, "data.39.content");
 	action := p.Json().GetValFromS(s, "data.39.action");
 
@@ -235,7 +229,7 @@ func (replyF) special_gift(s string){
 	Gui_show(Itos(sh), "0jiezou")
 	// Gui_show("====\n")
 
-	msglog.Base(1, "礼").I(sh...)
+	msglog.Base_add("礼").Log_show_control(false).L(`I:`, sh...)
 
 }
 
@@ -263,7 +257,7 @@ func (replyF) guard_buy(s string){
 	fmt.Println("\n====")
 	fmt.Println(sh...)
 	fmt.Print("====\n\n")
-	msglog.Base(1, "礼").Fileonly(true).I(sh_log...).Fileonly(false)
+	msglog.Base_add("礼").Log_show_control(false).L(`I:`, sh_log...)
 
 }
 
@@ -283,7 +277,7 @@ func (replyF) room_change(s string){
 	}
 	Gui_show(Itos(sh), "0room")
 
-	msglog.Base(1, "房").I(sh...)
+	msglog.Base_add("房").L(`I:`, sh...)
 }
 
 //Msg-大航海欢迎信息
@@ -316,7 +310,7 @@ func (replyF) welcome_guard(s string){
 	fmt.Println(sh...)
 	Gui_show(Itos(append([]interface{}{">>> "}, sh...)), img)
 
-	msglog.Base(1, "房").Fileonly(true).I(sh...).Fileonly(false)
+	msglog.Base_add("房").Log_show_control(false).L(`I:`, sh...)
 }
 
 //Msg-礼物处理，对于小于30人民币的礼物不显示
@@ -353,10 +347,11 @@ func (replyF) send_gift(s string){
 	}
 
 	if len(sh) == 0 {return}
-	msglog.Base(1, "礼").Fileonly(true).I(sh_log...).Fileonly(false)
+	msglog := msglog.Base_add("礼")
+	msglog.Log_show_control(false).L(`I:`, sh_log...)
 
 	//小于3万金瓜子
-	if allprice < 30 {msglog.T(sh...);return}
+	if allprice < 30 {msglog.L(`T:`, sh...);return}
 	{//语言tts
 		c.Danmu_Main_mq.Push_tag(`tts`,Danmu_mq_t{//传入消息队列
 			uid:`0gift`,
@@ -377,25 +372,22 @@ func (replyF) send_gift(s string){
 
 //Msg-房间封禁信息
 func (replyF) room_block_msg(s string) {
-	msglog.Fileonly(true)
-	defer msglog.Fileonly(false)
-
 	if uname := p.Json().GetValFromS(s, "uname");uname == nil {
-		msglog.E("uname", uname)
+		msglog.L(`E:`, "uname", uname)
 		return
 	} else {
 		Gui_show(Itos([]interface{}{"用户", uname, "已被封禁"}), "0room")
 		fmt.Println("用户", uname, "已被封禁")
-		msglog.Base(1, "封").I("用户", uname, "已被封禁")
+		msglog.Base_add("封").Log_show_control(false).L(`I:`, "用户", uname, "已被封禁")
 	}
 }
 
 //Msg-房间准备信息，通常出现在下播而不出现在开播
 func (replyF) preparing(s string) {
-	msglog.Base(1, "房")
+	msglog := msglog.Base_add("房")
 
 	if roomid := p.Json().GetValFromS(s, "roomid");roomid == nil {
-		msglog.E("roomid", roomid)
+		msglog.L(`E:`, "roomid", roomid)
 		return
 	} else {
 		{//附加功能 obs结束 saveflv结束
@@ -407,20 +399,20 @@ func (replyF) preparing(s string) {
 		}
 		if p.Sys().Type(roomid) == "float64" {
 			Gui_show(Itos([]interface{}{"房间", roomid, "下播了"}), "0room")
-			msglog.I("房间", int(roomid.(float64)), "下播了")
+			msglog.L(`I:`, "房间", int(roomid.(float64)), "下播了")
 			return
 		}
 		Gui_show(Itos([]interface{}{"房间", roomid, "下播了"}), "0room")
-		msglog.I("房间", roomid, "下播了")
+		msglog.L(`I:`, "房间", roomid, "下播了")
 	}
 }
 
 //Msg-房间开播信息
 func (replyF) live(s string) {
-	msglog.Base(1, "房")
+	msglog := msglog.Base_add("房")
 
 	if roomid := p.Json().GetValFromS(s, "roomid");roomid == nil {
-		msglog.E("roomid", roomid)
+		msglog.L(`E:`, "roomid", roomid)
 		return
 	} else {
 		{//附加功能 obs录播
@@ -435,11 +427,11 @@ func (replyF) live(s string) {
 		}
 		if p.Sys().Type(roomid) == "float64" {
 			Gui_show(Itos([]interface{}{"房间", roomid, "开播了"}), "0room")
-			msglog.I("房间", int(roomid.(float64)), "开播了")
+			msglog.L(`I:`, "房间", int(roomid.(float64)), "开播了")
 			return
 		}
 		Gui_show(Itos([]interface{}{"房间", roomid, "开播了"}), "0room")
-		msglog.I("房间", roomid, "开播了")
+		msglog.L(`I:`, "房间", roomid, "开播了")
 	}
 }
 
@@ -498,34 +490,32 @@ func (replyF) super_chat_message(s string){
 		// Gui_show("====\n")
 		Gui_show(Itos(sh), "0superchat")
 	}
-	msglog.Base(1, "礼").Fileonly(true).I(logg...).Fileonly(false)
+	msglog.Base_add("礼").Log_show_control(false).L(`I:`, logg...)
 }
 
 //Msg-分区排行
 func (replyF) panel(s string){
-	msglog.Fileonly(true).Base(1, "房")
-	defer msglog.Fileonly(false)
+	msglog := msglog.Base_add("房").Log_show_control(false)
 
 	if note := p.Json().GetValFromS(s, "data.note");note == nil {
-		msglog.E("note", note)
+		msglog.L(`E:`, "note", note)
 		return
 	} else {
 		if v,ok := note.(string);ok{c.Note = v}
 		fmt.Println("排行", note)
-		msglog.I("排行", note)
+		msglog.L(`I:`, "排行", note)
 	}
 }
 
 //Msg-进入特效，大多为大航海进入，信息少，使用welcome_guard替代
 func (replyF) entry_effect(s string){
-	msglog.Fileonly(true).Base(-1, "房")
-	defer msglog.Base(0).Fileonly(false)
+	msglog := msglog.Base_add("房").Log_show_control(false)
 
 	if copy_writing := p.Json().GetValFromS(s, "data.copy_writing");copy_writing == nil {
-		msglog.E("copy_writing", copy_writing)
+		msglog.L(`E:`, "copy_writing", copy_writing)
 		return
 	} else {
-		msglog.I(copy_writing)
+		msglog.L(`I:`, copy_writing)
 		fmt.Println(copy_writing)
 	}
 
@@ -533,14 +523,14 @@ func (replyF) entry_effect(s string){
 
 //Msg-房间禁言
 func (replyF) roomsilent(s string){
-	msglog.Base(1, "房")
+	msglog := msglog.Base_add("房")
 
 	if level := p.Json().GetValFromS(s, "data.level");level == nil {
-		msglog.E("level", level)
+		msglog.L(`E:`, "level", level)
 		return
 	} else {
-		if level.(float64) == 0 {msglog.I("主播关闭了禁言")}
-		msglog.I("主播开启了等级禁言:", level)
+		if level.(float64) == 0 {msglog.L(`I:`, "主播关闭了禁言")}
+		msglog.L(`I:`, "主播开启了等级禁言:", level)
 	}
 }
 
@@ -558,13 +548,13 @@ func (replyF) roominfo(s string){
 		sh = append(sh, "粉丝团人数:", fans_club)
 	}
 
-	if len(sh) != 0 {msglog.Base(1, "粉").I(sh...)}
+	if len(sh) != 0 {msglog.Base_add("粉").L(`I:`, sh...)}
 }
 
 //Msg-弹幕处理
 func (replyF) danmu(s string) {
 	if info := p.Json().GetValFromS(s, "info");info == nil {
-		msglog.E("info", info)
+		msglog.L(`E:`, "info", info)
 		return
 	} else {
 		infob := info.([]interface{})
@@ -572,19 +562,18 @@ func (replyF) danmu(s string) {
 		auth := infob[2].([]interface{})[1]
 		uid := strconv.Itoa(int(infob[2].([]interface{})[0].(float64)))
 
-		msglog.Fileonly(true)
-		defer msglog.Fileonly(false)
+		msglog := msglog.Log_show_control(false)
 
 		{//附加功能 弹幕机 封禁 弹幕合并
 			Danmujif(msg)
 			if Autobanf(msg) {
 				Gui_show(Itos([]interface{}{"风险", auth, ":", msg}))
 				fmt.Println("风险", auth, ":", msg)
-				msglog.Base(1, "风险").I(auth, ":", msg)
+				msglog.Base_add("风险").L(`I:`, auth, ":", msg)
 				return
 			}
 			if i := Autoskipf(msg, 50, 15); i > 0 {
-				msglog.I(auth, ":", msg)
+				msglog.L(`I:`, auth, ":", msg)
 				return
 			}
 		}
@@ -597,7 +586,7 @@ func (replyF) danmu(s string) {
 //需要cookie
 func Msg_senddanmu(msg string){
 	if c.Cookie == "" || c.Roomid == 0 {
-		msglog.I(`c.Cookie == "" || c.Roomid == 0`)
+		msglog.L(`I:`, `c.Cookie == "" || c.Roomid == 0`)
 		return
 	}
 	S.Danmu_s(msg, c.Cookie, c.Roomid)
@@ -609,11 +598,11 @@ func Msg_showdanmu(auth interface{}, m ...string) {
 	msg := m[0]
 	{//附加功能 更少弹幕
 		if Lessdanmuf(msg, 20) > 0.7 {//与前20条弹幕重复的字数占比度>0.7的屏蔽
-			if auth != nil {msglog.I(auth, ":", msg)}
+			if auth != nil {msglog.L(`I:`, auth, ":", msg)}
 			return
 		}
 		if _msg := Shortdanmuf(msg); _msg == "" {
-			if auth != nil {msglog.I(auth, ":", msg)}
+			if auth != nil {msglog.L(`I:`, auth, ":", msg)}
 			return
 		} else {msg = _msg}
 		Assf(msg)//ass
@@ -632,7 +621,7 @@ func Msg_showdanmu(auth interface{}, m ...string) {
 		}
 	}
 	fmt.Println(msg)
-	if auth != nil {msglog.I(auth, ":", msg)}
+	if auth != nil {msglog.L(`I:`, auth, ":", msg)}
 }
 
 type Danmu_mq_t struct {

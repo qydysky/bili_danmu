@@ -80,6 +80,12 @@ github.com/qydysky/part v0.3.5-0.20201222075205-70243aca6682 h1:k7YM2PUXxW96cIAl
 github.com/qydysky/part v0.3.5-0.20201222075205-70243aca6682/go.mod h1:SxxNav0Z7DbsDLoG5uxo0wW5EKU/JBu2CAkZzZeLnX0=
 github.com/qydysky/part v0.3.5-0.20201222123333-27d31033ffec h1:Mwrebha+zOcwYRxroUJhWBMgopVoqIyfOEYOeq6idtA=
 github.com/qydysky/part v0.3.5-0.20201222123333-27d31033ffec/go.mod h1:SxxNav0Z7DbsDLoG5uxo0wW5EKU/JBu2CAkZzZeLnX0=
+github.com/qydysky/part v0.3.5-0.20201225033911-e62acc74534d h1:72xlB994UoGTCcKksUlZlez67SVRfOhB9DiNfBld6dE=
+github.com/qydysky/part v0.3.5-0.20201225033911-e62acc74534d/go.mod h1:SxxNav0Z7DbsDLoG5uxo0wW5EKU/JBu2CAkZzZeLnX0=
+github.com/qydysky/part v0.3.5-0.20201225074608-a39a85b8977d h1:AzdeFwLFNkfgQ/3ZJfpJSWgn6Eru1qlltOj3zLtmKJs=
+github.com/qydysky/part v0.3.5-0.20201225074608-a39a85b8977d/go.mod h1:SxxNav0Z7DbsDLoG5uxo0wW5EKU/JBu2CAkZzZeLnX0=
+github.com/qydysky/part v0.3.5-0.20201225142344-1a031040ceff h1:KB3WnVkhUMg3WONvUkt/MjRywHRWGORt9i0E2wrGJtE=
+github.com/qydysky/part v0.3.5-0.20201225142344-1a031040ceff/go.mod h1:SxxNav0Z7DbsDLoG5uxo0wW5EKU/JBu2CAkZzZeLnX0=
 github.com/qydysky/part/msgq v0.0.0-20201213031129-ca3253dc72ad h1:Jtzf509lQrkUMGTV0Sc6IDCAiR1VrBcHrIban7hpye4=
 github.com/qydysky/part/msgq v0.0.0-20201213031129-ca3253dc72ad/go.mod h1:w32TkJNVtTJd4LOS09cq+4uYG6itcN2vsqw+slp44Rg=
 github.com/qydysky/part/msgq v0.0.0-20201213120821-f36e49c32bba h1:1ew9dRpc0Rux0WkWeT/4AE15ynYWmL2D7onJEJIFOB8=
