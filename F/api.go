@@ -593,7 +593,6 @@ func (i *api) Get_Version() {
 func Get_cookie() {
 	if api_limit.TO() {return}//超额请求阻塞，超时将取消
 	apilog := apilog.Base_add(`获取Cookie`)
-	defer apilog.L(`T: `,"ok")
 
 	var img_url string
 	var oauth string
@@ -626,10 +625,6 @@ func Get_cookie() {
 	}
 	var server *http.Server
 	{//生成二维码
-		if p.Checkfile().IsExist(`qr.png`) {
-			apilog.L(`E: `,`qr.png已存在`)
-			return
-		}
 		qr.WriteFile(img_url,qr.Medium,256,`qr.png`)
 		if !p.Checkfile().IsExist(`qr.png`) {
 			apilog.L(`E: `,`qr error`)
@@ -651,11 +646,20 @@ func Get_cookie() {
 			apilog.L(`W: `,`打开链接扫码登录：`,`http://`+server.Addr+`/qr.png`)
 			server.ListenAndServe()
 		}()
+		p.Sys().Timeoutf(1)
 	}
 	var cookie string
 	{//3s刷新查看是否通过
 		max_try := 20
-		for max_try > 0 {
+		change_room_sign := false
+		c.Danmu_Main_mq.Pull_tag(map[string]func(interface{})(bool){
+			`change_room`:func(data interface{})(bool){//房间改变
+				change_room_sign = true
+				return true
+			},
+		})
+
+		for max_try > 0 && !change_room_sign {
 			max_try -= 1
 			p.Sys().Timeoutf(3)
 			r := p.Req()
