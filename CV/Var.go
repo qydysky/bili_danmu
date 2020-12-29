@@ -39,6 +39,7 @@ var Log = log.New(log.Config{
 		`T: `:log.On,
 		`I: `:log.On,
 		`N: `:log.On,
+		`W: `:log.On,
 		`E: `:log.On,
 	},
 })

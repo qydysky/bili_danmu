@@ -89,6 +89,16 @@ func Demo(roomid ...int) {
 				var q = p.Filel{
 					Write:false,
 				}
+				var get_cookie = func(){
+					danmulog.L(`I: `, "未检测到cookie.txt，如果需要登录请在本机打开以下网址扫码登录，不需要请忽略")
+					//获取cookie
+					F.Get_cookie()
+					if c.Cookie != `` {
+						danmulog.L(`I: `,"你已登录，刷新房间！")
+						//刷新
+						c.Danmu_Main_mq.Push_tag(`change_room`,nil)
+					}
+				}
 				if p.Checkfile().IsExist("cookie.txt") {
 					q.File = "cookie.txt"
 					f := p.File().FileWR(q)
@@ -96,18 +106,16 @@ func Demo(roomid ...int) {
 					if tmp_uid,e := g.SS(f,`DedeUserID=`,`;`,0,0);e == nil {
 						if v,e := strconv.Atoi(tmp_uid);e == nil {
 							c.Uid = v
-						} else {danmulog.L(`E: `, e)}
-					} else {danmulog.L(`E: `, e)}
-				} else {
-					danmulog.L(`I: `, "未检测到cookie.txt，如果需要登录请在本机打开以下网址扫码登录，不需要请忽略")
-					go func(){//获取cookie
-						F.Get_cookie()
-						if c.Cookie != `` {
-							danmulog.L(`I: `,"你已登录，刷新房间！")
-							//刷新
-							c.Danmu_Main_mq.Push_tag(`change_room`,nil)
+						} else {
+							danmulog.L(`E: `, `读取cookie错误`,e)
+							go get_cookie()
 						}
-					}()
+					} else {
+						danmulog.L(`E: `, `读取cookie错误`,e)
+						go get_cookie()
+					}
+				} else {
+					go get_cookie()
 					p.Sys().Timeoutf(3)
 				}
 			}
