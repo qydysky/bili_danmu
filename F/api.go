@@ -39,9 +39,7 @@ func New_api(Roomid int) (o *api) {
 
 func (i *api) Get_info() (o *api) {
 	o = i
-	apilog := apilog.Base_add(`获取房号`)
-	defer apilog.L(`T: `,"ok")
-	
+	apilog := apilog.Base_add(`获取房号`)	
 
 	if o.Roomid == 0 {
 		apilog.L(`E: `,"还未New_api")
@@ -146,7 +144,6 @@ func (i *api) Get_info() (o *api) {
 func (i *api) Get_live(qn ...string) (o *api) {
 	o = i
 	apilog := apilog.Base_add(`获取直播流`)
-	defer apilog.L(`T: `,"ok")
 
 	if o.Roomid == 0 {
 		apilog.L(`E: `,"还未New_api")
@@ -536,7 +533,6 @@ func (i *api) Get_Version() {
 	Roomid := strconv.Itoa(i.Roomid)
 	if api_limit.TO() {return}//超额请求阻塞，超时将取消
 	apilog := apilog.Base_add(`获取客户版本`)
-	defer apilog.L(`T: `,"ok")
 
 	var player_js_url string
 	{//获取player_js_url
