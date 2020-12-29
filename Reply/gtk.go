@@ -353,7 +353,7 @@ func Gtk_danmu() {
 					grid0.InsertRow(loc);
 					grid0.Attach(tmp_list.img, 0, loc, 1, 1)
 					grid0.Attach(tmp_list.text, 1, loc, 1, 1)
-					win.ShowAll()
+					if Gtk_on {win.ShowAll()}
 					return
 				}
 				/*
@@ -397,7 +397,7 @@ func Gtk_danmu() {
 				// grid0.Attach(tmp_list1.text, 1, loc, 1, 1)
 			}
 
-			win.ShowAll()
+			if Gtk_on {win.ShowAll()}
 		}
 
 		//先展示弹幕信息窗
@@ -570,6 +570,7 @@ func Gtk_danmu() {
 	application.Connect("shutdown", func() {
 		log.Println("application shutdown")	
 		Gtk_on = false
+		c.Danmu_Main_mq.Push_tag(`gtk_close`,nil)
 	})
 
 	application.Run(nil)

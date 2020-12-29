@@ -79,6 +79,10 @@ func Demo(roomid ...int) {
 				}
 				return false
 			},
+			`gtk_close`:func(data interface{})(bool){//gtk关闭信号
+				interrupt <- os.Interrupt
+				return false
+			},
 		})
 
 		<-change_room_chan
