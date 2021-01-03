@@ -22,9 +22,7 @@ func Demo(roomid ...int) {
 	
 	//ctrl+c退出
 	interrupt := make(chan os.Signal, 1)
-	signal.Notify(interrupt, os.Interrupt)
-
-
+	
 	{
 		var groomid = flag.Int("r", 0, "roomid")
 		var live_qn = flag.String("q", "0", "qn")
@@ -86,6 +84,9 @@ func Demo(roomid ...int) {
 		})
 
 		<-change_room_chan
+
+		//ctrl+c退出
+		signal.Notify(interrupt, os.Interrupt)
 
 		for !exit_sign {
 			//获取cookies
