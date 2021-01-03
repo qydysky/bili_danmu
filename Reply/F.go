@@ -14,6 +14,7 @@ import (
 	F "github.com/qydysky/bili_danmu/F"
 	"github.com/christopher-dG/go-obs-websocket"
 	p "github.com/qydysky/part"
+	b "github.com/qydysky/part/buf"
 	s "github.com/qydysky/part/signal"
 )
 
@@ -459,7 +460,7 @@ func Autobanf(s string) bool {
 }
 
 type Danmuji struct {
-	buf map[string]string
+	Buf map[string]string
 	Inuse_auto bool
 
 	mute bool
@@ -467,14 +468,22 @@ type Danmuji struct {
 
 var danmuji = Danmuji{
 	Inuse_auto:IsOn("Danmuji_auto"),
-	buf:map[string]string{
+	Buf:map[string]string{
 		"弹幕机在么":"在",
 	},
 }
 
+func init(){//初始化反射型弹幕机
+	buf := b.New()
+	buf.Load("config/config_auto_reply.json")
+	for k,v := range buf.B {
+		danmuji.Buf[k] = v.(string)
+	}
+}
+
 func Danmujif(s string) {
 	if !IsOn("Danmuji") {return}
-	if v, ok := danmuji.buf[s]; ok {
+	if v, ok := danmuji.Buf[s]; ok {
 		Msg_senddanmu(v)
 	}
 }
