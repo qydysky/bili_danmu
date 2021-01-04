@@ -10,7 +10,7 @@ import (
 	p "github.com/qydysky/part"
 	mq "github.com/qydysky/part/msgq"
 	F "github.com/qydysky/bili_danmu/F"
-	S "github.com/qydysky/bili_danmu/Send"
+	send "github.com/qydysky/bili_danmu/Send"
 	c "github.com/qydysky/bili_danmu/CV"
 )
 
@@ -130,6 +130,7 @@ func (replyF) anchor_lot_award(s string){
 func (replyF) user_toast_msg(s string){
 	username := p.Json().GetValFromS(s, "data.username");
 	op_type := p.Json().GetValFromS(s, "data.op_type");
+	uid := p.Json().GetValFromS(s, "data.uid");
 	role_name := p.Json().GetValFromS(s, "data.role_name");
 	num := p.Json().GetValFromS(s, "data.num");
 	unit := p.Json().GetValFromS(s, "data.unit");
@@ -174,9 +175,21 @@ func (replyF) user_toast_msg(s string){
 			msg:fmt.Sprint(sh...),
 		})
 	}
-	{//额外 ass
+	{//额外 ass 私信
 		Assf(fmt.Sprintln(sh...))
 		c.Danmu_Main_mq.Push_tag(`guard_update`,nil)//使用连续付费的新舰长无法区分，刷新舰长数
+		if uid != 0 {
+			c.Danmu_Main_mq.Push_tag(`pm`,send.Pm_item{
+				Uid:int(uid.(float64)),
+				Msg:K_v[`上舰私信`].(string),
+			})//上舰私信
+		}
+		if K_v[`额外私信对象`].(float64) != 0 {
+			c.Danmu_Main_mq.Push_tag(`pm`,send.Pm_item{
+				Uid:int(K_v[`额外私信对象`].(float64)),
+				Msg:K_v[`上舰私信(额外)`].(string),
+			})//上舰私信-对额外
+		}
 	}
 	fmt.Println("\n====")
 	fmt.Println(sh...)
@@ -589,7 +602,7 @@ func Msg_senddanmu(msg string){
 		msglog.L(`I: `, `c.Cookie == "" || c.Roomid == 0`)
 		return
 	}
-	S.Danmu_s(msg, c.Cookie, c.Roomid)
+	send.Danmu_s(msg, c.Cookie, c.Roomid)
 }
 
 //弹幕显示
@@ -612,12 +625,24 @@ func Msg_showdanmu(auth interface{}, m ...string) {
 			Gui_show(m...)
 		}	
 	}
-	{//语言tts
+	{//语言tts 私信
 		if len(m) > 1 {
 			c.Danmu_Main_mq.Push_tag(`tts`,Danmu_mq_t{//传入消息队列
 				uid:m[1],
 				msg:msg,
 			})
+			if i,e := strconv.Atoi(m[1]);e == nil {
+				c.Danmu_Main_mq.Push_tag(`pm`,send.Pm_item{
+					Uid:i,
+					Msg:K_v[`弹幕私信`].(string),
+				})//上舰私信
+			}
+			if K_v[`额外私信对象`].(float64) != 0 {
+				c.Danmu_Main_mq.Push_tag(`pm`,send.Pm_item{
+					Uid:int(K_v[`额外私信对象`].(float64)),
+					Msg:K_v[`弹幕私信(额外)`].(string),
+				})//上舰私信-对额外
+			}
 		}
 	}
 	fmt.Println(msg)

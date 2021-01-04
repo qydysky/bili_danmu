@@ -4,6 +4,7 @@ go 1.14
 
 require (
 	github.com/christopher-dG/go-obs-websocket v0.0.0-20200720193653-c4fed10356a5 // indirect
+	github.com/gofrs/uuid v4.0.0+incompatible // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/gotk3/gotk3 v0.5.2 // indirect
 	github.com/klauspost/compress v1.11.4 // indirect

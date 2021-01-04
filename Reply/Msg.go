@@ -14,6 +14,7 @@ var msglog = c.Log.Base(`Msg`)
 
 //Msg类型数据处理方法map
 var Msg_map = map[string]func(replyF, string) {
+	`CARD_MSG`:nil,//提示关注
 	`LIVE_INTERACTIVE_GAME`:nil,
 	`WIDGET_BANNER`:nil,//每日任务
 	`ROOM_ADMINS`:nil,//房管列表

@@ -13,6 +13,7 @@ import (
 	ws "github.com/qydysky/part/websocket"
 	g "github.com/qydysky/part/get"
 	reply "github.com/qydysky/bili_danmu/Reply"
+	send "github.com/qydysky/bili_danmu/Send"
 	c "github.com/qydysky/bili_danmu/CV"
 	F "github.com/qydysky/bili_danmu/F"
 )
@@ -79,6 +80,12 @@ func Demo(roomid ...int) {
 			},
 			`gtk_close`:func(data interface{})(bool){//gtk关闭信号
 				interrupt <- os.Interrupt
+				return false
+			},
+			`pm`:func(data interface{})(bool){//私信
+				if tmp,ok := data.(send.Pm_item);ok{
+					send.Send_pm(tmp.Uid,tmp.Msg)
+				}
 				return false
 			},
 		})
