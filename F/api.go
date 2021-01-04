@@ -1,6 +1,7 @@
 package F
 
 import (
+	"sync"
 	"time"
 	"fmt"
 	"os"
@@ -586,8 +587,14 @@ func (i *api) Get_Version() {
 	}
 }
 
+type cookie_lock_item struct{
+	sync.RWMutex
+}
+var cookies_lock = new(cookie_lock_item)
 func Get_cookie() {
 	if api_limit.TO() {return}//超额请求阻塞，超时将取消
+	cookies_lock.Lock()
+	defer cookies_lock.Unlock()
 	apilog := apilog.Base_add(`获取Cookie`)
 
 	var img_url string
@@ -679,7 +686,7 @@ func Get_cookie() {
 				return
 			} else if !v {
 				if v,ok := p.Json().GetValFromS(res, "message").(string);ok {
-					apilog.L(`W: `,`登录中`,v)
+					apilog.L(`W: `,`登录中`,v,max_try,`s`)
 				}
 				continue
 			} else {
