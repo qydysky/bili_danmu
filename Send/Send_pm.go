@@ -19,12 +19,11 @@ type Pm_item struct {
 var pm_limit = p.Limit(1, 5000, 10000)
 
 func Send_pm(uid int, msg string) error {
-	if pm_limit.TO() {return errors.New("TO")}
-	log := c.Log.Base_add(`私信`)
-	
 	if msg == `` || uid == 0 {
 		return errors.New(`msg == "" || uid == 0`)
 	}
+
+	log := c.Log.Base_add(`私信`)
 
 	if c.Uid == 0 {
 		log.L(`E: `,`client uid == 0`)
@@ -55,6 +54,8 @@ func Send_pm(uid int, msg string) error {
 			return e
 		}
 	}
+
+	if pm_limit.TO() {return errors.New("TO")}
 
 	var send_str = `msg[sender_uid]=`+strconv.Itoa(c.Uid)+`&msg[receiver_id]=`+strconv.Itoa(uid)+`&msg[receiver_type]=1&msg[msg_type]=1&msg[msg_status]=0&msg[content]={"content":"`+msg+`"}&msg[timestamp]=`+strconv.Itoa(int(p.Sys().GetSTime()))+`&msg[new_face_version]=0&msg[dev_id]=`+strings.ToUpper(new_uuid)+`&from_firework=0&build=0&mobi_app=web&csrf_token=`+csrf+`&csrf=`+csrf
 	

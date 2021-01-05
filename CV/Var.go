@@ -29,7 +29,8 @@ type Danmu_Main_mq_item struct {
 	Class string
 	Data interface{}
 }
-var Danmu_Main_mq = mq.New(10)
+//200长度防止push击穿
+var Danmu_Main_mq = mq.New(200)
 
 //日志
 var Log = log.New(log.Config{

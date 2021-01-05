@@ -31,6 +31,7 @@ golang go version go1.15.5 linux/amd64
 - [github.com/christopher-dG/go-obs-websocket](https://github.com/christopher-dG/go-obs-websocket) under [MIT](https://raw.githubusercontent.com/christopher-dG/go-obs-websocket/master/LICENSE)
 - [github.com/gorilla/websocket](https://github.com/gorilla/websocket) under [BSD 2-Clause](https://raw.githubusercontent.com/gorilla/websocket/master/LICENSE)
 - [github.com/skip2/go-qrcode](https://github.com/skip2/go-qrcode) under [MIT](https://github.com/skip2/go-qrcode/blob/master/LICENSE)
+- [github.com/gofrs/uuid](https://github.com/gofrs/uuid) under [MIT](https://github.com/gofrs/uuid/blob/master/LICENSE)
 - [7z](https://www.7-zip.org/) under [LICENSE](https://www.7-zip.org/license.txt)
 ---
 
@@ -57,6 +58,7 @@ golang go version go1.15.5 linux/amd64
 
 #### 当前支持功能
 以下内容可能过时，点击查看[当前支持功能](https://github.com/qydysky/bili_danmu/blob/master/Reply/F.go#L16)
+- [x] 自定义私信
 - [x] 自动切换粉丝牌
 - [x] 扫码登录
 - [x] 自定义语音提醒
