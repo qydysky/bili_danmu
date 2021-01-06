@@ -1,17 +1,14 @@
 package main
 
 import (
-	// "os"
-	// "runtime/pprof"
+	// "net/http"
+	// _ "net/http/pprof"
 	q "github.com/qydysky/bili_danmu"
 )
 
 func main() {
-	// f, _ := os.OpenFile("cpu.pprof", os.O_RDWR|os.O_CREATE, 0644)
-    // pprof.StartCPUProfile(f)
-
+	// go func() {
+	// 	http.ListenAndServe("0.0.0.0:8899", nil)
+	// }()
 	q.Demo()
-
-	// pprof.StopCPUProfile()
-    // f.Close()
 }

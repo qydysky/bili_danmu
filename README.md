@@ -1,5 +1,5 @@
 ## bilibili 直播弹幕机
-golang go version go1.15.5 linux/amd64
+golang go version go1.15 linux/amd64
 
 ---
 ### 目录释义
@@ -102,7 +102,7 @@ go build -v -tags `tts` -o demo.exe -i main.go
 ```
 编译命令
 cd demo
-go build -v -tags `gtk gtk_3_24` -o demo.exe -i main.go
+go build -v -tags `gtk` -o demo.exe -i main.go
 ```
 ### demo 
 前往[releases](https://github.com/qydysky/bili_danmu/releases)页下载对应系统版本。解压后进入`demo`目录(文件夹)，运行`demo.run`(`demo.exe`)。

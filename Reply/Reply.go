@@ -609,6 +609,7 @@ func Msg_senddanmu(msg string){
 //由于额外功能有些需要显示，为了统一管理，使用此方法进行处理
 func Msg_showdanmu(auth interface{}, m ...string) {
 	msg := m[0]
+	msglog := msglog.Log_show_control(false)
 	{//附加功能 更少弹幕
 		if Lessdanmuf(msg, 20) > 0.7 {//与前20条弹幕重复的字数占比度>0.7的屏蔽
 			if auth != nil {msglog.L(`I: `, auth, ":", msg)}
