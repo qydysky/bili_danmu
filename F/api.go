@@ -491,7 +491,6 @@ func (i *api) Get_guardNum() {
 	}
 	if api_limit.TO() {return}//超额请求阻塞，超时将取消
 	apilog := apilog.Base_add(`获取舰长数`)
-	defer apilog.L(`T: `,"ok")
 
 	req := p.Req()
 	if err := req.Reqf(p.Rval{
@@ -733,7 +732,6 @@ func (i *api) Switch_FansMedal() {
 	if c.Cookie == `` {return}
 	if api_limit.TO() {return}//超额请求阻塞，超时将取消
 	apilog := apilog.Base_add(`切换粉丝牌`)
-	defer apilog.L(`T: `,"ok")
 
 	{//验证是否本直播间牌子
 		r := p.Req()
