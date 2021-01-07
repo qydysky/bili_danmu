@@ -3,7 +3,6 @@
 package reply
 
 import (
-	"fmt"
 	"net/url"
 	"strings"
 	p "github.com/qydysky/part"
@@ -20,12 +19,31 @@ var tts_List = make(chan interface{},20)
 
 var tts_limit = p.Limit(1,5000,15000)//频率限制1次/5s，最大等待时间15s
 
+var tts_log = c.Log.Base_add(`TTS`)
+
+var (
+	tts_prog = "ffplay"
+	tts_prog_set = "-autoexit -nodisp"
+)
+
 func init(){
 	{//tts配置
 		buf := s.New()
 		buf.Load("config/config_tts.json")
 		for k,v := range buf.B {
 			tts_setting[k] = v.(string)
+		}
+		buf.Load("config/config_K_v.json")
+		for k,v := range buf.B {
+			if k == `TTS_使用程序路径` {
+				if tmp,ok := v.(string);ok && tmp != ``{
+					tts_prog = tmp
+				} else{tts_log.L(`E: `,`TTS_使用程序路径不是字符串或为空`)}
+			}else if k == `TTS_使用程序参数` {
+				if tmp,ok := v.(string);ok{
+					tts_prog_set = tmp
+				} else{tts_log.L(`E: `,`TTS_使用程序参数不是字符串`)}
+			}
 		}
 	}
 	go func(){
@@ -50,7 +68,7 @@ func init(){
 
 func TTS(uid,msg string) {
 	if tts_limit.TO() {return}
-	fmt.Println(`TTS:`, uid, msg)
+	tts_log.L(`I: `,uid, msg)
 	req := p.Req()
 	if v,ok := tts_setting[uid];ok{
 		msg = strings.ReplaceAll(v, "{D}", msg)
@@ -62,9 +80,12 @@ func TTS(uid,msg string) {
 		Retry:1,
 		SleepTime:500,
 	});err != nil {
-		fmt.Println(`TTS:`, err)
+		tts_log.L(`E: `,err)
 		return
 	}
-	p.Exec().Run(false, "ffplay", p.Sys().Cdir()+"/tts.mp3","-autoexit","-nodisp")
+	var prog = []string{}
+	prog = append(prog, p.Sys().Cdir()+"/tts.mp3")
+	prog = append(prog, strings.Split(tts_prog_set," ")...)
+	p.Exec().Run(false, tts_prog, prog...)
 	return
 }

@@ -85,18 +85,40 @@ golang go version go1.15 linux/amd64
 - [x] GTK信息窗支持房间切换、弹幕格式化发送、时长统计
 - [x] GTK弹幕窗支持自定义人/事件消息停留
 
-### 构建
+### 说明
 本项目使用github action自动构建，构建过程详见[yml](https://github.com/qydysky/bili_danmu/blob/master/.github/workflows/go.yml)
 
-#### 语音
-调用tts需要ffplay,先行安装[ffmpeg](http://ffmpeg.org/download.html)
+#### 私信
+在登录后，可以使用私信
+私信配置在`demo/config/config_K_v.json`有说明
 
+#### 语音
+调用tts默认使用ffplay,安装[ffmpeg](http://ffmpeg.org/download.html)
+或使用其他程序：可在`demo/config/config_K_v.json`中编辑调用的程序及附加选项
+```
+config_K_v.json
+默认
+    "TTS_使用程序路径":"ffplay",
+    "TTS_使用程序参数":"-autoexit -nodisp"
+使用mpv
+    "TTS_使用程序路径":"mpv",
+    "TTS_使用程序参数":"--no-video"
+```
+release不编译tts，参考如下方法编译
 ```
 编译命令
 cd demo
 go build -v -tags `tts` -o demo.exe -i main.go
 ```
-
+自定义响应的事件可在`demo/config/config_tts.json`中编辑
+```
+{D}:为tts内容
+key为demo/face下的文件名
+{
+    "0multi": "观众：{D}",
+    "29183321":"{D}"
+}
+```
 #### 弹幕窗
 构建gtk需要gtk3,先行安装[gtk](https://www.gtk.org/)
 ```
