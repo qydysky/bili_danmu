@@ -15,7 +15,7 @@ var msglog = c.Log.Base(`Msg`)
 //Msg类型数据处理方法map
 var Msg_map = map[string]func(replyF, string) {
 	`HOT_RANK_SETTLEMENT`:nil,
-	`HOT_RANK_CHANGED`:nil,
+	`HOT_RANK_CHANGED`:replyF.hot_rank_changed,//热门榜变动
 	`CARD_MSG`:nil,//提示关注
 	`LIVE_INTERACTIVE_GAME`:nil,
 	`WIDGET_BANNER`:nil,//每日任务
@@ -71,7 +71,7 @@ var Msg_map = map[string]func(replyF, string) {
 	"SUPER_CHAT_MESSAGE_DELETE":nil,//SC删除
 	"SUPER_CHAT_MESSAGE":nil,//replyF.super_chat_message,//SC
 	"SUPER_CHAT_MESSAGE_JPN":replyF.super_chat_message,//SC
-	"PANEL":replyF.panel,//排行榜
+	"PANEL":nil,//replyF.panel,//排行榜 被HOT_RANK_CHANGED替代
 	"ENTRY_EFFECT":nil,//replyF.entry_effect,//进入特效
 	"ROOM_REAL_TIME_MESSAGE_UPDATE":nil,//replyF.roominfo,//粉丝数
 }

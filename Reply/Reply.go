@@ -6,10 +6,12 @@ import (
 	"bytes"
 	"strconv"
 	"compress/zlib"
+	"encoding/json"
 
 	p "github.com/qydysky/part"
 	mq "github.com/qydysky/part/msgq"
 	F "github.com/qydysky/bili_danmu/F"
+	ws_msg "github.com/qydysky/bili_danmu/Reply/ws_msg"
 	send "github.com/qydysky/bili_danmu/Send"
 	c "github.com/qydysky/bili_danmu/CV"
 )
@@ -506,7 +508,7 @@ func (replyF) super_chat_message(s string){
 	msglog.Base_add("礼").Log_show_control(false).L(`I: `, logg...)
 }
 
-//Msg-分区排行
+//Msg-分区排行 使用热门榜替代
 func (replyF) panel(s string){
 	msglog := msglog.Base_add("房").Log_show_control(false)
 
@@ -517,6 +519,26 @@ func (replyF) panel(s string){
 		if v,ok := note.(string);ok{c.Note = v}
 		fmt.Println("排行", note)
 		msglog.L(`I: `, "排行", note)
+	}
+}
+
+//Msg-热门榜变动
+func (replyF) hot_rank_changed(s string){
+	msglog := msglog.Base_add("房").Log_show_control(false)
+
+	var type_item ws_msg.HOT_RANK_CHANGED
+	if e := json.Unmarshal([]byte(s), &type_item);e != nil {
+		msglog.L(`E: `, e)
+	}
+	if type_item.Data.Area_name != `` {
+		c.Note = type_item.Data.Area_name + " "
+		if type_item.Data.Rank == 0 {
+			c.Note += "50+"
+		} else {
+			c.Note += strconv.Itoa(type_item.Data.Rank)
+		}
+		fmt.Println("热门榜", c.Note)
+		msglog.L(`I: `, "热门榜", c.Note)
 	}
 }
 
