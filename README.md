@@ -90,10 +90,12 @@ golang go version go1.15 linux/amd64
 
 #### 私信
 在登录后，可以使用私信
+
 私信配置在`demo/config/config_K_v.json`有说明
 
 #### 语音
 调用tts默认使用ffplay,安装[ffmpeg](http://ffmpeg.org/download.html)
+
 或使用其他程序：可在`demo/config/config_K_v.json`中编辑调用的程序及附加选项
 ```
 config_K_v.json

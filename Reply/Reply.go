@@ -524,7 +524,7 @@ func (replyF) panel(s string){
 
 //Msg-热门榜变动
 func (replyF) hot_rank_changed(s string){
-	msglog := msglog.Base_add("房").Log_show_control(false)
+	msglog := msglog.Base_add("房")
 
 	var type_item ws_msg.HOT_RANK_CHANGED
 	if e := json.Unmarshal([]byte(s), &type_item);e != nil {
@@ -537,7 +537,6 @@ func (replyF) hot_rank_changed(s string){
 		} else {
 			c.Note += strconv.Itoa(type_item.Data.Rank)
 		}
-		fmt.Println("热门榜", c.Note)
 		msglog.L(`I: `, "热门榜", c.Note)
 	}
 }

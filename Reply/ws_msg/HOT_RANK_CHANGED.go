@@ -5,8 +5,8 @@ type HOT_RANK_CHANGED struct {
 	Data struct {
 		Rank int `json:"rank"`
 		Trend int `json:"trend"`
-		Countdown string `json:"countdown"`
-		Timestamp string `json:"timestamp"`
+		Countdown int `json:"countdown"`
+		Timestamp int `json:"timestamp"`
 		Web_url string `json:"web_url"`
 		Live_url string `json:"live_url"`
 		Blink_url string `json:"blink_url"`
