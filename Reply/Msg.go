@@ -14,13 +14,13 @@ var msglog = c.Log.Base(`Msg`)
 
 //Msg类型数据处理方法map
 var Msg_map = map[string]func(replyF, string) {
-	`HOT_RANK_SETTLEMENT`:nil,
+	`LITTLE_MESSAGE_BOX`:replyF.little_message_box,//小消息
+	`MESSAGEBOX_USER_MEDAL_CHANGE`:replyF.messagebox_user_medal_change,//粉丝牌切换
+	`HOT_RANK_SETTLEMENT`:replyF.hot_rank_settlement,//热门榜获得
 	`HOT_RANK_CHANGED`:replyF.hot_rank_changed,//热门榜变动
 	`CARD_MSG`:nil,//提示关注
-	`LIVE_INTERACTIVE_GAME`:nil,
 	`WIDGET_BANNER`:nil,//每日任务
 	`ROOM_ADMINS`:nil,//房管列表
-	`room_admin_entrance`:nil,
 	`ONLINE_RANK_TOP3`:nil,
 	`ONLINE_RANK_COUNT`:nil,
 	`ONLINE_RANK_V2`:nil,

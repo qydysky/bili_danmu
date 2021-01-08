@@ -98,7 +98,7 @@ func Gtk_danmu() {
 	var w2_textView4 *gtk.TextView
 	var renqi_old = 1
 	var w2_Entry0 *gtk.Entry
-	var w2_Entry0_editting bool
+	var w2_Entry0_editting = make(chan bool,10)
 	var grid0 *gtk.Grid;
 	var grid1 *gtk.Grid;
 	var in_smooth_roll bool
@@ -219,12 +219,10 @@ func Gtk_danmu() {
 			if err != nil {log.Println(err);return}
 			if tmp,ok := obj.(*gtk.Entry); ok {
 				w2_Entry0 = tmp
-				tmp.Connect("focus-in-event", func() {
-					w2_Entry0_editting = true
-				})
 				tmp.Connect("focus-out-event", func() {
 					glib.TimeoutAdd(uint(3000), func()bool{//3s后才解除，避免刚想切换又变回去
-						w2_Entry0_editting = false
+						for len(w2_Entry0_editting) != 0 {<-w2_Entry0_editting}
+						w2_Entry0_editting <- false
 						return false
 					})
 				})
@@ -541,10 +539,13 @@ func Gtk_danmu() {
 				}
 			}
 			{//房间id
-				if !w2_Entry0_editting {
-					if t,e := w2_Entry0.GetText();e == nil && t != strconv.Itoa(c.Roomid) {//未编辑时，显示为长id
+				for len(w2_Entry0_editting) > 1 {<-w2_Entry0_editting}
+				select{
+				case tmp:=<-w2_Entry0_editting:
+					if !tmp {
 						w2_Entry0.SetText(strconv.Itoa(c.Roomid))
 					}
+				default:
 				}
 			}
 			if gtkGetList.Len() == 0 {return}

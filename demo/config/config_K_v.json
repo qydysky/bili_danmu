@@ -8,5 +8,8 @@
 
     "TTS_配置-help":"将会运行[TTS_使用程序路径 获取的音频路径 TTS_使用程序参数]",
     "TTS_使用程序路径":"ffplay",
-    "TTS_使用程序参数":"-autoexit -nodisp"
+    "TTS_使用程序参数":"-autoexit -nodisp -volume 60",
+
+    "弹幕-help":"弹幕相关",
+    "弹幕_礼物金额显示阈值":20
 }

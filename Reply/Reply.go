@@ -328,7 +328,7 @@ func (replyF) welcome_guard(s string){
 	msglog.Base_add("房").Log_show_control(false).L(`I: `, sh...)
 }
 
-//Msg-礼物处理，对于小于30人民币的礼物不显示
+//Msg-礼物处理
 func (replyF) send_gift(s string){
 	coin_type := p.Json().GetValFromS(s, "data.coin_type");
 	if coin_type != nil && coin_type == "silver" {return}
@@ -362,11 +362,18 @@ func (replyF) send_gift(s string){
 	}
 
 	if len(sh) == 0 {return}
-	msglog := msglog.Base_add("礼")
-	msglog.Log_show_control(false).L(`I: `, sh_log...)
+	msglog := msglog.Base_add("礼").Log_show_control(false)
 
-	//小于3万金瓜子
-	if allprice < 30 {msglog.L(`T: `, sh...);return}
+	//小于设定
+	{
+		var tmp = 20.0
+		if v,ok := K_v[`弹幕_礼物金额显示阈值`];ok {
+			tmp = v.(float64)
+		}
+		if allprice < tmp {msglog.L(`T: `, sh_log...);return}
+		msglog.L(`I: `, sh_log...);
+	}
+
 	{//语言tts
 		c.Danmu_Main_mq.Push_tag(`tts`,Danmu_mq_t{//传入消息队列
 			uid:`0gift`,
@@ -538,6 +545,55 @@ func (replyF) hot_rank_changed(s string){
 			c.Note += strconv.Itoa(type_item.Data.Rank)
 		}
 		msglog.L(`I: `, "热门榜", c.Note)
+	}
+}
+
+//Msg-热门榜获得
+func (replyF) hot_rank_settlement(s string){
+	msglog := msglog.Base_add("房")
+
+	var type_item ws_msg.HOT_RANK_SETTLEMENT
+	if e := json.Unmarshal([]byte(s), &type_item);e != nil {
+		msglog.L(`E: `, e)
+	}
+	var tmp = `获得:`
+	if type_item.Data.Area_name != `` {
+		tmp += type_item.Data.Area_name + " 第"
+	}
+	if type_item.Data.Rank != 0 {
+		tmp += strconv.Itoa(type_item.Data.Rank)
+	}
+	Gui_show(tmp, "0rank")
+	c.Danmu_Main_mq.Push_tag(`tts`,Danmu_mq_t{//传入消息队列
+		uid:"0rank",
+		msg:tmp,
+	})
+	msglog.L(`I: `, "热门榜", tmp)
+}
+
+//Msg-小消息
+func (replyF) little_message_box(s string){
+	msglog := msglog.Base_add("系统")
+
+	var type_item ws_msg.LITTLE_MESSAGE_BOX
+	if e := json.Unmarshal([]byte(s), &type_item);e != nil {
+		msglog.L(`E: `, e)
+	}
+	if type_item.Data.Msg != `` {
+		msglog.L(`I: `, type_item.Data.Msg)
+	}
+}
+
+//Msg-粉丝牌切换
+func (replyF) messagebox_user_medal_change(s string){
+	msglog := msglog.Base_add("房")
+
+	var type_item ws_msg.MESSAGEBOX_USER_MEDAL_CHANGE
+	if e := json.Unmarshal([]byte(s), &type_item);e != nil {
+		msglog.L(`E: `, e)
+	}
+	if type_item.Data.Medal_name != `` {
+		msglog.L(`I: `, "粉丝牌切换至", type_item.Data.Medal_name, type_item.Data.Medal_level)
 	}
 }
 

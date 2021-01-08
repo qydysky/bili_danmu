@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
     "context"
+	"encoding/json"
 	"net/http"
 
 	qr "github.com/skip2/go-qrcode"
@@ -24,6 +25,7 @@ type api struct {
 	Live_status float64
 	Locked bool
 	Token string
+	Parent_area_id int
 }
 
 var apilog = c.Log.Base(`api`)
@@ -34,7 +36,7 @@ func New_api(Roomid int) (o *api) {
 	o = new(api)
 	o.Roomid = Roomid
 	o.Get_info()
-
+	o.Parent_area_id = -1
 	return
 }
 
@@ -69,9 +71,11 @@ func (i *api) Get_info() (o *api) {
 	if e := r.S(`"base_info":{"uname":"`, `",`, 0, 0).Err;e == nil {
 		c.Uname = r.RS[0]
 	}
-	//排行
-	if e := r.S(`"rank_desc":"`, `",`, 0, 0).Err;e == nil {
-		c.Note = r.RS[0]
+	//分区
+	if e := r.S(`"parent_area_id":`, `,`, 0, 0).Err;e == nil {
+		if tmp,e := strconv.Atoi(r.RS[0]);e != nil{
+			apilog.L(`E: `,"parent_area_id", e)
+		} else {o.Parent_area_id = tmp}
 	}
 	//roomid
 	if tmp := r.S(`"room_id":`, `,`, 0, 0);tmp.Err != nil {
@@ -82,7 +86,7 @@ func (i *api) Get_info() (o *api) {
 		o.Roomid = i
 	}
 
-	if o.Roomid != 0 && o.Uid != 0 && c.Title != ``{return}
+	if o.Parent_area_id != -1&&o.Roomid != 0 && o.Uid != 0 && c.Title != ``{return}
 
 	{//使用其他api
 		req := p.Req()
@@ -107,9 +111,12 @@ func (i *api) Get_info() (o *api) {
 		if Uname,ok := p.Json().GetValFrom(res, "data.anchor_info.base_info.uname").(string);ok && c.Uname == `` {
 			c.Uname = Uname
 		}
-		//排行
-		if rank_desc,ok := p.Json().GetValFrom(res, "data.rankdb_info.rank_desc").(string);ok && c.Note == `` {//有时会返回`小时总榜`
-			c.Note = rank_desc
+		//分区
+		if parent_area_id := p.Json().GetValFrom(res, "data.room_info.parent_area_id");parent_area_id == nil {
+			apilog.L(`E: `,"data.room_info.parent_area_id", parent_area_id)
+			return
+		} else {
+			o.Parent_area_id = int(parent_area_id.(float64))
 		}
 		if Uid := p.Json().GetValFrom(res, "data.room_info.uid");Uid == nil {
 			apilog.L(`E: `,"data.room_info.uid", Uid)
@@ -484,6 +491,64 @@ func (i *api) Get_OnlineGoldRank() {
 	return
 }
 
+//获取热门榜
+func (i *api) Get_HotRank() {
+	if i.Uid == 0 || c.Roomid == 0 {
+		apilog.Base_add("Get_HotRank").L(`E: `,"i.Uid == 0 || c.Roomid == 0")
+		return
+	}
+	if api_limit.TO() {return}//超额请求阻塞，超时将取消
+	apilog := apilog.Base_add(`获取热门榜`)
+
+	req := p.Req()
+	if err := req.Reqf(p.Rval{
+		Url:`https://api.live.bilibili.com/xlive/general-interface/v1/rank/getHotRank?ruid=`+strconv.Itoa(i.Uid)+`&room_id=`+strconv.Itoa(c.Roomid)+`&is_pre=0&page_size=50&source=2&area_id=`+strconv.Itoa(i.Parent_area_id),
+		Header:map[string]string{
+			`Host`: `api.live.bilibili.com`,
+			`User-Agent`: `Mozilla/5.0 (X11; Linux x86_64; rv:83.0) Gecko/20100101 Firefox/83.0`,
+			`Accept`: `application/json, text/plain, */*`,
+			`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
+			`Accept-Encoding`: `gzip, deflate, br`,
+			`Origin`: `https://live.bilibili.com`,
+			`Connection`: `keep-alive`,
+			`Pragma`: `no-cache`,
+			`Cache-Control`: `no-cache`,
+			`Referer`:"https://live.bilibili.com/" + strconv.Itoa(c.Roomid),
+			`Cookie`:c.Cookie,
+		},
+		Timeout:3,
+		Retry:2,
+	});err != nil {
+		apilog.L(`E: `,err)
+		return
+	}
+	
+	var type_item struct{
+		Code int `json:"code"`
+		Message string `json:"message"`
+		Data struct{
+			Own struct{
+				Rank int `json:"rank"`
+				Area_parent_name string `json:"area_parent_name"`
+			} `json:"own"`
+		} `json:"data"`
+	}
+	if e := json.Unmarshal(req.Respon, &type_item);e != nil {
+		apilog.L(`E: `, e)
+	}
+	if type_item.Code != 0 {
+		apilog.L(`E: `,type_item.Message)
+		return
+	}
+	c.Note = type_item.Data.Own.Area_parent_name + " "
+	if type_item.Data.Own.Rank == 0 {
+		c.Note += `50+`
+	} else {
+		c.Note += strconv.Itoa(type_item.Data.Own.Rank)
+	}
+	apilog.L(`I: `,`热门榜:`,c.Note)
+}
+
 func (i *api) Get_guardNum() {
 	if i.Uid == 0 || c.Roomid == 0 {
 		apilog.Base_add("Get_guardNum").L(`E: `,"i.Uid == 0 || c.Roomid == 0")
@@ -555,13 +620,13 @@ func (i *api) Get_Version() {
 			tmp := string(v) + `.js`
 			if strings.Contains(tmp,`http`) {continue}
 			tmp = `https:` + tmp
-			if strings.Contains(tmp,`player-loader`) {
+			if strings.Contains(tmp,`player`) {
 				player_js_url = tmp
 				break
 			}
 		}
 		if player_js_url == `` {
-			apilog.L(`E: `,`no found player-loader js`)
+			apilog.L(`E: `,`no found player js`)
 			return
 		}
 	}
@@ -576,7 +641,7 @@ func (i *api) Get_Version() {
 			return
 		}
 
-		r.S(`version={html5:{web:"`,`"`,0,0)
+		r.S(`Bilibili HTML5 Live Player v`,` `,0,0)
 		if r.Err != nil {
 			apilog.L(`E: `,r.Err)
 			return
