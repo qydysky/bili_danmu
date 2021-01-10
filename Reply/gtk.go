@@ -450,8 +450,12 @@ func Gtk_danmu() {
 				}
 
 				step := (max - cu) / 30
-				if step > 0.5 && max - cu < float64(h){
-					if step > 5 {step = 5}
+				if step > 20 {
+					if i,e := grid0.GetChildAt(0,0); e != nil{i.(*gtk.Widget).Destroy()}
+					if i,e := grid0.GetChildAt(1,0); e != nil{i.(*gtk.Widget).Destroy()}
+					grid0.RemoveRow(0)
+				} else if step > 0.5 {
+					if step > 5{step = 5}
 					tmp.SetValue(cu + step)
 				} else {
 					in_smooth_roll = false
