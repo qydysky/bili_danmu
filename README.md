@@ -105,6 +105,9 @@ config_K_v.json
 使用mpv
     "TTS_使用程序路径":"mpv",
     "TTS_使用程序参数":"--no-video"
+使用potplayer(例程序位置D:\potplayer\PotPlayerMini64.exe)
+    "TTS_使用程序路径":"D:\\potplayer\\PotPlayerMini64.exe",
+    "TTS_使用程序参数":"/current /autoplay"
 ```
 release不编译tts，参考如下方法编译
 ```

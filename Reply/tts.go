@@ -90,6 +90,6 @@ func TTS(uid,msg string) {
 	var prog = []string{}
 	prog = append(prog, p.Sys().Cdir()+"/tts.mp3")
 	prog = append(prog, strings.Split(tts_prog_set," ")...)
-	p.Exec().Start(exec.Command(tts_prog, prog...))
+	p.Exec().Run(exec.Command(tts_prog, prog...))
 	return
 }
