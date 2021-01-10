@@ -1,5 +1,3 @@
-//+build tts
-
 package reply
 
 import (
@@ -30,10 +28,6 @@ var (
 func init(){
 	{//tts配置
 		buf := s.New()
-		buf.Load("config/config_tts.json")
-		for k,v := range buf.B {
-			tts_setting[k] = v.(string)
-		}
 		buf.Load("config/config_K_v.json")
 		for k,v := range buf.B {
 			if k == `TTS_使用程序路径` {
@@ -44,7 +38,15 @@ func init(){
 				if tmp,ok := v.(string);ok{
 					tts_prog_set = tmp
 				} else{tts_log.L(`E: `,`TTS_使用程序参数不是字符串`)}
+			}else if k == `TTS_总开关` {
+				if tmp,ok := v.(bool);ok && !tmp{
+					return
+				}
 			}
+		}
+		buf.Load("config/config_tts.json")
+		for k,v := range buf.B {
+			tts_setting[k] = v.(string)
 		}
 	}
 	//启动程序

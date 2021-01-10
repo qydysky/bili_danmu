@@ -102,20 +102,18 @@ config_K_v.json
 默认
     "TTS_使用程序路径":"ffplay",
     "TTS_使用程序参数":"-autoexit -nodisp"
+
 使用mpv
     "TTS_使用程序路径":"mpv",
     "TTS_使用程序参数":"--no-video"
+
 使用potplayer(例程序位置D:\potplayer\PotPlayerMini64.exe)
     "TTS_使用程序路径":"D:\\potplayer\\PotPlayerMini64.exe",
     "TTS_使用程序参数":"/current /autoplay"
 ```
-release不编译tts，参考如下方法编译
-```
-编译命令
-cd demo
-go build -v -tags `tts` -o demo.exe -i main.go
-```
-自定义响应的事件可在`demo/config/config_tts.json`中编辑
+release默认编译tts
+
+总开关,自定义响应的事件可在`demo/config/config_tts.json`中编辑
 ```
 {D}:为tts内容
 key为demo/face下的文件名
@@ -126,6 +124,7 @@ key为demo/face下的文件名
 ```
 #### 弹幕窗
 构建gtk需要gtk3,先行安装[gtk](https://www.gtk.org/)
+release Linux默认编译gtk界面 Windows默认不编译
 ```
 编译命令
 cd demo
