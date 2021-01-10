@@ -3,6 +3,7 @@
 package reply
 
 import (
+	"os/exec"
 	"net/url"
 	"strings"
 	p "github.com/qydysky/part"
@@ -46,6 +47,9 @@ func init(){
 			}
 		}
 	}
+	//启动程序
+	p.Exec().Start(exec.Command(tts_prog))
+
 	go func(){
 		for{
 			e := <- tts_List
@@ -86,6 +90,6 @@ func TTS(uid,msg string) {
 	var prog = []string{}
 	prog = append(prog, p.Sys().Cdir()+"/tts.mp3")
 	prog = append(prog, strings.Split(tts_prog_set," ")...)
-	p.Exec().Run(false, tts_prog, prog...)
+	p.Exec().Start(exec.Command(tts_prog, prog...))
 	return
 }

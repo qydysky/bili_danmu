@@ -600,6 +600,10 @@ func load_face(uid string) (loc string) {
 		return
 	}
 	if gtkGetList.Len() > 1000 {return}
+	//加入前先行检查
+	for v := gtkGetList.Front();v != nil;v = v.Next() {
+		if v.Value.(string) == uid {return}
+	}
 	gtkGetList.PushBack(uid)
 	return
 }

@@ -342,7 +342,7 @@ func Obsf(on bool){
 				return
 			}
 			l.I("启动obs")
-			p.Exec().Startf(exec.Command(obs.Prog))
+			p.Exec().Start(exec.Command(obs.Prog))
 			p.Sys().Timeoutf(3)
 		}
 		
