@@ -1,7 +1,7 @@
 package reply
 
 import (
-	p "github.com/qydysky/part"
+	"encoding/json"
 	c "github.com/qydysky/bili_danmu/CV"
 	s "github.com/qydysky/part/buf"
 )
@@ -96,18 +96,19 @@ func init(){
 //Msg类型数据处理方法挑选
 //识别cmd字段类型，查找上述map中设置的方法，并将json转为字符串型传入
 func Msg(b []byte) {
-	s := string(b)
-	if cmd := p.Json().GetValFromS(s, "cmd");cmd == nil {
-		msglog.L(`E: `,"cmd", s)
-		return
-	} else {
-		var f replyF
 
-		if F, ok := Msg_map[cmd.(string)]; ok {
-			if F != nil {F(f, s)}
-		} else {
-			f.defaultMsg(s)
-		}
+	msglog := msglog.Base_add(`select func`)
+	var tmp struct{
+		Cmd string `json:"cmd"`
+	}
+	if e := json.Unmarshal(b, &tmp);e != nil {
+		msglog.L(`E: `,e)
+		return
+	}
+	if F, ok := Msg_map[tmp.Cmd]; ok {
+		if F != nil {F(replyF{}, string(b))}
+	} else {
+		(replyF{}).defaultMsg(string(b))
 	}
 
 	return 

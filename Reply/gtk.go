@@ -19,13 +19,6 @@ import (
 	c "github.com/qydysky/bili_danmu/CV"
 	s "github.com/qydysky/part/buf"
 )
-const (
-	max_danmu = 50
-	max_keep = 5
-	max_img = 500
-)
-
-var appId = "com.github.qydysky.bili_danmu.reply"+p.Sys().GetTime()//时间戳允许多开
 
 type gtk_list struct {
 	text *gtk.TextView
@@ -38,11 +31,7 @@ type gtk_item_source struct {
 	time time.Time
 }
 
-var pro_style *gtk.CssProvider
-var gtkGetList = list.New()
-
-var imgbuf = make(map[string](*gdk.Pixbuf))
-var keep_list = list.New()
+var gtkGetList = make(map[string]struct{})
 
 var keep_key = map[string]int{
 	"face/0default":0,
@@ -58,10 +47,8 @@ var keep_key = map[string]int{
 }
 var (
 	Gtk_on bool
-	Gtk_Tra bool
 	Gtk_img_path string = "face"
-	Gtk_danmuChan chan string = make(chan string, 1000)
-	Gtk_danmuChan_uid chan string = make(chan string, 1000)
+	Gtk_danmu_pool = make(map[string]string)
 )
 
 func init(){
@@ -70,8 +57,7 @@ func init(){
 	//使用带tag的消息队列在功能间传递消息
 	Danmu_mq.Pull_tag(map[string]func(interface{})(bool){
 		`danmu`:func(data interface{})(bool){//弹幕
-			Gtk_danmuChan_uid <- data.(Danmu_mq_t).uid
-			Gtk_danmuChan <- data.(Danmu_mq_t).msg
+			Gtk_danmu_pool[data.(Danmu_mq_t).uid] = data.(Danmu_mq_t).msg
 			return false
 		},
 	})
@@ -102,8 +88,13 @@ func Gtk_danmu() {
 	var grid0 *gtk.Grid;
 	var grid1 *gtk.Grid;
 	var in_smooth_roll bool
+	var imgbuf = make(map[string](*gdk.Pixbuf))
+	var keep_list = list.New()
 
-	application, err := gtk.ApplicationNew(appId, glib.APPLICATION_FLAGS_NONE)
+	application, err := gtk.ApplicationNew(
+	"com.github.qydysky.bili_danmu.reply"+p.Sys().GetTime(),//时间戳允许多开
+	glib.APPLICATION_FLAGS_NONE)
+
 	if err != nil {log.Println(err);return}
 
 	application.Connect("startup", func() {
@@ -287,8 +278,7 @@ func Gtk_danmu() {
 		imgbuf["face/0default"],_ = gdk.PixbufNewFromFileAtSize("face/0default", 40, 40);
 
 		{
-			var e error
-			if pro_style,e = gtk.CssProviderNew();e == nil{
+			if pro_style,e := gtk.CssProviderNew();e == nil{
 				if e = pro_style.LoadFromPath(`ui/1.css`);e == nil{
 					if scr := win.GetScreen();scr != nil {
 						gtk.AddProviderForScreen(scr,pro_style,gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
@@ -330,7 +320,7 @@ func Gtk_danmu() {
 				} else {
 					pixbuf,e = gdk.PixbufNewFromFileAtSize(img_src, 40, 40);
 					if e == nil {
-						if len(imgbuf) > max_img {
+						if v,ok := K_v[`gtk_内存头像数量`].(int);ok && len(imgbuf) > v {
 							for k,_ := range imgbuf {delete(imgbuf,k);break}
 						}
 						imgbuf[img_src],e = gdk.PixbufCopy(pixbuf)
@@ -360,7 +350,7 @@ func Gtk_danmu() {
 					back index:0
 				*/
 				var InsertIndex int = keep_list.Len()
-				if sec > InsertIndex / max_keep {//max_keep不是指最大值，而是当list太大时，sec小的将直接跳过
+				if sec > InsertIndex / 5 {//5不是指最大值，而是当list太大时，sec小的将直接跳过
 					var cu_To = time.Now().Add(time.Second * time.Duration(sec))
 					var hasInsert bool
 					for el := keep_list.Front(); el != nil; el = el.Next(){
@@ -423,11 +413,13 @@ func Gtk_danmu() {
 					}
 					return
 				})
-				if len(Gtk_danmuChan) == 0 {continue}
-				glib.TimeoutAdd(uint(1000 / (len(Gtk_danmuChan) + 1)),func()(bool){
-					if len(Gtk_danmuChan) == 0 {return false}
-					y(<-Gtk_danmuChan,load_face(<-Gtk_danmuChan_uid))
-					return true
+				glib.TimeoutAdd(uint(1000 / (len(Gtk_danmu_pool) + 1)),func()(bool){
+					for uid,msg := range Gtk_danmu_pool {
+						delete(Gtk_danmu_pool,uid)
+						y(msg,load_face(uid))
+						return true
+					}
+					return false
 				})
 			}
 		}()
@@ -460,12 +452,11 @@ func Gtk_danmu() {
 				} else {
 					in_smooth_roll = false
 					tmp.SetValue(max)
-					loc := int(grid0.Container.GetChildren().Length())/2;
-					for loc > max_danmu {
+					loc := int(grid0.Container.GetChildren().Length())/2
+					for v,ok := K_v[`gtk_保留弹幕数量`].(int);ok && loc > v;loc -= 1{
 						if i,e := grid0.GetChildAt(0,0); e != nil{i.(*gtk.Widget).Destroy()}
 						if i,e := grid0.GetChildAt(1,0); e != nil{i.(*gtk.Widget).Destroy()}
 						grid0.RemoveRow(0)
-						loc -= 1
 					}
 				}
 				old_cu = tmp.GetValue()
@@ -552,10 +543,8 @@ func Gtk_danmu() {
 				default:
 				}
 			}
-			if gtkGetList.Len() == 0 {return}
-			el := gtkGetList.Front()
-			if el == nil {return}
-			if uid,ok := gtkGetList.Remove(el).(string);ok{
+			for uid,_ := range gtkGetList {
+				delete(gtkGetList,uid)
 				go func(){
 					src := F.Get_face_src(uid)
 					if src == "" {return}
@@ -566,8 +555,8 @@ func Gtk_danmu() {
 						Timeout:3,
 					}); e != nil{log.Println(e);}
 				}()
+				break
 			}
-
 			return
 		})
 	})
@@ -603,11 +592,10 @@ func load_face(uid string) (loc string) {
 		loc = Gtk_img_path + `/` + uid
 		return
 	}
-	if gtkGetList.Len() > 1000 {return}
+	if v,ok := K_v[`gtk_头像获取等待最大数量`].(int);ok && len(gtkGetList) > v {return}
 	//加入前先行检查
-	for v := gtkGetList.Front();v != nil;v = v.Next() {
-		if v.Value.(string) == uid {return}
-	}
-	gtkGetList.PushBack(uid)
+	if _,ok := gtkGetList[uid];ok {return}
+
+	gtkGetList[uid] = struct{}{}
 	return
 }

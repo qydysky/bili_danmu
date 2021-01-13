@@ -102,45 +102,74 @@ func (i *api) Get_info() (o *api) {
 			apilog.L(`E: `,err)
 			return
 		}
-		res := string(req.Respon)
-		if code := p.Json().GetValFrom(res, "code");code == nil || code.(float64) != 0 {
-			apilog.L(`E: `,"code", code, p.Json().GetValFrom(res, "message"))
-			return
+		var tmp struct{
+			Code int `json:"code"`
+			Message string `json:"message"`
+			Data struct{
+				Room_info struct{
+					Uid int `json:"uid"`
+					Room_id int `json:"room_id"`
+					Title string `json:"title"`
+					Lock_status int `json:"lock_status"`
+					Parent_area_id int `json:"parent_area_id"`
+				} `json:"room_info"`
+				Anchor_info struct{
+					Base_info struct{
+						Uname string `json:"uname"`
+					} `json:"base_info"`
+				} `json:"anchor_info"`
+			} `json:"data"`
 		}
-		//主播id
-		if Uname,ok := p.Json().GetValFrom(res, "data.anchor_info.base_info.uname").(string);ok && c.Uname == `` {
-			c.Uname = Uname
-		}
-		//分区
-		if parent_area_id := p.Json().GetValFrom(res, "data.room_info.parent_area_id");parent_area_id == nil {
-			apilog.L(`E: `,"data.room_info.parent_area_id", parent_area_id)
+		if e := json.Unmarshal(req.Respon, &tmp);e != nil{
+			apilog.L(`E: `,e)
 			return
-		} else {
-			o.Parent_area_id = int(parent_area_id.(float64))
-		}
-		if Uid := p.Json().GetValFrom(res, "data.room_info.uid");Uid == nil {
-			apilog.L(`E: `,"data.room_info.uid", Uid)
-			return
-		} else {
-			o.Uid = int(Uid.(float64))
 		}
 
-		if room_id := p.Json().GetValFrom(res, "data.room_info.room_id");room_id == nil {
-			apilog.L(`E: `,"data.room_info.room_id", room_id)
+		//错误响应
+		if tmp.Code != 0 {
+			apilog.L(`E: `,`code`,tmp.Message)
 			return
-		} else {
-			o.Roomid = int(room_id.(float64))
 		}
-		if title := p.Json().GetValFrom(res, "data.room_info.title");title == nil {
-			apilog.L(`E: `,"data.room_info.title", title)
-			return
-		} else {
-			c.Title = title.(string)
+
+		//主播
+		if tmp.Data.Anchor_info.Base_info.Uname != `` && c.Uname == ``{
+			c.Uname = tmp.Data.Anchor_info.Base_info.Uname
 		}
-		if is_locked := p.Json().GetValFrom(res, "data.room_info.lock_status");is_locked == nil {
-			apilog.L(`E: `,"data.room_info.is_locked", is_locked)
+
+		//主播id
+		if tmp.Data.Room_info.Uid != 0{
+			o.Uid = tmp.Data.Room_info.Uid
+		} else {
+			apilog.L(`E: `,"data.room_info.parent_area_id = 0")
 			return
-		} else if is_locked.(float64) == 1 {
+		}
+
+		//分区
+		if tmp.Data.Room_info.Parent_area_id != 0{
+			o.Parent_area_id = tmp.Data.Room_info.Parent_area_id
+		} else {
+			apilog.L(`E: `,"data.room_info.parent_area_id = 0")
+			return
+		}
+
+		//房间id
+		if tmp.Data.Room_info.Room_id != 0{
+			o.Roomid = tmp.Data.Room_info.Room_id
+		} else {
+			apilog.L(`E: `,"data.room_info.room_id = 0")
+			return
+		}
+		
+		//房间标题
+		if tmp.Data.Room_info.Title != ``{
+			c.Title = tmp.Data.Room_info.Title
+		} else {
+			apilog.L(`E: `,"data.room_info.title = ''")
+			return
+		}
+
+		//直播间是否被封禁
+		if tmp.Data.Room_info.Lock_status == 1{
 			apilog.L(`W: `,"直播间封禁中")
 			o.Locked = true
 			return
