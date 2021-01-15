@@ -113,6 +113,8 @@ github.com/qydysky/part v0.3.5-0.20210110025721-48b2732f9fb8 h1:d7aM3Ko9vDv0UC9r
 github.com/qydysky/part v0.3.5-0.20210110025721-48b2732f9fb8/go.mod h1:SxxNav0Z7DbsDLoG5uxo0wW5EKU/JBu2CAkZzZeLnX0=
 github.com/qydysky/part v0.3.5-0.20210113130821-3c354d18111a h1:r+3GSv1/biomzrDSdJ0Sm7dXjDtdj2lqSUBT5FcqHcU=
 github.com/qydysky/part v0.3.5-0.20210113130821-3c354d18111a/go.mod h1:zE9KPP+RD3EQ4wYL14szrB927AU3amyha/2wKPjPWzo=
+github.com/qydysky/part v0.3.5-0.20210115055155-7961661607d9 h1:itpSznD2XZeV6BJEkW85Qt0goh0b/YMtWXR7F7hA9EE=
+github.com/qydysky/part v0.3.5-0.20210115055155-7961661607d9/go.mod h1:zE9KPP+RD3EQ4wYL14szrB927AU3amyha/2wKPjPWzo=
 github.com/qydysky/part/msgq v0.0.0-20201213031129-ca3253dc72ad h1:Jtzf509lQrkUMGTV0Sc6IDCAiR1VrBcHrIban7hpye4=
 github.com/qydysky/part/msgq v0.0.0-20201213031129-ca3253dc72ad/go.mod h1:w32TkJNVtTJd4LOS09cq+4uYG6itcN2vsqw+slp44Rg=
 github.com/qydysky/part/msgq v0.0.0-20201213120821-f36e49c32bba h1:1ew9dRpc0Rux0WkWeT/4AE15ynYWmL2D7onJEJIFOB8=
@@ -130,6 +132,8 @@ github.com/sirupsen/logrus v1.4.1 h1:GL2rEmy6nsikmW0r8opw9JIRScdMF5hA8cOYLH7In1k
 github.com/sirupsen/logrus v1.4.1/go.mod h1:ni0Sbl8bgC9z8RoU9G6nDWqqs/fq4eDPysMBDgk/93Q=
 github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e h1:MRM5ITcdelLK2j1vwZ3Je0FKVCfqOLp5zO6trqMLYs0=
 github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e/go.mod h1:XV66xRDqSt+GTGFMVlhk3ULuV0y9ZmzeVGR4mloJI3M=
+github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966 h1:JIAuq3EEf9cgbU6AtGPK4CTG3Zf6CKMNqf0MHTggAUA=
+github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966/go.mod h1:sUM3LWHvSMaG192sy56D9F7CNvL7jUJVXoqM1QKLnog=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/objx v0.1.1/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/objx v0.2.0/go.mod h1:qt09Ya8vawLte6SNmTgCsAVtYtaKzEcn8ATUoHMkEqE=

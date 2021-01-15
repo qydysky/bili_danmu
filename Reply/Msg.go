@@ -14,6 +14,8 @@ var msglog = c.Log.Base(`Msg`)
 
 //Msg类型数据处理方法map
 var Msg_map = map[string]func(replyF, string) {
+	`ENTRY_EFFECT_MUST_RECEIVE`:nil,//高能榜前三进入
+	`GIFT_BAG_DOT`:nil,
 	`LITTLE_MESSAGE_BOX`:replyF.little_message_box,//小消息
 	`MESSAGEBOX_USER_MEDAL_CHANGE`:replyF.messagebox_user_medal_change,//粉丝牌切换
 	`HOT_RANK_SETTLEMENT`:replyF.hot_rank_settlement,//热门榜获得

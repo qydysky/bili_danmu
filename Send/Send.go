@@ -4,6 +4,7 @@ import (
 	"strings"
 	"strconv"
 
+	c "github.com/qydysky/bili_danmu/CV"
 	p "github.com/qydysky/part"
 )
 
@@ -15,15 +16,14 @@ func Danmu_s(msg,Cookie string, roomid int) {
 	//等待令牌时阻塞，超时返回true
 	if danmu_s_limit.TO() {return}
 
-	l := p.Logf().New().Base(-1, "弹幕发送").Level(1)
-	defer l.Block()
+	l := c.Log.Base("弹幕发送")
 
 	if msg == "" || Cookie == "" || roomid == 0{
-		l.E("输入参数不足")
+		l.L(`E: `,"输入参数不足")
 		return
 	}
 	if i := strings.Index(Cookie, "{"); i != -1 {
-		l.E("Cookie格式错误,需为 key=val; key=val 式")
+		l.L(`E: `,"Cookie格式错误,需为 key=val; key=val 式")
 		return
 	}
 
@@ -37,7 +37,7 @@ func Danmu_s(msg,Cookie string, roomid int) {
 
 	var csrf string
 	if i := strings.Index(Cookie, "bili_jct="); i == -1 {
-		l.E("Cookie错误,无bili_jct=")
+		l.L(`E: `,"Cookie错误,无bili_jct=")
 		return
 	} else {
 		if d := strings.Index(Cookie[i + 9:], ";"); d == -1 {
@@ -48,7 +48,7 @@ func Danmu_s(msg,Cookie string, roomid int) {
 	}
 
 	PostStr := `color=16777215&fontsize=25&mode=1&msg=` + msg + `&rnd=` + strconv.Itoa(int(p.Sys().GetSTime())) + `&roomid=` + strconv.Itoa(roomid) + `&bubble=0&csrf_token=` + csrf + `&csrf=` + csrf
-	l.I("发送", msg, "至", roomid)
+	l.L(`I: `,"发送", msg, "至", roomid)
 	r := p.Req()
 	err := r.Reqf(p.Rval{
 		Url:"https://api.live.bilibili.com/msg/send",
@@ -70,15 +70,15 @@ func Danmu_s(msg,Cookie string, roomid int) {
 		},
 	})
 	if err != nil {
-		l.E(err)
+		l.L(`E: `,err)
 		return
 	}
 	
 	if code := p.Json().GetValFromS(string(r.Respon), "code");code == nil || code.(float64) != 0 {
 		if message := p.Json().GetValFromS(string(r.Respon), "message");message != nil {
-			l.E(message)
+			l.L(`E: `,message)
 		} else {
-			l.E(string(r.Respon))
+			l.L(`E: `,string(r.Respon))
 		}
 		return
 	}

@@ -48,7 +48,8 @@ var keep_key = map[string]int{
 var (
 	Gtk_on bool
 	Gtk_img_path string = "face"
-	Gtk_danmu_pool = make(map[string]string)
+	Gtk_danmu_pool_index uint
+	Gtk_danmu_pool = make(map[uint]Danmu_mq_t)
 )
 
 func init(){
@@ -57,7 +58,9 @@ func init(){
 	//使用带tag的消息队列在功能间传递消息
 	Danmu_mq.Pull_tag(map[string]func(interface{})(bool){
 		`danmu`:func(data interface{})(bool){//弹幕
-			Gtk_danmu_pool[data.(Danmu_mq_t).uid] = data.(Danmu_mq_t).msg
+			if int(Gtk_danmu_pool_index) - len(Gtk_danmu_pool) > 1e5 {Gtk_danmu_pool_index = 0}
+			Gtk_danmu_pool_index += 1
+			Gtk_danmu_pool[Gtk_danmu_pool_index] = data.(Danmu_mq_t)
 			return false
 		},
 	})
@@ -414,9 +417,9 @@ func Gtk_danmu() {
 					return
 				})
 				glib.TimeoutAdd(uint(1000 / (len(Gtk_danmu_pool) + 1)),func()(bool){
-					for uid,msg := range Gtk_danmu_pool {
-						delete(Gtk_danmu_pool,uid)
-						y(msg,load_face(uid))
+					for id,item := range Gtk_danmu_pool {
+						delete(Gtk_danmu_pool,id)
+						y(item.msg,load_face(item.uid))
 						return true
 					}
 					return false
@@ -442,7 +445,7 @@ func Gtk_danmu() {
 				}
 
 				step := (max - cu) / 30
-				if step > 20 {
+				if step > 20 || max > 5 * float64(h){//太长或太快
 					if i,e := grid0.GetChildAt(0,0); e != nil{i.(*gtk.Widget).Destroy()}
 					if i,e := grid0.GetChildAt(1,0); e != nil{i.(*gtk.Widget).Destroy()}
 					grid0.RemoveRow(0)
@@ -453,10 +456,16 @@ func Gtk_danmu() {
 					in_smooth_roll = false
 					tmp.SetValue(max)
 					loc := int(grid0.Container.GetChildren().Length())/2
-					for v,ok := K_v[`gtk_保留弹幕数量`].(int);ok && loc > v;loc -= 1{
+					if v,ok := K_v[`gtk_保留弹幕数量`].(int);ok {
+						loc -= v
+					} else {
+						loc -= 25
+					}
+					for loc > 0 {
 						if i,e := grid0.GetChildAt(0,0); e != nil{i.(*gtk.Widget).Destroy()}
 						if i,e := grid0.GetChildAt(1,0); e != nil{i.(*gtk.Widget).Destroy()}
 						grid0.RemoveRow(0)
+						loc -= 1
 					}
 				}
 				old_cu = tmp.GetValue()
@@ -593,9 +602,6 @@ func load_face(uid string) (loc string) {
 		return
 	}
 	if v,ok := K_v[`gtk_头像获取等待最大数量`].(int);ok && len(gtkGetList) > v {return}
-	//加入前先行检查
-	if _,ok := gtkGetList[uid];ok {return}
-
 	gtkGetList[uid] = struct{}{}
 	return
 }

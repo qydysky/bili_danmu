@@ -662,7 +662,7 @@ func (replyF) danmu(s string) {
 				msglog.Base_add("风险").L(`I: `, auth, ":", msg)
 				return
 			}
-			if i := Autoskipf(msg, 50, 15); i > 0 {
+			if i := Autoskipf(msg); i > 0 {
 				msglog.L(`I: `, auth, ":", msg)
 				return
 			}

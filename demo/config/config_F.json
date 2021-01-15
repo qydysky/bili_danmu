@@ -6,11 +6,11 @@
     "Ass": true,
     "Obs": false,
     "Autoban": false,
-    "Jiezou": true,
+    "Jiezou": false,
     "Danmuji": true,
     "Danmuji_auto": false,
     "Autoskip": true,
-    "Lessdanmu": true,
+    "Lessdanmu": false,
     "Moredanmu": false,
     "Shortdanmu": true
 }
