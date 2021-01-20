@@ -508,6 +508,7 @@ type Autoskip struct {
 	buf map[string]Autoskip_item
 	now uint
 	ticker *time.Ticker
+	sync.Mutex
 }
 
 type Autoskip_item struct {
@@ -528,7 +529,9 @@ func init(){
 			autoskip.now += 1
 			for k,v := range autoskip.buf{
 				if v.Exprie <= autoskip.now {
+					autoskip.Lock()
 					delete(autoskip.buf,k)
+					autoskip.Unlock()
 					{//超时显示
 						if v.Num > 3 {
 							Msg_showdanmu(nil, strconv.Itoa(int(v.Num)) + " x " + k,`0multi`)
@@ -544,6 +547,8 @@ func init(){
 
 func Autoskipf(s string) uint {
 	if !IsOn("Autoskip") || s == ""{return 0}
+	autoskip.Lock()
+	defer autoskip.Unlock()
 	{//验证是否已经存在
 		if v,ok := autoskip.buf[s];ok && autoskip.now < v.Exprie{
 			autoskip.buf[s] = Autoskip_item{
