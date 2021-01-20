@@ -10,6 +10,7 @@ import (
 	"strings"
 	"log"
 	"fmt"
+	"sync"
 
 	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
@@ -51,7 +52,13 @@ var (
 	Gtk_danmu_pool_index uint
 	Gtk_danmu_pool = make(map[uint]Danmu_mq_t)
 	win *gtk.Window
-	imgbuf = make(map[string](*gdk.Pixbuf))
+	imgbuf = struct{
+		b map[string](*gdk.Pixbuf)
+		sync.Mutex
+	}{
+		b:make(map[string](*gdk.Pixbuf)),
+	}
+
 	danmu_win_running bool//弹幕窗体是否正在运行
 	contrl_win_running bool//控制窗体是否正在运行
 	in_smooth_roll bool
@@ -72,6 +79,19 @@ func init(){
 			return false
 		},
 	})
+	//
+	go func(){//copy map
+		for {
+			time.Sleep(time.Duration(60)*time.Second)
+			{
+				tmp := make(map[string](*gdk.Pixbuf))
+				for k,v := range imgbuf.b {tmp[k] = v}
+				imgbuf.Lock()
+				imgbuf.b = tmp
+				imgbuf.Unlock()
+			}
+		}
+	}()
 }
 
 func Gtk_danmu() {
@@ -278,7 +298,9 @@ func Gtk_danmu() {
 				grid1 = tmp
 			}else{log.Println("cant find #grid1 in .glade");return}
 		}
-		imgbuf["face/0default"],_ = gdk.PixbufNewFromFileAtSize("face/0default", 40, 40);
+		imgbuf.Lock()
+		imgbuf.b["face/0default"],_ = gdk.PixbufNewFromFileAtSize("face/0default", 40, 40);
+		imgbuf.Unlock()
 
 		{
 			if pro_style,e := gtk.CssProviderNew();e == nil{
@@ -540,15 +562,17 @@ func show(s,img_src string,to_grid ...int){
 			pixbuf *gdk.Pixbuf
 			e error
 		)
-		if v,ok := imgbuf[img_src];ok{
+		if v,ok := imgbuf.b[img_src];ok{
 			pixbuf,e = gdk.PixbufCopy(v)
 		} else {
 			pixbuf,e = gdk.PixbufNewFromFileAtSize(img_src, 40, 40);
 			if e == nil {
-				if v,ok := K_v[`gtk_内存头像数量`].(int);ok && len(imgbuf) > v {
-					for k,_ := range imgbuf {delete(imgbuf,k);break}
+				imgbuf.Lock()
+				if v,ok := K_v[`gtk_内存头像数量`].(int);ok && len(imgbuf.b) > v {
+					for k,_ := range imgbuf.b {delete(imgbuf.b,k);break}
 				}
-				imgbuf[img_src],e = gdk.PixbufCopy(pixbuf)
+				imgbuf.b[img_src],e = gdk.PixbufCopy(pixbuf)
+				imgbuf.Unlock()
 			}
 		}
 		if e == nil {item.img.SetFromPixbuf(pixbuf)}
