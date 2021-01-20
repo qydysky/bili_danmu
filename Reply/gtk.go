@@ -72,7 +72,10 @@ func init(){
 	//使用带tag的消息队列在功能间传递消息
 	Danmu_mq.Pull_tag(map[string]func(interface{})(bool){
 		`danmu`:func(data interface{})(bool){//弹幕
-			Gtk_danmu_chan <- data.(Danmu_mq_t)
+			select{
+			case Gtk_danmu_chan <- data.(Danmu_mq_t):
+			default:
+			}
 			return false
 		},
 	})
@@ -312,30 +315,26 @@ func Gtk_danmu() {
 	application.Connect("activate", func() {
 
 		go func(){
+			glib.TimeoutAdd(uint(1000),func()(bool){
+				if !danmu_win_running {return false}
+				el := keep_list.Front()
+				if el != nil && time.Now().After(el.Value.(gtk_item_source).time) {
+					if i,e := grid1.GetChildAt(0,0); e != nil{i.(*gtk.Widget).Destroy()}
+					if i,e := grid1.GetChildAt(1,0); e != nil{i.(*gtk.Widget).Destroy()}
+					grid1.RemoveRow(0)
+					show(el.Value.(gtk_item_source).text,el.Value.(gtk_item_source).img, 0)
+					keep_list.Remove(el)
+					el = el.Next()
+				}
+				return true
+			})
 			for danmu_win_running {
-				time.Sleep(time.Second)
-				glib.TimeoutAdd(uint(10),func()(value bool){
-					el := keep_list.Front()
-					value = el != nil && time.Now().After(el.Value.(gtk_item_source).time)
-					if value {
-						if i,e := grid1.GetChildAt(0,0); e != nil{i.(*gtk.Widget).Destroy()}
-						if i,e := grid1.GetChildAt(1,0); e != nil{i.(*gtk.Widget).Destroy()}
-						grid1.RemoveRow(0)
-						show(el.Value.(gtk_item_source).text,el.Value.(gtk_item_source).img, 0)
-						keep_list.Remove(el)
-						el = el.Next()
-					}
-					return
-				})
-				glib.TimeoutAdd(uint(1000 / (len(Gtk_danmu_chan) + 1)),func()(bool){
-					select{
-					case item := <- Gtk_danmu_chan:
-						show(item.msg,load_face(item.uid))
-						return true
-					default:
-						return false
-					}
-				})
+				select{
+				case item := <- Gtk_danmu_chan:
+					show(item.msg,load_face(item.uid))
+				default:
+				}
+				time.Sleep(time.Second/time.Duration(len(Gtk_danmu_chan)+1))
 			}
 		}()
 		var old_cu float64
@@ -523,6 +522,10 @@ func load_face(uid string) (loc string) {
 }
 
 func show(s,img_src string,to_grid ...int){
+
+	glib.TimeoutAdd(uint(1),func()(r bool){
+	r = false
+
 	sec := 0
 
 	var item danmu_item
@@ -539,12 +542,15 @@ func show(s,img_src string,to_grid ...int){
 				sty.AddClass("highlight")
 			}
 		}
-		item.handle,_ = item.text.Connect("size-allocate", func(){
-			b,e := item.text.GetBuffer()
+		item.handle,_ = item.text.Connect("size-allocate", func(_ interface{},_ interface{},item *danmu_item){
+			if item == nil {return}
+			// item.text.HandlerDisconnect(item.handle)
+			b,e := (*item).text.GetBuffer()
 			if e != nil {log.Println(e);return}
 			b.SetText(s)
+			item = nil
 			in_smooth_roll = true
-		})
+		},&item)
 	}
 
 	item.img,_ = gtk.ImageNew();
@@ -568,6 +574,7 @@ func show(s,img_src string,to_grid ...int){
 		}
 		if e == nil {item.img.SetFromPixbuf(pixbuf)}
 	}
+
 	{
 		if len(to_grid) != 0 && to_grid[0] == 0 {//突出显示结束后，显示在普通弹幕区
 			loc := int(grid0.Container.GetChildren().Length())/2;
@@ -615,6 +622,7 @@ func show(s,img_src string,to_grid ...int){
 			grid0.Attach(item.text, 1, loc, 1, 1)
 			grid0.ShowAll()
 		}
+		return
 	}
-
+	})
 }
