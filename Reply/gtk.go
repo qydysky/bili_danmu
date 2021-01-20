@@ -51,12 +51,15 @@ var (
 	Gtk_danmu_pool_index uint
 	Gtk_danmu_pool = make(map[uint]Danmu_mq_t)
 	win *gtk.Window
-	grid0 *gtk.Grid
-	in_smooth_roll bool
 	imgbuf = make(map[string](*gdk.Pixbuf))
+	danmu_win_running bool//弹幕窗体是否正在运行
+	contrl_win_running bool//控制窗体是否正在运行
+	in_smooth_roll bool
+	grid0 *gtk.Grid
+	grid1 *gtk.Grid
 	keep_list = list.New()
-	grid1 *gtk.Grid;
 )
+
 func init(){
 	if!IsOn("Gtk") {return}
 	go Gtk_danmu()
@@ -76,11 +79,6 @@ func Gtk_danmu() {
 	gtk.Init(nil)
 
 	var (
-		danmu_win_running bool//弹幕窗体是否正在运行
-		contrl_win_running bool//控制窗体是否正在运行
-	)
-
-	var (
 		win2 *gtk.Window
 		scrolledwindow0 *gtk.ScrolledWindow
 		viewport0 *gtk.Viewport
@@ -94,7 +92,6 @@ func Gtk_danmu() {
 		w2_Entry0 *gtk.Entry
 		w2_Entry0_editting = make(chan bool,10)
 	)
-
 
 
 	application, err := gtk.ApplicationNew(
@@ -513,6 +510,8 @@ func load_face(uid string) (loc string) {
 }
 
 func show(s,img_src string,to_grid ...int){
+	sec := 0
+
 	var item danmu_item
 
 	item.text,_ = gtk.TextViewNew();
@@ -521,8 +520,12 @@ func show(s,img_src string,to_grid ...int){
 		item.text.SetEditable(false)
 		item.text.SetHExpand(true)
 		item.text.SetWrapMode(gtk.WRAP_WORD_CHAR)
-	}
-	{
+		if tsec,ok := keep_key[img_src];ok && tsec != 0 {
+			sec = tsec
+			if sty,e := item.text.GetStyleContext();e == nil{
+				sty.AddClass("highlight")
+			}
+		}
 		item.handle,_ = item.text.Connect("size-allocate", func(){
 			b,e := item.text.GetBuffer()
 			if e != nil {log.Println(e);return}
@@ -531,7 +534,7 @@ func show(s,img_src string,to_grid ...int){
 		})
 	}
 
-	item.img,_ =gtk.ImageNew();
+	item.img,_ = gtk.ImageNew();
 	{
 		var (
 			pixbuf *gdk.Pixbuf
@@ -551,19 +554,12 @@ func show(s,img_src string,to_grid ...int){
 		if e == nil {item.img.SetFromPixbuf(pixbuf)}
 	}
 	{
-		sec := 0
-		if tsec,ok := keep_key[img_src];ok && tsec != 0 {
-			sec = tsec
-			if sty,e := item.text.GetStyleContext();e == nil{
-				sty.AddClass("highlight")
-			}
-		}
 		if len(to_grid) != 0 && to_grid[0] == 0 {//突出显示结束后，显示在普通弹幕区
 			loc := int(grid0.Container.GetChildren().Length())/2;
 			grid0.InsertRow(loc);
 			grid0.Attach(item.img, 0, loc, 1, 1)
 			grid0.Attach(item.text, 1, loc, 1, 1)
-			if Gtk_on {win.ShowAll()}
+			grid0.ShowAll()
 			return
 		}
 		/*
@@ -596,13 +592,14 @@ func show(s,img_src string,to_grid ...int){
 			grid1.InsertRow(loc - InsertIndex);
 			grid1.Attach(item.img, 0, loc - InsertIndex, 1, 1)
 			grid1.Attach(item.text, 1, loc - InsertIndex, 1, 1)
+			grid1.ShowAll()
 		} else {
 			loc := int(grid0.Container.GetChildren().Length())/2;
 			grid0.InsertRow(loc);
 			grid0.Attach(item.img, 0, loc, 1, 1)
 			grid0.Attach(item.text, 1, loc, 1, 1)
+			grid0.ShowAll()
 		}
 	}
 
-	if Gtk_on {win.ShowAll()}
 }
