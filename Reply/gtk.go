@@ -51,7 +51,6 @@ var (
 	Gtk_img_path string = "face"
 	Gtk_danmu_pool_index uint
 	Gtk_danmu_pool = make(map[uint]Danmu_mq_t)
-	win *gtk.Window
 	imgbuf = struct{
 		b map[string](*gdk.Pixbuf)
 		sync.Mutex
@@ -99,16 +98,13 @@ func Gtk_danmu() {
 	gtk.Init(nil)
 
 	var (
-		win2 *gtk.Window
 		scrolledwindow0 *gtk.ScrolledWindow
 		viewport0 *gtk.Viewport
-		viewport1 *gtk.Viewport
 		w2_textView0 *gtk.TextView
 		w2_textView1 *gtk.TextView
 		w2_textView2 *gtk.TextView
 		w2_textView3 *gtk.TextView
 		w2_textView4 *gtk.TextView
-		renqi_old = 1
 		w2_Entry0 *gtk.Entry
 		w2_Entry0_editting = make(chan bool,10)
 	)
@@ -134,7 +130,10 @@ func Gtk_danmu() {
 			builder.ConnectSignals(signals)
 			builder2.ConnectSignals(signals)
 		}
-
+		var (
+			win *gtk.Window
+			win2 *gtk.Window
+		)
 		{
 			obj, err := builder.GetObject("main_window")
 			if err != nil {log.Println(err);return}
@@ -278,13 +277,6 @@ func Gtk_danmu() {
 			}else{log.Println("cant find #viewport0 in .glade");return}
 		}
 		{
-			obj, err := builder.GetObject("viewport1")
-			if err != nil {log.Println(err);return}
-			if tmp,ok := obj.(*gtk.Viewport); ok {
-				viewport1 = tmp
-			}else{log.Println("cant find #viewport1 in .glade");return}
-		}
-		{
 			obj, err := builder.GetObject("grid0")
 			if err != nil {log.Println(err);return}
 			if tmp,ok := obj.(*gtk.Grid); ok {
@@ -349,12 +341,11 @@ func Gtk_danmu() {
 		}()
 		var old_cu float64
 		{//平滑滚动效果
-			tmp := scrolledwindow0.GetVAdjustment()
-			glib.TimeoutAdd(uint(30),func()(true_value bool){
-				true_value = true
-				if !in_smooth_roll {return}
+			glib.TimeoutAdd(uint(30),func()(bool){
+				if !danmu_win_running {return false}
+				if !in_smooth_roll {return true}
 				h := viewport0.GetViewWindow().WindowGetHeight()
-				// g1h := viewport1.GetViewWindow().WindowGetHeight()
+				tmp := scrolledwindow0.GetVAdjustment()
 				max := tmp.GetUpper() - float64(h)
 				cu := tmp.GetValue()
 				
@@ -362,7 +353,7 @@ func Gtk_danmu() {
 				if old_cu != 0 &&//非初始
 				max - cu > 100 &&//当前位置低于100
 				old_cu != cu {//上一次滚动有移动
-					return
+					return true
 				}
 
 				step := (max - cu) / 30
@@ -390,9 +381,10 @@ func Gtk_danmu() {
 					}
 				}
 				old_cu = tmp.GetValue()
-				return
+				return true
 			})
 		}
+		var renqi_old = 1
 		glib.TimeoutAdd(uint(3000), func()(o bool){
 			o = contrl_win_running
 			//y("sssss",load_face(""))
