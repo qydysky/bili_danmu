@@ -49,8 +49,8 @@ var keep_key = map[string]int{
 var (
 	Gtk_on bool
 	Gtk_img_path string = "face"
-	Gtk_danmu_pool_index uint
-	Gtk_danmu_pool = make(map[uint]Danmu_mq_t)
+	Gtk_danmu_chan = make(chan Danmu_mq_t,100)
+
 	imgbuf = struct{
 		b map[string](*gdk.Pixbuf)
 		sync.Mutex
@@ -72,9 +72,7 @@ func init(){
 	//使用带tag的消息队列在功能间传递消息
 	Danmu_mq.Pull_tag(map[string]func(interface{})(bool){
 		`danmu`:func(data interface{})(bool){//弹幕
-			if int(Gtk_danmu_pool_index) - len(Gtk_danmu_pool) > 1e5 {Gtk_danmu_pool_index = 0}
-			Gtk_danmu_pool_index += 1
-			Gtk_danmu_pool[Gtk_danmu_pool_index] = data.(Danmu_mq_t)
+			Gtk_danmu_chan <- data.(Danmu_mq_t)
 			return false
 		},
 	})
@@ -329,13 +327,14 @@ func Gtk_danmu() {
 					}
 					return
 				})
-				glib.TimeoutAdd(uint(1000 / (len(Gtk_danmu_pool) + 1)),func()(bool){
-					for id,item := range Gtk_danmu_pool {
-						delete(Gtk_danmu_pool,id)
+				glib.TimeoutAdd(uint(1000 / (len(Gtk_danmu_chan) + 1)),func()(bool){
+					select{
+					case item := <- Gtk_danmu_chan:
 						show(item.msg,load_face(item.uid))
 						return true
+					default:
+						return false
 					}
-					return false
 				})
 			}
 		}()
