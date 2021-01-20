@@ -20,7 +20,7 @@ import (
 	s "github.com/qydysky/part/buf"
 )
 
-type gtk_list struct {
+type danmu_item struct {
 	text *gtk.TextView
 	img *gtk.Image
 	handle glib.SignalHandle
@@ -50,8 +50,13 @@ var (
 	Gtk_img_path string = "face"
 	Gtk_danmu_pool_index uint
 	Gtk_danmu_pool = make(map[uint]Danmu_mq_t)
+	win *gtk.Window
+	grid0 *gtk.Grid
+	in_smooth_roll bool
+	imgbuf = make(map[string](*gdk.Pixbuf))
+	keep_list = list.New()
+	grid1 *gtk.Grid;
 )
-
 func init(){
 	if!IsOn("Gtk") {return}
 	go Gtk_danmu()
@@ -70,29 +75,27 @@ func Gtk_danmu() {
 	if Gtk_on {return}
 	gtk.Init(nil)
 
-	var y func(string,string,...int)
 	var (
 		danmu_win_running bool//弹幕窗体是否正在运行
 		contrl_win_running bool//控制窗体是否正在运行
 	)
-	var win *gtk.Window
-	var win2 *gtk.Window
-	var scrolledwindow0 *gtk.ScrolledWindow
-	var viewport0 *gtk.Viewport
-	var viewport1 *gtk.Viewport
-	var w2_textView0 *gtk.TextView
-	var w2_textView1 *gtk.TextView
-	var w2_textView2 *gtk.TextView
-	var w2_textView3 *gtk.TextView
-	var w2_textView4 *gtk.TextView
-	var renqi_old = 1
-	var w2_Entry0 *gtk.Entry
-	var w2_Entry0_editting = make(chan bool,10)
-	var grid0 *gtk.Grid;
-	var grid1 *gtk.Grid;
-	var in_smooth_roll bool
-	var imgbuf = make(map[string](*gdk.Pixbuf))
-	var keep_list = list.New()
+
+	var (
+		win2 *gtk.Window
+		scrolledwindow0 *gtk.ScrolledWindow
+		viewport0 *gtk.Viewport
+		viewport1 *gtk.Viewport
+		w2_textView0 *gtk.TextView
+		w2_textView1 *gtk.TextView
+		w2_textView2 *gtk.TextView
+		w2_textView3 *gtk.TextView
+		w2_textView4 *gtk.TextView
+		renqi_old = 1
+		w2_Entry0 *gtk.Entry
+		w2_Entry0_editting = make(chan bool,10)
+	)
+
+
 
 	application, err := gtk.ApplicationNew(
 	"com.github.qydysky.bili_danmu.reply"+p.Sys().GetTime(),//时间戳允许多开
@@ -228,16 +231,16 @@ func Gtk_danmu() {
 			if tmp,ok := obj.(*gtk.Button); ok {
 				tmp.Connect("clicked", func() {
 					if t,e := w2_Entry0.GetText();e != nil {
-						y("读取错误",load_face("0room"))
+						show("读取错误",load_face("0room"))
 					} else if t != `` {
 						if i,e := strconv.Atoi(t);e != nil {
-							y(`输入错误`,load_face("0room"))
+							show(`输入错误`,load_face("0room"))
 						} else {
 							c.Roomid =  i
 							c.Danmu_Main_mq.Push_tag(`change_room`,nil)
 						}
 					} else {
-						y(`房间号输入为空`,load_face("0room"))
+						show(`房间号输入为空`,load_face("0room"))
 					}
 				})
 			}else{log.Println("cant find #want_click in .glade");return}
@@ -290,107 +293,6 @@ func Gtk_danmu() {
 			}else{log.Println(e)}
 		}
 
-		y = func(s,img_src string,to_grid ...int){
-			var tmp_list gtk_list
-
-			tmp_list.text,_ = gtk.TextViewNew();
-			{
-				tmp_list.text.SetMarginStart(5)
-				tmp_list.text.SetEditable(false)
-				tmp_list.text.SetHExpand(true)
-				tmp_list.text.SetWrapMode(gtk.WRAP_WORD_CHAR)
-			}
-			{
-				var e error
-				tmp_list.handle,e = tmp_list.text.Connect("size-allocate", func(){
-					b,e := tmp_list.text.GetBuffer()
-					if e != nil {log.Println(e);return}
-					b.SetText(s)
-					in_smooth_roll = true
-
-				})
-				if e != nil {log.Println(e)}
-			}
-
-			tmp_list.img,_ =gtk.ImageNew();
-			{
-				var (
-					pixbuf *gdk.Pixbuf
-					e error
-				)
-				if v,ok := imgbuf[img_src];ok{
-					pixbuf,e = gdk.PixbufCopy(v)
-				} else {
-					pixbuf,e = gdk.PixbufNewFromFileAtSize(img_src, 40, 40);
-					if e == nil {
-						if v,ok := K_v[`gtk_内存头像数量`].(int);ok && len(imgbuf) > v {
-							for k,_ := range imgbuf {delete(imgbuf,k);break}
-						}
-						imgbuf[img_src],e = gdk.PixbufCopy(pixbuf)
-					}
-				}
-				if e == nil {tmp_list.img.SetFromPixbuf(pixbuf)}
-			}
-			{
-				sec := 0
-				if tsec,ok := keep_key[img_src];ok && tsec != 0 {
-					sec = tsec
-					if sty,e := tmp_list.text.GetStyleContext();e == nil{
-						sty.AddClass("highlight")
-					}
-				}
-				if len(to_grid) != 0 && to_grid[0] == 0 {//突出显示结束后，显示在普通弹幕区
-					loc := int(grid0.Container.GetChildren().Length())/2;
-					grid0.InsertRow(loc);
-					grid0.Attach(tmp_list.img, 0, loc, 1, 1)
-					grid0.Attach(tmp_list.text, 1, loc, 1, 1)
-					if Gtk_on {win.ShowAll()}
-					return
-				}
-				/*
-					front
-					|
-					back index:0
-				*/
-				var InsertIndex int = keep_list.Len()
-				if sec > InsertIndex / 5 {//5不是指最大值，而是当list太大时，sec小的将直接跳过
-					var cu_To = time.Now().Add(time.Second * time.Duration(sec))
-					var hasInsert bool
-					for el := keep_list.Front(); el != nil; el = el.Next(){
-						if cu_To.After(el.Value.(gtk_item_source).time) {InsertIndex -= 1;continue}
-						keep_list.InsertBefore(gtk_item_source{
-							text:s,
-							img:img_src,
-							time:cu_To,
-						},el)
-						hasInsert = true
-						break
-					}
-					if !hasInsert {
-						keep_list.PushBack(gtk_item_source{
-							text:s,
-							img:img_src,
-							time:cu_To,
-						})
-					}
-					loc := int(grid1.Container.GetChildren().Length())/2;
-					grid1.InsertRow(loc - InsertIndex);
-					grid1.Attach(tmp_list.img, 0, loc - InsertIndex, 1, 1)
-					grid1.Attach(tmp_list.text, 1, loc - InsertIndex, 1, 1)
-				} else {
-					loc := int(grid0.Container.GetChildren().Length())/2;
-					grid0.InsertRow(loc);
-					grid0.Attach(tmp_list.img, 0, loc, 1, 1)
-					grid0.Attach(tmp_list.text, 1, loc, 1, 1)
-				}
-				// tmp_list1:=tmp_list
-				// grid0.Attach(tmp_list1.img, 0, loc, 1, 1)
-				// grid0.Attach(tmp_list1.text, 1, loc, 1, 1)
-			}
-
-			if Gtk_on {win.ShowAll()}
-		}
-
 		//先展示弹幕信息窗
 		win.ShowAll()
 		win2.ShowAll()
@@ -410,7 +312,7 @@ func Gtk_danmu() {
 						if i,e := grid1.GetChildAt(0,0); e != nil{i.(*gtk.Widget).Destroy()}
 						if i,e := grid1.GetChildAt(1,0); e != nil{i.(*gtk.Widget).Destroy()}
 						grid1.RemoveRow(0)
-						y(el.Value.(gtk_item_source).text,el.Value.(gtk_item_source).img, 0)
+						show(el.Value.(gtk_item_source).text,el.Value.(gtk_item_source).img, 0)
 						keep_list.Remove(el)
 						el = el.Next()
 					}
@@ -419,7 +321,7 @@ func Gtk_danmu() {
 				glib.TimeoutAdd(uint(1000 / (len(Gtk_danmu_pool) + 1)),func()(bool){
 					for id,item := range Gtk_danmu_pool {
 						delete(Gtk_danmu_pool,id)
-						y(item.msg,load_face(item.uid))
+						show(item.msg,load_face(item.uid))
 						return true
 					}
 					return false
@@ -604,4 +506,98 @@ func load_face(uid string) (loc string) {
 	if v,ok := K_v[`gtk_头像获取等待最大数量`].(int);ok && len(gtkGetList) > v {return}
 	gtkGetList[uid] = struct{}{}
 	return
+}
+func show(s,img_src string,to_grid ...int){
+	var item danmu_item
+
+	item.text,_ = gtk.TextViewNew();
+	{
+		item.text.SetMarginStart(5)
+		item.text.SetEditable(false)
+		item.text.SetHExpand(true)
+		item.text.SetWrapMode(gtk.WRAP_WORD_CHAR)
+	}
+	{
+		item.handle,_ = item.text.Connect("size-allocate", func(){
+			b,e := item.text.GetBuffer()
+			if e != nil {log.Println(e);return}
+			b.SetText(s)
+			in_smooth_roll = true
+		})
+	}
+
+	item.img,_ =gtk.ImageNew();
+	{
+		var (
+			pixbuf *gdk.Pixbuf
+			e error
+		)
+		if v,ok := imgbuf[img_src];ok{
+			pixbuf,e = gdk.PixbufCopy(v)
+		} else {
+			pixbuf,e = gdk.PixbufNewFromFileAtSize(img_src, 40, 40);
+			if e == nil {
+				if v,ok := K_v[`gtk_内存头像数量`].(int);ok && len(imgbuf) > v {
+					for k,_ := range imgbuf {delete(imgbuf,k);break}
+				}
+				imgbuf[img_src],e = gdk.PixbufCopy(pixbuf)
+			}
+		}
+		if e == nil {item.img.SetFromPixbuf(pixbuf)}
+	}
+	{
+		sec := 0
+		if tsec,ok := keep_key[img_src];ok && tsec != 0 {
+			sec = tsec
+			if sty,e := item.text.GetStyleContext();e == nil{
+				sty.AddClass("highlight")
+			}
+		}
+		if len(to_grid) != 0 && to_grid[0] == 0 {//突出显示结束后，显示在普通弹幕区
+			loc := int(grid0.Container.GetChildren().Length())/2;
+			grid0.InsertRow(loc);
+			grid0.Attach(item.img, 0, loc, 1, 1)
+			grid0.Attach(item.text, 1, loc, 1, 1)
+			if Gtk_on {win.ShowAll()}
+			return
+		}
+		/*
+			front
+			|
+			back index:0
+		*/
+		var InsertIndex int = keep_list.Len()
+		if sec > InsertIndex / 5 {//5不是指最大值，而是当list太大时，sec小的将直接跳过
+			var cu_To = time.Now().Add(time.Second * time.Duration(sec))
+			var hasInsert bool
+			for el := keep_list.Front(); el != nil; el = el.Next(){
+				if cu_To.After(el.Value.(gtk_item_source).time) {InsertIndex -= 1;continue}
+				keep_list.InsertBefore(gtk_item_source{
+					text:s,
+					img:img_src,
+					time:cu_To,
+				},el)
+				hasInsert = true
+				break
+			}
+			if !hasInsert {
+				keep_list.PushBack(gtk_item_source{
+					text:s,
+					img:img_src,
+					time:cu_To,
+				})
+			}
+			loc := int(grid1.Container.GetChildren().Length())/2;
+			grid1.InsertRow(loc - InsertIndex);
+			grid1.Attach(item.img, 0, loc - InsertIndex, 1, 1)
+			grid1.Attach(item.text, 1, loc - InsertIndex, 1, 1)
+		} else {
+			loc := int(grid0.Container.GetChildren().Length())/2;
+			grid0.InsertRow(loc);
+			grid0.Attach(item.img, 0, loc, 1, 1)
+			grid0.Attach(item.text, 1, loc, 1, 1)
+		}
+	}
+
+	if Gtk_on {win.ShowAll()}
 }
