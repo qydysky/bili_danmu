@@ -509,7 +509,6 @@ type Autoskip struct {
 	sync.Mutex
 	now uint
 	ticker *time.Ticker
-	sync.Mutex
 }
 
 type Autoskip_item struct {
@@ -531,9 +530,7 @@ func init(){
 			autoskip.Lock()
 			for k,v := range autoskip.buf{
 				if v.Exprie <= autoskip.now {
-					autoskip.Lock()
 					delete(autoskip.buf,k)
-					autoskip.Unlock()
 					{//超时显示
 						if v.Num > 3 {
 							Msg_showdanmu(nil, strconv.Itoa(int(v.Num)) + " x " + k,`0multi`)
@@ -566,8 +563,6 @@ func Autoskipf(s string) uint {
 			return v.Num
 		}
 	}
-	autoskip.Lock()
-	defer autoskip.Unlock()
 	{//设置
 		autoskip.buf[s] = Autoskip_item{
 			Exprie:autoskip.now + 8,
