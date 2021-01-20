@@ -31,7 +31,7 @@ type gtk_item_source struct {
 	time time.Time
 }
 
-var gtkGetList = make(map[string]struct{})
+var gtkGetList = make(chan string,100)
 
 var keep_key = map[string]int{
 	"face/0default":0,
@@ -454,9 +454,10 @@ func Gtk_danmu() {
 				default:
 				}
 			}
-			for uid,_ := range gtkGetList {
-				delete(gtkGetList,uid)
+			select {
+			case uid:=<-gtkGetList:
 				go func(){
+					if p.Checkfile().IsExist(Gtk_img_path + `/` + uid) {return}
 					src := F.Get_face_src(uid)
 					if src == "" {return}
 					req := p.Req()
@@ -466,7 +467,7 @@ func Gtk_danmu() {
 						Timeout:3,
 					}); e != nil{log.Println(e);}
 				}()
-				break
+			default:
 			}
 			return
 		})
@@ -504,9 +505,13 @@ func load_face(uid string) (loc string) {
 		return
 	}
 	if v,ok := K_v[`gtk_头像获取等待最大数量`].(int);ok && len(gtkGetList) > v {return}
-	gtkGetList[uid] = struct{}{}
+	select{
+		case gtkGetList <- uid:
+		default:
+	}
 	return
 }
+
 func show(s,img_src string,to_grid ...int){
 	var item danmu_item
 
