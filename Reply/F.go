@@ -506,6 +506,7 @@ func Danmuji_auto(sleep int) {
 
 type Autoskip struct {
 	buf map[string]Autoskip_item
+	sync.Mutex
 	now uint
 	ticker *time.Ticker
 	sync.Mutex
@@ -527,6 +528,7 @@ func init(){
 			<-autoskip.ticker.C
 			if len(autoskip.buf) == 0 {continue}
 			autoskip.now += 1
+			autoskip.Lock()
 			for k,v := range autoskip.buf{
 				if v.Exprie <= autoskip.now {
 					autoskip.Lock()
@@ -541,6 +543,12 @@ func init(){
 					}
 				}
 			}
+			{//copy map
+				tmp := make(map[string]Autoskip_item)
+				for k,v := range autoskip.buf {tmp[k] = v}
+				autoskip.buf = tmp
+			}
+			autoskip.Unlock()			
 		}
 	}()
 }
@@ -558,6 +566,8 @@ func Autoskipf(s string) uint {
 			return v.Num
 		}
 	}
+	autoskip.Lock()
+	defer autoskip.Unlock()
 	{//设置
 		autoskip.buf[s] = Autoskip_item{
 			Exprie:autoskip.now + 8,

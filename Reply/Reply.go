@@ -458,15 +458,20 @@ func (replyF) live(s string) {
 }
 
 //Msg-超级留言处理
-var sc_buf = make(map[string]bool)
+var sc_buf = make(map[string]struct{})
 func (replyF) super_chat_message(s string){
 	id := p.Json().GetValFromS(s, "data.id");
 	if id != nil {
 		if _,ok := sc_buf[id.(string)];ok{return}
 		if len(sc_buf) >= 10 {
 			for k,_ := range sc_buf {delete(sc_buf, k);break}
+			{//copy map
+				tmp := make(map[string]struct{})
+				for k,v := range sc_buf {tmp[k] = v}
+				sc_buf = tmp
+			}
 		}
-		sc_buf[id.(string)] = true
+		sc_buf[id.(string)] = struct{}{}
 	}
 	uname := p.Json().GetValFromS(s, "data.user_info.uname");
 	price := p.Json().GetValFromS(s, "data.price");
