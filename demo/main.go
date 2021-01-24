@@ -2,22 +2,22 @@ package main
 
 import (
 	"time"
-	"runtime"
+	// "runtime"
 	// "runtime/pprof"
 	"os"
 	// "log"
-	"net/http"
+	// "net/http"
 	"fmt"
-	_ "net/http/pprof"
+	// _ "net/http/pprof"
 	"runtime/debug"
 	// "github.com/skratchdot/open-golang/open"
 	q "github.com/qydysky/bili_danmu"
 )
 
 func main() {
-	go func() {
-		http.ListenAndServe("0.0.0.0:8899", nil)
-	}()
+	// go func() {
+	// 	http.ListenAndServe("0.0.0.0:8899", nil)
+	// }()
 	// defer func(){
 	// 	open.Run("http://127.0.0.1:8899/debug/pprof/goroutine?debug=2")
 	// 	time.Sleep(time.Duration(3)*time.Second)
@@ -44,12 +44,12 @@ func main() {
 }
 
 func View(){
-	var memStats runtime.MemStats
-	runtime.ReadMemStats(&memStats)
+	// var memStats runtime.MemStats
+	// runtime.ReadMemStats(&memStats)
 	fmt.Printf("=====\n")
 	fmt.Printf("PID:%d\n",os.Getpid())
-	fmt.Printf("总内存:%v MB\n",memStats.Alloc/1024e2/8)
-	fmt.Printf("GC次数:%v \n",memStats.NumGC)
-	fmt.Printf("堆 :%v %v MB\n",memStats.HeapInuse/1024e2/8,(memStats.HeapIdle - memStats.HeapReleased)/1024e2/8)
+	// fmt.Printf("总内存:%v MB\n",memStats.Alloc/1024e2/8)
+	// fmt.Printf("GC次数:%v \n",memStats.NumGC)
+	// fmt.Printf("堆 :%v %v MB\n",memStats.HeapInuse/1024e2/8,(memStats.HeapIdle - memStats.HeapReleased)/1024e2/8)
 	fmt.Printf("=====\n")
 }

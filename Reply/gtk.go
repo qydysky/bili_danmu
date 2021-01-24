@@ -319,9 +319,15 @@ func Gtk_danmu() {
 				if !danmu_win_running {return false}
 				el := keep_list.Front()
 				if el != nil && time.Now().After(el.Value.(gtk_item_source).time) {
-					if i,e := grid1.GetChildAt(0,0); e != nil{i.(*gtk.Widget).Destroy()}
-					if i,e := grid1.GetChildAt(1,0); e != nil{i.(*gtk.Widget).Destroy()}
-					grid1.RemoveRow(0)
+					if grid1.Container.GetChildren().Length() > 0 {
+						if i,e := grid1.GetChildAt(0,0); e == nil{
+							i.ToWidget().Destroy()
+						}
+						if i,e := grid1.GetChildAt(1,0); e == nil{
+							i.ToWidget().Destroy()
+						}
+						grid1.RemoveRow(0)
+					}
 					show(el.Value.(gtk_item_source).text,el.Value.(gtk_item_source).img, 0)
 					keep_list.Remove(el)
 					el = el.Next()
@@ -353,11 +359,16 @@ func Gtk_danmu() {
 				old_cu != cu {//上一次滚动有移动
 					return true
 				}
-
+				
+				loc := int(grid0.Container.GetChildren().Length())/2
 				step := (max - cu) / 30
-				if step > 20 || max > 5 * float64(h){//太长或太快
-					if i,e := grid0.GetChildAt(0,0); e != nil{i.(*gtk.Widget).Destroy()}
-					if i,e := grid0.GetChildAt(1,0); e != nil{i.(*gtk.Widget).Destroy()}
+				if loc > 0 && step > 20 || max > 5 * float64(h){//太长或太快
+					if i,e := grid0.GetChildAt(0,0); e == nil{
+						i.ToWidget().Destroy()
+					}
+					if i,e := grid0.GetChildAt(1,0); e == nil{
+						i.ToWidget().Destroy()
+					}
 					grid0.RemoveRow(0)
 				} else if step > 0.5 {
 					if step > 5{step = 5}
@@ -365,15 +376,18 @@ func Gtk_danmu() {
 				} else {
 					in_smooth_roll = false
 					tmp.SetValue(max)
-					loc := int(grid0.Container.GetChildren().Length())/2
-					if v,ok := K_v[`gtk_保留弹幕数量`].(int);ok {
-						loc -= v
+					if v,ok := K_v[`gtk_保留弹幕数量`].(float64);ok {
+						loc -= int(v)
 					} else {
 						loc -= 25
 					}
 					for loc > 0 {
-						if i,e := grid0.GetChildAt(0,0); e != nil{i.(*gtk.Widget).Destroy()}
-						if i,e := grid0.GetChildAt(1,0); e != nil{i.(*gtk.Widget).Destroy()}
+						if i,e := grid0.GetChildAt(0,0); e == nil{
+							i.ToWidget().Destroy()
+						}
+						if i,e := grid0.GetChildAt(1,0); e == nil{
+							i.ToWidget().Destroy()
+						}
 						grid0.RemoveRow(0)
 						loc -= 1
 					}
@@ -513,7 +527,7 @@ func load_face(uid string) (loc string) {
 		loc = Gtk_img_path + `/` + uid
 		return
 	}
-	if v,ok := K_v[`gtk_头像获取等待最大数量`].(int);ok && len(gtkGetList) > v {return}
+	if v,ok := K_v[`gtk_头像获取等待最大数量`].(float64);ok && len(gtkGetList) > int(v) {return}
 	select{
 		case gtkGetList <- uid:
 		default:
@@ -522,7 +536,7 @@ func load_face(uid string) (loc string) {
 }
 
 func show(s,img_src string,to_grid ...int){
-
+	if s == `` || img_src == `` {return}
 	glib.TimeoutAdd(uint(1),func()(r bool){
 	r = false
 
@@ -530,7 +544,7 @@ func show(s,img_src string,to_grid ...int){
 
 	var item danmu_item
 
-	item.text,_ = gtk.TextViewNew();
+	item.text,_ = gtk.TextViewNew()
 	{
 		item.text.SetMarginStart(5)
 		item.text.SetEditable(false)
@@ -542,9 +556,8 @@ func show(s,img_src string,to_grid ...int){
 				sty.AddClass("highlight")
 			}
 		}
-		item.handle,_ = item.text.Connect("size-allocate", func(_ interface{},_ interface{},item *danmu_item){
-			if item == nil {return}
-			// item.text.HandlerDisconnect(item.handle)
+		item.handle,_ = item.text.Connect("size-allocate", func(_,_ interface{},item *danmu_item){
+			if item == nil || (*item).text == nil {return}
 			b,e := (*item).text.GetBuffer()
 			if e != nil {log.Println(e);return}
 			b.SetText(s)
@@ -565,8 +578,11 @@ func show(s,img_src string,to_grid ...int){
 			pixbuf,e = gdk.PixbufNewFromFileAtSize(img_src, 40, 40);
 			if e == nil {
 				imgbuf.Lock()
-				if v,ok := K_v[`gtk_内存头像数量`].(int);ok && len(imgbuf.b) > v {
-					for k,_ := range imgbuf.b {delete(imgbuf.b,k);break}
+				if v,ok := K_v[`gtk_内存头像数量`].(float64);ok && len(imgbuf.b) > int(v) + 10 {
+					for k,_ := range imgbuf.b {
+						delete(imgbuf.b,k)
+						if len(imgbuf.b) <= int(v) {break}
+					}
 				}
 				imgbuf.b[img_src],e = gdk.PixbufCopy(pixbuf)
 				imgbuf.Unlock()
