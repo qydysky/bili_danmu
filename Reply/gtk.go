@@ -11,6 +11,7 @@ import (
 	"log"
 	"fmt"
 	"sync"
+	"runtime"
 
 	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
@@ -33,6 +34,7 @@ type gtk_item_source struct {
 }
 
 var gtkGetList = make(chan string,100)
+var danmu_item_chan = make(chan danmu_item,100)
 
 var keep_key = map[string]int{
 	"face/0default":0,
@@ -305,9 +307,9 @@ func Gtk_danmu() {
 			}else{log.Println(e)}
 		}
 
-		//先展示弹幕信息窗
-		win.ShowAll()
+		//先展示弹幕窗
 		win2.ShowAll()
+		win.ShowAll()
 
 		Gtk_on = true
 	})
@@ -318,14 +320,8 @@ func Gtk_danmu() {
 			glib.TimeoutAdd(uint(1000),func()(bool){
 				if !danmu_win_running {return false}
 				el := keep_list.Front()
-				if el != nil && time.Now().After(el.Value.(gtk_item_source).time) {
+				for el != nil && time.Now().After(el.Value.(gtk_item_source).time) {
 					if grid1.Container.GetChildren().Length() > 0 {
-						if i,e := grid1.GetChildAt(0,0); e == nil{
-							i.ToWidget().Destroy()
-						}
-						if i,e := grid1.GetChildAt(1,0); e == nil{
-							i.ToWidget().Destroy()
-						}
 						grid1.RemoveRow(0)
 					}
 					show(el.Value.(gtk_item_source).text,el.Value.(gtk_item_source).img, 0)
@@ -363,12 +359,6 @@ func Gtk_danmu() {
 				loc := int(grid0.Container.GetChildren().Length())/2
 				step := (max - cu) / 30
 				if loc > 0 && step > 20 || max > 5 * float64(h){//太长或太快
-					if i,e := grid0.GetChildAt(0,0); e == nil{
-						i.ToWidget().Destroy()
-					}
-					if i,e := grid0.GetChildAt(1,0); e == nil{
-						i.ToWidget().Destroy()
-					}
 					grid0.RemoveRow(0)
 				} else if step > 0.5 {
 					if step > 5{step = 5}
@@ -382,12 +372,6 @@ func Gtk_danmu() {
 						loc -= 25
 					}
 					for loc > 0 {
-						if i,e := grid0.GetChildAt(0,0); e == nil{
-							i.ToWidget().Destroy()
-						}
-						if i,e := grid0.GetChildAt(1,0); e == nil{
-							i.ToWidget().Destroy()
-						}
 						grid0.RemoveRow(0)
 						loc -= 1
 					}
@@ -543,8 +527,10 @@ func show(s,img_src string,to_grid ...int){
 	sec := 0
 
 	var item danmu_item
+	// runtime.SetFinalizer(&item,func(p *danmu_item){p = nil;fmt.Print(`i `)})
 
 	item.text,_ = gtk.TextViewNew()
+	// runtime.SetFinalizer(item.text,func(p *gtk.TextView){p = nil;fmt.Print(`t `)})
 	{
 		item.text.SetMarginStart(5)
 		item.text.SetEditable(false)
@@ -561,12 +547,12 @@ func show(s,img_src string,to_grid ...int){
 			b,e := (*item).text.GetBuffer()
 			if e != nil {log.Println(e);return}
 			b.SetText(s)
-			item = nil
 			in_smooth_roll = true
 		},&item)
 	}
 
 	item.img,_ = gtk.ImageNew();
+	// runtime.SetFinalizer(item.img,func(p *gtk.Image){p = nil;fmt.Print(`I `)})
 	{
 		var (
 			pixbuf *gdk.Pixbuf
@@ -590,6 +576,17 @@ func show(s,img_src string,to_grid ...int){
 		}
 		if e == nil {item.img.SetFromPixbuf(pixbuf)}
 	}
+
+	select {
+	case danmu_item_chan <- item:
+	default:
+		old :=<- danmu_item_chan
+		old.text.Destroy()
+		old.img.Destroy()
+		runtime.GC()
+		danmu_item_chan <- item
+	}
+	
 
 	{
 		if len(to_grid) != 0 && to_grid[0] == 0 {//突出显示结束后，显示在普通弹幕区
@@ -642,3 +639,32 @@ func show(s,img_src string,to_grid ...int){
 	}
 	})
 }
+
+//bug
+/*
+以下代码将会导致SIGSEGV: segmentation violation
+fatal error: unexpected signal during runtime execution
+[signal SIGSEGV: segmentation violation code=0x1 addr=0x18 pc=0x7f7860bb88d6]
+
+item.handle,_ = item.text.Connect("size-allocate", func(text *gtk.TextView,_ interface{}){
+    b,e := text.GetBuffer()
+    if e != nil {log.Println(e);return}
+    b.SetText(s)
+    in_smooth_roll = true
+})
+
+以下代码不会
+
+item.handle,_ = item.text.Connect("size-allocate", func(){
+    b,e := item.text.GetBuffer()
+    if e != nil {log.Println(e);return}
+    b.SetText(s)
+    in_smooth_roll = true
+})
+*/
+/*
+    同时太多ToWidget().Destroy()将会卡死gtk
+*/
+/*
+	gotk3存在内存泄漏，发生在C
+*/
