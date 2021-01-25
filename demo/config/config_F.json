@@ -10,7 +10,7 @@
     "Danmuji": true,
     "Danmuji_auto": false,
     "Autoskip": true,
-    "Lessdanmu": false,
+    "Lessdanmu": true,
     "Moredanmu": false,
     "Shortdanmu": true
 }
