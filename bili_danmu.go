@@ -13,6 +13,7 @@ import (
 	ws "github.com/qydysky/part/websocket"
 	g "github.com/qydysky/part/get"
 	reply "github.com/qydysky/bili_danmu/Reply"
+	send "github.com/qydysky/bili_danmu/Send"
 	c "github.com/qydysky/bili_danmu/CV"
 	F "github.com/qydysky/bili_danmu/F"
 )
@@ -22,9 +23,7 @@ func Demo(roomid ...int) {
 	
 	//ctrl+c退出
 	interrupt := make(chan os.Signal, 1)
-	signal.Notify(interrupt, os.Interrupt)
-
-
+	
 	{
 		var groomid = flag.Int("r", 0, "roomid")
 		var live_qn = flag.String("q", "0", "qn")
@@ -33,7 +32,7 @@ func Demo(roomid ...int) {
 		if _,ok := c.Default_qn[*live_qn]; ok{c.Live_qn = *live_qn}
 
 		var exit_sign bool
-		var change_room_chan = make(chan bool,1)
+		var change_room_chan = make(chan struct{})
 
 		go func(){
 			var room = *groomid
@@ -52,7 +51,7 @@ func Demo(roomid ...int) {
 			}
 			if c.Roomid == 0 {
 				c.Roomid = room
-				change_room_chan <- true
+				change_room_chan <- struct{}{}
 			}
 		}()
 		
@@ -66,7 +65,8 @@ func Demo(roomid ...int) {
 				c.Uname = ``//主播id
 				c.Title = ``
 				reply.Saveflv_wait()//停止保存直播流
-				change_room_chan <- true
+				for len(change_room_chan) != 0 {<-change_room_chan}
+				change_room_chan <- struct{}{}
 				return false
 			},
 			`c.Rev_add`:func(data interface{})(bool){//收入
@@ -79,9 +79,25 @@ func Demo(roomid ...int) {
 				}
 				return false
 			},
+			`gtk_close`:func(data interface{})(bool){//gtk关闭信号
+				interrupt <- os.Interrupt
+				return false
+			},
+		})
+		//单独，避免队列执行耗时block从而无法接收更多消息
+		c.Danmu_Main_mq.Pull_tag(map[string]func(interface{})(bool){
+			`pm`:func(data interface{})(bool){//私信
+				if tmp,ok := data.(send.Pm_item);ok{
+					send.Send_pm(tmp.Uid,tmp.Msg)
+				}
+				return false
+			},
 		})
 
 		<-change_room_chan
+
+		//ctrl+c退出
+		signal.Notify(interrupt, os.Interrupt)
 
 		for !exit_sign {
 			//获取cookies
@@ -126,6 +142,8 @@ func Demo(roomid ...int) {
 
 			//获取用户版本
 			api.Get_Version()
+			//获取热门榜
+			api.Get_HotRank()
 			//切换粉丝牌，只在cookie存在时启用
 			api.Switch_FansMedal()
 			if len(api.Url) == 0 || api.Roomid == 0 || api.Token == "" || api.Uid == 0 || api.Locked {

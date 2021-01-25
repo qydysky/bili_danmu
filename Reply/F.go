@@ -14,6 +14,7 @@ import (
 	F "github.com/qydysky/bili_danmu/F"
 	"github.com/christopher-dG/go-obs-websocket"
 	p "github.com/qydysky/part"
+	b "github.com/qydysky/part/buf"
 	s "github.com/qydysky/part/signal"
 )
 
@@ -165,7 +166,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 func Ass_f(file string, st time.Time){
 	ass.file = file
 	if file == "" {return}
-	p.Logf().New().Open("danmu.log").Base(1, "Ass").I("保存至", ass.file + ".ass")
+	c.Log.Base(`Ass`).L(`I: `,"保存至", ass.file + ".ass")
 
 	p.File().FileWR(p.Filel{
 		File:ass.file + ".ass",
@@ -224,7 +225,7 @@ func Saveflvf(){
 	if !IsOn("Saveflv") {return}
 	if saveflv.cancel.Islive() {return}
 
-	l := p.Logf().New().Open("danmu.log").Base(-1, "saveflv")
+	l := c.Log.Base(`saveflv`)
 
 	cuLinkIndex := 0
 	api := F.New_api(c.Roomid)
@@ -253,7 +254,7 @@ func Saveflvf(){
 		}
 
 		{//重试
-			l.I("尝试连接live")
+			l.L(`I: `,"尝试连接live")
 			if e := rr.Reqf(p.Rval{
 				Url:c.Live[cuLinkIndex],
 				Retry:10,
@@ -263,7 +264,7 @@ func Saveflvf(){
 				},
 				Timeout:5,
 				JustResponseCode:true,
-			}); e != nil{l.W(e)}
+			}); e != nil{l.L(`W: `,e)}
 
 			if rr.Response == nil ||
 			rr.Response.StatusCode != 200 {
@@ -276,7 +277,7 @@ func Saveflvf(){
 		}
 
 		Ass_f(saveflv.path, time.Now())
-		l.I("保存到", saveflv.path + ".flv")
+		l.L(`I: `,"保存到", saveflv.path + ".flv")
 
 		if e := rr.Reqf(p.Rval{
 			Url:c.Live[cuLinkIndex],
@@ -287,9 +288,9 @@ func Saveflvf(){
 			},
 			SaveToPath:saveflv.path + ".flv",
 			Timeout:-1,
-		}); e != nil{l.W(e)}
+		}); e != nil{l.L(`W: `,e)}
 
-		l.I("结束")
+		l.L(`I: `,"结束")
 		Ass_f("", time.Now())//ass
 		if !saveflv.cancel.Islive() {break}//cancel
 		/*
@@ -297,12 +298,12 @@ func Saveflvf(){
 			ffmpeg http://ffmpeg.org/download.html
 		*/
 		// if p.Checkfile().IsExist(saveflv.path+".flv"){
-		// 	l.I("转码中")
+		// 	l.L(`I: `,"转码中")
 		// 	p.Exec().Run(false, "ffmpeg", "-i", saveflv.path+".flv", "-c", "copy", saveflv.path+".mkv")
 		// 	if p.Checkfile().IsExist(saveflv.path+".mkv"){os.Remove(saveflv.path+".flv")}
 		// }
 
-		// l.I("转码结束")
+		// l.L(`I: `,"转码结束")
 		saveflv.wait.Done()
 		saveflv.cancel.Done()
 	}
@@ -314,7 +315,7 @@ func Saveflvf(){
 func Saveflv_wait(){
 	if !IsOn("Saveflv") {return}
 	saveflv.cancel.Done()
-	p.Logf().New().Open("danmu.log").Base(-1, "saveflv").I("等待").Block()
+	c.Log.Base(`saveflv`).L(`I: `,"等待")
 	saveflv.wait.Wait()
 }
 
@@ -330,28 +331,27 @@ var obs = Obs {
 
 func Obsf(on bool){
 	if !IsOn("Obs") {return}
-	l := p.Logf().New().Open("danmu.log").Base(1, "obs")
-	defer l.BC()
+	l := c.Log.Base(`obs`)
 
 	if on {
-		if p.Sys().CheckProgram("obs")[0] != 0 {l.W("obs已经启动");return}
+		if p.Sys().CheckProgram("obs")[0] != 0 {l.L(`W: `,"obs已经启动");return}
 		if p.Sys().CheckProgram("obs")[0] == 0 {
 			if obs.Prog == "" {
-				l.E("未知的obs程序位置")
+				l.L(`E: `,"未知的obs程序位置")
 				return
 			}
-			l.I("启动obs")
-			p.Exec().Startf(exec.Command(obs.Prog))
+			l.L(`I: `,"启动obs")
+			p.Exec().Start(exec.Command(obs.Prog))
 			p.Sys().Timeoutf(3)
 		}
 		
 		// Connect a client.
 		if err := obs.c.Connect(); err != nil {
-			l.E(err)
+			l.L(`E: `,err)
 			return
 		}
 	} else {
-		if p.Sys().CheckProgram("obs")[0] == 0 {l.W("obs未启动");return}
+		if p.Sys().CheckProgram("obs")[0] == 0 {l.L(`W: `,"obs未启动");return}
 		obs.c.Disconnect()
 	}
 }
@@ -359,15 +359,14 @@ func Obsf(on bool){
 func Obs_R(on bool){
 	if !IsOn("Obs") {return}
 
-	l := p.Logf().New().Open("danmu.log").Base(1, "obs_R")
-	defer l.BC()
+	l := c.Log.Base("obs_R")
 
 	if p.Sys().CheckProgram("obs")[0] == 0 {
-		l.W("obs未启动")
+		l.L(`W: `,"obs未启动")
 		return
 	} else {
 		if err := obs.c.Connect(); err != nil {
-			l.E(err)
+			l.L(`E: `,err)
 			return
 		}
 	}
@@ -375,30 +374,30 @@ func Obs_R(on bool){
 	if on {
 		req := obsws.NewStartRecordingRequest()
 		if err := req.Send(obs.c); err != nil {
-			l.E(err)
+			l.L(`E: `,err)
 			return
 		}
 		resp, err := req.Receive()
 		if err != nil {
-			l.E(err)
+			l.L(`E: `,err)
 			return
 		}
 		if resp.Status() == "ok" {
-			l.I("开始录制")
+			l.L(`I: `,"开始录制")
 		}
 	} else {
 		req := obsws.NewStopRecordingRequest()
 		if err := req.Send(obs.c); err != nil {
-			l.E(err)
+			l.L(`E: `,err)
 			return
 		}
 		resp, err := req.Receive()
 		if err != nil {
-			l.E(err)
+			l.L(`E: `,err)
 			return
 		}
 		if resp.Status() == "ok" {
-			l.I("停止录制")
+			l.L(`I: `,"停止录制")
 		}
 		p.Sys().Timeoutf(3)
 	}
@@ -453,13 +452,13 @@ func Autobanf(s string) bool {
 		if pt < 0.8 {return false}//ban字符重复低去除
 		res = append(res, pt)
 	}
-	l := p.Logf().New().Open("danmu.log").Base(1, "autoban")
-	l.W(res).Block()
+	l := c.Log.Base("autoban")
+	l.L(`W: `,res)
 	return true
 }
 
 type Danmuji struct {
-	buf map[string]string
+	Buf map[string]string
 	Inuse_auto bool
 
 	mute bool
@@ -467,14 +466,22 @@ type Danmuji struct {
 
 var danmuji = Danmuji{
 	Inuse_auto:IsOn("Danmuji_auto"),
-	buf:map[string]string{
+	Buf:map[string]string{
 		"弹幕机在么":"在",
 	},
 }
 
+func init(){//初始化反射型弹幕机
+	buf := b.New()
+	buf.Load("config/config_auto_reply.json")
+	for k,v := range buf.B {
+		danmuji.Buf[k] = v.(string)
+	}
+}
+
 func Danmujif(s string) {
 	if !IsOn("Danmuji") {return}
-	if v, ok := danmuji.buf[s]; ok {
+	if v, ok := danmuji.Buf[s]; ok {
 		Msg_senddanmu(v)
 	}
 }
@@ -498,40 +505,70 @@ func Danmuji_auto(sleep int) {
 }
 
 type Autoskip struct {
-	num int
-	buf sync.Map
-	bufbreak chan bool
+	buf map[string]Autoskip_item
+	sync.Mutex
+	now uint
+	ticker *time.Ticker
+}
+
+type Autoskip_item struct {
+	Exprie uint
+	Num uint
 }
 
 var autoskip = Autoskip{
-	bufbreak:make(chan bool, 100),
+	buf:make(map[string]Autoskip_item),
+	ticker:time.NewTicker(time.Duration(2)*time.Second),
 }
 
-func Autoskipf(s string, maxNum,muteSecond int) int {
-	if !IsOn("Autoskip") || s == "" || maxNum <= 0 || muteSecond <= 0 {return 0}
-	if v, ok := autoskip.buf.LoadOrStore(s, 0); ok {
-		autoskip.buf.Store(s, v.(int) + 1)
-		return v.(int) + 1
-	}
-	
-	autoskip.num += 1
-	if autoskip.num > maxNum {autoskip.bufbreak <- true}
-	
+func init(){
 	go func(){
-		select {
-		case <- autoskip.bufbreak:
-		case <- time.After(time.Duration(muteSecond)*time.Second):
-		}
-		autoskip.num -= 1
-		i, ok := autoskip.buf.LoadAndDelete(s);
-		if ok {//多人重复提示
-			switch i.(int) {
-			case 0,1:
-			case 2,3:Msg_showdanmu(nil, strconv.Itoa(i.(int)) + " x " + s,`0default`)
-			default:Msg_showdanmu(nil, strconv.Itoa(i.(int)) + " x " + s,`0multi`)
+		for {
+			<-autoskip.ticker.C
+			if len(autoskip.buf) == 0 {continue}
+			autoskip.now += 1
+			autoskip.Lock()
+			for k,v := range autoskip.buf{
+				if v.Exprie <= autoskip.now {
+					delete(autoskip.buf,k)
+					{//超时显示
+						if v.Num > 3 {
+							Msg_showdanmu(nil, strconv.Itoa(int(v.Num)) + " x " + k,`0multi`)
+						} else if v.Num > 1 {
+							Msg_showdanmu(nil, strconv.Itoa(int(v.Num)) + " x " + k,`0default`)
+						}
+					}
+				}
 			}
+			{//copy map
+				tmp := make(map[string]Autoskip_item)
+				for k,v := range autoskip.buf {tmp[k] = v}
+				autoskip.buf = tmp
+			}
+			autoskip.Unlock()			
 		}
 	}()
+}
+
+func Autoskipf(s string) uint {
+	if !IsOn("Autoskip") || s == ""{return 0}
+	autoskip.Lock()
+	defer autoskip.Unlock()
+	{//验证是否已经存在
+		if v,ok := autoskip.buf[s];ok && autoskip.now < v.Exprie{
+			autoskip.buf[s] = Autoskip_item{
+				Exprie:v.Exprie,
+				Num:v.Num+1,
+			}
+			return v.Num
+		}
+	}
+	{//设置
+		autoskip.buf[s] = Autoskip_item{
+			Exprie:autoskip.now + 8,
+			Num:1,
+		}
+	}
 	return 0
 }
 
@@ -673,8 +710,7 @@ func Jiezouf(s []string) bool {
 
 	jiezou.Lock()
 	if now > 1.3 * jiezou.avg {//触发
-		l := p.Logf().New().Open("danmu.log").Base(1, "jiezou")
-		l.W("节奏注意", now, jiezou.avg, S).Block()
+		c.Log.Base("jiezou").L(`W: `,"节奏注意", now, jiezou.avg, S)
 		jiezou.avg = now //沉默
 		jiezou.Unlock()
 

@@ -10,6 +10,8 @@ import (
 	"strings"
 	"log"
 	"fmt"
+	"sync"
+	"runtime"
 
 	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
@@ -19,15 +21,8 @@ import (
 	c "github.com/qydysky/bili_danmu/CV"
 	s "github.com/qydysky/part/buf"
 )
-const (
-	max_danmu = 50
-	max_keep = 5
-	max_img = 500
-)
 
-var appId = "com.github.qydysky.bili_danmu.reply"+p.Sys().GetTime()//时间戳允许多开
-
-type gtk_list struct {
+type danmu_item struct {
 	text *gtk.TextView
 	img *gtk.Image
 	handle glib.SignalHandle
@@ -38,11 +33,8 @@ type gtk_item_source struct {
 	time time.Time
 }
 
-var pro_style *gtk.CssProvider
-var gtkGetList = list.New()
-
-var imgbuf = make(map[string](*gdk.Pixbuf))
-var keep_list = list.New()
+var gtkGetList = make(chan string,100)
+var danmu_item_chan = make(chan danmu_item,100)
 
 var keep_key = map[string]int{
 	"face/0default":0,
@@ -58,10 +50,22 @@ var keep_key = map[string]int{
 }
 var (
 	Gtk_on bool
-	Gtk_Tra bool
 	Gtk_img_path string = "face"
-	Gtk_danmuChan chan string = make(chan string, 1000)
-	Gtk_danmuChan_uid chan string = make(chan string, 1000)
+	Gtk_danmu_chan = make(chan Danmu_mq_t,100)
+
+	imgbuf = struct{
+		b map[string](*gdk.Pixbuf)
+		sync.Mutex
+	}{
+		b:make(map[string](*gdk.Pixbuf)),
+	}
+
+	danmu_win_running bool//弹幕窗体是否正在运行
+	contrl_win_running bool//控制窗体是否正在运行
+	in_smooth_roll bool
+	grid0 *gtk.Grid
+	grid1 *gtk.Grid
+	keep_list = list.New()
 )
 
 func init(){
@@ -70,40 +74,49 @@ func init(){
 	//使用带tag的消息队列在功能间传递消息
 	Danmu_mq.Pull_tag(map[string]func(interface{})(bool){
 		`danmu`:func(data interface{})(bool){//弹幕
-			Gtk_danmuChan_uid <- data.(Danmu_mq_t).uid
-			Gtk_danmuChan <- data.(Danmu_mq_t).msg
+			select{
+			case Gtk_danmu_chan <- data.(Danmu_mq_t):
+			default:
+			}
 			return false
 		},
 	})
+	//
+	go func(){//copy map
+		for {
+			time.Sleep(time.Duration(60)*time.Second)
+			{
+				tmp := make(map[string](*gdk.Pixbuf))
+				for k,v := range imgbuf.b {tmp[k] = v}
+				imgbuf.Lock()
+				imgbuf.b = tmp
+				imgbuf.Unlock()
+			}
+		}
+	}()
 }
 
 func Gtk_danmu() {
 	if Gtk_on {return}
 	gtk.Init(nil)
 
-	var y func(string,string,...int)
 	var (
-		danmu_win_running bool//弹幕窗体是否正在运行
-		contrl_win_running bool//控制窗体是否正在运行
+		scrolledwindow0 *gtk.ScrolledWindow
+		viewport0 *gtk.Viewport
+		w2_textView0 *gtk.TextView
+		w2_textView1 *gtk.TextView
+		w2_textView2 *gtk.TextView
+		w2_textView3 *gtk.TextView
+		w2_textView4 *gtk.TextView
+		w2_Entry0 *gtk.Entry
+		w2_Entry0_editting = make(chan bool,10)
 	)
-	var win *gtk.Window
-	var win2 *gtk.Window
-	var scrolledwindow0 *gtk.ScrolledWindow
-	var viewport0 *gtk.Viewport
-	var viewport1 *gtk.Viewport
-	var w2_textView0 *gtk.TextView
-	var w2_textView1 *gtk.TextView
-	var w2_textView2 *gtk.TextView
-	var w2_textView3 *gtk.TextView
-	var w2_textView4 *gtk.TextView
-	var renqi_old = 1
-	var w2_Entry0 *gtk.Entry
-	var w2_Entry0_editting bool
-	var grid0 *gtk.Grid;
-	var grid1 *gtk.Grid;
-	var in_smooth_roll bool
 
-	application, err := gtk.ApplicationNew(appId, glib.APPLICATION_FLAGS_NONE)
+
+	application, err := gtk.ApplicationNew(
+	"com.github.qydysky.bili_danmu.reply"+p.Sys().GetTime(),//时间戳允许多开
+	glib.APPLICATION_FLAGS_NONE)
+
 	if err != nil {log.Println(err);return}
 
 	application.Connect("startup", func() {
@@ -120,7 +133,10 @@ func Gtk_danmu() {
 			builder.ConnectSignals(signals)
 			builder2.ConnectSignals(signals)
 		}
-
+		var (
+			win *gtk.Window
+			win2 *gtk.Window
+		)
 		{
 			obj, err := builder.GetObject("main_window")
 			if err != nil {log.Println(err);return}
@@ -219,12 +235,10 @@ func Gtk_danmu() {
 			if err != nil {log.Println(err);return}
 			if tmp,ok := obj.(*gtk.Entry); ok {
 				w2_Entry0 = tmp
-				tmp.Connect("focus-in-event", func() {
-					w2_Entry0_editting = true
-				})
 				tmp.Connect("focus-out-event", func() {
 					glib.TimeoutAdd(uint(3000), func()bool{//3s后才解除，避免刚想切换又变回去
-						w2_Entry0_editting = false
+						for len(w2_Entry0_editting) != 0 {<-w2_Entry0_editting}
+						w2_Entry0_editting <- false
 						return false
 					})
 				})
@@ -236,16 +250,16 @@ func Gtk_danmu() {
 			if tmp,ok := obj.(*gtk.Button); ok {
 				tmp.Connect("clicked", func() {
 					if t,e := w2_Entry0.GetText();e != nil {
-						y("读取错误",load_face("0room"))
+						show("读取错误",load_face("0room"))
 					} else if t != `` {
 						if i,e := strconv.Atoi(t);e != nil {
-							y(`输入错误`,load_face("0room"))
+							show(`输入错误`,load_face("0room"))
 						} else {
 							c.Roomid =  i
 							c.Danmu_Main_mq.Push_tag(`change_room`,nil)
 						}
 					} else {
-						y(`房间号输入为空`,load_face("0room"))
+						show(`房间号输入为空`,load_face("0room"))
 					}
 				})
 			}else{log.Println("cant find #want_click in .glade");return}
@@ -266,13 +280,6 @@ func Gtk_danmu() {
 			}else{log.Println("cant find #viewport0 in .glade");return}
 		}
 		{
-			obj, err := builder.GetObject("viewport1")
-			if err != nil {log.Println(err);return}
-			if tmp,ok := obj.(*gtk.Viewport); ok {
-				viewport1 = tmp
-			}else{log.Println("cant find #viewport1 in .glade");return}
-		}
-		{
 			obj, err := builder.GetObject("grid0")
 			if err != nil {log.Println(err);return}
 			if tmp,ok := obj.(*gtk.Grid); ok {
@@ -286,11 +293,12 @@ func Gtk_danmu() {
 				grid1 = tmp
 			}else{log.Println("cant find #grid1 in .glade");return}
 		}
-		imgbuf["face/0default"],_ = gdk.PixbufNewFromFileAtSize("face/0default", 40, 40);
+		imgbuf.Lock()
+		imgbuf.b["face/0default"],_ = gdk.PixbufNewFromFileAtSize("face/0default", 40, 40);
+		imgbuf.Unlock()
 
 		{
-			var e error
-			if pro_style,e = gtk.CssProviderNew();e == nil{
+			if pro_style,e := gtk.CssProviderNew();e == nil{
 				if e = pro_style.LoadFromPath(`ui/1.css`);e == nil{
 					if scr := win.GetScreen();scr != nil {
 						gtk.AddProviderForScreen(scr,pro_style,gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
@@ -299,110 +307,9 @@ func Gtk_danmu() {
 			}else{log.Println(e)}
 		}
 
-		y = func(s,img_src string,to_grid ...int){
-			var tmp_list gtk_list
-
-			tmp_list.text,_ = gtk.TextViewNew();
-			{
-				tmp_list.text.SetMarginStart(5)
-				tmp_list.text.SetEditable(false)
-				tmp_list.text.SetHExpand(true)
-				tmp_list.text.SetWrapMode(gtk.WRAP_WORD_CHAR)
-			}
-			{
-				var e error
-				tmp_list.handle,e = tmp_list.text.Connect("size-allocate", func(){
-					b,e := tmp_list.text.GetBuffer()
-					if e != nil {log.Println(e);return}
-					b.SetText(s)
-					in_smooth_roll = true
-
-				})
-				if e != nil {log.Println(e)}
-			}
-
-			tmp_list.img,_ =gtk.ImageNew();
-			{
-				var (
-					pixbuf *gdk.Pixbuf
-					e error
-				)
-				if v,ok := imgbuf[img_src];ok{
-					pixbuf,e = gdk.PixbufCopy(v)
-				} else {
-					pixbuf,e = gdk.PixbufNewFromFileAtSize(img_src, 40, 40);
-					if e == nil {
-						if len(imgbuf) > max_img {
-							for k,_ := range imgbuf {delete(imgbuf,k);break}
-						}
-						imgbuf[img_src],e = gdk.PixbufCopy(pixbuf)
-					}
-				}
-				if e == nil {tmp_list.img.SetFromPixbuf(pixbuf)}
-			}
-			{
-				sec := 0
-				if tsec,ok := keep_key[img_src];ok && tsec != 0 {
-					sec = tsec
-					if sty,e := tmp_list.text.GetStyleContext();e == nil{
-						sty.AddClass("highlight")
-					}
-				}
-				if len(to_grid) != 0 && to_grid[0] == 0 {//突出显示结束后，显示在普通弹幕区
-					loc := int(grid0.Container.GetChildren().Length())/2;
-					grid0.InsertRow(loc);
-					grid0.Attach(tmp_list.img, 0, loc, 1, 1)
-					grid0.Attach(tmp_list.text, 1, loc, 1, 1)
-					win.ShowAll()
-					return
-				}
-				/*
-					front
-					|
-					back index:0
-				*/
-				var InsertIndex int = keep_list.Len()
-				if sec > InsertIndex / max_keep {//max_keep不是指最大值，而是当list太大时，sec小的将直接跳过
-					var cu_To = time.Now().Add(time.Second * time.Duration(sec))
-					var hasInsert bool
-					for el := keep_list.Front(); el != nil; el = el.Next(){
-						if cu_To.After(el.Value.(gtk_item_source).time) {InsertIndex -= 1;continue}
-						keep_list.InsertBefore(gtk_item_source{
-							text:s,
-							img:img_src,
-							time:cu_To,
-						},el)
-						hasInsert = true
-						break
-					}
-					if !hasInsert {
-						keep_list.PushBack(gtk_item_source{
-							text:s,
-							img:img_src,
-							time:cu_To,
-						})
-					}
-					loc := int(grid1.Container.GetChildren().Length())/2;
-					grid1.InsertRow(loc - InsertIndex);
-					grid1.Attach(tmp_list.img, 0, loc - InsertIndex, 1, 1)
-					grid1.Attach(tmp_list.text, 1, loc - InsertIndex, 1, 1)
-				} else {
-					loc := int(grid0.Container.GetChildren().Length())/2;
-					grid0.InsertRow(loc);
-					grid0.Attach(tmp_list.img, 0, loc, 1, 1)
-					grid0.Attach(tmp_list.text, 1, loc, 1, 1)
-				}
-				// tmp_list1:=tmp_list
-				// grid0.Attach(tmp_list1.img, 0, loc, 1, 1)
-				// grid0.Attach(tmp_list1.text, 1, loc, 1, 1)
-			}
-
-			win.ShowAll()
-		}
-
-		//先展示弹幕信息窗
-		win.ShowAll()
+		//先展示弹幕窗
 		win2.ShowAll()
+		win.ShowAll()
 
 		Gtk_on = true
 	})
@@ -410,37 +317,35 @@ func Gtk_danmu() {
 	application.Connect("activate", func() {
 
 		go func(){
-			for danmu_win_running {
-				time.Sleep(time.Second)
-				glib.TimeoutAdd(uint(10),func()(value bool){
-					el := keep_list.Front()
-					value = el != nil && time.Now().After(el.Value.(gtk_item_source).time)
-					if value {
-						if i,e := grid1.GetChildAt(0,0); e != nil{i.(*gtk.Widget).Destroy()}
-						if i,e := grid1.GetChildAt(1,0); e != nil{i.(*gtk.Widget).Destroy()}
+			glib.TimeoutAdd(uint(1000),func()(bool){
+				if !danmu_win_running {return false}
+				el := keep_list.Front()
+				for el != nil && time.Now().After(el.Value.(gtk_item_source).time) {
+					if grid1.Container.GetChildren().Length() > 0 {
 						grid1.RemoveRow(0)
-						y(el.Value.(gtk_item_source).text,el.Value.(gtk_item_source).img, 0)
-						keep_list.Remove(el)
-						el = el.Next()
 					}
-					return
-				})
-				if len(Gtk_danmuChan) == 0 {continue}
-				glib.TimeoutAdd(uint(1000 / (len(Gtk_danmuChan) + 1)),func()(bool){
-					if len(Gtk_danmuChan) == 0 {return false}
-					y(<-Gtk_danmuChan,load_face(<-Gtk_danmuChan_uid))
-					return true
-				})
+					show(el.Value.(gtk_item_source).text,el.Value.(gtk_item_source).img, 0)
+					keep_list.Remove(el)
+					el = el.Next()
+				}
+				return true
+			})
+			for danmu_win_running {
+				select{
+				case item := <- Gtk_danmu_chan:
+					show(item.msg,load_face(item.uid))
+				default:
+				}
+				time.Sleep(time.Second/time.Duration(len(Gtk_danmu_chan)+1))
 			}
 		}()
 		var old_cu float64
 		{//平滑滚动效果
-			tmp := scrolledwindow0.GetVAdjustment()
-			glib.TimeoutAdd(uint(30),func()(true_value bool){
-				true_value = true
-				if !in_smooth_roll {return}
+			glib.TimeoutAdd(uint(30),func()(bool){
+				if !danmu_win_running {return false}
+				if !in_smooth_roll {return true}
 				h := viewport0.GetViewWindow().WindowGetHeight()
-				// g1h := viewport1.GetViewWindow().WindowGetHeight()
+				tmp := scrolledwindow0.GetVAdjustment()
 				max := tmp.GetUpper() - float64(h)
 				cu := tmp.GetValue()
 				
@@ -448,28 +353,34 @@ func Gtk_danmu() {
 				if old_cu != 0 &&//非初始
 				max - cu > 100 &&//当前位置低于100
 				old_cu != cu {//上一次滚动有移动
-					return
+					return true
 				}
-
+				
+				loc := int(grid0.Container.GetChildren().Length())/2
 				step := (max - cu) / 30
-				if step > 0.5 && max - cu < float64(h){
-					if step > 5 {step = 5}
+				if loc > 0 && step > 20 || max > 5 * float64(h){//太长或太快
+					grid0.RemoveRow(0)
+				} else if step > 0.5 {
+					if step > 5{step = 5}
 					tmp.SetValue(cu + step)
 				} else {
 					in_smooth_roll = false
 					tmp.SetValue(max)
-					loc := int(grid0.Container.GetChildren().Length())/2;
-					for loc > max_danmu {
-						if i,e := grid0.GetChildAt(0,0); e != nil{i.(*gtk.Widget).Destroy()}
-						if i,e := grid0.GetChildAt(1,0); e != nil{i.(*gtk.Widget).Destroy()}
+					if v,ok := K_v[`gtk_保留弹幕数量`].(float64);ok {
+						loc -= int(v)
+					} else {
+						loc -= 25
+					}
+					for loc > 0 {
 						grid0.RemoveRow(0)
 						loc -= 1
 					}
 				}
 				old_cu = tmp.GetValue()
-				return
+				return true
 			})
 		}
+		var renqi_old = 1
 		glib.TimeoutAdd(uint(3000), func()(o bool){
 			o = contrl_win_running
 			//y("sssss",load_face(""))
@@ -541,17 +452,19 @@ func Gtk_danmu() {
 				}
 			}
 			{//房间id
-				if !w2_Entry0_editting {
-					if t,e := w2_Entry0.GetText();e == nil && t != strconv.Itoa(c.Roomid) {//未编辑时，显示为长id
+				for len(w2_Entry0_editting) > 1 {<-w2_Entry0_editting}
+				select{
+				case tmp:=<-w2_Entry0_editting:
+					if !tmp {
 						w2_Entry0.SetText(strconv.Itoa(c.Roomid))
 					}
+				default:
 				}
 			}
-			if gtkGetList.Len() == 0 {return}
-			el := gtkGetList.Front()
-			if el == nil {return}
-			if uid,ok := gtkGetList.Remove(el).(string);ok{
+			select {
+			case uid:=<-gtkGetList:
 				go func(){
+					if p.Checkfile().IsExist(Gtk_img_path + `/` + uid) {return}
 					src := F.Get_face_src(uid)
 					if src == "" {return}
 					req := p.Req()
@@ -561,8 +474,8 @@ func Gtk_danmu() {
 						Timeout:3,
 					}); e != nil{log.Println(e);}
 				}()
+			default:
 			}
-
 			return
 		})
 	})
@@ -570,6 +483,7 @@ func Gtk_danmu() {
 	application.Connect("shutdown", func() {
 		log.Println("application shutdown")	
 		Gtk_on = false
+		c.Danmu_Main_mq.Push_tag(`gtk_close`,nil)
 	})
 
 	application.Run(nil)
@@ -597,7 +511,160 @@ func load_face(uid string) (loc string) {
 		loc = Gtk_img_path + `/` + uid
 		return
 	}
-	if gtkGetList.Len() > 1000 {return}
-	gtkGetList.PushBack(uid)
+	if v,ok := K_v[`gtk_头像获取等待最大数量`].(float64);ok && len(gtkGetList) > int(v) {return}
+	select{
+		case gtkGetList <- uid:
+		default:
+	}
 	return
 }
+
+func show(s,img_src string,to_grid ...int){
+	if s == `` || img_src == `` {return}
+	glib.TimeoutAdd(uint(1),func()(r bool){
+	r = false
+
+	sec := 0
+
+	var item danmu_item
+	// runtime.SetFinalizer(&item,func(p *danmu_item){p = nil;fmt.Print(`i `)})
+
+	item.text,_ = gtk.TextViewNew()
+	// runtime.SetFinalizer(item.text,func(p *gtk.TextView){p = nil;fmt.Print(`t `)})
+	{
+		item.text.SetMarginStart(5)
+		item.text.SetEditable(false)
+		item.text.SetHExpand(true)
+		item.text.SetWrapMode(gtk.WRAP_WORD_CHAR)
+		if tsec,ok := keep_key[img_src];ok && tsec != 0 {
+			sec = tsec
+			if sty,e := item.text.GetStyleContext();e == nil{
+				sty.AddClass("highlight")
+			}
+		}
+		item.handle,_ = item.text.Connect("size-allocate", func(_,_ interface{},item *danmu_item){
+			if item == nil || (*item).text == nil {return}
+			b,e := (*item).text.GetBuffer()
+			if e != nil {log.Println(e);return}
+			b.SetText(s)
+			in_smooth_roll = true
+		},&item)
+	}
+
+	item.img,_ = gtk.ImageNew();
+	// runtime.SetFinalizer(item.img,func(p *gtk.Image){p = nil;fmt.Print(`I `)})
+	{
+		var (
+			pixbuf *gdk.Pixbuf
+			e error
+		)
+		if v,ok := imgbuf.b[img_src];ok{
+			pixbuf,e = gdk.PixbufCopy(v)
+		} else {
+			pixbuf,e = gdk.PixbufNewFromFileAtSize(img_src, 40, 40);
+			if e == nil {
+				imgbuf.Lock()
+				if v,ok := K_v[`gtk_内存头像数量`].(float64);ok && len(imgbuf.b) > int(v) + 10 {
+					for k,_ := range imgbuf.b {
+						delete(imgbuf.b,k)
+						if len(imgbuf.b) <= int(v) {break}
+					}
+				}
+				imgbuf.b[img_src],e = gdk.PixbufCopy(pixbuf)
+				imgbuf.Unlock()
+			}
+		}
+		if e == nil {item.img.SetFromPixbuf(pixbuf)}
+	}
+
+	select {
+	case danmu_item_chan <- item:
+	default:
+		old :=<- danmu_item_chan
+		old.text.Destroy()
+		old.img.Destroy()
+		runtime.GC()
+		danmu_item_chan <- item
+	}
+	
+
+	{
+		if len(to_grid) != 0 && to_grid[0] == 0 {//突出显示结束后，显示在普通弹幕区
+			loc := int(grid0.Container.GetChildren().Length())/2;
+			grid0.InsertRow(loc);
+			grid0.Attach(item.img, 0, loc, 1, 1)
+			grid0.Attach(item.text, 1, loc, 1, 1)
+			grid0.ShowAll()
+			return
+		}
+		/*
+			front
+			|
+			back index:0
+		*/
+		var InsertIndex int = keep_list.Len()
+		if sec > InsertIndex / 5 {//5不是指最大值，而是当list太大时，sec小的将直接跳过
+			var cu_To = time.Now().Add(time.Second * time.Duration(sec))
+			var hasInsert bool
+			for el := keep_list.Front(); el != nil; el = el.Next(){
+				if cu_To.After(el.Value.(gtk_item_source).time) {InsertIndex -= 1;continue}
+				keep_list.InsertBefore(gtk_item_source{
+					text:s,
+					img:img_src,
+					time:cu_To,
+				},el)
+				hasInsert = true
+				break
+			}
+			if !hasInsert {
+				keep_list.PushBack(gtk_item_source{
+					text:s,
+					img:img_src,
+					time:cu_To,
+				})
+			}
+			loc := int(grid1.Container.GetChildren().Length())/2;
+			grid1.InsertRow(loc - InsertIndex);
+			grid1.Attach(item.img, 0, loc - InsertIndex, 1, 1)
+			grid1.Attach(item.text, 1, loc - InsertIndex, 1, 1)
+			grid1.ShowAll()
+		} else {
+			loc := int(grid0.Container.GetChildren().Length())/2;
+			grid0.InsertRow(loc);
+			grid0.Attach(item.img, 0, loc, 1, 1)
+			grid0.Attach(item.text, 1, loc, 1, 1)
+			grid0.ShowAll()
+		}
+		return
+	}
+	})
+}
+
+//bug
+/*
+以下代码将会导致SIGSEGV: segmentation violation
+fatal error: unexpected signal during runtime execution
+[signal SIGSEGV: segmentation violation code=0x1 addr=0x18 pc=0x7f7860bb88d6]
+
+item.handle,_ = item.text.Connect("size-allocate", func(text *gtk.TextView,_ interface{}){
+    b,e := text.GetBuffer()
+    if e != nil {log.Println(e);return}
+    b.SetText(s)
+    in_smooth_roll = true
+})
+
+以下代码不会
+
+item.handle,_ = item.text.Connect("size-allocate", func(){
+    b,e := item.text.GetBuffer()
+    if e != nil {log.Println(e);return}
+    b.SetText(s)
+    in_smooth_roll = true
+})
+*/
+/*
+    同时太多ToWidget().Destroy()将会卡死gtk
+*/
+/*
+	gotk3存在内存泄漏，发生在C
+*/

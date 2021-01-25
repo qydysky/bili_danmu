@@ -4,11 +4,10 @@ import (
 	"bytes"
 	"strconv"
 
-	p "github.com/qydysky/part"
 	c "github.com/qydysky/bili_danmu/CV"
 )
 
-var flog = p.Logf().New().Open("danmu.log").Base(-1, "F.go")
+var flog = c.Log.Base(`F/F.go`)
 
 //base on source/player-loader-2.0.7.min.js L3313
 //base on source/player-loader-2.0.7.min.js L3455
@@ -35,7 +34,7 @@ func HeadGen(datalenght,Opeation,Sequence int) []byte {
 
 func HeadChe(head []byte) (header) {
 
-	if len(head) != c.WS_PACKAGE_HEADER_TOTAL_LENGTH {flog.Base(1, "头部检查").E("输入头长度错误");return header{}}
+	if len(head) != c.WS_PACKAGE_HEADER_TOTAL_LENGTH {flog.Base_add("头部检查").L(`E: `,"输入头长度错误");return header{}}
 
 	PackL := Btoi32(head, c.WS_PACKAGE_OFFSET)
 	HeadL := Btoi16(head, c.WS_HEADER_OFFSET)
@@ -54,11 +53,10 @@ func HeadChe(head []byte) (header) {
 
 //认证生成与检查
 func HelloGen(roomid int, key string) []byte {
-	flog.Base(-1, "认证生成")
-	defer flog.Base(0)
+	flog := flog.Base_add("认证生成")
 
 	if roomid == 0 || key == "" {
-		flog.E("roomid == 0 || key == \"\"")
+		flog.L(`E: `,"roomid == 0 || key == \"\"")
 		return []byte("")
 	}
 

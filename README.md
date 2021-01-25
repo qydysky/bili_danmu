@@ -1,5 +1,5 @@
 ## bilibili 直播弹幕机
-golang go version go1.15.5 linux/amd64
+golang go version go1.15 linux/amd64
 
 ---
 ### 目录释义
@@ -9,7 +9,7 @@ golang go version go1.15.5 linux/amd64
 |CV/|全局变常量|
 |F/|项目小工具(ws消息生成、api、整数字节转换)|
 |Replay/|接收的数据处理区|
-|Send/|弹幕发送|
+|Send/|发送数据区|
 |_Screenshot/|截图保存目录|
 |_msg_sample/|ws接收数据示例|
 |_source/|bilijs文件示例|
@@ -31,6 +31,7 @@ golang go version go1.15.5 linux/amd64
 - [github.com/christopher-dG/go-obs-websocket](https://github.com/christopher-dG/go-obs-websocket) under [MIT](https://raw.githubusercontent.com/christopher-dG/go-obs-websocket/master/LICENSE)
 - [github.com/gorilla/websocket](https://github.com/gorilla/websocket) under [BSD 2-Clause](https://raw.githubusercontent.com/gorilla/websocket/master/LICENSE)
 - [github.com/skip2/go-qrcode](https://github.com/skip2/go-qrcode) under [MIT](https://github.com/skip2/go-qrcode/blob/master/LICENSE)
+- [github.com/gofrs/uuid](https://github.com/gofrs/uuid) under [MIT](https://github.com/gofrs/uuid/blob/master/LICENSE)
 - [7z](https://www.7-zip.org/) under [LICENSE](https://www.7-zip.org/license.txt)
 ---
 
@@ -57,6 +58,7 @@ golang go version go1.15.5 linux/amd64
 
 #### 当前支持功能
 以下内容可能过时，点击查看[当前支持功能](https://github.com/qydysky/bili_danmu/blob/master/Reply/F.go#L16)
+- [x] 自定义私信
 - [x] 自动切换粉丝牌
 - [x] 扫码登录
 - [x] 自定义语音提醒
@@ -83,25 +85,72 @@ golang go version go1.15.5 linux/amd64
 - [x] GTK信息窗支持房间切换、弹幕格式化发送、时长统计
 - [x] GTK弹幕窗支持自定义人/事件消息停留
 
-### 构建
+### 说明
 本项目使用github action自动构建，构建过程详见[yml](https://github.com/qydysky/bili_danmu/blob/master/.github/workflows/go.yml)
 
+#### 私信
+在登录后，可以使用私信
+
+私信配置在`demo/config/config_K_v.json`有说明
+
 #### 语音
-调用tts需要ffplay,先行安装[ffmpeg](http://ffmpeg.org/download.html)
+调用tts默认使用ffplay,安装[ffmpeg](http://ffmpeg.org/download.html)
 
+或使用其他程序：可在`demo/config/config_K_v.json`中编辑调用的程序及附加选项
 ```
-编译命令
-cd demo
-go build -v -tags `tts` -o demo.exe -i main.go
-```
+config_K_v.json
+默认
+    "TTS_使用程序路径":"ffplay",
+    "TTS_使用程序参数":"-autoexit -nodisp"
 
+使用mpv
+    "TTS_使用程序路径":"mpv",
+    "TTS_使用程序参数":"--no-video"
+
+使用potplayer(例程序位置D:\potplayer\PotPlayerMini64.exe)
+    "TTS_使用程序路径":"D:\\potplayer\\PotPlayerMini64.exe",
+    "TTS_使用程序参数":"/current /autoplay"
+```
+release默认编译tts
+
+总开关,自定义响应的事件可在`demo/config/config_tts.json`中编辑
+```
+{D}:为tts内容
+key为demo/face下的文件名
+{
+    "0multi": "观众：{D}",
+    "29183321":"{D}"
+}
+```
 #### 弹幕窗
 构建gtk需要gtk3,先行安装[gtk](https://www.gtk.org/)
+release Linux默认编译gtk界面 Windows默认不编译
 ```
 编译命令
 cd demo
-go build -v -tags `gtk gtk_3_24` -o demo.exe -i main.go
+go build -v -tags `gtk` -o demo.exe -i main.go
 ```
+#### 弹幕处理/响应
+默认开启了
+
+- 反射弹幕机
+
+启动时加载，当弹幕内容与`demo/config_auto_reply.json`中所设键名相同时，在登录的情况下，会自动发送对应值的弹幕
+
+- 相同合并
+
+当短时间存在大量完全相同的弹幕时，他们将合并显示。
+
+- 更少弹幕
+
+过滤掉自身重复度及最近弹幕重复度高的弹幕
+
+- 更短弹幕
+
+当与上条弹幕具有相同开头的开头时，重复的部分会用...替代
+
+仅对显示效果进行处理，而不处理输出到日志。更多设置见`demo/config/config_F.json`
+
 ### demo 
 前往[releases](https://github.com/qydysky/bili_danmu/releases)页下载对应系统版本。解压后进入`demo`目录(文件夹)，运行`demo.run`(`demo.exe`)。
 ```
@@ -178,16 +227,17 @@ ctrl+c退出，会同时追加记录到文件danmu.log中（文件记录完整�
 ```
 结束后的文件播放效果(显于左上)
 ![](_Screenshot/Screenshot_20200926_173834.png)
-[截图地址](//zdir.ntsdtt.bid/ALL/Admin/Remote/%E5%9B%BE%E7%89%87/Screenshot_20200926_173834.png)
+
+[截图地址](//zdir.ntsdtt.bid/ALL/Admin/pack/file/Screenshot_20200926_173834.png)
 
 - Gtk弹幕窗(Linux Only)
 
 ![](_Screenshot/2020-12-12_16-43-09.gif)
 
-[截图地址](//zdir.ntsdtt.bid/ALL/Admin/Remote/%E5%9B%BE%E7%89%87/2020-12-12_16-43-09.gif)
+[截图地址](//zdir.ntsdtt.bid/ALL/Admin/pack/file/2020-12-12_16-43-09.gif)
 
 ![](_Screenshot/Screenshot_20201212_164610.png)
 
-[截图地址](//zdir.ntsdtt.bid/ALL/Admin/Remote/%E5%9B%BE%E7%89%87/Screenshot_20201212_164610.png)
+[截图地址](//zdir.ntsdtt.bid//ALL/Admin/pack/file/Screenshot_20201212_164610.png)
 
 更多内容详见注释，如有疑问请发issues，欢迎pr

@@ -1,7 +1,7 @@
 package reply
 
 import (
-	p "github.com/qydysky/part"
+	"encoding/json"
 	c "github.com/qydysky/bili_danmu/CV"
 	s "github.com/qydysky/part/buf"
 )
@@ -14,10 +14,15 @@ var msglog = c.Log.Base(`Msg`)
 
 //Msg类型数据处理方法map
 var Msg_map = map[string]func(replyF, string) {
-	`LIVE_INTERACTIVE_GAME`:nil,
+	`ENTRY_EFFECT_MUST_RECEIVE`:nil,//高能榜前三进入
+	`GIFT_BAG_DOT`:nil,
+	`LITTLE_MESSAGE_BOX`:replyF.little_message_box,//小消息
+	`MESSAGEBOX_USER_MEDAL_CHANGE`:replyF.messagebox_user_medal_change,//粉丝牌切换
+	`HOT_RANK_SETTLEMENT`:replyF.hot_rank_settlement,//热门榜获得
+	`HOT_RANK_CHANGED`:replyF.hot_rank_changed,//热门榜变动
+	`CARD_MSG`:nil,//提示关注
 	`WIDGET_BANNER`:nil,//每日任务
 	`ROOM_ADMINS`:nil,//房管列表
-	`room_admin_entrance`:nil,
 	`ONLINE_RANK_TOP3`:nil,
 	`ONLINE_RANK_COUNT`:nil,
 	`ONLINE_RANK_V2`:nil,
@@ -68,7 +73,7 @@ var Msg_map = map[string]func(replyF, string) {
 	"SUPER_CHAT_MESSAGE_DELETE":nil,//SC删除
 	"SUPER_CHAT_MESSAGE":nil,//replyF.super_chat_message,//SC
 	"SUPER_CHAT_MESSAGE_JPN":replyF.super_chat_message,//SC
-	"PANEL":replyF.panel,//排行榜
+	"PANEL":nil,//replyF.panel,//排行榜 被HOT_RANK_CHANGED替代
 	"ENTRY_EFFECT":nil,//replyF.entry_effect,//进入特效
 	"ROOM_REAL_TIME_MESSAGE_UPDATE":nil,//replyF.roominfo,//粉丝数
 }
@@ -93,18 +98,19 @@ func init(){
 //Msg类型数据处理方法挑选
 //识别cmd字段类型，查找上述map中设置的方法，并将json转为字符串型传入
 func Msg(b []byte) {
-	s := string(b)
-	if cmd := p.Json().GetValFromS(s, "cmd");cmd == nil {
-		msglog.L(`E: `,"cmd", s)
-		return
-	} else {
-		var f replyF
 
-		if F, ok := Msg_map[cmd.(string)]; ok {
-			if F != nil {F(f, s)}
-		} else {
-			f.defaultMsg(s)
-		}
+	msglog := msglog.Base_add(`select func`)
+	var tmp struct{
+		Cmd string `json:"cmd"`
+	}
+	if e := json.Unmarshal(b, &tmp);e != nil {
+		msglog.L(`E: `,e)
+		return
+	}
+	if F, ok := Msg_map[tmp.Cmd]; ok {
+		if F != nil {F(replyF{}, string(b))}
+	} else {
+		(replyF{}).defaultMsg(string(b))
 	}
 
 	return 
