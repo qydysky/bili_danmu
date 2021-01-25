@@ -936,3 +936,87 @@ func (i *api) Switch_FansMedal() {
 		}
 	}
 }
+
+//签到
+func Dosign() {
+	apilog := apilog.Base_add(`签到`).L(`T: `,`签到`)
+	if c.Cookie == `` {apilog.L(`E: `,`失败！无cookie`);return}
+
+	{//检查是否签到
+		req := p.Req()
+		if err := req.Reqf(p.Rval{
+			Url:`https://api.live.bilibili.com/xlive/web-ucenter/v1/sign/WebGetSignInfo`,
+			Header:map[string]string{
+				`Host`: `api.live.bilibili.com`,
+				`User-Agent`: `Mozilla/5.0 (X11; Linux x86_64; rv:83.0) Gecko/20100101 Firefox/83.0`,
+				`Accept`: `application/json, text/plain, */*`,
+				`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
+				`Accept-Encoding`: `gzip, deflate, br`,
+				`Origin`: `https://live.bilibili.com`,
+				`Connection`: `keep-alive`,
+				`Pragma`: `no-cache`,
+				`Cache-Control`: `no-cache`,
+				`Referer`:"https://live.bilibili.com/all",
+				`Cookie`:c.Cookie,
+			},
+			Timeout:3,
+			Retry:2,
+		});err != nil {
+			apilog.L(`E: `,err)
+			return
+		}
+	
+		var msg struct {
+			Code int `json:"code"`
+			Message string `json:"message"`
+			Data struct {
+				Status int `json:"status"`
+			} `json:"data"`
+		}
+		if e := json.Unmarshal(req.Respon,&msg);e != nil{
+			apilog.L(`E: `,e)
+		}
+		if msg.Code != 0 {apilog.L(`E: `,msg.Message);return}
+		if msg.Data.Status == 1 {//今日已签到
+			return
+		}
+	}
+
+	{//签到
+		req := p.Req()
+		if err := req.Reqf(p.Rval{
+			Url:`https://api.live.bilibili.com/xlive/web-ucenter/v1/sign/DoSign`,
+			Header:map[string]string{
+				`Host`: `api.live.bilibili.com`,
+				`User-Agent`: `Mozilla/5.0 (X11; Linux x86_64; rv:83.0) Gecko/20100101 Firefox/83.0`,
+				`Accept`: `application/json, text/plain, */*`,
+				`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
+				`Accept-Encoding`: `gzip, deflate, br`,
+				`Origin`: `https://live.bilibili.com`,
+				`Connection`: `keep-alive`,
+				`Pragma`: `no-cache`,
+				`Cache-Control`: `no-cache`,
+				`Referer`:"https://live.bilibili.com/all",
+				`Cookie`:c.Cookie,
+			},
+			Timeout:3,
+			Retry:2,
+		});err != nil {
+			apilog.L(`E: `,err)
+			return
+		}
+	
+		var msg struct {
+			Code int `json:"code"`
+			Message string `json:"message"`
+			Data struct {
+				HadSignDays int `json:"hadSignDays"`
+			} `json:"data"`
+		}
+		if e := json.Unmarshal(req.Respon,&msg);e != nil{
+			apilog.L(`E: `,e)
+		}
+		if msg.Code == 0 {apilog.L(`I: `,`签到成功!本月已签到`, msg.Data.HadSignDays,`天`);return}
+		apilog.L(`E: `,msg.Message)
+	}
+}

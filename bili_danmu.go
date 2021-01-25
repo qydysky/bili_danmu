@@ -140,6 +140,8 @@ func Demo(roomid ...int) {
 			api := F.New_api(c.Roomid).Get_host_Token().Get_live()
 			c.Roomid = api.Roomid
 
+			//每日签到
+			F.Dosign()
 			//获取用户版本
 			api.Get_Version()
 			//获取热门榜
