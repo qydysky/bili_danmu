@@ -721,3 +721,25 @@ func Jiezouf(s []string) bool {
 	jiezou.Unlock()
 	return false
 }
+
+//保存所有消息到json
+func init(){
+	Save_to_json(0, []interface{}{`[`})
+	c.Danmu_Main_mq.Pull_tag(map[string]func(interface{})(bool){
+		`change_room`:func(data interface{})(bool){//房间改变
+			Save_to_json(0, []interface{}{`[`})
+			return false
+		},
+	})
+}
+
+func Save_to_json(Loc int,Context []interface{}) {
+	if path,ok := K_v[`save_to_json`].(string);ok && path != ``{
+		p.File().FileWR(p.Filel{
+			File:path,
+			Write:true,
+			Loc:int64(Loc),
+			Context:Context,
+		})
+	}
+}

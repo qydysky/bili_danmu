@@ -43,7 +43,9 @@ func Reply(b []byte) {
 		
 		contain := b[c.WS_PACKAGE_HEADER_TOTAL_LENGTH:head.PackL]
 		switch head.OpeaT {
-		case c.WS_OP_MESSAGE:Msg(contain)
+		case c.WS_OP_MESSAGE:
+			Msg(contain)
+			Save_to_json(-1, []interface{}{contain,`,`})
 		case c.WS_OP_HEARTBEAT_REPLY:Heart(contain)
 		default :reply_log.L(`W: `,"unknow reply", contain)
 		}

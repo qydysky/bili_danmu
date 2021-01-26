@@ -262,6 +262,7 @@ func Demo(roomid ...int) {
 		close(interrupt)
 		{//附加功能 直播流
 			reply.Saveflv_wait()
+			reply.Save_to_json(-1, []interface{}{`{}]`})
 		}
 		danmulog.L(`I: `,"结束退出")
 	}
