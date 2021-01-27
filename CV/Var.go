@@ -13,7 +13,7 @@ var (
 	Live []string//直播链接
 	Live_qn string
 	Roomid int
-	Cookie string
+	Cookie = make(map[string]string)
 	Title string//直播标题
 	Uname string//主播名
 	Rev float64//营收

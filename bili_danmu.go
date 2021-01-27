@@ -109,7 +109,7 @@ func Demo(roomid ...int) {
 					danmulog.L(`I: `, "未检测到cookie.txt，如果需要登录请在本机打开以下网址扫码登录，不需要请忽略")
 					//获取cookie
 					F.Get_cookie()
-					if c.Cookie != `` {
+					if len(c.Cookie) != 0 {
 						danmulog.L(`I: `,"你已登录，刷新房间！")
 						//刷新
 						c.Danmu_Main_mq.Push_tag(`change_room`,nil)
@@ -118,7 +118,9 @@ func Demo(roomid ...int) {
 				if p.Checkfile().IsExist("cookie.txt") {
 					q.File = "cookie.txt"
 					f := p.File().FileWR(q)
-					c.Cookie = f
+					for k,v := range p.Cookies_String_2_Map(f){
+						c.Cookie[k] = v
+					}
 					if tmp_uid,e := g.SS(f,`DedeUserID=`,`;`,0,0);e == nil {
 						if v,e := strconv.Atoi(tmp_uid);e == nil {
 							c.Uid = v
@@ -164,7 +166,7 @@ func Demo(roomid ...int) {
 					Func_abort_close:func(){danmulog.L(`I: `,`服务器连接中断`)},
 					Func_normal_close:func(){danmulog.L(`I: `,`服务器连接关闭`)},
 					Header: map[string]string{
-						`Cookie`:c.Cookie,
+						`Cookie`:p.Map_2_Cookies_String(c.Cookie),
 						`Host`: u.Hostname(),
 						`User-Agent`: `Mozilla/5.0 (X11; Linux x86_64; rv:84.0) Gecko/20100101 Firefox/84.0`,
 						`Accept`: `*/*`,
@@ -220,7 +222,7 @@ func Demo(roomid ...int) {
 							},
 						})
 
-						if c.Cookie != `` {//附加功能 弹幕机 无cookie无法发送弹幕
+						if len(c.Cookie) != 0 {//附加功能 弹幕机 无cookie无法发送弹幕
 							reply.Danmuji_auto(1)
 						}
 						{//附加功能 直播流保存 营收

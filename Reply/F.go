@@ -244,7 +244,7 @@ func Saveflvf(){
 			os.Rename(saveflv.path+".flv.dtmp", saveflv.path+".flv")
 		}()
 
-		Cookie := c.Cookie
+		Cookie := p.Map_2_Cookies_String(c.Cookie)
 		if i := strings.Index(Cookie, "PVID="); i != -1 {
 			if d := strings.Index(Cookie[i:], ";"); d == -1 {
 				Cookie = Cookie[:i]

@@ -33,17 +33,8 @@ func Send_pm(uid int, msg string) error {
 		return errors.New(`不能发送给自己`)
 	}
 
-	var csrf string
-	if i := strings.Index(c.Cookie, "bili_jct="); i == -1 {
-		log.L(`E: `,`Cookie错误,无bili_jct=`)
-		return errors.New("Cookie错误,无bili_jct=")
-	} else {
-		if d := strings.Index(c.Cookie[i + 9:], ";"); d == -1 {
-			csrf = c.Cookie[i + 9:]
-		} else {
-			csrf = c.Cookie[i + 9:][:d]
-		}
-	}
+	csrf := c.Cookie[`bili_jct`]
+	if csrf == `` {return errors.New("Cookie错误,无bili_jct=")}
 
 	var new_uuid string
 	{
@@ -76,7 +67,7 @@ func Send_pm(uid int, msg string) error {
 			`Pragma`: `no-cache`,
 			`Cache-Control`: `no-cache`,
 			`Referer`:"https://message.bilibili.com",
-			`Cookie`:c.Cookie,
+			`Cookie`:p.Map_2_Cookies_String(c.Cookie),
 		},
 	});e != nil {
 		log.L(`E: `,e)
