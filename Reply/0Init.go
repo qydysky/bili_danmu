@@ -12,14 +12,3 @@ func init(){
 		AllF[k] = v.(bool)
 	}
 } 
-
-//k-v
-var K_v =make(map[string]interface{})
-
-func init() {
-	buf := s.New()
-	buf.Load("config/config_K_v.json")
-	for k,v := range buf.B {
-		K_v[k] = v
-	}
-}

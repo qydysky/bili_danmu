@@ -148,6 +148,8 @@ func Demo(roomid ...int) {
 			api.Get_Version()
 			//获取热门榜
 			api.Get_HotRank()
+			//小心心
+			go api.F_x25Kn()
 			//切换粉丝牌，只在cookie存在时启用
 			api.Switch_FansMedal()
 			if len(api.Url) == 0 || api.Roomid == 0 || api.Token == "" || api.Uid == 0 || api.Locked {

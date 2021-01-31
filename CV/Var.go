@@ -3,6 +3,7 @@ package cv
 import (
 	"time"
 	mq "github.com/qydysky/part/msgq"
+	s "github.com/qydysky/part/buf"
 	log "github.com/qydysky/part/log"
 )
 
@@ -44,6 +45,17 @@ var Log = log.New(log.Config{
 		`E: `:log.On,
 	},
 })
+
+//k-v
+var K_v =make(map[string]interface{})
+
+func init() {
+	buf := s.New()
+	buf.Load("config/config_K_v.json")
+	for k,v := range buf.B {
+		K_v[k] = v
+	}
+}
 
 //from player-loader-2.0.11.min.js
 /*

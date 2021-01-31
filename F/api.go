@@ -16,6 +16,7 @@ import (
 	c "github.com/qydysky/bili_danmu/CV"
 	g "github.com/qydysky/part/get"
 	p "github.com/qydysky/part"
+	uuid "github.com/gofrs/uuid"
 )
 
 type api struct {
@@ -27,6 +28,7 @@ type api struct {
 	Locked bool
 	Token string
 	Parent_area_id int
+	Area_id int
 }
 
 var apilog = c.Log.Base(`api`)
@@ -36,8 +38,9 @@ func New_api(Roomid int) (o *api) {
 	apilog.Base_add(`新建`).L(`T: `,"ok")
 	o = new(api)
 	o.Roomid = Roomid
-	o.Get_info()
 	o.Parent_area_id = -1
+	o.Area_id = -1
+	o.Get_info()
 	return
 }
 
@@ -52,7 +55,7 @@ func (i *api) Get_info() (o *api) {
 	if api_limit.TO() {return}//超额请求阻塞，超时将取消
 
 	o.Get_LIVE_BUVID()
-
+	
 	Roomid := strconv.Itoa(o.Roomid)
 
 	r := g.Get(p.Rval{
@@ -80,6 +83,11 @@ func (i *api) Get_info() (o *api) {
 			apilog.L(`E: `,"parent_area_id", e)
 		} else {o.Parent_area_id = tmp}
 	}
+	if e := r.S(`"area_id":`, `,`, 0, 0).Err;e == nil {
+		if tmp,e := strconv.Atoi(r.RS[0]);e != nil{
+			apilog.L(`E: `,"area_id", e)
+		} else {o.Area_id = tmp}
+	}
 	//roomid
 	if tmp := r.S(`"room_id":`, `,`, 0, 0);tmp.Err != nil {
 		// apilog.L(`E: `,"room_id", tmp.Err)
@@ -89,7 +97,11 @@ func (i *api) Get_info() (o *api) {
 		o.Roomid = i
 	}
 
-	if o.Parent_area_id != -1&&o.Roomid != 0 && o.Uid != 0 && c.Title != ``{return}
+	if	o.Area_id != -1 && 
+		o.Parent_area_id != -1 &&
+		o.Roomid != 0 &&
+		o.Uid != 0 &&
+		c.Title != ``{return}
 
 	{//使用其他api
 		req := p.Req()
@@ -114,6 +126,7 @@ func (i *api) Get_info() (o *api) {
 					Room_id int `json:"room_id"`
 					Title string `json:"title"`
 					Lock_status int `json:"lock_status"`
+					Area_id int `json:"area_id"`
 					Parent_area_id int `json:"parent_area_id"`
 				} `json:"room_info"`
 				Anchor_info struct{
@@ -152,6 +165,12 @@ func (i *api) Get_info() (o *api) {
 			o.Parent_area_id = tmp.Data.Room_info.Parent_area_id
 		} else {
 			apilog.L(`E: `,"data.room_info.parent_area_id = 0")
+			return
+		}
+		if tmp.Data.Room_info.Area_id != 0{
+			o.Area_id = tmp.Data.Room_info.Area_id
+		} else {
+			apilog.L(`E: `,"data.room_info.Area_id = 0")
 			return
 		}
 
@@ -1073,22 +1092,51 @@ type E_json struct{
 	} `json:"data"`
 }
 
-func F_x25Kn() {
-	apilog := apilog.Base_add(`LIVE_BUVID`).L(`T: `,`获取LIVE_BUVID`)
+func (i *api) F_x25Kn() (o *api) {
+	o = i
+	apilog := apilog.Base_add(`小心心`).L(`T: `,`获取小心心`)
 	if len(c.Cookie) == 0 {apilog.L(`E: `,`失败！无cookie`);return}
 	if c.Cookie[`LIVE_BUVID`] == `` {apilog.L(`E: `,`失败！无LIVE_BUVID`);return}
+	if o.Parent_area_id == -1 {apilog.L(`E: `,`失败！未获取Parent_area_id`);return}
+	if o.Area_id == -1 {apilog.L(`E: `,`失败！未获取Area_id`);return}
 	if api_limit.TO() {apilog.L(`E: `,`超时！`);return}//超额请求阻塞，超时将取消
 
-	var res E_json
+	//查看今天小心心数量
+	for _,v := range Gift_list() {
+		if v.Gift_id == 30607 && v.Expire_at - int(p.Sys().GetSTime()) > 6 * 86400 {
+			if v.Gift_num == 24 {
+				apilog.L(`I: `,`今天小心心已满！`);return
+			} else {
+				apilog.L(`I: `,`今天已有`,v.Gift_num,`个小心心`)
+			}
+		}
+	}
+
+	var (
+		res E_json
+		loop_num = 0
+	)
+
+	csrf := c.Cookie[`bili_jct`]
+	if csrf == `` {apilog.L(`E: `,"Cookie错误,无bili_jct");return}
+
+	LIVE_BUVID := c.Cookie[`LIVE_BUVID`]
+	if LIVE_BUVID == `` {apilog.L(`E: `,"Cookie错误,无LIVE_BUVID");return}
+
+	var new_uuid string
+	{
+		if tmp_uuid,e := uuid.NewV4();e == nil {
+			new_uuid = tmp_uuid.String()
+		} else {
+			apilog.L(`E: `,e)
+			return
+		}
+	}
 
 	{//初始化
-
-		csrf := c.Cookie[`bili_jct`]
-		if csrf == `` {apilog.L(`E: `,"Cookie错误,无bili_jct=");return}
-
-		PostStr := `id=`
-		PostStr += `&device=`
-		PostStr += `&ts=`
+		PostStr := `id=[`+strconv.Itoa(o.Parent_area_id)+`,`+strconv.Itoa(o.Area_id)+`,`+strconv.Itoa(loop_num)+`,`+strconv.Itoa(o.Roomid)+`]&`
+		PostStr += `device=["`+LIVE_BUVID+`","`+new_uuid+`"]&`
+		PostStr += `ts=`+strconv.Itoa(int(p.Sys().GetMTime()))
 		PostStr += `&is_patch=0&`
 		PostStr += `heart_beat=[]&`
 		PostStr += `ua=Mozilla/5.0 (X11; Linux x86_64; rv:84.0) Gecko/20100101 Firefox/84.0&`
@@ -1109,10 +1157,10 @@ func F_x25Kn() {
 				`Connection`: `keep-alive`,
 				`Pragma`: `no-cache`,
 				`Cache-Control`: `no-cache`,
-				`Referer`:"https://live.bilibili.com/"+strconv.Itoa(c.Roomid),
+				`Referer`:"https://live.bilibili.com/"+strconv.Itoa(o.Roomid),
 				`Cookie`:p.Map_2_Cookies_String(c.Cookie),
 			},
-			PostStr:url.QueryEscape(PostStr),
+			PostStr:url.PathEscape(PostStr),
 			Timeout:3,
 			Retry:2,
 		});err != nil {
@@ -1130,5 +1178,169 @@ func F_x25Kn() {
 			return
 		}
 	}
+
+	{//loop
+		var cancle = make(chan struct{},1)
+		//使用带tag的消息队列在功能间传递消息
+		c.Danmu_Main_mq.Pull_tag(map[string]func(interface{})(bool){
+			`change_room`:func(data interface{})(bool){//换房时退出当前房间
+				close(cancle)
+				return true
+			},
+		})
+		
+		defer apilog.L(`I: `,`退出`)
+
+		for loop_num < 24*5 {
+			select{
+			case <- time.After(time.Second*time.Duration(res.Data.Heartbeat_interval)):
+			case <- cancle:
+				return
+			}
+
+			loop_num += 1
+			
+			var rt_obj = RT{
+				R:R{
+					Id:`[`+strconv.Itoa(o.Parent_area_id)+`,`+strconv.Itoa(o.Area_id)+`,`+strconv.Itoa(loop_num)+`,`+strconv.Itoa(o.Roomid)+`]`,
+					Device:`["`+LIVE_BUVID+`","`+new_uuid+`"]`,
+					Ets:res.Data.Timestamp,
+					Benchmark:res.Data.Secret_key,
+					Time:res.Data.Heartbeat_interval,
+					Ts:int(p.Sys().GetMTime()),
+				},
+				T:res.Data.Secret_rule,
+			}
+
+			PostStr := `id=`+rt_obj.R.Id+`&`
+			PostStr += `device=["`+LIVE_BUVID+`","`+new_uuid+`"]&`
+			PostStr += `ets=`+strconv.Itoa(res.Data.Timestamp)
+			PostStr += `&benchmark=`+res.Data.Secret_key
+			PostStr += `&time=`+strconv.Itoa(res.Data.Heartbeat_interval)
+			PostStr += `&ts=`+strconv.Itoa(rt_obj.R.Ts)
+			PostStr += `&is_patch=0&`
+			PostStr += `heart_beat=[]&`
+			PostStr += `ua=Mozilla/5.0 (X11; Linux x86_64; rv:84.0) Gecko/20100101 Firefox/84.0&`
+			PostStr += `csrf_token=`+csrf+`&csrf=`+csrf+`&`
+			PostStr += `visit_id=`
+			
+			if wasm := Wasm(rt_obj);wasm == `` {
+				apilog.L(`E: `,`发生错误`)
+				return
+			} else {
+				PostStr = `s=`+wasm+`&`+PostStr
+			}
+			
+			req := p.Req()
+			if err := req.Reqf(p.Rval{
+				Url:`https://live-trace.bilibili.com/xlive/data-interface/v1/x25Kn/X`,
+				Header:map[string]string{
+					`Host`: `api.live.bilibili.com`,
+					`User-Agent`: `Mozilla/5.0 (X11; Linux x86_64; rv:83.0) Gecko/20100101 Firefox/83.0`,
+					`Accept`: `application/json, text/plain, */*`,
+					`Content-Type`: `application/x-www-form-urlencoded`,
+					`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
+					`Accept-Encoding`: `gzip, deflate, br`,
+					`Origin`: `https://live.bilibili.com`,
+					`Connection`: `keep-alive`,
+					`Pragma`: `no-cache`,
+					`Cache-Control`: `no-cache`,
+					`Referer`:"https://live.bilibili.com/"+strconv.Itoa(o.Roomid),
+					`Cookie`:p.Map_2_Cookies_String(c.Cookie),
+				},
+				PostStr:url.PathEscape(PostStr),
+				Timeout:3,
+				Retry:2,
+			});err != nil {
+				apilog.L(`E: `,err)
+				return
+			}
+
+			if e := json.Unmarshal(req.Respon,&res);e != nil {
+				apilog.L(`E: `,e)
+				return
+			}
 	
+			if res.Code != 0{
+				apilog.L(`E: `,res.Message)
+				return
+			}
+
+			//查看今天小心心数量
+			if loop_num%5 == 0 {//每5min
+				for _,v := range Gift_list() {
+					if v.Gift_id == 30607 && v.Expire_at - int(p.Sys().GetSTime()) > 6 * 86400 {
+						if v.Gift_num == 24 {
+							apilog.L(`I: `,`今天小心心已满！`);return
+						} else {
+							apilog.L(`I: `,`获取到第`,v.Gift_num,`个小心心`)
+						}
+					}
+				}
+			}
+		}
+	}
+	return
+}
+
+//礼物列表
+type Gift_list_type struct {
+	Code int `json:"code"`
+	Message string `json:"message"`
+	Data Gift_list_type_Data `json:"data"`
+}
+
+type Gift_list_type_Data struct {
+	List []Gift_list_type_Data_List `json:"list"`
+}
+
+type Gift_list_type_Data_List struct{
+	Gift_id int `json:"gift_id"`
+	Gift_num int `json:"gift_num"`
+	Expire_at int `json:"expire_at"`
+}
+
+func Gift_list() (list []Gift_list_type_Data_List) {
+	apilog := apilog.Base_add(`小心心`).L(`T: `,`获取礼物列表`)
+	if len(c.Cookie) == 0 {apilog.L(`E: `,`失败！无cookie`);return}
+	if c.Roomid == 0 {apilog.L(`E: `,`失败！无Roomid`);return}
+	if api_limit.TO() {apilog.L(`E: `,`超时！`);return}//超额请求阻塞，超时将取消
+
+	req := p.Req()
+	if err := req.Reqf(p.Rval{
+		Url:`https://api.live.bilibili.com/xlive/web-room/v1/gift/bag_list?t=`+strconv.Itoa(int(p.Sys().GetMTime()))+`&room_id=`+strconv.Itoa(c.Roomid),
+		Header:map[string]string{
+			`Host`: `api.live.bilibili.com`,
+			`User-Agent`: `Mozilla/5.0 (X11; Linux x86_64; rv:83.0) Gecko/20100101 Firefox/83.0`,
+			`Accept`: `application/json, text/plain, */*`,
+			`Content-Type`: `application/x-www-form-urlencoded`,
+			`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
+			`Accept-Encoding`: `gzip, deflate, br`,
+			`Origin`: `https://live.bilibili.com`,
+			`Connection`: `keep-alive`,
+			`Pragma`: `no-cache`,
+			`Cache-Control`: `no-cache`,
+			`Referer`:"https://live.bilibili.com/"+strconv.Itoa(c.Roomid),
+			`Cookie`:p.Map_2_Cookies_String(c.Cookie),
+		},
+		Timeout:3,
+		Retry:2,
+	});err != nil {
+		apilog.L(`E: `,err)
+		return
+	}
+
+	var res Gift_list_type
+
+	if e := json.Unmarshal(req.Respon,&res);e != nil {
+		apilog.L(`E: `,e)
+		return
+	}
+
+	if res.Code != 0{
+		apilog.L(`E: `,res.Message)
+		return
+	}
+
+	return res.Data.List
 }

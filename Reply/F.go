@@ -734,7 +734,7 @@ func init(){
 }
 
 func Save_to_json(Loc int,Context []interface{}) {
-	if path,ok := K_v[`save_to_json`].(string);ok && path != ``{
+	if path,ok := c.K_v[`save_to_json`].(string);ok && path != ``{
 		p.File().FileWR(p.Filel{
 			File:path,
 			Write:true,

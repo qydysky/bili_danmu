@@ -366,7 +366,7 @@ func Gtk_danmu() {
 				} else {
 					in_smooth_roll = false
 					tmp.SetValue(max)
-					if v,ok := K_v[`gtk_保留弹幕数量`].(float64);ok {
+					if v,ok := c.K_v[`gtk_保留弹幕数量`].(float64);ok {
 						loc -= int(v)
 					} else {
 						loc -= 25
@@ -511,7 +511,7 @@ func load_face(uid string) (loc string) {
 		loc = Gtk_img_path + `/` + uid
 		return
 	}
-	if v,ok := K_v[`gtk_头像获取等待最大数量`].(float64);ok && len(gtkGetList) > int(v) {return}
+	if v,ok := c.K_v[`gtk_头像获取等待最大数量`].(float64);ok && len(gtkGetList) > int(v) {return}
 	select{
 		case gtkGetList <- uid:
 		default:
@@ -564,7 +564,7 @@ func show(s,img_src string,to_grid ...int){
 			pixbuf,e = gdk.PixbufNewFromFileAtSize(img_src, 40, 40);
 			if e == nil {
 				imgbuf.Lock()
-				if v,ok := K_v[`gtk_内存头像数量`].(float64);ok && len(imgbuf.b) > int(v) + 10 {
+				if v,ok := c.K_v[`gtk_内存头像数量`].(float64);ok && len(imgbuf.b) > int(v) + 10 {
 					for k,_ := range imgbuf.b {
 						delete(imgbuf.b,k)
 						if len(imgbuf.b) <= int(v) {break}
