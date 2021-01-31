@@ -32,6 +32,7 @@ golang go version go1.15 linux/amd64
 - [github.com/gorilla/websocket](https://github.com/gorilla/websocket) under [BSD 2-Clause](https://raw.githubusercontent.com/gorilla/websocket/master/LICENSE)
 - [github.com/skip2/go-qrcode](https://github.com/skip2/go-qrcode) under [MIT](https://github.com/skip2/go-qrcode/blob/master/LICENSE)
 - [github.com/gofrs/uuid](https://github.com/gofrs/uuid) under [MIT](https://github.com/gofrs/uuid/blob/master/LICENSE)
+- [github.com/skratchdot/open-golang/open](https://github.com/skratchdot/open-golang) under [MIT](https://raw.githubusercontent.com/skratchdot/open-golang/master/LICENSE)
 - [7z](https://www.7-zip.org/) under [LICENSE](https://www.7-zip.org/license.txt)
 ---
 
@@ -58,6 +59,8 @@ golang go version go1.15 linux/amd64
 
 #### 当前支持功能
 以下内容可能过时，点击查看[当前支持功能](https://github.com/qydysky/bili_danmu/blob/master/Reply/F.go#L16)
+- [x] 签到
+- [x] 获取小心心
 - [x] 自定义私信
 - [x] 自动切换粉丝牌
 - [x] 扫码登录
@@ -87,6 +90,13 @@ golang go version go1.15 linux/amd64
 
 ### 说明
 本项目使用github action自动构建，构建过程详见[yml](https://github.com/qydysky/bili_danmu/blob/master/.github/workflows/go.yml)
+
+#### 小心心
+在登录后，可以自动获取小心心
+
+需要支持webassembly的浏览器(通常可以在bili直播间获得小心心的浏览器均可)
+
+golang通过websocket与浏览器js进行通讯，在浏览器js调用bilibili的webassembly组件，对信息进行加密。最后返回加密字符串，并由golang进行获取请求。因此需要保持浏览器的相关标签页不被关闭。
 
 #### 私信
 在登录后，可以使用私信
