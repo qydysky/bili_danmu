@@ -1101,17 +1101,20 @@ func (i *api) F_x25Kn() (o *api) {
 	if o.Area_id == -1 {apilog.L(`E: `,`失败！未获取Area_id`);return}
 	if api_limit.TO() {apilog.L(`E: `,`超时！`);return}//超额请求阻塞，超时将取消
 
-	//查看今天小心心数量
-	for _,v := range Gift_list() {
-		if v.Gift_id == 30607 && v.Expire_at - int(p.Sys().GetSTime()) > 6 * 86400 {
-			if v.Gift_num == 24 {
-				apilog.L(`I: `,`今天小心心已满！`);return
-			} else {
-				apilog.L(`I: `,`今天已有`,v.Gift_num,`个小心心`)
+	{//查看今天小心心数量
+		var num = 0
+		for _,v := range Gift_list() {
+			if v.Gift_id == 30607 && v.Expire_at - int(p.Sys().GetSTime()) > 6 * 86400 {
+				num = v.Gift_num
 			}
 		}
+		if num == 24 {
+			apilog.L(`I: `,`今天小心心已满！`);return
+		} else {
+			apilog.L(`I: `,`今天已有`,num,`个小心心，开始获取`)
+		}
 	}
-
+	
 	var (
 		res E_json
 		loop_num = 0
@@ -1224,7 +1227,7 @@ func (i *api) F_x25Kn() (o *api) {
 			PostStr += `csrf_token=`+csrf+`&csrf=`+csrf+`&`
 			PostStr += `visit_id=`
 			
-			if wasm := Wasm(rt_obj);wasm == `` {
+			if wasm := Wasm(0, rt_obj);wasm == `` {//0全局
 				apilog.L(`E: `,`发生错误`)
 				return
 			} else {
@@ -1268,13 +1271,17 @@ func (i *api) F_x25Kn() (o *api) {
 
 			//查看今天小心心数量
 			if loop_num%5 == 0 {//每5min
-				for _,v := range Gift_list() {
-					if v.Gift_id == 30607 && v.Expire_at - int(p.Sys().GetSTime()) > 6 * 86400 {
-						if v.Gift_num == 24 {
-							apilog.L(`I: `,`今天小心心已满！`);return
-						} else {
-							apilog.L(`I: `,`获取到第`,v.Gift_num,`个小心心`)
+				{//查看今天小心心数量
+					var num = 0
+					for _,v := range Gift_list() {
+						if v.Gift_id == 30607 && v.Expire_at - int(p.Sys().GetSTime()) > 6 * 86400 {
+							num = v.Gift_num
 						}
+					}
+					if num == 24 {
+						apilog.L(`I: `,`今天小心心已满！`);return
+					} else {
+						apilog.L(`I: `,`获取了今天的第`,num,`个小心心`)
 					}
 				}
 			}
@@ -1301,7 +1308,7 @@ type Gift_list_type_Data_List struct{
 }
 
 func Gift_list() (list []Gift_list_type_Data_List) {
-	apilog := apilog.Base_add(`小心心`).L(`T: `,`获取礼物列表`)
+	apilog := apilog.Base_add(`礼物列表`).L(`T: `,`获取礼物列表`)
 	if len(c.Cookie) == 0 {apilog.L(`E: `,`失败！无cookie`);return}
 	if c.Roomid == 0 {apilog.L(`E: `,`失败！无Roomid`);return}
 	if api_limit.TO() {apilog.L(`E: `,`超时！`);return}//超额请求阻塞，超时将取消
@@ -1342,5 +1349,6 @@ func Gift_list() (list []Gift_list_type_Data_List) {
 		return
 	}
 
+	apilog.L(`I: `,`成功`)
 	return res.Data.List
 }
