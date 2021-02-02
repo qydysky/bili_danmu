@@ -22,7 +22,7 @@ func init() {
 	go func(){//日期变化
 		var old = time.Now().Hour()
 		for {
-			if now := time.Now().Hour();old == 0 && old != now {
+			if now := time.Now().Hour();now == 0 && old != now {
 				c.Danmu_Main_mq.Push_tag(`new day`,nil)
 				old = now
 			}
