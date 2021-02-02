@@ -18,6 +18,19 @@ import (
 	F "github.com/qydysky/bili_danmu/F"
 )
 
+func init() {
+	go func(){//日期变化
+		var old = time.Now().Hour()
+		for {
+			if now := time.Now().Hour();old == 0 && old != now {
+				c.Danmu_Main_mq.Push_tag(`new day`,nil)
+				old = now
+			}
+			time.Sleep(time.Second*time.Duration(100))
+		}
+	}()
+}
+
 func Demo(roomid ...int) {
 	var danmulog = c.Log.Base(`bilidanmu Demo`)
 	
@@ -221,6 +234,13 @@ func Demo(roomid ...int) {
 							},
 							`change_room`:func(data interface{})(bool){//换房时退出当前房间
 								return true
+							},
+							`new day`:func(data interface{})(bool){//日期更换
+								//小心心
+								go api.F_x25Kn()
+								//每日签到
+								F.Dosign()
+								return false
 							},
 						})
 

@@ -29,6 +29,7 @@ type api struct {
 	Token string
 	Parent_area_id int
 	Area_id int
+	wearing_FansMedal bool
 }
 
 var apilog = c.Log.Base(`api`)
@@ -917,6 +918,8 @@ func (i *api) Switch_FansMedal() {
 		if csrf == `` {apilog.L(`E: `,"Cookie错误,无bili_jct=");return}
 		
 		post_str = `csrf_token=`+csrf+`&csrf=`+csrf
+		
+		i.wearing_FansMedal = medal_id != 0
 		if medal_id == 0 {//无牌，不佩戴牌子
 			post_url = `https://api.live.bilibili.com/xlive/web-room/v1/fansMedal/take_off`
 		} else {
@@ -1095,6 +1098,7 @@ type E_json struct{
 func (i *api) F_x25Kn() (o *api) {
 	o = i
 	apilog := apilog.Base_add(`小心心`).L(`T: `,`获取小心心`)
+	if o.wearing_FansMedal {apilog.L(`I: `,`无粉丝牌，不获取`);return}
 	if len(c.Cookie) == 0 {apilog.L(`E: `,`失败！无cookie`);return}
 	if c.Cookie[`LIVE_BUVID`] == `` {apilog.L(`E: `,`失败！无LIVE_BUVID`);return}
 	if o.Parent_area_id == -1 {apilog.L(`E: `,`失败！未获取Parent_area_id`);return}

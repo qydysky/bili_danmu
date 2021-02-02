@@ -8,11 +8,11 @@ require (
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/gotk3/gotk3 v0.5.2 // indirect
 	github.com/klauspost/compress v1.11.7 // indirect
-	github.com/miekg/dns v1.1.35 // indirect
+	github.com/miekg/dns v1.1.38 // indirect
 	github.com/mitchellh/mapstructure v1.4.1 // indirect
 	github.com/qydysky/bili_danmu v0.5.7
-	github.com/qydysky/part v0.3.6 // indirect
-	github.com/shirou/gopsutil v3.20.12+incompatible // indirect
+	github.com/qydysky/part v0.3.10 // indirect
+	github.com/shirou/gopsutil v3.21.1+incompatible // indirect
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e // indirect
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966 // indirect
 	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad // indirect

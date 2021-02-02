@@ -182,6 +182,7 @@ wasm.test = () => {
           s = wasm.spyder(rt.r, rt.t);
 
       conn.send(JSON.stringify({
+        id:rt.r.id,
         s:s
       }));
     }

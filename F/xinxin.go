@@ -1,17 +1,12 @@
 package F
 
 import (
-	"net"
 	"net/http"
 	"encoding/json"
     "time"
-	"context"
-	"sync"
-	"strconv"
-	"github.com/gorilla/websocket"
 	"github.com/skratchdot/open-golang/open"
-	p "github.com/qydysky/part"
-	mq "github.com/qydysky/part/msgq"
+	websocket "github.com/qydysky/part/websocket"
+	web "github.com/qydysky/part/web"
 	c "github.com/qydysky/bili_danmu/CV"
 )
 
@@ -37,22 +32,17 @@ type RT struct {
 
 //返回的加密对象
 type S struct {
+	Id string `json:"id"`//发送的数据中的Id项，以确保是对应的返回
 	S string `json:"s"` //加密字符串
 }
 
-type Uinterface struct {
-	Id uint
-	Data interface{}
-	sync.Mutex
-}
 
 //全局对象
 var (
-	xinxinboot = make(chan struct{},1) //调用标记，仅调用一次
 	wslog = c.Log.Base(`api`).Base_add(`小心心加密`) //日志
-	rec_chan = make(chan S,1)//收通道
-	ws_mq = mq.New(200)//发通道
-	port = p.Sys().GetFreePort()//随机端口
+	rec_chan = make(chan S)//收通道
+	webpath string//web地址,由于实时获取空闲端口，故将在稍后web启动后赋值
+	ws = websocket.New_server()//新建websocket实例
 )
 
 func init() {
@@ -67,146 +57,96 @@ func init() {
 			break
 		}
 	
-		wslog.L(`T: `,`被调用`)
-	
-		select{
-		case xinxinboot <- struct{}{}: //没有启动实例
-			wslog.L(`I: `,`启动`)
-			web()
-			<- xinxinboot
-		default: //有启动实例
-			wslog.L(`I: `,`已启动`)
-		}
+		//初始化web服务器，初始化websocket
+		server()
+		wslog.L(`I: `,`启动`)
 	}()
 }
 
-func web() {
-	web :=  http.NewServeMux()
-
-	var (
-		server *http.Server
-		upgrader = websocket.Upgrader{}
-		id = Uinterface{
-			Id:1,//0表示全局广播
-		}
-	)
-
-	web.HandleFunc("/exit", func(w http.ResponseWriter, r *http.Request) {
-		server.Shutdown(context.Background())
-	})
-
-	web.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-		ws, err := upgrader.Upgrade(w, r, nil)
-		if err != nil {
-			wslog.L(`E: `,"upgrade:", err)
-			return
-		}
-		defer ws.Close()
-
-		//本会话id
-		Uid := id.Id
-		id.Lock()
-		id.Id += 1
-		id.Unlock()
-
-		//测试 提示
-		go test(Uid)
-
-		//发送
+func server() {
+	{
+		ws_mq := ws.Interface()//获取websocket操作对象
 		ws_mq.Pull_tag(map[string]func(interface{})(bool){
-			`send`:func(data interface{})(bool){
-				if u,ok := data.(Uinterface);ok && u.Id == 0 || u.Id == Uid{
-					if t,ok := u.Data.(RT);ok {
-						b, e := json.Marshal(t)
-						if e != nil {
-							wslog.L(`E: `,e)
-						}
+			`recv`:func(data interface{})(bool){
+				if tmp,ok := data.(websocket.Uinterface);ok {//websocket接收并响应
+					//websocket.Uinterface{
+					// 	Id	uintptr 会话id
+					// 	Data []byte 接收的websocket数据
+					// }
 
-						if e := ws.WriteMessage(websocket.TextMessage,b);e != nil {
-							wslog.L(`E: `,e)
-							return true
-						}
+					var s S
+					e := json.Unmarshal(tmp.Data, &s)
+					if e != nil {
+						wslog.L(`E: `, e, string(tmp.Data))
 					}
+
+					select{//无多用户上传不同数据的情况，仅接收1个，其余会因通道无传出而忽略
+					case rec_chan <- s:
+					default:
+					}
+
 				}
 				return false
 			},
-			`close`:func(data interface{})(bool){
-				if u,ok := data.(Uinterface);ok && u.Id == 0 || u.Id == Uid{
-					return true
-				}
+			`error`:func(data interface{})(bool){//websocket错误
+				wslog.L(`E: `,data)
 				return false
 			},
 		})
-
-		//接收
-		for {
-			ws.SetReadDeadline(time.Now().Add(time.Second*time.Duration(300)))
-			if _, message, e := ws.ReadMessage();e != nil {
-				if websocket.IsCloseError(e,websocket.CloseGoingAway) {
-					wslog.L(`I: `,e)
-				} else if e,ok := e.(net.Error);ok && e.Timeout() {
-					//Timeout , js will reload html
-				} else {
-					wslog.L(`E: `,e)
-				}
-				ws_mq.Push_tag(`close`,Uinterface{
-					Id:Uid,
-				})
-				break
-			} else {
-				var s S
-				e := json.Unmarshal(message, &s)
-				if e != nil {
-					wslog.L(`E: `, e, string(message))
-				}
-
-				select{//现阶段暂不考虑多用户上传不同数据的情况
-				case rec_chan <- s:
-				default:
-				}
-			}
-		}
-	})
-
-	//html js
-	web.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		var path string = r.URL.Path[1:]
-		if path == `` {path = `index.html`}
-        http.ServeFile(w, r, "html/"+path)
-	})
-	
-	server = &http.Server{
-		Addr: "127.0.0.1:"+strconv.Itoa(port),
-		WriteTimeout: time.Second * time.Duration(10),
-		Handler: web,
 	}
 
-	//测试 提示
-	go func(){
-		time.Sleep(time.Second*time.Duration(3))
-		open.Run("http://127.0.0.1:"+strconv.Itoa(port))
-		wslog.L(`I: `,`保持浏览器打开`,"http://127.0.0.1:"+strconv.Itoa(port),`以正常运行`)
-	}()
-
-	server.ListenAndServe()
+	w := web.New(&http.Server{})//新建web实例
+	w.Handle(map[string]func(http.ResponseWriter,*http.Request){//路径处理函数
+		`/`:func(w http.ResponseWriter,r *http.Request){
+			var path string = r.URL.Path[1:]
+			if path == `` {path = `index.html`}
+			http.ServeFile(w, r, "html/"+path)
+		},
+		`/ws`:func(w http.ResponseWriter,r *http.Request){
+			//获取通道
+			conn := ws.WS(w,r)
+			//由通道获取本次会话id，并测试 提示
+			go test(<-conn)
+			//等待会话结束，通道释放
+			<-conn
+		},
+	})
+	webpath = `http://`+w.Server.Addr
+	//提示
+	wslog.L(`I: `,`如需加密，会自动打开`,webpath)
 }
 
-func Wasm(uid uint,s RT) (o string) {
-	ws_mq.Push_tag(`send`,Uinterface{
+func Wasm(uid uintptr,s RT) (o string) {
+	for try:=5;try > 0 && ws.Len() == 0;try-=1 {//没有从池中取出
+		open.Run(webpath)
+		wslog.L(`I: `,`浏览器打开`,webpath)
+		time.Sleep(time.Second)
+	}
+
+	b, e := json.Marshal(s)
+	if e != nil {
+		wslog.L(`E: `,e)
+	}
+
+	//获取websocket操作对象 发送
+	ws.Interface().Push_tag(`send`,websocket.Uinterface{
 		Id:uid,
-		Data:s,
+		Data:b,
 	})
 
-	select {
-	case r :=<- rec_chan:
-		return r.S
-	case <- time.After(time.Second):
-		wslog.L(`E: `,`超时！响应>1s，确认保持`,"http://127.0.0.1:"+strconv.Itoa(port),`开启`)
-		return
+	for {
+		select {
+		case r :=<- rec_chan:
+			if r.Id != s.R.Id {break}//或许接收到之前的请求，校验Id字段
+			return r.S
+		case <- time.After(time.Second):
+			wslog.L(`E: `,`超时！响应>1s，确认保持`,webpath,`开启`)
+			return
+		}
 	}
 }
 
-func test(uid uint) bool {
+func test(uid uintptr) bool {
 	time.Sleep(time.Second*time.Duration(3))
 	if s := Wasm(uid, RT{
 		R:R{
