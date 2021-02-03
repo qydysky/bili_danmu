@@ -2,6 +2,7 @@ package cv
 
 import (
 	"time"
+	tmplKV "github.com/qydysky/part/tmplKV"
 	mq "github.com/qydysky/part/msgq"
 	s "github.com/qydysky/part/buf"
 	log "github.com/qydysky/part/log"
@@ -32,6 +33,10 @@ type Danmu_Main_mq_item struct {
 }
 //200长度防止push击穿
 var Danmu_Main_mq = mq.New(200)
+
+//调用记录
+var Bootmap = tmplKV.New_tmplK(50,60*60)
+//1h中允许50个不同key(函数设置字段)-id(对应对话id)
 
 //日志
 var Log = log.New(log.Config{

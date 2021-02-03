@@ -1104,6 +1104,7 @@ func (i *api) F_x25Kn() (o *api) {
 	if o.Parent_area_id == -1 {apilog.L(`E: `,`失败！未获取Parent_area_id`);return}
 	if o.Area_id == -1 {apilog.L(`E: `,`失败！未获取Area_id`);return}
 	if api_limit.TO() {apilog.L(`E: `,`超时！`);return}//超额请求阻塞，超时将取消
+	func_id := c.Bootmap.Set(`api.F_x25Kn`)//获取函数调用会话id
 
 	{//查看今天小心心数量
 		var num = 0
@@ -1116,6 +1117,7 @@ func (i *api) F_x25Kn() (o *api) {
 			apilog.L(`I: `,`今天小心心已满！`);return
 		} else {
 			apilog.L(`I: `,`今天已有`,num,`个小心心，开始获取`)
+			defer apilog.L(`T: `,`退出`)
 		}
 	}
 	
@@ -1141,6 +1143,7 @@ func (i *api) F_x25Kn() (o *api) {
 	}
 
 	{//初始化
+		if !c.Bootmap.Check(`api.F_x25Kn`, func_id) {apilog.L(`I: `,`多余退出`);return}//有新会话产生，旧的退出
 		PostStr := `id=[`+strconv.Itoa(o.Parent_area_id)+`,`+strconv.Itoa(o.Area_id)+`,`+strconv.Itoa(loop_num)+`,`+strconv.Itoa(o.Roomid)+`]&`
 		PostStr += `device=["`+LIVE_BUVID+`","`+new_uuid+`"]&`
 		PostStr += `ts=`+strconv.Itoa(int(p.Sys().GetMTime()))
@@ -1187,23 +1190,9 @@ func (i *api) F_x25Kn() (o *api) {
 	}
 
 	{//loop
-		var cancle = make(chan struct{},1)
-		//使用带tag的消息队列在功能间传递消息
-		c.Danmu_Main_mq.Pull_tag(map[string]func(interface{})(bool){
-			`change_room`:func(data interface{})(bool){//换房时退出当前房间
-				close(cancle)
-				return true
-			},
-		})
-		
-		defer apilog.L(`I: `,`退出`)
-
 		for loop_num < 24*5 {
-			select{
-			case <- time.After(time.Second*time.Duration(res.Data.Heartbeat_interval)):
-			case <- cancle:
-				return
-			}
+			<- time.After(time.Second*time.Duration(res.Data.Heartbeat_interval))
+			if !c.Bootmap.Check(`api.F_x25Kn`, func_id) {apilog.L(`I: `,`多余退出`);return}//有新会话产生，旧的退出
 
 			loop_num += 1
 			
