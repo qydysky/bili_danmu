@@ -120,7 +120,7 @@ func Wasm(uid uintptr,s RT) (o string) {
 	for try:=5;try > 0 && ws.Len() == 0;try-=1 {//没有从池中取出
 		open.Run(webpath)
 		wslog.L(`I: `,`浏览器打开`,webpath)
-		time.Sleep(time.Second)
+		time.Sleep(time.Second*time.Duration(3))
 	}
 
 	b, e := json.Marshal(s)

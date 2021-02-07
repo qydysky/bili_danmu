@@ -1143,7 +1143,12 @@ func (i *api) F_x25Kn() (o *api) {
 	}
 
 	{//初始化
-		if !c.Bootmap.Check(`api.F_x25Kn`, func_id) {apilog.L(`I: `,`多余退出`);return}//有新会话产生，旧的退出
+		if !c.Bootmap.Check(`api.F_x25Kn`, func_id) {
+			apilog.L(`I: `,`多余退出`)
+			return
+		}//有新会话产生，旧的退出
+		func_id = c.Bootmap.Set(`api.F_x25Kn`)//刷新
+
 		PostStr := `id=[`+strconv.Itoa(o.Parent_area_id)+`,`+strconv.Itoa(o.Area_id)+`,`+strconv.Itoa(loop_num)+`,`+strconv.Itoa(o.Roomid)+`]&`
 		PostStr += `device=["`+LIVE_BUVID+`","`+new_uuid+`"]&`
 		PostStr += `ts=`+strconv.Itoa(int(p.Sys().GetMTime()))
@@ -1192,7 +1197,12 @@ func (i *api) F_x25Kn() (o *api) {
 	{//loop
 		for loop_num < 24*5 {
 			<- time.After(time.Second*time.Duration(res.Data.Heartbeat_interval))
-			if !c.Bootmap.Check(`api.F_x25Kn`, func_id) {apilog.L(`I: `,`多余退出`);return}//有新会话产生，旧的退出
+			
+			if !c.Bootmap.Check(`api.F_x25Kn`, func_id) {
+				apilog.L(`I: `,`多余退出`)
+				return
+			}//有新会话产生，旧的退出
+			func_id = c.Bootmap.Set(`api.F_x25Kn`)//刷新
 
 			loop_num += 1
 			
@@ -1313,7 +1323,6 @@ func Gift_list() (list []Gift_list_type_Data_List) {
 			`Host`: `api.live.bilibili.com`,
 			`User-Agent`: `Mozilla/5.0 (X11; Linux x86_64; rv:83.0) Gecko/20100101 Firefox/83.0`,
 			`Accept`: `application/json, text/plain, */*`,
-			`Content-Type`: `application/x-www-form-urlencoded`,
 			`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
 			`Accept-Encoding`: `gzip, deflate, br`,
 			`Origin`: `https://live.bilibili.com`,
