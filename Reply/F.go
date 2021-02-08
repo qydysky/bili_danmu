@@ -12,8 +12,10 @@ import (
 
 	c "github.com/qydysky/bili_danmu/CV"
 	F "github.com/qydysky/bili_danmu/F"
+	send "github.com/qydysky/bili_danmu/Send"
 	"github.com/christopher-dG/go-obs-websocket"
 	p "github.com/qydysky/part"
+	msgq "github.com/qydysky/part/msgq"
 	b "github.com/qydysky/part/buf"
 	s "github.com/qydysky/part/signal"
 )
@@ -725,7 +727,7 @@ func Jiezouf(s []string) bool {
 //保存所有消息到json
 func init(){
 	Save_to_json(0, []interface{}{`[`})
-	c.Danmu_Main_mq.Pull_tag(map[string]func(interface{})(bool){
+	c.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
 		`change_room`:func(data interface{})(bool){//房间改变
 			Save_to_json(0, []interface{}{`[`})
 			return false
@@ -741,5 +743,12 @@ func Save_to_json(Loc int,Context []interface{}) {
 			Loc:int64(Loc),
 			Context:Context,
 		})
+	}
+}
+
+//进入房间发送弹幕
+func Entry_danmu(){
+	if s,ok := c.K_v[`进入房间发送弹幕`].(string);ok && s != ``{
+		send.Danmu_s(s,p.Map_2_Cookies_String(c.Cookie),c.Roomid)
 	}
 }

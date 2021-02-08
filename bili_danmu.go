@@ -12,6 +12,7 @@ import (
 	p "github.com/qydysky/part"
 	ws "github.com/qydysky/part/websocket"
 	g "github.com/qydysky/part/get"
+	msgq "github.com/qydysky/part/msgq"
 	reply "github.com/qydysky/bili_danmu/Reply"
 	send "github.com/qydysky/bili_danmu/Send"
 	c "github.com/qydysky/bili_danmu/CV"
@@ -69,7 +70,7 @@ func Demo(roomid ...int) {
 		}()
 		
 		//使用带tag的消息队列在功能间传递消息
-		c.Danmu_Main_mq.Pull_tag(map[string]func(interface{})(bool){
+		c.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
 			`change_room`:func(data interface{})(bool){//房间改变
 				c.Rev = 0.0 //营收
 				c.Renqi = 1//人气置1
@@ -98,7 +99,7 @@ func Demo(roomid ...int) {
 			},
 		})
 		//单独，避免队列执行耗时block从而无法接收更多消息
-		c.Danmu_Main_mq.Pull_tag(map[string]func(interface{})(bool){
+		c.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
 			`pm`:func(data interface{})(bool){//私信
 				if tmp,ok := data.(send.Pm_item);ok{
 					send.Send_pm(tmp.Uid,tmp.Msg)
@@ -227,7 +228,7 @@ func Demo(roomid ...int) {
 						//订阅消息，以便刷新舰长数
 						api.Get_guardNum()
 						//使用带tag的消息队列在功能间传递消息
-						c.Danmu_Main_mq.Pull_tag(map[string]func(interface{})(bool){
+						c.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
 							`guard_update`:func(data interface{})(bool){//舰长更新
 								go api.Get_guardNum()
 								return false
@@ -240,6 +241,8 @@ func Demo(roomid ...int) {
 								go api.F_x25Kn()
 								//每日签到
 								F.Dosign()
+								//附加功能 每日发送弹幕
+								go reply.Entry_danmu()
 								return false
 							},
 						})
@@ -247,7 +250,8 @@ func Demo(roomid ...int) {
 						if len(c.Cookie) != 0 {//附加功能 弹幕机 无cookie无法发送弹幕
 							reply.Danmuji_auto(1)
 						}
-						{//附加功能 直播流保存 营收
+						{//附加功能 进房间发送弹幕 直播流保存 营收
+							go reply.Entry_danmu()
 							go reply.Saveflvf()
 							go reply.ShowRevf()
 						}

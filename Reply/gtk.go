@@ -17,6 +17,7 @@ import (
 	"github.com/gotk3/gotk3/gtk"
 	"github.com/gotk3/gotk3/gdk"
 	p "github.com/qydysky/part"
+	msgq "github.com/qydysky/part/msgq"
 	F "github.com/qydysky/bili_danmu/F"
 	c "github.com/qydysky/bili_danmu/CV"
 	s "github.com/qydysky/part/buf"
@@ -72,7 +73,7 @@ func init(){
 	if!IsOn("Gtk") {return}
 	go Gtk_danmu()
 	//使用带tag的消息队列在功能间传递消息
-	Danmu_mq.Pull_tag(map[string]func(interface{})(bool){
+	Danmu_mq.Pull_tag(msgq.FuncMap{
 		`danmu`:func(data interface{})(bool){//弹幕
 			select{
 			case Gtk_danmu_chan <- data.(Danmu_mq_t):

@@ -6,6 +6,7 @@ import (
 	"strings"
 	p "github.com/qydysky/part"
 	c "github.com/qydysky/bili_danmu/CV"
+	msgq "github.com/qydysky/part/msgq"
 	s "github.com/qydysky/part/buf"
 )
 
@@ -61,7 +62,7 @@ func init(){
 	
 	//消息队列接收tts类消息，并传送到TTS朗读
 	//使用带tag的消息队列在功能间传递消息
-	c.Danmu_Main_mq.Pull_tag(map[string]func(interface{})(bool){
+	c.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
 		`tts`:func(data interface{})(bool){//tts
 			if _,ok := tts_setting[data.(Danmu_mq_t).uid];ok {
 				tts_List <- data

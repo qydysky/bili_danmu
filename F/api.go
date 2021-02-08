@@ -13,7 +13,9 @@ import (
 	"net/url"
 
 	qr "github.com/skip2/go-qrcode"
+	msgq "github.com/qydysky/part/msgq"
 	c "github.com/qydysky/bili_danmu/CV"
+	web "github.com/qydysky/part/web"
 	g "github.com/qydysky/part/get"
 	p "github.com/qydysky/part"
 	uuid "github.com/gofrs/uuid"
@@ -725,53 +727,63 @@ func Get_cookie() {
 			apilog.L(`E: `,e)
 			return
 		}
-		res := string(r.Respon)
-		if v,ok := p.Json().GetValFromS(res, "status").(bool);!ok || !v {
-			apilog.L(`E: `,`getLoginUrl status failed!`)
-			return
-		} else {
-			if v,ok := p.Json().GetValFromS(res, "data.url").(string);ok {
-				img_url = v
-			}
-			if v,ok := p.Json().GetValFromS(res, "data.oauthKey").(string);ok {
-				oauth = v
-			}
+		var res struct{
+			Code int `json:"code"`
+			Status bool `json:"status"`
+			Data struct{
+				Url string `json:"url"`
+				OauthKey string `json:"oauthKey"`
+			} `json:"data"`
 		}
-		if img_url == `` || oauth == `` {
-			apilog.L(`E: `,`img_url:`,img_url,` oauth:`,oauth)
+		if e := json.Unmarshal(r.Respon, &res);e != nil {
+			apilog.L(`E: `, e)
 			return
 		}
+		if res.Code != 0 {
+			apilog.L(`E: `, `code != 0`)
+			return
+		}
+		if !res.Status {
+			apilog.L(`E: `, `status == false`)
+			return
+		}
+		
+		if res.Data.Url == `` {
+			apilog.L(`E: `, `Data.Urls == ""`)
+			return
+		} else {img_url = res.Data.Url}
+		if res.Data.OauthKey == `` {
+			apilog.L(`E: `, `Data.OauthKey == ""`)
+			return
+		} else {oauth = res.Data.OauthKey}
 	}
-	var server *http.Server
+	var server = new(http.Server)
 	{//生成二维码
 		qr.WriteFile(img_url,qr.Medium,256,`qr.png`)
 		if !p.Checkfile().IsExist(`qr.png`) {
 			apilog.L(`E: `,`qr error`)
 			return
 		}
-		go func(){//启动web
-			web :=  http.NewServeMux()
-			web.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("Access-Control-Allow-Origin", "*")             //允许访问所有域
-				w.Header().Add("Access-Control-Allow-Headers", "Content-Type") //header的类型
+		//启动web
+		s := web.New(server)
+		s.Handle(map[string]func(http.ResponseWriter,*http.Request){
+			`/`:func(w http.ResponseWriter,r *http.Request){
 				var path string = r.URL.Path[1:]
-				http.ServeFile(w, r,`./`+path)
-			})
-			server = &http.Server{
-				Addr:         `127.0.0.1:`+strconv.Itoa(p.Sys().GetFreePort()),
-				WriteTimeout: time.Second * 10,
-				Handler:      web,
-			}
-			apilog.L(`W: `,`打开链接扫码登录：`,`http://`+server.Addr+`/qr.png`)
-			server.ListenAndServe()
-		}()
+				if path == `` {path = `index.html`}
+				http.ServeFile(w, r, path)
+			},
+			`/exit`:func(w http.ResponseWriter,r *http.Request){
+				s.Server.Shutdown(context.Background())
+			},
+		})
+		apilog.L(`W: `,`打开链接扫码登录：`,`http://`+server.Addr+`/qr.png`)
 		p.Sys().Timeoutf(1)
 	}
 	var cookie string
 	{//3s刷新查看是否通过
 		max_try := 20
 		change_room_sign := false
-		c.Danmu_Main_mq.Pull_tag(map[string]func(interface{})(bool){
+		c.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
 			`change_room`:func(data interface{})(bool){//房间改变
 				change_room_sign = true
 				return true
@@ -1230,7 +1242,7 @@ func (i *api) F_x25Kn() (o *api) {
 			PostStr += `csrf_token=`+csrf+`&csrf=`+csrf+`&`
 			PostStr += `visit_id=`
 			
-			if wasm := Wasm(0, rt_obj);wasm == `` {//0全局
+			if wasm := Wasm(3, 0, rt_obj);wasm == `` {//0全局
 				apilog.L(`E: `,`发生错误`)
 				return
 			} else {

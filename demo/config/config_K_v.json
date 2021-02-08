@@ -23,5 +23,7 @@
     "save_to_json":"",
 
     "get_xiao_xinxin-help":"获取小心心",
-    "get_xiao_xinxin":true
+    "get_xiao_xinxin":true,
+
+    "进入房间发送弹幕":" "
 }

@@ -6,6 +6,7 @@ import (
     "time"
 	"github.com/skratchdot/open-golang/open"
 	websocket "github.com/qydysky/part/websocket"
+	msgq "github.com/qydysky/part/msgq"
 	web "github.com/qydysky/part/web"
 	c "github.com/qydysky/bili_danmu/CV"
 )
@@ -40,7 +41,7 @@ type S struct {
 //全局对象
 var (
 	wslog = c.Log.Base(`api`).Base_add(`小心心加密`) //日志
-	rec_chan = make(chan S)//收通道
+	rec_chan = make(chan S,5)//收通道
 	webpath string//web地址,由于实时获取空闲端口，故将在稍后web启动后赋值
 	ws = websocket.New_server()//新建websocket实例
 )
@@ -66,7 +67,7 @@ func init() {
 func server() {
 	{
 		ws_mq := ws.Interface()//获取websocket操作对象
-		ws_mq.Pull_tag(map[string]func(interface{})(bool){
+		ws_mq.Pull_tag(msgq.FuncMap{
 			`recv`:func(data interface{})(bool){
 				if tmp,ok := data.(websocket.Uinterface);ok {//websocket接收并响应
 					//websocket.Uinterface{
@@ -80,7 +81,7 @@ func server() {
 						wslog.L(`E: `, e, string(tmp.Data))
 					}
 
-					select{//无多用户上传不同数据的情况，仅接收1个，其余会因通道无传出而忽略
+					select{
 					case rec_chan <- s:
 					default:
 					}
@@ -116,7 +117,9 @@ func server() {
 	wslog.L(`I: `,`如需加密，会自动打开`,webpath)
 }
 
-func Wasm(uid uintptr,s RT) (o string) {
+func Wasm(maxloop int, uid uintptr,s RT) (o string) {//maxloop 超时重试
+	if maxloop <= 0 {return}
+
 	for try:=5;try > 0 && ws.Len() == 0;try-=1 {//没有从池中取出
 		open.Run(webpath)
 		wslog.L(`I: `,`浏览器打开`,webpath)
@@ -139,8 +142,9 @@ func Wasm(uid uintptr,s RT) (o string) {
 		case r :=<- rec_chan:
 			if r.Id != s.R.Id {break}//或许接收到之前的请求，校验Id字段
 			return r.S
-		case <- time.After(time.Second):
+		case <- time.After(time.Second*time.Duration(3)):
 			wslog.L(`E: `,`超时！响应>1s，确认保持`,webpath,`开启`)
+			o = Wasm(maxloop-1, uid, s)
 			return
 		}
 	}
@@ -148,7 +152,7 @@ func Wasm(uid uintptr,s RT) (o string) {
 
 func test(uid uintptr) bool {
 	time.Sleep(time.Second*time.Duration(3))
-	if s := Wasm(uid, RT{
+	if s := Wasm(3, uid, RT{
 		R:R{
 		Id: "[9,371,1,22613059]",
 		Device: "[\"AUTO8216117272375373\",\"77bee604-b591-4664-845b-b69603f8c71c\"]",
