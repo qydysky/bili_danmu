@@ -185,13 +185,13 @@ func (replyF) user_toast_msg(s string){
 		if uid != 0 {
 			c.Danmu_Main_mq.Push_tag(`pm`,send.Pm_item{
 				Uid:int(uid.(float64)),
-				Msg:c.K_v[`上舰私信`].(string),
+				Msg:c.K_v.LoadV(`上舰私信`).(string),
 			})//上舰私信
 		}
-		if c.K_v[`额外私信对象`].(float64) != 0 {
+		if c.K_v.LoadV(`额外私信对象`).(float64) != 0 {
 			c.Danmu_Main_mq.Push_tag(`pm`,send.Pm_item{
-				Uid:int(c.K_v[`额外私信对象`].(float64)),
-				Msg:c.K_v[`上舰私信(额外)`].(string),
+				Uid:int(c.K_v.LoadV(`额外私信对象`).(float64)),
+				Msg:c.K_v.LoadV(`上舰私信(额外)`).(string),
 			})//上舰私信-对额外
 		}
 	}
@@ -369,7 +369,7 @@ func (replyF) send_gift(s string){
 	//小于设定
 	{
 		var tmp = 20.0
-		if v,ok := c.K_v[`弹幕_礼物金额显示阈值`];ok {
+		if v,ok := c.K_v.Load(`弹幕_礼物金额显示阈值`);ok {
 			tmp = v.(float64)
 		}
 		if allprice < tmp {msglog.L(`T: `, sh_log...);return}
@@ -719,13 +719,13 @@ func Msg_showdanmu(auth interface{}, m ...string) {
 			if i,e := strconv.Atoi(m[1]);e == nil {
 				c.Danmu_Main_mq.Push_tag(`pm`,send.Pm_item{
 					Uid:i,
-					Msg:c.K_v[`弹幕私信`].(string),
+					Msg:c.K_v.LoadV(`弹幕私信`).(string),
 				})//上舰私信
 			}
-			if c.K_v[`额外私信对象`].(float64) != 0 {
+			if c.K_v.LoadV(`额外私信对象`).(float64) != 0 {
 				c.Danmu_Main_mq.Push_tag(`pm`,send.Pm_item{
-					Uid:int(c.K_v[`额外私信对象`].(float64)),
-					Msg:c.K_v[`弹幕私信(额外)`].(string),
+					Uid:int(c.K_v.LoadV(`额外私信对象`).(float64)),
+					Msg:c.K_v.LoadV(`弹幕私信(额外)`).(string),
 				})//上舰私信-对额外
 			}
 		}

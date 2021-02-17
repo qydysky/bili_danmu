@@ -49,7 +49,7 @@ var (
 func init() {
 	go func() {
 		for {
-			v,ok := c.K_v["get_xiao_xinxin"]
+			v,ok := c.K_v.Load("get_xiao_xinxin")
 			if !ok {
 				time.Sleep(time.Second)
 				continue

@@ -3,6 +3,7 @@ package cv
 import (
 	"time"
 	tmplKV "github.com/qydysky/part/tmplKV"
+	syncmap "github.com/qydysky/part/map"
 	mq "github.com/qydysky/part/msgq"
 	s "github.com/qydysky/part/buf"
 	log "github.com/qydysky/part/log"
@@ -52,13 +53,13 @@ var Log = log.New(log.Config{
 })
 
 //k-v
-var K_v =make(map[string]interface{})
+var K_v syncmap.Map
 
 func init() {
 	buf := s.New()
 	buf.Load("config/config_K_v.json")
 	for k,v := range buf.B {
-		K_v[k] = v
+		K_v.Store(k, v)
 	}
 }
 

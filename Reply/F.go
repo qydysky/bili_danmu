@@ -736,7 +736,7 @@ func init(){
 }
 
 func Save_to_json(Loc int,Context []interface{}) {
-	if path,ok := c.K_v[`save_to_json`].(string);ok && path != ``{
+	if path,ok := c.K_v.LoadV(`save_to_json`).(string);ok && path != ``{
 		p.File().FileWR(p.Filel{
 			File:path,
 			Write:true,
@@ -748,7 +748,7 @@ func Save_to_json(Loc int,Context []interface{}) {
 
 //进入房间发送弹幕
 func Entry_danmu(){
-	if s,ok := c.K_v[`进入房间发送弹幕`].(string);ok && s != ``{
+	if s,ok := c.K_v.LoadV(`进入房间发送弹幕`).(string);ok && s != ``{
 		send.Danmu_s(s,p.Map_2_Cookies_String(c.Cookie),c.Roomid)
 	}
 }
