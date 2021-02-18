@@ -246,7 +246,13 @@ func Saveflvf(){
 			os.Rename(saveflv.path+".flv.dtmp", saveflv.path+".flv")
 		}()
 
-		Cookie := p.Map_2_Cookies_String(c.Cookie)
+
+		CookieM := make(map[string]string)
+		c.Cookie.Range(func(k,v interface{})(bool){
+			CookieM[k.(string)] = v.(string)
+			return true
+		})
+		Cookie := p.Map_2_Cookies_String(CookieM)
 		if i := strings.Index(Cookie, "PVID="); i != -1 {
 			if d := strings.Index(Cookie[i:], ";"); d == -1 {
 				Cookie = Cookie[:i]
@@ -748,7 +754,15 @@ func Save_to_json(Loc int,Context []interface{}) {
 
 //进入房间发送弹幕
 func Entry_danmu(){
-	if s,ok := c.K_v.LoadV(`进入房间发送弹幕`).(string);ok && s != ``{
-		send.Danmu_s(s,p.Map_2_Cookies_String(c.Cookie),c.Roomid)
+	if v,_ := c.K_v.LoadV(`进房弹幕_有粉丝牌时才发`).(bool);v && c.Wearing_FansMedal == 0{
+		return
+	}
+	if s,ok := c.K_v.LoadV(`进房弹幕_内容`).(string);ok && s != ``{
+		Cookie := make(map[string]string)
+		c.Cookie.Range(func(k,v interface{})(bool){
+			Cookie[k.(string)] = v.(string)
+			return true
+		})
+		send.Danmu_s(s,p.Map_2_Cookies_String(Cookie),c.Roomid)
 	}
 }

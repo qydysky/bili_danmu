@@ -16,7 +16,7 @@ var (
 	Live []string//直播链接
 	Live_qn string
 	Roomid int
-	Cookie = make(map[string]string)
+	Cookie syncmap.Map
 	Title string//直播标题
 	Uname string//主播名
 	Rev float64//营收
@@ -25,6 +25,7 @@ var (
 	Note string//分区排行
 	Live_Start_Time time.Time//直播开始时间
 	Liveing bool//是否在直播
+	Wearing_FansMedal int//当前佩戴的粉丝牌
 )
 
 //消息队列

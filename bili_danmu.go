@@ -123,7 +123,7 @@ func Demo(roomid ...int) {
 					danmulog.L(`I: `, "未检测到cookie.txt，如果需要登录请在本机打开以下网址扫码登录，不需要请忽略")
 					//获取cookie
 					F.Get_cookie()
-					if len(c.Cookie) != 0 {
+					if c.Cookie.Len() != 0 {
 						danmulog.L(`I: `,"你已登录，刷新房间！")
 						//刷新
 						c.Danmu_Main_mq.Push_tag(`change_room`,nil)
@@ -133,7 +133,7 @@ func Demo(roomid ...int) {
 					q.File = "cookie.txt"
 					f := p.File().FileWR(q)
 					for k,v := range p.Cookies_String_2_Map(f){
-						c.Cookie[k] = v
+						c.Cookie.Store(k, v)
 					}
 					if tmp_uid,e := g.SS(f,`DedeUserID=`,`;`,0,0);e == nil {
 						if v,e := strconv.Atoi(tmp_uid);e == nil {
@@ -164,15 +164,21 @@ func Demo(roomid ...int) {
 			api.Get_Version()
 			//获取热门榜
 			api.Get_HotRank()
+			//检查与切换粉丝牌，只在cookie存在时启用
+			api.CheckSwitch_FansMedal()
 			//小心心
 			go api.F_x25Kn()
-			//切换粉丝牌，只在cookie存在时启用
-			api.Switch_FansMedal()
 			if len(api.Url) == 0 || api.Roomid == 0 || api.Token == "" || api.Uid == 0 || api.Locked {
 				danmulog.L(`E: `,"some err")
 				return
 			}
 			danmulog.L(`I: `,"连接到房间", c.Roomid)
+
+			Cookie := make(map[string]string)
+			c.Cookie.Range(func(k,v interface{})(bool){
+				Cookie[k.(string)] = v.(string)
+				return true
+			})
 
 			//对每个弹幕服务器尝试
 			for _, v := range api.Url {
@@ -184,7 +190,7 @@ func Demo(roomid ...int) {
 					Func_abort_close:func(){danmulog.L(`I: `,`服务器连接中断`)},
 					Func_normal_close:func(){danmulog.L(`I: `,`服务器连接关闭`)},
 					Header: map[string]string{
-						`Cookie`:p.Map_2_Cookies_String(c.Cookie),
+						`Cookie`:p.Map_2_Cookies_String(Cookie),
 						`Host`: u.Hostname(),
 						`User-Agent`: `Mozilla/5.0 (X11; Linux x86_64; rv:84.0) Gecko/20100101 Firefox/84.0`,
 						`Accept`: `*/*`,
@@ -251,7 +257,7 @@ func Demo(roomid ...int) {
 							},
 						})
 
-						if len(c.Cookie) != 0 {//附加功能 弹幕机 无cookie无法发送弹幕
+						if c.Cookie.Len() != 0 {//附加功能 弹幕机 无cookie无法发送弹幕
 							reply.Danmuji_auto(1)
 						}
 						{//附加功能 进房间发送弹幕 直播流保存 营收

@@ -33,7 +33,7 @@ func Send_pm(uid int, msg string) error {
 		return errors.New(`不能发送给自己`)
 	}
 
-	csrf := c.Cookie[`bili_jct`]
+	csrf := c.Cookie.LoadV(`bili_jct`).(string)
 	if csrf == `` {return errors.New("Cookie错误,无bili_jct=")}
 
 	var new_uuid string
@@ -49,6 +49,12 @@ func Send_pm(uid int, msg string) error {
 	if pm_limit.TO() {return errors.New("TO")}
 
 	var send_str = `msg[sender_uid]=`+strconv.Itoa(c.Uid)+`&msg[receiver_id]=`+strconv.Itoa(uid)+`&msg[receiver_type]=1&msg[msg_type]=1&msg[msg_status]=0&msg[content]={"content":"`+msg+`"}&msg[timestamp]=`+strconv.Itoa(int(p.Sys().GetSTime()))+`&msg[new_face_version]=0&msg[dev_id]=`+strings.ToUpper(new_uuid)+`&from_firework=0&build=0&mobi_app=web&csrf_token=`+csrf+`&csrf=`+csrf
+	
+	Cookie := make(map[string]string)
+	c.Cookie.Range(func(k,v interface{})(bool){
+		Cookie[k.(string)] = v.(string)
+		return true
+	})
 	
 	req := p.Req()
 	if e:= req.Reqf(p.Rval{
@@ -67,7 +73,7 @@ func Send_pm(uid int, msg string) error {
 			`Pragma`: `no-cache`,
 			`Cache-Control`: `no-cache`,
 			`Referer`:"https://message.bilibili.com",
-			`Cookie`:p.Map_2_Cookies_String(c.Cookie),
+			`Cookie`:p.Map_2_Cookies_String(Cookie),
 		},
 	});e != nil {
 		log.L(`E: `,e)

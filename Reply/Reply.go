@@ -682,11 +682,16 @@ func (replyF) danmu(s string) {
 //传入字符串即可发送
 //需要cookie
 func Msg_senddanmu(msg string){
-	if len(c.Cookie) == 0 || c.Roomid == 0 {
+	if c.Cookie.Len() == 0 || c.Roomid == 0 {
 		msglog.L(`I: `, `c.Cookie == "" || c.Roomid == 0`)
 		return
 	}
-	send.Danmu_s(msg, p.Map_2_Cookies_String(c.Cookie), c.Roomid)
+	Cookie := make(map[string]string)
+	c.Cookie.Range(func(k,v interface{})(bool){
+		Cookie[k.(string)] = v.(string)
+		return true
+	})
+	send.Danmu_s(msg, p.Map_2_Cookies_String(Cookie), c.Roomid)
 }
 
 //弹幕显示

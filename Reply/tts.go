@@ -75,7 +75,7 @@ func init(){
 
 func TTS(uid,msg string) {
 	if tts_limit.TO() {return}
-	tts_log.L(`I: `,uid, msg)
+	tts_log.L(`I: `,uid, strings.ReplaceAll(msg, "\n", " "))
 	req := p.Req()
 	if v,ok := tts_setting[uid];ok{
 		msg = strings.ReplaceAll(v, "{D}", msg)
