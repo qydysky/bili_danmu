@@ -60,7 +60,7 @@ var Msg_map = map[string]func(replyF, string) {
 	"WIN_ACTIVITY":replyF.win_activity,//活动
 	"SPECIAL_GIFT":replyF.special_gift,//节奏风暴
 	"GUARD_BUY":nil,//replyF.guard_buy,//大航海购买
-	"WELCOME_GUARD":replyF.welcome_guard,//大航海进入
+	"WELCOME_GUARD":nil,//replyF.welcome_guard,//大航海进入 ？已废弃？
 	"DANMU_MSG":replyF.danmu,//弹幕
 	"ROOM_CHANGE":replyF.room_change,//房间信息分区改变
 	"ROOM_SILENT_OFF":replyF.roomsilent,//禁言结束
@@ -74,7 +74,7 @@ var Msg_map = map[string]func(replyF, string) {
 	"SUPER_CHAT_MESSAGE":nil,//replyF.super_chat_message,//SC
 	"SUPER_CHAT_MESSAGE_JPN":replyF.super_chat_message,//SC
 	"PANEL":nil,//replyF.panel,//排行榜 被HOT_RANK_CHANGED替代
-	"ENTRY_EFFECT":nil,//replyF.entry_effect,//进入特效
+	"ENTRY_EFFECT":replyF.entry_effect,//进入特效
 	"ROOM_REAL_TIME_MESSAGE_UPDATE":nil,//replyF.roominfo,//粉丝数
 }
 

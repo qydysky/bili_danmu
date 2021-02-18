@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 	"bytes"
+	"strings"
 	"strconv"
 	"compress/zlib"
 	"encoding/json"
@@ -604,18 +605,41 @@ func (replyF) messagebox_user_medal_change(s string){
 	}
 }
 
-//Msg-进入特效，大多为大航海进入，信息少，使用welcome_guard替代
+//Msg-进入特效
 func (replyF) entry_effect(s string){
-	msglog := msglog.Base_add("房").Log_show_control(false)
 
-	if copy_writing := p.Json().GetValFromS(s, "data.copy_writing");copy_writing == nil {
-		msglog.L(`E: `, "copy_writing", copy_writing)
-		return
-	} else {
-		msglog.L(`I: `, copy_writing)
-		fmt.Println(copy_writing)
+	var res struct{
+		Data struct{
+			Copy_writing string `json:"copy_writing"`
+		} `json:"data"`
+	}
+	if e := json.Unmarshal([]byte(s), &res);e != nil {
+		msglog.L(`E: `, e)
+	}
+	//处理特殊字符
+	copy_writing := strings.ReplaceAll(res.Data.Copy_writing, `<%`, ``)
+	copy_writing = strings.ReplaceAll(copy_writing, `%>`, ``)
+
+	img := "0default"
+	if strings.Contains(copy_writing, `总督`) {
+		img = "0level1"
+	} else if strings.Contains(copy_writing, `提督`) {
+		img = "0level2"
+	} else if strings.Contains(copy_writing, `舰长`) {
+		img = "0level3"
 	}
 
+	{//语言tts
+		c.Danmu_Main_mq.Push_tag(`tts`,Danmu_mq_t{//传入消息队列
+			uid:img,
+			msg:fmt.Sprintln(copy_writing),
+		})
+	}
+	fmt.Print(">>> ")
+	fmt.Println(copy_writing)
+	Gui_show(copy_writing, img)
+
+	msglog.Base_add("房").Log_show_control(false).L(`I: `, copy_writing)
 }
 
 //Msg-房间禁言

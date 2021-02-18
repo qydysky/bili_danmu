@@ -75,11 +75,15 @@ func init(){
 
 func TTS(uid,msg string) {
 	if tts_limit.TO() {return}
+
+	v,ok := tts_setting[uid]
+	if !ok || v == ``{return}
+
 	tts_log.L(`I: `,uid, strings.ReplaceAll(msg, "\n", " "))
+
+	msg = strings.ReplaceAll(v, "{D}", msg)
+
 	req := p.Req()
-	if v,ok := tts_setting[uid];ok{
-		msg = strings.ReplaceAll(v, "{D}", msg)
-	}
 	if err := req.Reqf(p.Rval{
 		Url:`https://fanyi.baidu.com/gettts?lan=zh&text=`+ url.QueryEscape(msg) +`&spd=5&source=web`,
 		SaveToPath:p.Sys().Cdir()+`/tts.mp3`,
