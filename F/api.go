@@ -1230,6 +1230,7 @@ func (i *api) F_x25Kn() (o *api) {
 			}
 		}
 		if num == 24 {
+			Close(0)//关闭全部（0）浏览器websocket连接
 			apilog.L(`I: `,`今天小心心已满！`);return
 		} else {
 			apilog.L(`I: `,`今天已有`,num,`个小心心，开始获取`)
@@ -1328,6 +1329,7 @@ func (i *api) F_x25Kn() (o *api) {
 						}
 					}
 					if num == 24 {
+						Close(0)//关闭全部（0）浏览器websocket连接
 						apilog.L(`I: `,`今天小心心已满！`);return
 					} else {
 						apilog.L(`I: `,`获取了今天的第`,num,`个小心心`)

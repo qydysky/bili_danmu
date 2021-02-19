@@ -150,6 +150,14 @@ func Wasm(maxloop int, uid uintptr,s RT) (o string) {//maxloop 超时重试
 	}
 }
 
+func Close(uid uintptr){
+	//获取websocket操作对象 关闭
+	ws.Interface().Push_tag(`close`,websocket.Uinterface{
+		Id:uid,
+		Data:[]byte(`获取结束、关闭连接`),
+	})
+}
+
 func test(uid uintptr) bool {
 	time.Sleep(time.Second*time.Duration(3))
 	if s := Wasm(3, uid, RT{

@@ -155,11 +155,10 @@ func Demo(roomid ...int) {
 			//获取房间相关信息
 			api := F.New_api(c.Roomid).Get_host_Token().Get_live()
 			c.Roomid = api.Roomid
-			
-			//每日兑换硬币
-			F.Silver_2_coin()
 			//每日签到
 			F.Dosign()
+			//每日兑换硬币
+			F.Silver_2_coin()
 			//获取用户版本
 			api.Get_Version()
 			//获取热门榜
@@ -245,12 +244,12 @@ func Demo(roomid ...int) {
 								return true
 							},
 							`new day`:func(data interface{})(bool){//日期更换
+								//每日签到
+								F.Dosign()
 								//每日兑换硬币
 								go F.Silver_2_coin()
 								//小心心
 								go api.F_x25Kn()
-								//每日签到
-								F.Dosign()
 								//附加功能 每日发送弹幕
 								go reply.Entry_danmu()
 								return false

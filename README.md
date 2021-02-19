@@ -291,18 +291,19 @@ I: 2021/02/18 14:40:54 Msg 礼 [SC:  加拉入我心 ￥ 30 关注了乙女音�
 I: 2021/02/18 21:48:49 Msg 房 [欢迎舰长 Mana_单推... 进入直播间]
 ```
 
-- 流保存以及弹幕ass
+#### 流保存以及弹幕ass
 ```
 结束后会保存为
 房间号_时间.mkv
 房间号_时间.ass
 ```
-结束后的文件播放效果(显于左上)
+
+#### 结束后的文件播放效果(显于左上)
 ![](_Screenshot/Screenshot_20200926_173834.png)
 
 [截图地址](//zdir.ntsdtt.bid/ALL/Admin/pack/file/Screenshot_20200926_173834.png)
 
-- Gtk弹幕窗(Linux Only)
+#### Gtk弹幕窗(Linux Only)
 
 ![](_Screenshot/2020-12-12_16-43-09.gif)
 

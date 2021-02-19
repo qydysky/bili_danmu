@@ -162,8 +162,17 @@ wasm.test = () => {
 (() => {
   if (window["WebSocket"]) {
     conn = new WebSocket("ws://" + document.location.host + "/ws");
+    conn.onopen = function () {
+      let e = document.getElementById(`status`);
+      e.innerHTML = "(使用中)";
+      e.style.color = "green";
+    }
     conn.onclose = function () {
-      location.reload();
+      console.log(`关闭`)
+      let e = document.getElementById(`status`);
+      e.innerHTML = "(已断开)";
+      e.style.color = "red";
+      // location.reload();
     };
     conn.onmessage = function (evt) {
       deal(evt.data)
@@ -185,6 +194,8 @@ wasm.test = () => {
         id:rt.r.id,
         s:s
       }));
+
+      console.log(rt.r.id, s)
     }
   }
 })();
