@@ -1141,7 +1141,7 @@ func Dosign() {
 func (i *api) Get_LIVE_BUVID() (o *api){
 	o = i
 	apilog := apilog.Base_add(`LIVE_BUVID`).L(`T: `,`获取LIVE_BUVID`)
-	if c.Cookie.LoadV(`LIVE_BUVID`).(string) != `` {apilog.L(`I: `,`存在`);return}
+	if live_buvid,ok := c.Cookie.LoadV(`LIVE_BUVID`).(string);ok && live_buvid != `` {apilog.L(`I: `,`存在`);return}
 	if c.Cookie.Len() == 0 {apilog.L(`E: `,`失败！无cookie`);return}
 	if api_limit.TO() {apilog.L(`E: `,`超时！`);return}//超额请求阻塞，超时将取消
 
