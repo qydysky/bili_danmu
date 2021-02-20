@@ -134,7 +134,7 @@ func Demo(roomid ...int) {
 					p.Sys().Timeoutf(3)
 				} else {
 					q.File = "cookie.txt"
-					cookieString := p.File().FileWR(q)
+					cookieString = p.File().FileWR(q)
 				}
 
 				if cookieString == `` {//cookie.txt为空
