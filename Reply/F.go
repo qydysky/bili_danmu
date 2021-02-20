@@ -24,34 +24,10 @@ import (
 	F额外功能区
 */
 
-//功能开关
-var AllF = map[string]bool{
-	`ShowRev`:true,//显示本次营收
-	"Gtk":false,//Gtk弹幕窗口(使用go build -tags 'gtk gtk_3_24'编译,linux only)
-	"Saveflv":true,//保存直播流(默认高清，有cookie默认蓝光)
-	"Ass":true,//Ass弹幕生成，由于时间对应关系,仅开启流保存时生效
-	"Obs":false,//obs组件(仅录播)
-	/*
-		Obs需要外部组件:
-		obs https://obsproject.com/download
-		obs-websocket https://github.com/Palakis/obs-websocket/releases
-	*/
-	"Autoban":false,//自动封禁(仅提示，未完成)
-	"Jiezou":true,//带节奏预警，提示弹幕礼仪
-	"Danmuji":true,//反射型弹幕机，回应弹幕
-	"Danmuji_auto":false,//自动型弹幕机，定时输出
-	"Autoskip":true,//刷屏缩减，相同合并
-	"Lessdanmu":true,//弹幕缩减，屏蔽与前n条弹幕重复的字数占比度高于阈值的弹幕
-	"Moredanmu":false,//弹幕增量
-	"Shortdanmu":true,//上下文相同文字缩减
-}
-
 //功能开关选取函数
 func IsOn(s string) bool {
-	if v, ok := AllF[s]; ok && v {
-		return true
-	}
-	return false
+	v, ok := c.K_v.LoadV(s).(bool)
+	return ok && v
 }
 
 //字符重复度检查
@@ -117,7 +93,7 @@ var (
 )
 
 func ShowRevf(){
-	if!IsOn("ShowRev") {return}
+	if!IsOn("统计营收") {return}
 	if ShowRev_start {
 		c.Log.Base(`功能`).L(`I: `, fmt.Sprintf("营收 ￥%.2f",c.Rev))
 		return
@@ -181,7 +157,7 @@ func Ass_f(file string, st time.Time){
 
 //传入要显示的单条字幕
 func Assf(s string){
-	if !IsOn("Ass") {return}
+	if !IsOn("生成Ass弹幕") {return}
 	if ass.file == "" {return}
 
 	if s == "" {return}
@@ -224,7 +200,7 @@ var saveflv = Saveflv {
 
 //已go func形式调用，将会获取直播流
 func Saveflvf(){
-	if !IsOn("Saveflv") {return}
+	if !IsOn("保存flv直播流") {return}
 	if saveflv.cancel.Islive() {return}
 
 	l := c.Log.Base(`saveflv`)
@@ -234,7 +210,7 @@ func Saveflvf(){
 	for api.Get_live(c.Live_qn).Live_status == 1 {
 		c.Live = api.Live
 
-		saveflv.path = strconv.Itoa(c.Roomid) + "_" + time.Now().Format("2006_01_02_15:04:05.000")
+		saveflv.path = strconv.Itoa(c.Roomid) + "_" + time.Now().Format("2006_01_02_15-04-05-000")
 
 		saveflv.wait = s.Init()
 		saveflv.cancel = s.Init()
@@ -321,7 +297,7 @@ func Saveflvf(){
 
 //已func形式调用，将会停止保存直播流
 func Saveflv_wait(){
-	if !IsOn("Saveflv") {return}
+	if !IsOn("保存flv直播流") {return}
 	saveflv.cancel.Done()
 	c.Log.Base(`saveflv`).L(`I: `,"等待")
 	saveflv.wait.Wait()
@@ -338,7 +314,7 @@ var obs = Obs {
 }
 
 func Obsf(on bool){
-	if !IsOn("Obs") {return}
+	if !IsOn("调用obs") {return}
 	l := c.Log.Base(`obs`)
 
 	if on {
@@ -365,7 +341,7 @@ func Obsf(on bool){
 }
 
 func Obs_R(on bool){
-	if !IsOn("Obs") {return}
+	if !IsOn("调用obs") {return}
 
 	l := c.Log.Base("obs_R")
 
@@ -473,7 +449,7 @@ type Danmuji struct {
 }
 
 var danmuji = Danmuji{
-	Inuse_auto:IsOn("Danmuji_auto"),
+	Inuse_auto:IsOn("自动弹幕机"),
 	Buf:map[string]string{
 		"弹幕机在么":"在",
 	},
@@ -488,26 +464,32 @@ func init(){//初始化反射型弹幕机
 }
 
 func Danmujif(s string) {
-	if !IsOn("Danmuji") {return}
+	if !IsOn("反射弹幕机") {return}
 	if v, ok := danmuji.Buf[s]; ok {
 		Msg_senddanmu(v)
 	}
 }
 
-func Danmuji_auto(sleep int) {
-	if !IsOn("Danmuji") || !IsOn("Danmuji_auto") || danmuji.mute {return}
-	if sleep == 0 {return}
+func Danmuji_auto() {
+	if !IsOn("反射弹幕机") || !IsOn("自动弹幕机") || danmuji.mute {return}
 
 	danmuji.mute = true
-	var list = []string{
-		"当前正在直播",
-		"12345",
+
+	var (
+		list []string
+		timeout int
+	)
+	for _,v := range c.K_v.LoadV(`自动弹幕机_内容`).([]interface{}){
+		list = append(list, v.(string))
 	}
+	timeout = int(c.K_v.LoadV(`自动弹幕机_发送间隔s`).(float64))
+	if timeout < 5 {timeout = 5}
+
 	go func(){
 		for i := 0; true; i++{
 			if i >= len(list) {i = 0}
-			Msg_senddanmu(list[i])
-			p.Sys().Timeoutf(sleep)
+			if msg := list[i];msg != ``{Msg_senddanmu(msg)}
+			p.Sys().Timeoutf(timeout)
 		}
 	}()
 }
@@ -559,7 +541,7 @@ func init(){
 }
 
 func Autoskipf(s string) uint {
-	if !IsOn("Autoskip") || s == ""{return 0}
+	if !IsOn("弹幕合并") || s == ""{return 0}
 	autoskip.Lock()
 	defer autoskip.Unlock()
 	{//验证是否已经存在
@@ -588,7 +570,7 @@ var lessdanmu = Lessdanmu{
 }
 
 func Lessdanmuf(s string, bufsize int) float32 {
-	if !IsOn("Lessdanmu") {return 0}
+	if !IsOn("相似弹幕忽略") {return 0}
 	if len(lessdanmu.buf) < bufsize {
 		lessdanmu.buf = append(lessdanmu.buf, s)
 		return 0
@@ -664,7 +646,7 @@ var shortdanmu = Shortdanmu{
 }
 
 func Shortdanmuf(s string) string {
-	if !IsOn("Shortdanmu") {return s}
+	if !IsOn("精简弹幕") {return s}
 	if len(shortdanmu.lastdanmu) == 0 {shortdanmu.lastdanmu = []rune(s);return s}
 
 	var new string

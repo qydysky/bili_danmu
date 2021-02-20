@@ -58,7 +58,7 @@ golang go version go1.15 linux/amd64
 - [x] 排行榜
 
 #### 当前支持功能
-以下内容可能过时，点击查看[当前支持功能(旧)](https://github.com/qydysky/bili_danmu/blob/master/Reply/F.go#L16)，[功能配置(新)](https://github.com/qydysky/bili_danmu/blob/maintenance/demo/config/config_K_v.json)
+以下内容可能过时，点击查看[~~当前支持功能(旧)~~](https://github.com/qydysky/bili_danmu/blob/9731f69d06a15645c6cb1d41379520a5a3f519f1/Reply/F.go#L26)，[功能配置(新)](https://github.com/qydysky/bili_danmu/blob/maintenance/demo/config/config_K_v.json)
 - [x] 银瓜子自动兑换硬币(日期更迭会触发)
 - [x] 可选有无粉丝牌发进房弹幕(有粉丝牌每日首条弹幕有经验)(日期更迭会触发)
 - [x] 签到(日期更迭会触发)

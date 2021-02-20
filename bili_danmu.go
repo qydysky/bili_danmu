@@ -257,7 +257,7 @@ func Demo(roomid ...int) {
 						})
 
 						if c.Cookie.Len() != 0 {//附加功能 弹幕机 无cookie无法发送弹幕
-							reply.Danmuji_auto(1)
+							reply.Danmuji_auto()
 						}
 						{//附加功能 进房间发送弹幕 直播流保存 营收
 							go reply.Entry_danmu()

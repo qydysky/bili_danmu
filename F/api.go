@@ -164,7 +164,7 @@ func (i *api) Get_info() (o *api) {
 		if tmp.Data.Room_info.Uid != 0{
 			o.Uid = tmp.Data.Room_info.Uid
 		} else {
-			apilog.L(`E: `,"data.room_info.parent_area_id = 0")
+			apilog.L(`W: `,"data.room_info.Uid = 0")
 			return
 		}
 
@@ -172,13 +172,13 @@ func (i *api) Get_info() (o *api) {
 		if tmp.Data.Room_info.Parent_area_id != 0{
 			o.Parent_area_id = tmp.Data.Room_info.Parent_area_id
 		} else {
-			apilog.L(`E: `,"data.room_info.parent_area_id = 0")
+			apilog.L(`W: `,"直播间未设置主分区！")
 			return
 		}
 		if tmp.Data.Room_info.Area_id != 0{
 			o.Area_id = tmp.Data.Room_info.Area_id
 		} else {
-			apilog.L(`E: `,"data.room_info.Area_id = 0")
+			apilog.L(`W: `,"直播间未设置分区！")
 			return
 		}
 
@@ -186,7 +186,7 @@ func (i *api) Get_info() (o *api) {
 		if tmp.Data.Room_info.Room_id != 0{
 			o.Roomid = tmp.Data.Room_info.Room_id
 		} else {
-			apilog.L(`E: `,"data.room_info.room_id = 0")
+			apilog.L(`W: `,"data.room_info.room_id = 0")
 			return
 		}
 		
@@ -194,7 +194,7 @@ func (i *api) Get_info() (o *api) {
 		if tmp.Data.Room_info.Title != ``{
 			c.Title = tmp.Data.Room_info.Title
 		} else {
-			apilog.L(`E: `,"data.room_info.title = ''")
+			apilog.L(`W: `,"直播间无标题")
 			return
 		}
 

@@ -70,7 +70,7 @@ var (
 )
 
 func init(){
-	if!IsOn("Gtk") {return}
+	if!IsOn("Gtk弹幕窗") {return}
 	go Gtk_danmu()
 	//使用带tag的消息队列在功能间传递消息
 	Danmu_mq.Pull_tag(msgq.FuncMap{
@@ -394,7 +394,7 @@ func Gtk_danmu() {
 				}
 			}
 			{//营收
-				if IsOn("ShowRev") {
+				if IsOn("统计营收") {
 					b,e := w2_textView0.GetBuffer()
 					if e != nil {log.Println(e);return}
 					b.SetText(fmt.Sprintf("￥%.2f",c.Rev))					
