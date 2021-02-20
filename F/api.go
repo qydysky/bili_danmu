@@ -1142,23 +1142,25 @@ func (i *api) Get_LIVE_BUVID() (o *api){
 	o = i
 	apilog := apilog.Base_add(`LIVE_BUVID`).L(`T: `,`获取LIVE_BUVID`)
 	if live_buvid,ok := c.Cookie.LoadV(`LIVE_BUVID`).(string);ok && live_buvid != `` {apilog.L(`I: `,`存在`);return}
+	if c.Roomid == 0 {apilog.L(`E: `,`失败！无Roomid`);return}
 	if c.Cookie.Len() == 0 {apilog.L(`E: `,`失败！无cookie`);return}
 	if api_limit.TO() {apilog.L(`E: `,`超时！`);return}//超额请求阻塞，超时将取消
 
 	for {//获取
 		req := p.Req()
 		if err := req.Reqf(p.Rval{
-			Url:`https://api.live.bilibili.com/rc/v1/Title/webTitles`,
+			Url:`https://live.bilibili.com/`+strconv.Itoa(c.Roomid),
 			Header:map[string]string{
-				`Host`: `api.live.bilibili.com`,
+				`Host`: `live.bilibili.com`,
 				`User-Agent`: `Mozilla/5.0 (X11; Linux x86_64; rv:83.0) Gecko/20100101 Firefox/83.0`,
-				`Accept`: `application/json, text/plain, */*`,
+				`Accept`: `text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8`,
 				`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
 				`Accept-Encoding`: `gzip, deflate, br`,
-				`Origin`: `https://live.bilibili.com`,
 				`Connection`: `keep-alive`,
+				`Cache-Control`: `no-cache`,
 				`Referer`:"https://live.bilibili.com",
 				`DNT`: `1`,
+				`Upgrade-Insecure-Requests`: `1`,
 			},
 			Timeout:3,
 			Retry:2,
@@ -1181,7 +1183,7 @@ func (i *api) Get_LIVE_BUVID() (o *api){
 			time.Sleep(time.Second)
 		}
 	}
-
+	
 	Cookie := make(map[string]string)
 	c.Cookie.Range(func(k,v interface{})(bool){
 		Cookie[k.(string)] = v.(string)

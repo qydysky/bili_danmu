@@ -11,7 +11,6 @@ import (
 
 	p "github.com/qydysky/part"
 	ws "github.com/qydysky/part/websocket"
-	g "github.com/qydysky/part/get"
 	msgq "github.com/qydysky/part/msgq"
 	reply "github.com/qydysky/bili_danmu/Reply"
 	send "github.com/qydysky/bili_danmu/Send"
@@ -129,26 +128,34 @@ func Demo(roomid ...int) {
 						c.Danmu_Main_mq.Push_tag(`change_room`,nil)
 					}
 				}
-				if p.Checkfile().IsExist("cookie.txt") {
-					q.File = "cookie.txt"
-					f := p.File().FileWR(q)
-					for k,v := range p.Cookies_String_2_Map(f){
-						c.Cookie.Store(k, v)
-					}
-					if tmp_uid,e := g.SS(f,`DedeUserID=`,`;`,0,0);e == nil {
-						if v,e := strconv.Atoi(tmp_uid);e == nil {
-							c.Uid = v
-						} else {
-							danmulog.L(`E: `, `读取cookie错误`,e)
-							go get_cookie()
-						}
-					} else {
-						danmulog.L(`E: `, `读取cookie错误`,e)
-						go get_cookie()
-					}
-				} else {
+				var cookieString string
+				if !p.Checkfile().IsExist("cookie.txt") {//读取cookie文件
 					go get_cookie()
 					p.Sys().Timeoutf(3)
+				} else {
+					q.File = "cookie.txt"
+					cookieString := p.File().FileWR(q)
+				}
+
+				if cookieString == `` {//cookie.txt为空
+					danmulog.L(`E: `, `cookie.txt为空`)
+					go get_cookie()
+					p.Sys().Timeoutf(3)
+				} else {
+					for k,v := range p.Cookies_String_2_Map(cookieString){//cookie存入全局变量syncmap
+						c.Cookie.Store(k, v)
+					}
+					if uid,ok := c.Cookie.LoadV(`DedeUserID`).(string);!ok{//cookie中DedeUserID
+						danmulog.L(`E: `, `读取cookie错误,无DedeUserID`)
+						go get_cookie()
+						p.Sys().Timeoutf(3)
+					} else if uid,e := strconv.Atoi(uid);e != nil{
+						danmulog.L(`E: `, e)
+						go get_cookie()
+						p.Sys().Timeoutf(3)
+					} else {
+						c.Uid = uid
+					}
 				}
 			}
 			

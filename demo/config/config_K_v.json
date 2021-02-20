@@ -34,8 +34,8 @@
     "Gtk弹幕窗":true,
     "调用obs":false,
     
-    "直播流":"",
-    "保存flv直播流":true,
+    "直播流-help":"只有保存直播流时才考虑生成ass",
+    "保存flv直播流":false,
     "生成Ass弹幕":true,
 
     "弹幕处理":"",
