@@ -128,33 +128,33 @@ func Demo(roomid ...int) {
 						c.Danmu_Main_mq.Push_tag(`change_room`,nil)
 					}
 				}
-				var cookieString string
+				
 				if !p.Checkfile().IsExist("cookie.txt") {//读取cookie文件
 					go get_cookie()
 					p.Sys().Timeoutf(3)
 				} else {
 					q.File = "cookie.txt"
-					cookieString = p.File().FileWR(q)
-				}
+					cookieString := p.File().FileWR(q)
 
-				if cookieString == `` {//cookie.txt为空
-					danmulog.L(`E: `, `cookie.txt为空`)
-					go get_cookie()
-					p.Sys().Timeoutf(3)
-				} else {
-					for k,v := range p.Cookies_String_2_Map(cookieString){//cookie存入全局变量syncmap
-						c.Cookie.Store(k, v)
-					}
-					if uid,ok := c.Cookie.LoadV(`DedeUserID`).(string);!ok{//cookie中DedeUserID
-						danmulog.L(`E: `, `读取cookie错误,无DedeUserID`)
-						go get_cookie()
-						p.Sys().Timeoutf(3)
-					} else if uid,e := strconv.Atoi(uid);e != nil{
-						danmulog.L(`E: `, e)
+					if cookieString == `` {//cookie.txt为空
+						danmulog.L(`E: `, `cookie.txt为空`)
 						go get_cookie()
 						p.Sys().Timeoutf(3)
 					} else {
-						c.Uid = uid
+						for k,v := range p.Cookies_String_2_Map(cookieString){//cookie存入全局变量syncmap
+							c.Cookie.Store(k, v)
+						}
+						if uid,ok := c.Cookie.LoadV(`DedeUserID`).(string);!ok{//cookie中DedeUserID
+							danmulog.L(`E: `, `读取cookie错误,无DedeUserID`)
+							go get_cookie()
+							p.Sys().Timeoutf(3)
+						} else if uid,e := strconv.Atoi(uid);e != nil{
+							danmulog.L(`E: `, e)
+							go get_cookie()
+							p.Sys().Timeoutf(3)
+						} else {
+							c.Uid = uid
+						}
 					}
 				}
 			}

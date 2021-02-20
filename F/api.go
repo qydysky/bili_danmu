@@ -860,7 +860,9 @@ func Get_cookie() {
 				return
 			} else if !v {
 				if v,ok := p.Json().GetValFromS(res, "message").(string);ok {
-					apilog.L(`W: `,`登录中`,v,max_try,`s`)
+					if max_try < 5 || max_try%5 == 0 {//减少日志频度
+						apilog.L(`W: `,`登录中`,v,max_try)
+					}
 				}
 				continue
 			} else {
