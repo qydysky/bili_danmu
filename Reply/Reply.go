@@ -706,8 +706,12 @@ func (replyF) danmu(s string) {
 //传入字符串即可发送
 //需要cookie
 func Msg_senddanmu(msg string){
-	if c.Cookie.Len() == 0 || c.Roomid == 0 {
-		msglog.L(`I: `, `c.Cookie == "" || c.Roomid == 0`)
+	if missKey := F.CookieCheck([]string{
+		`bili_jct`,
+		`DedeUserID`,
+		`LIVE_BUVID`,
+	});len(missKey) != 0 || c.Roomid == 0 {
+		msglog.L(`E: `,`c.Roomid == 0 || Cookie无Key:`,missKey)
 		return
 	}
 	Cookie := make(map[string]string)

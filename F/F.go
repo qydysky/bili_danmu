@@ -114,3 +114,14 @@ func Heartbeat() ([]byte, int) {
 	return buffer.Bytes(), heartBeatInterval
 
 }
+
+//cookie检查
+func CookieCheck(key []string) (missKey []string) {
+	for _,tk := range key{
+		if tk == `` {continue}
+		if _,ok := c.Cookie.Load(tk);!ok{
+			missKey = append(missKey, tk)
+		}
+	}
+	return
+}

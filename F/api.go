@@ -1,7 +1,6 @@
 package F
 
 import (
-	"sync"
 	"time"
 	"fmt"
 	"os"
@@ -12,10 +11,11 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/skratchdot/open-golang/open"
 	qr "github.com/skip2/go-qrcode"
-	msgq "github.com/qydysky/part/msgq"
 	c "github.com/qydysky/bili_danmu/CV"
 	web "github.com/qydysky/part/web"
+	funcCtrl "github.com/qydysky/part/funcCtrl"
 	g "github.com/qydysky/part/get"
 	p "github.com/qydysky/part"
 	uuid "github.com/gofrs/uuid"
@@ -745,15 +745,17 @@ func (i *api) Get_Version() {
 	}
 }
 
-type cookie_lock_item struct{
-	sync.RWMutex
-}
-var cookies_lock = new(cookie_lock_item)
+//调用记录
+var boot_Get_cookie funcCtrl.FlashFunc//新的替代旧的
+
+//扫码登录
 func Get_cookie() {
 	if api_limit.TO() {return}//超额请求阻塞，超时将取消
-	cookies_lock.Lock()
-	defer cookies_lock.Unlock()
 	apilog := apilog.Base_add(`获取Cookie`)
+	
+	//获取id
+	id := boot_Get_cookie.Flash()
+	defer boot_Get_cookie.UnFlash()
 
 	var img_url string
 	var oauth string
@@ -797,6 +799,10 @@ func Get_cookie() {
 			return
 		} else {oauth = res.Data.OauthKey}
 	}
+
+	//有新实例，退出
+	if boot_Get_cookie.NeedExit(id) {return}
+
 	var server = new(http.Server)
 	{//生成二维码
 		qr.WriteFile(img_url,qr.Medium,256,`qr.png`)
@@ -816,19 +822,19 @@ func Get_cookie() {
 				s.Server.Shutdown(context.Background())
 			},
 		})
+		defer server.Shutdown(context.Background())
+
+		if c.K_v.LoadV(`扫码登录自动打开标签页`).(bool) {open.Run(`http://`+server.Addr+`/qr.png`)}
 		apilog.L(`W: `,`打开链接扫码登录：`,`http://`+server.Addr+`/qr.png`)
 		p.Sys().Timeoutf(1)
 	}
+	
+	//有新实例，退出
+	if boot_Get_cookie.NeedExit(id) {return}
+
 	var cookie string
 	{//3s刷新查看是否通过
 		max_try := 20
-		change_room_sign := false
-		c.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
-			`change_room`:func(data interface{})(bool){//房间改变
-				change_room_sign = true
-				return true
-			},
-		})
 
 		Cookie := make(map[string]string)
 		c.Cookie.Range(func(k,v interface{})(bool){
@@ -836,9 +842,13 @@ func Get_cookie() {
 			return true
 		})
 
-		for max_try > 0 && !change_room_sign {
+		for max_try > 0 {
 			max_try -= 1
 			p.Sys().Timeoutf(3)
+			
+			//有新实例，退出
+			if boot_Get_cookie.NeedExit(id) {return}
+
 			r := p.Req()
 			if e := r.Reqf(p.Rval{
 				Url:`https://passport.bilibili.com/qrcode/getLoginInfo`,
@@ -883,23 +893,39 @@ func Get_cookie() {
 			apilog.L(`W: `,`登录取消`)
 			return
 		}
+		if len(cookie) == 0 {return}
 	}
+
+	//有新实例，退出
+	if boot_Get_cookie.NeedExit(id) {return}
+
 	{//写入cookie.txt
 		for k,v := range p.Cookies_String_2_Map(cookie){
 			c.Cookie.Store(k, v)
+		}
+		//生成cookieString
+		cookieString := ``
+		{
+			c.Cookie.Range(func(k,v interface{})(bool){
+				cookieString += k.(string)+`=`+v.(string)+`; `
+				return true
+			})
+			t := []rune(cookieString)
+			cookieString = string(t[:len(t)-2])
 		}
 		f := p.File()
 		f.FileWR(p.Filel{
 			File:`cookie.txt`,
 			Write:true,
 			Loc:0,
-			Context:[]interface{}{cookie},
+			Context:[]interface{}{cookieString},
 		})
 	}
-	{//关闭web
-		if err := server.Shutdown(context.Background()); err != nil {
-			apilog.L(`E: `,"HTTP server Shutdown:", err.Error())
-		}
+
+	//有新实例，退出
+	if boot_Get_cookie.NeedExit(id) {return}
+
+	{//清理
 		if p.Checkfile().IsExist(`qr.png`) {
 			os.RemoveAll(`qr.png`)
 			return
@@ -908,9 +934,18 @@ func Get_cookie() {
 }
 
 func (i *api) CheckSwitch_FansMedal() {
-	if c.Cookie.Len() == 0 {return}
 	if api_limit.TO() {return}//超额请求阻塞，超时将取消
 	apilog := apilog.Base_add(`切换粉丝牌`)
+	//验证cookie
+	if missKey := CookieCheck([]string{
+		`bili_jct`,
+		`DedeUserID`,
+		`LIVE_BUVID`,
+	});len(missKey) != 0 {
+		apilog.L(`T: `,`Cookie无Key:`,missKey)
+		return
+	}
+
 	Cookie := make(map[string]string)
 	c.Cookie.Range(func(k,v interface{})(bool){
 		Cookie[k.(string)] = v.(string)
@@ -1045,7 +1080,15 @@ func (i *api) CheckSwitch_FansMedal() {
 //签到
 func Dosign() {
 	apilog := apilog.Base_add(`签到`).L(`T: `,`签到`)
-	if c.Cookie.Len() == 0 {apilog.L(`E: `,`失败！无cookie`);return}
+	//验证cookie
+	if missKey := CookieCheck([]string{
+		`bili_jct`,
+		`DedeUserID`,
+		`LIVE_BUVID`,
+	});len(missKey) != 0 {
+		apilog.L(`T: `,`Cookie无Key:`,missKey)
+		return
+	}
 	if api_limit.TO() {return}//超额请求阻塞，超时将取消
 
 	{//检查是否签到
@@ -1145,13 +1188,20 @@ func (i *api) Get_LIVE_BUVID() (o *api){
 	apilog := apilog.Base_add(`LIVE_BUVID`).L(`T: `,`获取LIVE_BUVID`)
 	if live_buvid,ok := c.Cookie.LoadV(`LIVE_BUVID`).(string);ok && live_buvid != `` {apilog.L(`I: `,`存在`);return}
 	if c.Roomid == 0 {apilog.L(`E: `,`失败！无Roomid`);return}
-	if c.Cookie.Len() == 0 {apilog.L(`E: `,`失败！无cookie`);return}
 	if api_limit.TO() {apilog.L(`E: `,`超时！`);return}//超额请求阻塞，超时将取消
 
-	for {//获取
+	//当房间处于特殊活动状态时，将会获取不到，此处使用了若干著名up主房间进行尝试
+	roomIdList := []string{
+		strconv.Itoa(c.Roomid),//当前
+		"3",//哔哩哔哩音悦台
+		"2",//直播姬
+		"1",//哔哩哔哩直播
+	}
+
+	for _,roomid := range roomIdList{//获取
 		req := p.Req()
 		if err := req.Reqf(p.Rval{
-			Url:`https://live.bilibili.com/`+strconv.Itoa(c.Roomid),
+			Url:`https://live.bilibili.com/`+roomid,
 			Header:map[string]string{
 				`Host`: `live.bilibili.com`,
 				`User-Agent`: `Mozilla/5.0 (X11; Linux x86_64; rv:83.0) Gecko/20100101 Firefox/83.0`,
@@ -1215,16 +1265,28 @@ type E_json struct{
 	} `json:"data"`
 }
 
+//调用记录
+var boot_F_x25Kn funcCtrl.FlashFunc//新的替代旧的
+
 func (i *api) F_x25Kn() (o *api) {
 	o = i
 	apilog := apilog.Base_add(`小心心`).L(`T: `,`获取小心心`)
 	if c.Wearing_FansMedal == 0{apilog.L(`I: `,`无粉丝牌，不获取`);return}
-	if c.Cookie.Len() == 0 {apilog.L(`E: `,`失败！无cookie`);return}
-	if c.Cookie.LoadV(`LIVE_BUVID`).(string) == `` {apilog.L(`E: `,`失败！无LIVE_BUVID`);return}
+	//验证cookie
+	if missKey := CookieCheck([]string{
+		`bili_jct`,
+		`DedeUserID`,
+		`LIVE_BUVID`,
+	});len(missKey) != 0 {
+		apilog.L(`T: `,`Cookie无Key:`,missKey)
+		return
+	}
 	if o.Parent_area_id == -1 {apilog.L(`E: `,`失败！未获取Parent_area_id`);return}
 	if o.Area_id == -1 {apilog.L(`E: `,`失败！未获取Area_id`);return}
 	if api_limit.TO() {apilog.L(`E: `,`超时！`);return}//超额请求阻塞，超时将取消
-	func_id := c.Bootmap.Set(`api.F_x25Kn`)//获取函数调用会话id
+
+	id := boot_F_x25Kn.Flash()//获取函数调用会话id
+	defer boot_F_x25Kn.UnFlash()
 
 	{//查看今天小心心数量
 		var num = 0
@@ -1264,11 +1326,8 @@ func (i *api) F_x25Kn() (o *api) {
 	}
 
 	{//初始化
-		if !c.Bootmap.Check(`api.F_x25Kn`, func_id) {
-			apilog.L(`I: `,`多余退出`)
-			return
-		}//有新会话产生，旧的退出
-		func_id = c.Bootmap.Set(`api.F_x25Kn`)//刷新
+		//新调用，此退出
+		if boot_F_x25Kn.NeedExit(id) {return}
 
 		PostStr := `id=[`+strconv.Itoa(o.Parent_area_id)+`,`+strconv.Itoa(o.Area_id)+`,`+strconv.Itoa(loop_num)+`,`+strconv.Itoa(o.Roomid)+`]&`
 		PostStr += `device=["`+LIVE_BUVID+`","`+new_uuid+`"]&`
@@ -1344,11 +1403,8 @@ func (i *api) F_x25Kn() (o *api) {
 
 			<- time.After(time.Second*time.Duration(res.Data.Heartbeat_interval))
 			
-			if !c.Bootmap.Check(`api.F_x25Kn`, func_id) {
-				apilog.L(`I: `,`多余退出`)
-				return
-			}//有新会话产生，旧的退出
-			func_id = c.Bootmap.Set(`api.F_x25Kn`)//刷新
+			//新调用，此退出
+			if boot_F_x25Kn.NeedExit(id) {return}
 
 			var rt_obj = RT{
 				R:R{
@@ -1445,7 +1501,15 @@ type Gift_list_type_Data_List struct{
 
 func Gift_list() (list []Gift_list_type_Data_List) {
 	apilog := apilog.Base_add(`礼物列表`).L(`T: `,`获取礼物列表`)
-	if c.Cookie.Len() == 0 {apilog.L(`E: `,`失败！无cookie`);return}
+	//验证cookie
+	if missKey := CookieCheck([]string{
+		`bili_jct`,
+		`DedeUserID`,
+		`LIVE_BUVID`,
+	});len(missKey) != 0 {
+		apilog.L(`T: `,`Cookie无Key:`,missKey)
+		return
+	}
 	if c.Roomid == 0 {apilog.L(`E: `,`失败！无Roomid`);return}
 	if api_limit.TO() {apilog.L(`E: `,`超时！`);return}//超额请求阻塞，超时将取消
 
@@ -1497,7 +1561,15 @@ func Gift_list() (list []Gift_list_type_Data_List) {
 //银瓜子2硬币
 func Silver_2_coin() {
 	apilog := apilog.Base_add(`银瓜子=>硬币`).L(`T: `,`银瓜子=>硬币`)
-	if c.Cookie.Len() == 0 {apilog.L(`E: `,`失败！无cookie`);return}
+	//验证cookie
+	if missKey := CookieCheck([]string{
+		`bili_jct`,
+		`DedeUserID`,
+		`LIVE_BUVID`,
+	});len(missKey) != 0 {
+		apilog.L(`T: `,`Cookie无Key:`,missKey)
+		return
+	}
 	if api_limit.TO() {apilog.L(`E: `,`超时！`);return}//超额请求阻塞，超时将取消
 
 	var Silver int

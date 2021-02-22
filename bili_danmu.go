@@ -53,6 +53,7 @@ func Demo(roomid ...int) {
 				room = roomid[0]
 			}
 			if room == 0 {
+				c.Log.Block(1000)//等待所有日志输出完毕
 				fmt.Printf("输入房间号: ")
 				_, err := fmt.Scanln(&room)
 				if err != nil {
@@ -122,7 +123,11 @@ func Demo(roomid ...int) {
 					danmulog.L(`I: `, "未检测到cookie.txt，如果需要登录请在本机打开以下网址扫码登录，不需要请忽略")
 					//获取cookie
 					F.Get_cookie()
-					if c.Cookie.Len() != 0 {
+					//验证cookie
+					if missKey := F.CookieCheck([]string{
+						`bili_jct`,
+						`DedeUserID`,
+					});len(missKey) == 0 {
 						danmulog.L(`I: `,"你已登录，刷新房间！")
 						//刷新
 						c.Danmu_Main_mq.Push_tag(`change_room`,nil)
@@ -137,15 +142,15 @@ func Demo(roomid ...int) {
 					cookieString := p.File().FileWR(q)
 
 					if cookieString == `` {//cookie.txt为空
-						danmulog.L(`E: `, `cookie.txt为空`)
+						danmulog.L(`T: `, `cookie.txt为空`)
 						go get_cookie()
 						p.Sys().Timeoutf(3)
 					} else {
 						for k,v := range p.Cookies_String_2_Map(cookieString){//cookie存入全局变量syncmap
 							c.Cookie.Store(k, v)
 						}
-						if uid,ok := c.Cookie.LoadV(`DedeUserID`).(string);!ok{//cookie中DedeUserID
-							danmulog.L(`E: `, `读取cookie错误,无DedeUserID`)
+						if uid,ok := c.Cookie.LoadV(`DedeUserID`).(string);!ok{//cookie中无DedeUserID
+							danmulog.L(`T: `, `读取cookie错误,无DedeUserID`)
 							go get_cookie()
 							p.Sys().Timeoutf(3)
 						} else if uid,e := strconv.Atoi(uid);e != nil{
@@ -263,9 +268,16 @@ func Demo(roomid ...int) {
 							},
 						})
 
-						if c.Cookie.Len() != 0 {//附加功能 弹幕机 无cookie无法发送弹幕
+						//验证cookie
+						if missKey := F.CookieCheck([]string{
+							`bili_jct`,
+							`DedeUserID`,
+							`LIVE_BUVID`,
+						});len(missKey) == 0 {
+							//附加功能 弹幕机 无cookie无法发送弹幕
 							reply.Danmuji_auto()
 						}
+
 						{//附加功能 进房间发送弹幕 直播流保存 营收
 							go reply.Entry_danmu()
 							go reply.Saveflvf()
