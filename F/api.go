@@ -1382,6 +1382,7 @@ func (i *api) F_x25Kn() (o *api) {
 
 	{//loop
 		for loop_num < (24+2)*5 {
+			loop_num += 1
 			//查看今天小心心数量
 			if loop_num%5 == 0 {//每5min
 				{//查看今天小心心数量
@@ -1399,7 +1400,6 @@ func (i *api) F_x25Kn() (o *api) {
 					}
 				}
 			}
-			loop_num += 1
 
 			<- time.After(time.Second*time.Duration(res.Data.Heartbeat_interval))
 			

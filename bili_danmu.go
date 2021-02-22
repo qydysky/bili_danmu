@@ -164,6 +164,7 @@ func Demo(roomid ...int) {
 				}
 			}
 			
+			danmulog.L(`T: `,"准备变量")
 			//获取房间相关信息
 			api := F.New_api(c.Roomid).Get_host_Token().Get_live()
 			c.Roomid = api.Roomid
