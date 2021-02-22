@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 	"bytes"
+	"strings"
 	"strconv"
 	"compress/zlib"
 	"encoding/json"
@@ -43,7 +44,9 @@ func Reply(b []byte) {
 		
 		contain := b[c.WS_PACKAGE_HEADER_TOTAL_LENGTH:head.PackL]
 		switch head.OpeaT {
-		case c.WS_OP_MESSAGE:Msg(contain)
+		case c.WS_OP_MESSAGE:
+			Msg(contain)
+			Save_to_json(-1, []interface{}{contain,`,`})
 		case c.WS_OP_HEARTBEAT_REPLY:Heart(contain)
 		default :reply_log.L(`W: `,"unknow reply", contain)
 		}
@@ -183,13 +186,13 @@ func (replyF) user_toast_msg(s string){
 		if uid != 0 {
 			c.Danmu_Main_mq.Push_tag(`pm`,send.Pm_item{
 				Uid:int(uid.(float64)),
-				Msg:K_v[`上舰私信`].(string),
+				Msg:c.K_v.LoadV(`上舰私信`).(string),
 			})//上舰私信
 		}
-		if K_v[`额外私信对象`].(float64) != 0 {
+		if c.K_v.LoadV(`额外私信对象`).(float64) != 0 {
 			c.Danmu_Main_mq.Push_tag(`pm`,send.Pm_item{
-				Uid:int(K_v[`额外私信对象`].(float64)),
-				Msg:K_v[`上舰私信(额外)`].(string),
+				Uid:int(c.K_v.LoadV(`额外私信对象`).(float64)),
+				Msg:c.K_v.LoadV(`上舰私信(额外)`).(string),
 			})//上舰私信-对额外
 		}
 	}
@@ -367,7 +370,7 @@ func (replyF) send_gift(s string){
 	//小于设定
 	{
 		var tmp = 20.0
-		if v,ok := K_v[`弹幕_礼物金额显示阈值`];ok {
+		if v,ok := c.K_v.Load(`弹幕_礼物金额显示阈值`);ok {
 			tmp = v.(float64)
 		}
 		if allprice < tmp {msglog.L(`T: `, sh_log...);return}
@@ -602,18 +605,41 @@ func (replyF) messagebox_user_medal_change(s string){
 	}
 }
 
-//Msg-进入特效，大多为大航海进入，信息少，使用welcome_guard替代
+//Msg-进入特效
 func (replyF) entry_effect(s string){
-	msglog := msglog.Base_add("房").Log_show_control(false)
 
-	if copy_writing := p.Json().GetValFromS(s, "data.copy_writing");copy_writing == nil {
-		msglog.L(`E: `, "copy_writing", copy_writing)
-		return
-	} else {
-		msglog.L(`I: `, copy_writing)
-		fmt.Println(copy_writing)
+	var res struct{
+		Data struct{
+			Copy_writing string `json:"copy_writing"`
+		} `json:"data"`
+	}
+	if e := json.Unmarshal([]byte(s), &res);e != nil {
+		msglog.L(`E: `, e)
+	}
+	//处理特殊字符
+	copy_writing := strings.ReplaceAll(res.Data.Copy_writing, `<%`, ``)
+	copy_writing = strings.ReplaceAll(copy_writing, `%>`, ``)
+
+	img := "0default"
+	if strings.Contains(copy_writing, `总督`) {
+		img = "0level1"
+	} else if strings.Contains(copy_writing, `提督`) {
+		img = "0level2"
+	} else if strings.Contains(copy_writing, `舰长`) {
+		img = "0level3"
 	}
 
+	{//语言tts
+		c.Danmu_Main_mq.Push_tag(`tts`,Danmu_mq_t{//传入消息队列
+			uid:img,
+			msg:fmt.Sprintln(copy_writing),
+		})
+	}
+	fmt.Print(">>> ")
+	fmt.Println(copy_writing)
+	Gui_show(copy_writing, img)
+
+	msglog.Base_add("房").Log_show_control(false).L(`I: `, copy_writing)
 }
 
 //Msg-房间禁言
@@ -680,11 +706,20 @@ func (replyF) danmu(s string) {
 //传入字符串即可发送
 //需要cookie
 func Msg_senddanmu(msg string){
-	if c.Cookie == "" || c.Roomid == 0 {
-		msglog.L(`I: `, `c.Cookie == "" || c.Roomid == 0`)
+	if missKey := F.CookieCheck([]string{
+		`bili_jct`,
+		`DedeUserID`,
+		`LIVE_BUVID`,
+	});len(missKey) != 0 || c.Roomid == 0 {
+		msglog.L(`E: `,`c.Roomid == 0 || Cookie无Key:`,missKey)
 		return
 	}
-	send.Danmu_s(msg, c.Cookie, c.Roomid)
+	Cookie := make(map[string]string)
+	c.Cookie.Range(func(k,v interface{})(bool){
+		Cookie[k.(string)] = v.(string)
+		return true
+	})
+	send.Danmu_s(msg, p.Map_2_Cookies_String(Cookie), c.Roomid)
 }
 
 //弹幕显示
@@ -717,13 +752,13 @@ func Msg_showdanmu(auth interface{}, m ...string) {
 			if i,e := strconv.Atoi(m[1]);e == nil {
 				c.Danmu_Main_mq.Push_tag(`pm`,send.Pm_item{
 					Uid:i,
-					Msg:K_v[`弹幕私信`].(string),
+					Msg:c.K_v.LoadV(`弹幕私信`).(string),
 				})//上舰私信
 			}
-			if K_v[`额外私信对象`].(float64) != 0 {
+			if c.K_v.LoadV(`额外私信对象`).(float64) != 0 {
 				c.Danmu_Main_mq.Push_tag(`pm`,send.Pm_item{
-					Uid:int(K_v[`额外私信对象`].(float64)),
-					Msg:K_v[`弹幕私信(额外)`].(string),
+					Uid:int(c.K_v.LoadV(`额外私信对象`).(float64)),
+					Msg:c.K_v.LoadV(`弹幕私信(额外)`).(string),
 				})//上舰私信-对额外
 			}
 		}

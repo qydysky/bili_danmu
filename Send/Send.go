@@ -35,17 +35,8 @@ func Danmu_s(msg,Cookie string, roomid int) {
 		}
 	}
 
-	var csrf string
-	if i := strings.Index(Cookie, "bili_jct="); i == -1 {
-		l.L(`E: `,"Cookie错误,无bili_jct=")
-		return
-	} else {
-		if d := strings.Index(Cookie[i + 9:], ";"); d == -1 {
-			csrf = Cookie[i + 9:]
-		} else {
-			csrf = Cookie[i + 9:][:d]
-		}
-	}
+	csrf := c.Cookie.LoadV(`bili_jct`).(string)
+	if csrf == `` {l.L(`E: `,"Cookie错误,无bili_jct=");return}
 
 	PostStr := `color=16777215&fontsize=25&mode=1&msg=` + msg + `&rnd=` + strconv.Itoa(int(p.Sys().GetSTime())) + `&roomid=` + strconv.Itoa(roomid) + `&bubble=0&csrf_token=` + csrf + `&csrf=` + csrf
 	l.L(`I: `,"发送", msg, "至", roomid)

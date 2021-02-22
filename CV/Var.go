@@ -2,7 +2,9 @@ package cv
 
 import (
 	"time"
+	syncmap "github.com/qydysky/part/map"
 	mq "github.com/qydysky/part/msgq"
+	s "github.com/qydysky/part/buf"
 	log "github.com/qydysky/part/log"
 )
 
@@ -13,7 +15,7 @@ var (
 	Live []string//直播链接
 	Live_qn string
 	Roomid int
-	Cookie string
+	Cookie syncmap.Map
 	Title string//直播标题
 	Uname string//主播名
 	Rev float64//营收
@@ -22,6 +24,7 @@ var (
 	Note string//分区排行
 	Live_Start_Time time.Time//直播开始时间
 	Liveing bool//是否在直播
+	Wearing_FansMedal int//当前佩戴的粉丝牌
 )
 
 //消息队列
@@ -44,6 +47,17 @@ var Log = log.New(log.Config{
 		`E: `:log.On,
 	},
 })
+
+//k-v
+var K_v syncmap.Map
+
+func init() {
+	buf := s.New()
+	buf.Load("config/config_K_v.json")
+	for k,v := range buf.B {
+		K_v.Store(k, v)
+	}
+}
 
 //from player-loader-2.0.11.min.js
 /*

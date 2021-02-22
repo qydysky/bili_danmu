@@ -11,12 +11,25 @@ import (
 
 	p "github.com/qydysky/part"
 	ws "github.com/qydysky/part/websocket"
-	g "github.com/qydysky/part/get"
+	msgq "github.com/qydysky/part/msgq"
 	reply "github.com/qydysky/bili_danmu/Reply"
 	send "github.com/qydysky/bili_danmu/Send"
 	c "github.com/qydysky/bili_danmu/CV"
 	F "github.com/qydysky/bili_danmu/F"
 )
+
+func init() {
+	go func(){//日期变化
+		var old = time.Now().Hour()
+		for {
+			if now := time.Now().Hour();now == 0 && old != now {
+				c.Danmu_Main_mq.Push_tag(`new day`,nil)
+				old = now
+			}
+			time.Sleep(time.Second*time.Duration(100))
+		}
+	}()
+}
 
 func Demo(roomid ...int) {
 	var danmulog = c.Log.Base(`bilidanmu Demo`)
@@ -40,6 +53,7 @@ func Demo(roomid ...int) {
 				room = roomid[0]
 			}
 			if room == 0 {
+				c.Log.Block(1000)//等待所有日志输出完毕
 				fmt.Printf("输入房间号: ")
 				_, err := fmt.Scanln(&room)
 				if err != nil {
@@ -56,7 +70,7 @@ func Demo(roomid ...int) {
 		}()
 		
 		//使用带tag的消息队列在功能间传递消息
-		c.Danmu_Main_mq.Pull_tag(map[string]func(interface{})(bool){
+		c.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
 			`change_room`:func(data interface{})(bool){//房间改变
 				c.Rev = 0.0 //营收
 				c.Renqi = 1//人气置1
@@ -85,7 +99,7 @@ func Demo(roomid ...int) {
 			},
 		})
 		//单独，避免队列执行耗时block从而无法接收更多消息
-		c.Danmu_Main_mq.Pull_tag(map[string]func(interface{})(bool){
+		c.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
 			`pm`:func(data interface{})(bool){//私信
 				if tmp,ok := data.(send.Pm_item);ok{
 					send.Send_pm(tmp.Uid,tmp.Msg)
@@ -109,48 +123,74 @@ func Demo(roomid ...int) {
 					danmulog.L(`I: `, "未检测到cookie.txt，如果需要登录请在本机打开以下网址扫码登录，不需要请忽略")
 					//获取cookie
 					F.Get_cookie()
-					if c.Cookie != `` {
+					//验证cookie
+					if missKey := F.CookieCheck([]string{
+						`bili_jct`,
+						`DedeUserID`,
+					});len(missKey) == 0 {
 						danmulog.L(`I: `,"你已登录，刷新房间！")
 						//刷新
 						c.Danmu_Main_mq.Push_tag(`change_room`,nil)
 					}
 				}
-				if p.Checkfile().IsExist("cookie.txt") {
-					q.File = "cookie.txt"
-					f := p.File().FileWR(q)
-					c.Cookie = f
-					if tmp_uid,e := g.SS(f,`DedeUserID=`,`;`,0,0);e == nil {
-						if v,e := strconv.Atoi(tmp_uid);e == nil {
-							c.Uid = v
-						} else {
-							danmulog.L(`E: `, `读取cookie错误`,e)
-							go get_cookie()
-						}
-					} else {
-						danmulog.L(`E: `, `读取cookie错误`,e)
-						go get_cookie()
-					}
-				} else {
+				
+				if !p.Checkfile().IsExist("cookie.txt") {//读取cookie文件
 					go get_cookie()
 					p.Sys().Timeoutf(3)
+				} else {
+					q.File = "cookie.txt"
+					cookieString := p.File().FileWR(q)
+
+					if cookieString == `` {//cookie.txt为空
+						danmulog.L(`T: `, `cookie.txt为空`)
+						go get_cookie()
+						p.Sys().Timeoutf(3)
+					} else {
+						for k,v := range p.Cookies_String_2_Map(cookieString){//cookie存入全局变量syncmap
+							c.Cookie.Store(k, v)
+						}
+						if uid,ok := c.Cookie.LoadV(`DedeUserID`).(string);!ok{//cookie中无DedeUserID
+							danmulog.L(`T: `, `读取cookie错误,无DedeUserID`)
+							go get_cookie()
+							p.Sys().Timeoutf(3)
+						} else if uid,e := strconv.Atoi(uid);e != nil{
+							danmulog.L(`E: `, e)
+							go get_cookie()
+							p.Sys().Timeoutf(3)
+						} else {
+							c.Uid = uid
+						}
+					}
 				}
 			}
 			
+			danmulog.L(`T: `,"准备变量")
 			//获取房间相关信息
 			api := F.New_api(c.Roomid).Get_host_Token().Get_live()
 			c.Roomid = api.Roomid
-
+			//每日签到
+			F.Dosign()
+			//每日兑换硬币
+			F.Silver_2_coin()
 			//获取用户版本
 			api.Get_Version()
 			//获取热门榜
 			api.Get_HotRank()
-			//切换粉丝牌，只在cookie存在时启用
-			api.Switch_FansMedal()
+			//检查与切换粉丝牌，只在cookie存在时启用
+			api.CheckSwitch_FansMedal()
+			//小心心
+			go api.F_x25Kn()
 			if len(api.Url) == 0 || api.Roomid == 0 || api.Token == "" || api.Uid == 0 || api.Locked {
 				danmulog.L(`E: `,"some err")
 				return
 			}
 			danmulog.L(`I: `,"连接到房间", c.Roomid)
+
+			Cookie := make(map[string]string)
+			c.Cookie.Range(func(k,v interface{})(bool){
+				Cookie[k.(string)] = v.(string)
+				return true
+			})
 
 			//对每个弹幕服务器尝试
 			for _, v := range api.Url {
@@ -162,7 +202,7 @@ func Demo(roomid ...int) {
 					Func_abort_close:func(){danmulog.L(`I: `,`服务器连接中断`)},
 					Func_normal_close:func(){danmulog.L(`I: `,`服务器连接关闭`)},
 					Header: map[string]string{
-						`Cookie`:c.Cookie,
+						`Cookie`:p.Map_2_Cookies_String(Cookie),
 						`Host`: u.Hostname(),
 						`User-Agent`: `Mozilla/5.0 (X11; Linux x86_64; rv:84.0) Gecko/20100101 Firefox/84.0`,
 						`Accept`: `*/*`,
@@ -208,7 +248,7 @@ func Demo(roomid ...int) {
 						//订阅消息，以便刷新舰长数
 						api.Get_guardNum()
 						//使用带tag的消息队列在功能间传递消息
-						c.Danmu_Main_mq.Pull_tag(map[string]func(interface{})(bool){
+						c.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
 							`guard_update`:func(data interface{})(bool){//舰长更新
 								go api.Get_guardNum()
 								return false
@@ -216,12 +256,31 @@ func Demo(roomid ...int) {
 							`change_room`:func(data interface{})(bool){//换房时退出当前房间
 								return true
 							},
+							`new day`:func(data interface{})(bool){//日期更换
+								//每日签到
+								F.Dosign()
+								//每日兑换硬币
+								go F.Silver_2_coin()
+								//小心心
+								go api.F_x25Kn()
+								//附加功能 每日发送弹幕
+								go reply.Entry_danmu()
+								return false
+							},
 						})
 
-						if c.Cookie != `` {//附加功能 弹幕机 无cookie无法发送弹幕
-							reply.Danmuji_auto(1)
+						//验证cookie
+						if missKey := F.CookieCheck([]string{
+							`bili_jct`,
+							`DedeUserID`,
+							`LIVE_BUVID`,
+						});len(missKey) == 0 {
+							//附加功能 弹幕机 无cookie无法发送弹幕
+							reply.Danmuji_auto()
 						}
-						{//附加功能 直播流保存 营收
+
+						{//附加功能 进房间发送弹幕 直播流保存 营收
+							go reply.Entry_danmu()
 							go reply.Saveflvf()
 							go reply.ShowRevf()
 						}
@@ -260,6 +319,7 @@ func Demo(roomid ...int) {
 		close(interrupt)
 		{//附加功能 直播流
 			reply.Saveflv_wait()
+			reply.Save_to_json(-1, []interface{}{`{}]`})
 		}
 		danmulog.L(`I: `,"结束退出")
 	}

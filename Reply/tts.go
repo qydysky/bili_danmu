@@ -6,6 +6,7 @@ import (
 	"strings"
 	p "github.com/qydysky/part"
 	c "github.com/qydysky/bili_danmu/CV"
+	msgq "github.com/qydysky/part/msgq"
 	s "github.com/qydysky/part/buf"
 )
 
@@ -61,7 +62,7 @@ func init(){
 	
 	//消息队列接收tts类消息，并传送到TTS朗读
 	//使用带tag的消息队列在功能间传递消息
-	c.Danmu_Main_mq.Pull_tag(map[string]func(interface{})(bool){
+	c.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
 		`tts`:func(data interface{})(bool){//tts
 			if _,ok := tts_setting[data.(Danmu_mq_t).uid];ok {
 				tts_List <- data
@@ -74,11 +75,15 @@ func init(){
 
 func TTS(uid,msg string) {
 	if tts_limit.TO() {return}
-	tts_log.L(`I: `,uid, msg)
+
+	v,ok := tts_setting[uid]
+	if !ok || v == ``{return}
+
+	tts_log.L(`I: `,uid, strings.ReplaceAll(msg, "\n", " "))
+
+	msg = strings.ReplaceAll(v, "{D}", msg)
+
 	req := p.Req()
-	if v,ok := tts_setting[uid];ok{
-		msg = strings.ReplaceAll(v, "{D}", msg)
-	}
 	if err := req.Reqf(p.Rval{
 		Url:`https://fanyi.baidu.com/gettts?lan=zh&text=`+ url.QueryEscape(msg) +`&spd=5&source=web`,
 		SaveToPath:p.Sys().Cdir()+`/tts.mp3`,

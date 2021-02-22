@@ -17,6 +17,7 @@ import (
 	"github.com/gotk3/gotk3/gtk"
 	"github.com/gotk3/gotk3/gdk"
 	p "github.com/qydysky/part"
+	msgq "github.com/qydysky/part/msgq"
 	F "github.com/qydysky/bili_danmu/F"
 	c "github.com/qydysky/bili_danmu/CV"
 	s "github.com/qydysky/part/buf"
@@ -69,10 +70,10 @@ var (
 )
 
 func init(){
-	if!IsOn("Gtk") {return}
+	if!IsOn("Gtk弹幕窗") {return}
 	go Gtk_danmu()
 	//使用带tag的消息队列在功能间传递消息
-	Danmu_mq.Pull_tag(map[string]func(interface{})(bool){
+	Danmu_mq.Pull_tag(msgq.FuncMap{
 		`danmu`:func(data interface{})(bool){//弹幕
 			select{
 			case Gtk_danmu_chan <- data.(Danmu_mq_t):
@@ -366,7 +367,7 @@ func Gtk_danmu() {
 				} else {
 					in_smooth_roll = false
 					tmp.SetValue(max)
-					if v,ok := K_v[`gtk_保留弹幕数量`].(float64);ok {
+					if v,ok := c.K_v.LoadV(`gtk_保留弹幕数量`).(float64);ok {
 						loc -= int(v)
 					} else {
 						loc -= 25
@@ -393,7 +394,7 @@ func Gtk_danmu() {
 				}
 			}
 			{//营收
-				if IsOn("ShowRev") {
+				if IsOn("统计营收") {
 					b,e := w2_textView0.GetBuffer()
 					if e != nil {log.Println(e);return}
 					b.SetText(fmt.Sprintf("￥%.2f",c.Rev))					
@@ -511,7 +512,7 @@ func load_face(uid string) (loc string) {
 		loc = Gtk_img_path + `/` + uid
 		return
 	}
-	if v,ok := K_v[`gtk_头像获取等待最大数量`].(float64);ok && len(gtkGetList) > int(v) {return}
+	if v,ok := c.K_v.LoadV(`gtk_头像获取等待最大数量`).(float64);ok && len(gtkGetList) > int(v) {return}
 	select{
 		case gtkGetList <- uid:
 		default:
@@ -564,7 +565,7 @@ func show(s,img_src string,to_grid ...int){
 			pixbuf,e = gdk.PixbufNewFromFileAtSize(img_src, 40, 40);
 			if e == nil {
 				imgbuf.Lock()
-				if v,ok := K_v[`gtk_内存头像数量`].(float64);ok && len(imgbuf.b) > int(v) + 10 {
+				if v,ok := c.K_v.LoadV(`gtk_内存头像数量`).(float64);ok && len(imgbuf.b) > int(v) + 10 {
 					for k,_ := range imgbuf.b {
 						delete(imgbuf.b,k)
 						if len(imgbuf.b) <= int(v) {break}
