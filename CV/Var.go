@@ -35,6 +35,17 @@ type Danmu_Main_mq_item struct {
 //200长度防止push击穿
 var Danmu_Main_mq = mq.New(200)
 
+//k-v
+var K_v syncmap.Map
+
+func init() {
+	buf := s.New()
+	buf.Load("config/config_K_v.json")
+	for k,v := range buf.B {
+		K_v.Store(k, v)
+	}
+}
+
 //日志
 var Log = log.New(log.Config{
 	File:`danmu.log`,
@@ -48,15 +59,15 @@ var Log = log.New(log.Config{
 	},
 })
 
-//k-v
-var K_v syncmap.Map
-
 func init() {
-	buf := s.New()
-	buf.Load("config/config_K_v.json")
-	for k,v := range buf.B {
-		K_v.Store(k, v)
+	logmap := make(map[string]struct{})
+	if array,ok := K_v.Load(`日志显示`);ok{
+		for _,v := range array.([]interface{}){
+			logmap[v.(string)] = log.On
+		}
 	}
+	Log = Log.Level(logmap)
+	return
 }
 
 //from player-loader-2.0.11.min.js
