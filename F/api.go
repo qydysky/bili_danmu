@@ -210,7 +210,7 @@ func (i *api) Get_info() (o *api) {
 
 func (i *api) Get_live(qn ...string) (o *api) {
 	o = i
-	apilog := apilog.Base_add(`获取直播流`)
+	apilog := apilog.Base_add(`直播流信息`)
 
 	if o.Roomid == 0 {
 		apilog.L(`E: `,"还未New_api")
@@ -933,6 +933,135 @@ func Get_cookie() {
 	}
 }
 
+//牌子
+type TGet_list_in_room struct{
+	Medal_id int `json:"medal_id"`//牌子id
+	Medal_name string `json:"medal_name"`//牌子名
+	Target_id int `json:"target_id"`//牌子up主uid
+	Target_name string `json:"target_name"`//牌子up主名
+	Room_id int `json:"room_id"`//牌子直播间
+	Today_intimacy int `json:"today_intimacy"`//今日亲密(0:未发送弹幕 100:已发送弹幕)
+	Is_lighted int `json:"is_lighted"`//牌子是否熄灭(0:熄灭 1:亮)
+}
+//获取牌子信息
+func Get_list_in_room() (array []TGet_list_in_room) {
+	if api_limit.TO() {return}//超额请求阻塞，超时将取消
+	apilog := apilog.Base_add(`获取牌子`)
+	//验证cookie
+	if missKey := CookieCheck([]string{
+		`bili_jct`,
+		`DedeUserID`,
+		`LIVE_BUVID`,
+	});len(missKey) != 0 {
+		apilog.L(`T: `,`Cookie无Key:`,missKey)
+		return
+	}
+	Cookie := make(map[string]string)
+	c.Cookie.Range(func(k,v interface{})(bool){
+		Cookie[k.(string)] = v.(string)
+		return true
+	})
+
+	{//获取牌子列表
+		r := p.Req()
+		if e := r.Reqf(p.Rval{
+			Url:`https://api.live.bilibili.com/fans_medal/v1/FansMedal/get_list_in_room`,
+			Header:map[string]string{
+				`Cookie`:p.Map_2_Cookies_String(Cookie),
+			},
+			Timeout:10,
+			Retry:2,
+		});e != nil {
+			apilog.L(`E: `,e)
+			return
+		}
+		
+		var res struct{
+			Code int `json:"code"`
+			Msg string `json:"msg"`
+			Message string `json:"message"`
+			Data []TGet_list_in_room `json:"data"`
+		}
+
+		if e := json.Unmarshal(r.Respon, &res);e != nil{
+			apilog.L(`E: `,e)
+		}
+
+		if res.Code != 0 {
+			apilog.L(`E: `,`返回code`, res.Code, res.Msg)
+			return
+		}
+
+		return res.Data
+	}
+}
+
+type TGet_weared_medal struct{
+	Medal_id int `json:"medal_id"`//牌子id
+	Medal_name string `json:"medal_name"`//牌子名
+	Target_id int `json:"target_id"`//牌子up主uid
+	Target_name string `json:"target_name"`//牌子up主名
+	Roominfo Roominfo `json:"roominfo"`//牌子直播间
+	Today_intimacy int `json:"today_intimacy"`//今日亲密(0:未发送弹幕 100:已发送弹幕)
+	Is_lighted int `json:"is_lighted"`//牌子是否熄灭(0:熄灭 1:亮)
+}
+type Roominfo struct{
+	Room_id int `json:"room_id"`
+}
+//获取当前佩戴的牌子
+func Get_weared_medal() (item TGet_weared_medal) {
+	if api_limit.TO() {return}//超额请求阻塞，超时将取消
+	apilog := apilog.Base_add(`获取牌子`)
+	//验证cookie
+	if missKey := CookieCheck([]string{
+		`bili_jct`,
+		`DedeUserID`,
+		`LIVE_BUVID`,
+	});len(missKey) != 0 {
+		apilog.L(`T: `,`Cookie无Key:`,missKey)
+		return
+	}
+	Cookie := make(map[string]string)
+	c.Cookie.Range(func(k,v interface{})(bool){
+		Cookie[k.(string)] = v.(string)
+		return true
+	})
+
+	{//获取
+		r := p.Req()
+		if e := r.Reqf(p.Rval{
+			Url:`https://api.live.bilibili.com/live_user/v1/UserInfo/get_weared_medal`,
+			Header:map[string]string{
+				`Cookie`:p.Map_2_Cookies_String(Cookie),
+			},
+			Timeout:10,
+			Retry:2,
+		});e != nil {
+			apilog.L(`E: `,e)
+			return
+		}
+
+		var res struct{
+			Code int `json:"code"`
+			Msg	string `json:"msg"`
+			Message	string `json:"message"`
+			Data TGet_weared_medal `json:"data"`
+		}
+		if e := json.Unmarshal(r.Respon, &res);e != nil && res.Msg == ``{//未佩戴时的data是array型会导致错误
+			apilog.L(`E: `,e)
+			return
+		}
+
+		if res.Code != 0 {
+			apilog.L(`E: `,`返回code`, res.Code, res.Msg)
+			return
+		}
+
+		return res.Data
+	}
+	
+}
+
 func (i *api) CheckSwitch_FansMedal() {
 	if api_limit.TO() {return}//超额请求阻塞，超时将取消
 	apilog := apilog.Base_add(`切换粉丝牌`)
@@ -952,77 +1081,20 @@ func (i *api) CheckSwitch_FansMedal() {
 		return true
 	})
 	{//获取当前牌子，验证是否本直播间牌子
-		r := p.Req()
-		if e := r.Reqf(p.Rval{
-			Url:`https://api.live.bilibili.com/live_user/v1/UserInfo/get_weared_medal`,
-			Header:map[string]string{
-				`Cookie`:p.Map_2_Cookies_String(Cookie),
-			},
-			Timeout:10,
-			Retry:2,
-		});e != nil {
-			apilog.L(`E: `,e)
-			return
-		}
-		var res struct{
-			Code int `json:"code"`
-			Msg	string `json:"msg"`
-			Message	string `json:"message"`
-			Data struct{
-				Roominfo struct{
-					Room_id int `json:"room_id"`
-				} `json:"roominfo"`
-			} `json:"data"`
-		}
-		if e := json.Unmarshal(r.Respon, &res);e != nil && res.Msg == ``{//未佩戴时的data是array型会导致错误
-			apilog.L(`E: `,e)
-			return
-		}
-		
-		c.Wearing_FansMedal = res.Data.Roominfo.Room_id//更新佩戴信息
-		if res.Data.Roominfo.Room_id == c.Roomid {
-			return
-		}
-	}
-	var medal_id int
-	{//获取牌子列表
-		r := p.Req()
-		if e := r.Reqf(p.Rval{
-			Url:`https://api.live.bilibili.com/fans_medal/v1/FansMedal/get_list_in_room`,
-			Header:map[string]string{
-				`Cookie`:p.Map_2_Cookies_String(Cookie),
-			},
-			Timeout:10,
-			Retry:2,
-		});e != nil {
-			apilog.L(`E: `,e)
-			return
-		}
-		res := string(r.Respon)
-		if v,ok := p.Json().GetValFromS(res, "code").(float64);!ok || v != 0 {
-			apilog.L(`E: `,`Get_FansMedal get_list_in_room code`, v)
-			return
-		} else {
-			if v,ok := p.Json().GetValFromS(res, "data").([]interface{});ok{
-				for _,item := range v {
-					if room_id,ok := p.Json().GetValFrom(item, "room_id").(float64);!ok || int(room_id) != c.Roomid {
-						continue
-					} else {
-						if tmp_medal_id,ok := p.Json().GetValFrom(item, "medal_id").(float64);!ok {
-							apilog.L(`E: `,`medal_id error`)
-							return
-						} else {
-							medal_id = int(tmp_medal_id)
-							break
-						}
-					}
-				}
-			} else {
-				apilog.L(`E: `,`data error`)
-				return
-			}
-		}
+		res := Get_weared_medal()
 
+		c.Wearing_FansMedal = res.Roominfo.Room_id//更新佩戴信息
+		if res.Roominfo.Room_id == c.Roomid {return}
+	}
+
+	var medal_id int//将要使用的牌子id
+	//检查是否有此直播间的牌子
+	{
+		medal_list := Get_list_in_room()
+		for _,v := range medal_list {
+			if v.Room_id != c.Roomid {continue}
+			medal_id = v.Medal_id
+		}
 		if medal_id == 0 {//无牌
 			if c.Wearing_FansMedal == 0 {//当前没牌
 				apilog.L(`I: `,`当前无粉丝牌，不切换`)
@@ -1030,6 +1102,7 @@ func (i *api) CheckSwitch_FansMedal() {
 			}
 		}
 	}
+
 	var (
 		post_url string
 		post_str string
@@ -1375,7 +1448,7 @@ func (i *api) F_x25Kn() (o *api) {
 		}
 
 		if res.Code != 0{
-			apilog.L(`E: `,res.Message)
+			apilog.L(`E: `,`返回错误`,res.Message)
 			return
 		}
 	}
@@ -1474,7 +1547,7 @@ func (i *api) F_x25Kn() (o *api) {
 			}
 	
 			if res.Code != 0{
-				apilog.L(`E: `,res.Message)
+				apilog.L(`E: `,`返回错误`,res.Message)
 				return
 			}
 		}

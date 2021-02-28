@@ -23,6 +23,7 @@ import (
 /*
 	F额外功能区
 */
+var log = c.Log.Base(`功能`)
 
 //功能开关选取函数
 func IsOn(s string) bool {
@@ -739,6 +740,12 @@ func Entry_danmu(){
 	if v,_ := c.K_v.LoadV(`进房弹幕_有粉丝牌时才发`).(bool);v && c.Wearing_FansMedal == 0{
 		return
 	}
+	if v,_ := c.K_v.LoadV(`进房弹幕_仅发首日弹幕`).(bool);v {
+		res := F.Get_weared_medal()
+		if res.Today_intimacy > 0 {
+			return
+		}
+	}
 	if s,ok := c.K_v.LoadV(`进房弹幕_内容`).(string);ok && s != ``{
 		Cookie := make(map[string]string)
 		c.Cookie.Range(func(k,v interface{})(bool){
@@ -747,4 +754,34 @@ func Entry_danmu(){
 		})
 		send.Danmu_s(s,p.Map_2_Cookies_String(Cookie),c.Roomid)
 	}
+}
+
+//保持所有牌子点亮
+func Keep_medal_light() {
+	if v,_ := c.K_v.LoadV(`保持所有牌子亮着`).(bool);!v {
+		return
+	}
+	log := log.Base_add(`保持亮牌`)
+
+	var sendStr string
+	if s,ok := c.K_v.LoadV(`进房弹幕_内容`).(string);!ok || s == ``{
+		log.L(`I: `,`进房弹幕_内容 为 空，退出`)
+		return
+	} else {sendStr = s}
+
+	Cookie := make(map[string]string)
+	c.Cookie.Range(func(k,v interface{})(bool){
+		Cookie[k.(string)] = v.(string)
+		return true
+	})
+
+	log.L(`I: `,`开始`)
+
+	for _,v := range F.Get_list_in_room() {
+		if v.Is_lighted == 1 {continue}
+		
+		send.Danmu_s(sendStr,p.Map_2_Cookies_String(Cookie),v.Room_id)
+		time.Sleep(time.Second)
+	}
+	log.L(`I: `,`完成`)
 }

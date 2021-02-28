@@ -265,6 +265,8 @@ func Demo(roomid ...int) {
 								go api.F_x25Kn()
 								//附加功能 每日发送弹幕
 								go reply.Entry_danmu()
+								//附加功能 保持牌子点亮
+								go reply.Keep_medal_light()
 								return false
 							},
 						})
@@ -283,6 +285,8 @@ func Demo(roomid ...int) {
 							go reply.Entry_danmu()
 							go reply.Saveflvf()
 							go reply.ShowRevf()
+							//附加功能 保持牌子点亮
+							go reply.Keep_medal_light()
 						}
 					}()
 				}
