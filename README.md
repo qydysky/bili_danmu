@@ -59,8 +59,9 @@ golang go version go1.15 linux/amd64
 
 #### 当前支持功能
 以下内容可能过时，点击查看[~~当前支持功能(旧)~~](https://github.com/qydysky/bili_danmu/blob/9731f69d06a15645c6cb1d41379520a5a3f519f1/Reply/F.go#L26)，[功能配置(新)](https://github.com/qydysky/bili_danmu/blob/maintenance/demo/config/config_K_v.json)
+- [x] 保持自选(手机25个(最多)自选)粉丝牌总是点亮(日期更迭会触发)
 - [x] 银瓜子自动兑换硬币(日期更迭会触发)
-- [x] 可选有无粉丝牌发进房弹幕(有粉丝牌每日首条弹幕有经验)(日期更迭会触发)
+- [x] 发进房弹幕(可选有无粉丝牌(可选每日首次发送后不发))(日期更迭会触发)
 - [x] 签到(日期更迭会触发)
 - [x] 有粉丝牌获取小心心(日期更迭会触发)
 - [x] 自定义私信
