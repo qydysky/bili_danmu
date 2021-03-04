@@ -96,7 +96,7 @@ golang go version go1.15 linux/amd64
 本项目使用github action自动构建，构建过程详见[yml](https://github.com/qydysky/bili_danmu/blob/master/.github/workflows/go.yml)
 
 #### cookie加密
-保护cooki.txt
+保护cookie.txt
 
 在`demo/config/config_K_v.json`中可找到配置项
 ```
