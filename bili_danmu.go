@@ -33,7 +33,8 @@ func init() {
 
 func Demo(roomid ...int) {
 	var danmulog = c.Log.Base(`bilidanmu Demo`)
-	
+	defer danmulog.Block(1000)
+
 	//ctrl+c退出
 	interrupt := make(chan os.Signal, 1)
 	
@@ -116,9 +117,6 @@ func Demo(roomid ...int) {
 		for !exit_sign {
 			//获取cookies
 			{
-				var q = p.Filel{
-					Write:false,
-				}
 				var get_cookie = func(){
 					danmulog.L(`I: `, "未检测到cookie.txt，如果需要登录请在本机打开以下网址扫码登录，不需要请忽略")
 					//获取cookie
@@ -138,8 +136,8 @@ func Demo(roomid ...int) {
 					go get_cookie()
 					p.Sys().Timeoutf(3)
 				} else {
-					q.File = "cookie.txt"
-					cookieString := p.File().FileWR(q)
+					
+					cookieString := string(F.CookieGet())
 
 					if cookieString == `` {//cookie.txt为空
 						danmulog.L(`T: `, `cookie.txt为空`)

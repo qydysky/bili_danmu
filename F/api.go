@@ -913,13 +913,8 @@ func Get_cookie() {
 			t := []rune(cookieString)
 			cookieString = string(t[:len(t)-2])
 		}
-		f := p.File()
-		f.FileWR(p.Filel{
-			File:`cookie.txt`,
-			Write:true,
-			Loc:0,
-			Context:[]interface{}{cookieString},
-		})
+
+		CookieSet([]byte(cookieString))
 	}
 
 	//有新实例，退出
@@ -1274,7 +1269,7 @@ func (i *api) Get_LIVE_BUVID() (o *api){
 	for _,roomid := range roomIdList{//获取
 		req := p.Req()
 		if err := req.Reqf(p.Rval{
-			Url:`https://live.bilibili.com/`+roomid,
+			Url:`https://api.live.bilibili.com/live/getRoomKanBanModel?roomid=`+roomid,
 			Header:map[string]string{
 				`Host`: `live.bilibili.com`,
 				`User-Agent`: `Mozilla/5.0 (X11; Linux x86_64; rv:83.0) Gecko/20100101 Firefox/83.0`,
@@ -1304,7 +1299,7 @@ func (i *api) Get_LIVE_BUVID() (o *api){
 			apilog.L(`I: `,`获取到LIVE_BUVID，保存cookie`)
 			break
 		} else {
-			apilog.L(`I: `,`未获取到，重试`)
+			apilog.L(`I: `, roomid,`未获取到，重试`)
 			time.Sleep(time.Second)
 		}
 	}
@@ -1314,13 +1309,9 @@ func (i *api) Get_LIVE_BUVID() (o *api){
 		Cookie[k.(string)] = v.(string)
 		return true
 	})
+	
+	CookieSet([]byte(p.Map_2_Cookies_String(Cookie)))
 
-	f := p.File()
-	f.FileWR(p.Filel{
-		File: `cookie.txt`,
-		Write: true,
-		Context: []interface{}{p.Map_2_Cookies_String(Cookie)},
-	})
 	return
 }
 
@@ -1822,17 +1813,11 @@ func save_cookie(Cookies []*http.Cookie){
 	for k,v := range p.Cookies_List_2_Map(Cookies){
 		c.Cookie.Store(k, v)
 	}
-	f := p.File()
 
 	Cookie := make(map[string]string)
 	c.Cookie.Range(func(k,v interface{})(bool){
 		Cookie[k.(string)] = v.(string)
 		return true
 	})
-
-	f.FileWR(p.Filel{
-		File: `cookie.txt`,
-		Write: true,
-		Context: []interface{}{p.Map_2_Cookies_String(Cookie)},
-	})
+	CookieSet([]byte(p.Map_2_Cookies_String(Cookie)))
 }

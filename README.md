@@ -85,6 +85,7 @@ golang go version go1.15 linux/amd64
 
 #### 其他特性
 
+- [x] cookie加密
 - [x] 弹幕自动重连（30s）
 - [x] 直播流开播自动下载
 - [x] 直播流断流再保存
@@ -94,6 +95,25 @@ golang go version go1.15 linux/amd64
 ### 说明
 本项目使用github action自动构建，构建过程详见[yml](https://github.com/qydysky/bili_danmu/blob/master/.github/workflows/go.yml)
 
+#### cookie加密
+保护cooki.txt
+
+在`demo/config/config_K_v.json`中可找到配置项
+```
+"cookie加密公钥":"public.pem",
+"cookie解密私钥":"private.pem"
+```
+- 当配置了公钥路径后，cookie将被加密(若公钥无效，将会导致cookie无法储存)。若未配置私钥路径，则每次启动都会要求输入私钥路径。(若私钥无效，将会导致cookie被清除)
+- 当未配置公钥路径(空字符串)，cookie将明文储存。
+- 默认使用了`demo/`下的(public.pem)(private.pem)进行加密，使用时注意自行生成公私钥并按照上述说明使用
+
+注意，每次更换设置(设置或未设置公钥)，cookie会失效。
+
+附：创建公(public.pem)私(private.pem)钥
+```
+openssl genrsa -out private.pem 2048
+openssl rsa -in private.pem -pubout -out public.pem
+```
 #### 小心心
 在登录后，可以自动获取小心心
 
