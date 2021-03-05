@@ -785,3 +785,20 @@ func Keep_medal_light() {
 	}
 	flog.L(`I: `,`完成`)
 }
+
+//自动发送即将过期的银瓜子礼物
+func AutoSend_silver_gift() {
+	day,_ := c.K_v.LoadV(`发送还有几天过期的礼物`).(float64)
+	if day <= 0 {
+		return
+	}
+
+	flog := flog.Base_add(`自动送礼`).L(`T: `,`自动送礼`)
+
+	for _,v := range F.Gift_list() {
+		if time.Now().Add(time.Hour * time.Duration(24 * int(day))).Unix() > int64(v.Expire_at) {
+			send.Send_gift(v.Gift_id, v.Bag_id, v.Gift_num)
+		}
+	}
+	flog.L(`T: `,`完成`)
+}

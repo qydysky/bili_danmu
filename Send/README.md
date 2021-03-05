@@ -6,4 +6,5 @@
 |./|发送数据区|
 |Send.go|弹幕发送|
 |Send_pm.go|私信发送|
+|Send_gift.go|礼物发送|
 ---

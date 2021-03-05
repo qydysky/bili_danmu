@@ -265,6 +265,8 @@ func Demo(roomid ...int) {
 								go reply.Entry_danmu()
 								//附加功能 保持牌子点亮
 								go reply.Keep_medal_light()
+								//附加功能 自动发送即将过期礼物
+								go reply.AutoSend_silver_gift()
 								return false
 							},
 						})
@@ -285,6 +287,8 @@ func Demo(roomid ...int) {
 							go reply.ShowRevf()
 							//附加功能 保持牌子点亮
 							go reply.Keep_medal_light()
+							//附加功能 自动发送即将过期礼物
+							go reply.AutoSend_silver_gift()
 						}
 					}()
 				}

@@ -18,6 +18,7 @@ var (
 	Cookie syncmap.Map
 	Title string//直播标题
 	Uname string//主播名
+	UpUid int//主播uid
 	Rev float64//营收
 	Renqi int//人气
 	GuardNum int//舰长数

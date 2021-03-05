@@ -34,7 +34,7 @@ type api struct {
 }
 
 var apilog = c.Log.Base(`api`)
-var api_limit = p.Limit(1,2000,15000)//频率限制1次/2s，最大等待时间15s
+var api_limit = p.Limit(1,2000,30000)//频率限制1次/2s，最大等待时间30s
 
 func New_api(Roomid int) (o *api) {
 	apilog.Base_add(`新建`).L(`T: `,"ok")
@@ -70,6 +70,7 @@ func (i *api) Get_info() (o *api) {
 		apilog.L(`E: `,"uid", err)
 	} else {
 		o.Uid = i
+		c.UpUid = i
 	}
 	//Title
 	if e := r.S(`"title":"`, `",`, 0, 0).Err;e == nil {
@@ -163,6 +164,7 @@ func (i *api) Get_info() (o *api) {
 		//主播id
 		if tmp.Data.Room_info.Uid != 0{
 			o.Uid = tmp.Data.Room_info.Uid
+			c.UpUid = tmp.Data.Room_info.Uid
 		} else {
 			apilog.L(`W: `,"data.room_info.Uid = 0")
 			return
@@ -1558,7 +1560,9 @@ type Gift_list_type_Data struct {
 }
 
 type Gift_list_type_Data_List struct{
+	Bag_id int `json:"bag_id"`
 	Gift_id int `json:"gift_id"`
+	Gift_name string `json:"gift_name"`
 	Gift_num int `json:"gift_num"`
 	Expire_at int `json:"expire_at"`
 }
