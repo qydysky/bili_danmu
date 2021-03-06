@@ -111,6 +111,22 @@ func Demo(roomid ...int) {
 
 		<-change_room_chan
 
+		//命令行也可切换房间
+		go func(){
+			for input := ``; true; {
+				if _,err := fmt.Scanln(&input);err.Error() == `unexpected newline`{
+					fmt.Println("输入房间号并回车(其他显示隔断不影响)\n")
+					room := 0
+					if _,err := fmt.Scanln(&room);err != nil {
+						danmulog.L(`W: `, "房间输入错误", room, err)
+					} else {
+						c.Roomid = room
+						c.Danmu_Main_mq.Push_tag(`change_room`,nil)
+					}
+				}
+			}
+		}()
+
 		//ctrl+c退出
 		signal.Notify(interrupt, os.Interrupt)
 
