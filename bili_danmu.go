@@ -111,74 +111,61 @@ func Demo(roomid ...int) {
 
 		<-change_room_chan
 
-		//命令行也可切换房间
-		go func(){
-			for input := ``; true; {
-				if _,err := fmt.Scanln(&input);err.Error() == `unexpected newline`{
-					fmt.Println("输入房间号并回车(其他显示隔断不影响)\n")
-					room := 0
-					if _,err := fmt.Scanln(&room);err != nil {
-						danmulog.L(`W: `, "房间输入错误", room, err)
-					} else {
-						c.Roomid = room
-						c.Danmu_Main_mq.Push_tag(`change_room`,nil)
-					}
-				}
-			}
-		}()
-
 		//ctrl+c退出
 		signal.Notify(interrupt, os.Interrupt)
 
-		for !exit_sign {
-			//获取cookies
-			{
-				var get_cookie = func(){
-					danmulog.L(`I: `, "未检测到cookie.txt，如果需要登录请在本机打开以下网址扫码登录，不需要请忽略")
-					//获取cookie
-					F.Get_cookie()
-					//验证cookie
-					if missKey := F.CookieCheck([]string{
-						`bili_jct`,
-						`DedeUserID`,
-					});len(missKey) == 0 {
-						danmulog.L(`I: `,"你已登录，刷新房间！")
-						//刷新
-						c.Danmu_Main_mq.Push_tag(`change_room`,nil)
-					}
-				}
-				
-				if !p.Checkfile().IsExist("cookie.txt") {//读取cookie文件
-					go get_cookie()
-					p.Sys().Timeoutf(3)
-				} else {
-					
-					cookieString := string(F.CookieGet())
-
-					if cookieString == `` {//cookie.txt为空
-						danmulog.L(`T: `, `cookie.txt为空`)
-						go get_cookie()
-						p.Sys().Timeoutf(3)
-					} else {
-						for k,v := range p.Cookies_String_2_Map(cookieString){//cookie存入全局变量syncmap
-							c.Cookie.Store(k, v)
-						}
-						if uid,ok := c.Cookie.LoadV(`DedeUserID`).(string);!ok{//cookie中无DedeUserID
-							danmulog.L(`T: `, `读取cookie错误,无DedeUserID`)
-							go get_cookie()
-							p.Sys().Timeoutf(3)
-						} else if uid,e := strconv.Atoi(uid);e != nil{
-							danmulog.L(`E: `, e)
-							go get_cookie()
-							p.Sys().Timeoutf(3)
-						} else {
-							c.Uid = uid
-						}
-					}
+		//获取cookies
+		{
+			var get_cookie = func(){
+				danmulog.L(`I: `, "未检测到cookie.txt，如果需要登录请在本机打开以下网址扫码登录，不需要请忽略")
+				//获取cookie
+				F.Get_cookie()
+				//验证cookie
+				if missKey := F.CookieCheck([]string{
+					`bili_jct`,
+					`DedeUserID`,
+				});len(missKey) == 0 {
+					danmulog.L(`I: `,"你已登录，刷新房间！")
+					//刷新
+					c.Danmu_Main_mq.Push_tag(`change_room`,nil)
 				}
 			}
 			
-			danmulog.L(`T: `,"准备变量")
+			if !p.Checkfile().IsExist("cookie.txt") {//读取cookie文件
+				go get_cookie()
+				p.Sys().Timeoutf(3)
+			} else {
+				
+				cookieString := string(F.CookieGet())
+
+				if cookieString == `` {//cookie.txt为空
+					danmulog.L(`T: `, `cookie.txt为空`)
+					go get_cookie()
+					p.Sys().Timeoutf(3)
+				} else {
+					for k,v := range p.Cookies_String_2_Map(cookieString){//cookie存入全局变量syncmap
+						c.Cookie.Store(k, v)
+					}
+					if uid,ok := c.Cookie.LoadV(`DedeUserID`).(string);!ok{//cookie中无DedeUserID
+						danmulog.L(`T: `, `读取cookie错误,无DedeUserID`)
+						go get_cookie()
+						p.Sys().Timeoutf(3)
+					} else if uid,e := strconv.Atoi(uid);e != nil{
+						danmulog.L(`E: `, e)
+						go get_cookie()
+						p.Sys().Timeoutf(3)
+					} else {
+						c.Uid = uid
+					}
+				}
+			}
+		}
+			
+		//命令行操作 切换房间 发送弹幕
+		go F.Cmd()
+
+		for !exit_sign {
+			danmulog.L(`T: `,"准备")
 			//获取房间相关信息
 			api := F.New_api(c.Roomid).Get_host_Token().Get_live()
 			c.Roomid = api.Roomid

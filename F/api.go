@@ -1825,3 +1825,82 @@ func save_cookie(Cookies []*http.Cookie){
 	})
 	CookieSet([]byte(p.Map_2_Cookies_String(Cookie)))
 }
+
+//正在直播主播
+type UpItem struct{
+	Uname string `json:"uname"`
+	Title string `json:"title"`
+	Roomid int `json:"roomid"`
+}
+func Feed_list() (Uplist []UpItem) {
+	apilog := apilog.Base_add(`正在直播主播`).L(`T: `,`获取中`)
+	//验证cookie
+	if missKey := CookieCheck([]string{
+		`bili_jct`,
+		`DedeUserID`,
+		`LIVE_BUVID`,
+	});len(missKey) != 0 {
+		apilog.L(`T: `,`Cookie无Key:`,missKey)
+		return
+	}
+	if api_limit.TO() {apilog.L(`E: `,`超时！`);return}//超额请求阻塞，超时将取消
+
+	Cookie := make(map[string]string)
+	c.Cookie.Range(func(k,v interface{})(bool){
+		Cookie[k.(string)] = v.(string)
+		return true
+	})
+
+	req := p.Req()
+	for pageNum:=1; true; pageNum+=1 {
+		if err := req.Reqf(p.Rval{
+			Url:`https://api.live.bilibili.com/relation/v1/feed/feed_list?page=`+strconv.Itoa(pageNum)+`&pagesize=10`,
+			Header:map[string]string{
+				`Host`: `api.live.bilibili.com`,
+				`User-Agent`: `Mozilla/5.0 (X11; Linux x86_64; rv:83.0) Gecko/20100101 Firefox/83.0`,
+				`Accept`: `application/json, text/plain, */*`,
+				`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
+				`Accept-Encoding`: `gzip, deflate, br`,
+				`Origin`: `https://t.bilibili.com`,
+				`Connection`: `keep-alive`,
+				`Pragma`: `no-cache`,
+				`Cache-Control`: `no-cache`,
+				`Referer`:`https://t.bilibili.com/pages/nav/index_new`,
+				`Cookie`:p.Map_2_Cookies_String(Cookie),
+			},
+			Timeout:3,
+			Retry:2,
+		});err != nil {
+			apilog.L(`E: `,err)
+			return
+		}
+
+		var res struct{
+			Code int `json:"code"`
+			Msg string `json:"msg"`
+			Message string `json:"message"`
+			Data struct{
+				Results int `json:"results"`
+				List []UpItem `json:"list"`
+			} `json:"data"`
+		}
+
+		if e := json.Unmarshal(req.Respon, &res);e != nil{
+			apilog.L(`E: `, e)
+			return
+		}
+
+		if res.Code != 0{
+			apilog.L(`E: `, res.Message)
+			return
+		}
+
+		Uplist = append(Uplist, res.Data.List...)
+
+		if pageNum*10 > res.Data.Results {break}
+		time.Sleep(time.Second)
+	}
+
+	apilog.L(`T: `,`完成`)
+	return
+}
