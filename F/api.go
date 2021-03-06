@@ -48,7 +48,7 @@ func New_api(Roomid int) (o *api) {
 
 func (i *api) Get_info() (o *api) {
 	o = i
-	apilog := apilog.Base_add(`获取房号`).L(`T: `, `获取房号`)
+	apilog := apilog.Base_add(`获取房号`).L(`T: `, `开始`)
 
 	if o.Roomid == 0 {
 		apilog.L(`E: `,"还未New_api")
@@ -685,7 +685,7 @@ func (i *api) Get_guardNum() {
 		return
 	} else {
 		c.GuardNum = int(num.(float64))
-		apilog.L(`I: `,"舰长数获取成功", c.GuardNum)
+		apilog.L(`I: `,"当前舰长数", c.GuardNum)
 	}
 	return
 }
@@ -743,7 +743,7 @@ func (i *api) Get_Version() {
 			return
 		}
 		c.VERSION = r.RS[0]
-		apilog.L(`I: `,"api version", c.VERSION)
+		apilog.L(`T: `,"api version", c.VERSION)
 	}
 }
 
@@ -1255,8 +1255,8 @@ func Dosign() {
 //LIVE_BUVID
 func (i *api) Get_LIVE_BUVID() (o *api){
 	o = i
-	apilog := apilog.Base_add(`LIVE_BUVID`).L(`T: `,`获取LIVE_BUVID`)
-	if live_buvid,ok := c.Cookie.LoadV(`LIVE_BUVID`).(string);ok && live_buvid != `` {apilog.L(`I: `,`存在`);return}
+	apilog := apilog.Base_add(`LIVE_BUVID`).L(`T: `,`获取`)
+	if live_buvid,ok := c.Cookie.LoadV(`LIVE_BUVID`).(string);ok && live_buvid != `` {apilog.L(`T: `,`存在`);return}
 	if c.Roomid == 0 {apilog.L(`E: `,`失败！无Roomid`);return}
 	if api_limit.TO() {apilog.L(`E: `,`超时！`);return}//超额请求阻塞，超时将取消
 
@@ -1336,7 +1336,7 @@ var boot_F_x25Kn funcCtrl.FlashFunc//新的替代旧的
 
 func (i *api) F_x25Kn() (o *api) {
 	o = i
-	apilog := apilog.Base_add(`小心心`).L(`T: `,`获取小心心`)
+	apilog := apilog.Base_add(`小心心`)
 	if c.Wearing_FansMedal == 0{apilog.L(`I: `,`无粉丝牌，不获取`);return}
 	//验证cookie
 	if missKey := CookieCheck([]string{
@@ -1568,7 +1568,7 @@ type Gift_list_type_Data_List struct{
 }
 
 func Gift_list() (list []Gift_list_type_Data_List) {
-	apilog := apilog.Base_add(`礼物列表`).L(`T: `,`获取礼物列表`)
+	apilog := apilog.Base_add(`礼物列表`)
 	//验证cookie
 	if missKey := CookieCheck([]string{
 		`bili_jct`,
@@ -1622,13 +1622,13 @@ func Gift_list() (list []Gift_list_type_Data_List) {
 		return
 	}
 
-	apilog.L(`I: `,`成功`)
+	apilog.L(`T: `,`成功`)
 	return res.Data.List
 }
 
 //银瓜子2硬币
 func Silver_2_coin() {
-	apilog := apilog.Base_add(`银瓜子=>硬币`).L(`T: `,`银瓜子=>硬币`)
+	apilog := apilog.Base_add(`银瓜子=>硬币`).L(`T: `,`开始`)
 	//验证cookie
 	if missKey := CookieCheck([]string{
 		`bili_jct`,
@@ -1696,7 +1696,7 @@ func Silver_2_coin() {
 			return
 		}
 
-		apilog.L(`I: `, `现在有银瓜子`, res.Data.Silver, `个`)
+		apilog.L(`T: `, `现在有银瓜子`, res.Data.Silver, `个`)
 		Silver = res.Data.Silver
 	}
 

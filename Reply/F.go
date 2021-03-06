@@ -775,7 +775,7 @@ func Keep_medal_light() {
 		return true
 	})
 
-	flog.L(`I: `,`开始`)
+	flog.L(`T: `,`开始`)
 
 	for _,v := range F.Get_list_in_room() {
 		if v.Is_lighted == 1 {continue}
@@ -793,12 +793,12 @@ func AutoSend_silver_gift() {
 		return
 	}
 
-	flog := flog.Base_add(`自动送礼`).L(`T: `,`自动送礼`)
+	flog := flog.Base_add(`自动送礼`).L(`T: `,`开始`)
 
 	for _,v := range F.Gift_list() {
 		if time.Now().Add(time.Hour * time.Duration(24 * int(day))).Unix() > int64(v.Expire_at) {
 			send.Send_gift(v.Gift_id, v.Bag_id, v.Gift_num)
 		}
 	}
-	flog.L(`T: `,`完成`)
+	flog.L(`I: `,`完成`)
 }

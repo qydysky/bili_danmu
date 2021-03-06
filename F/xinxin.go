@@ -60,7 +60,7 @@ func init() {
 	
 		//初始化web服务器，初始化websocket
 		server()
-		wslog.L(`I: `,`启动`)
+		wslog.L(`T: `,`启动`)
 	}()
 }
 

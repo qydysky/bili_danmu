@@ -220,7 +220,7 @@ func Demo(roomid ...int) {
 
 				//SendChan 传入发送[]byte
 				//RecvChan 接收[]byte
-				danmulog.L(`I: `,"连接", v)
+				danmulog.L(`T: `,"连接", v)
 				ws_c.SendChan <- F.HelloGen(c.Roomid, api.Token)
 				if F.HelloChe(<- ws_c.RecvChan) {
 					danmulog.L(`I: `,"已连接到房间", c.Uname, `(`, c.Roomid, `)`)
@@ -232,7 +232,7 @@ func Demo(roomid ...int) {
 					//30s获取一次人气
 					go func(){
 						p.Sys().MTimeoutf(500)//500ms
-						danmulog.L(`I: `,"获取人气")
+						danmulog.L(`T: `,"获取人气")
 						go func(){
 							heartbeatmsg, heartinterval := F.Heartbeat()
 							for !ws_c.Isclose() {
