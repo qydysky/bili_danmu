@@ -35,7 +35,7 @@ func Danmu_s(msg,Cookie string, roomid int) {
 		}
 	}
 
-	csrf := c.Cookie.LoadV(`bili_jct`).(string)
+	csrf,_ := c.Cookie.LoadV(`bili_jct`).(string)
 	if csrf == `` {l.L(`E: `,"Cookie错误,无bili_jct=");return}
 
 	PostStr := `color=16777215&fontsize=25&mode=1&msg=` + msg + `&rnd=` + strconv.Itoa(int(p.Sys().GetSTime())) + `&roomid=` + strconv.Itoa(roomid) + `&bubble=0&csrf_token=` + csrf + `&csrf=` + csrf

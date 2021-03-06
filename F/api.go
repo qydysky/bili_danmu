@@ -1105,7 +1105,7 @@ func (i *api) CheckSwitch_FansMedal() {
 		post_str string
 	)
 	{//生成佩戴信息
-		csrf := c.Cookie.LoadV(`bili_jct`).(string)
+		csrf,_ := c.Cookie.LoadV(`bili_jct`).(string)
 		if csrf == `` {apilog.L(`E: `,"Cookie错误,无bili_jct=");return}
 		
 		post_str = `csrf_token=`+csrf+`&csrf=`+csrf
@@ -1375,7 +1375,7 @@ func (i *api) F_x25Kn() (o *api) {
 		loop_num = 0
 	)
 
-	csrf := c.Cookie.LoadV(`bili_jct`).(string)
+	csrf,_ := c.Cookie.LoadV(`bili_jct`).(string)
 	if csrf == `` {apilog.L(`E: `,"Cookie错误,无bili_jct");return}
 
 	LIVE_BUVID := c.Cookie.LoadV(`LIVE_BUVID`).(string)
@@ -1756,7 +1756,7 @@ func Silver_2_coin() {
 	}
 	
 	{//交换
-		csrf := c.Cookie.LoadV(`bili_jct`).(string)
+		csrf,_ := c.Cookie.LoadV(`bili_jct`).(string)
 		if csrf == `` {apilog.L(`E: `,"Cookie错误,无bili_jct=");return}
 		
 		post_str := `csrf_token=`+csrf+`&csrf=`+csrf

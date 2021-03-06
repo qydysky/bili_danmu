@@ -19,7 +19,7 @@ func Send_gift(gift_id,bag_id,gift_num int) {
 	if gift_limit.TO() {log.L(`W: `,"超时");return}
 
 	{//发送请求（银瓜子礼物）
-		csrf := c.Cookie.LoadV(`bili_jct`).(string)
+		csrf,_ := c.Cookie.LoadV(`bili_jct`).(string)
 		if csrf == `` {log.L(`E: `,"Cookie错误,无bili_jct=");return}
 
 		var sendStr = 

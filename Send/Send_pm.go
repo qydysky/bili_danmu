@@ -33,7 +33,7 @@ func Send_pm(uid int, msg string) error {
 		return errors.New(`不能发送给自己`)
 	}
 
-	csrf := c.Cookie.LoadV(`bili_jct`).(string)
+	csrf,_ := c.Cookie.LoadV(`bili_jct`).(string)
 	if csrf == `` {return errors.New("Cookie错误,无bili_jct=")}
 
 	var new_uuid string
