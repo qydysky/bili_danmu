@@ -5,6 +5,8 @@ import (
 	"bufio"
 	"strings"
 	"strconv"
+	"time"
+	"fmt"
 
 	p "github.com/qydysky/part"
 	send "github.com/qydysky/bili_danmu/Send"
@@ -23,12 +25,14 @@ func Cmd() {
 		if inputs := scanner.Text();inputs == `` {//帮助
 			cmdlog.L(`I: `, "切换房间->输入数字回车")
 			cmdlog.L(`I: `, "发送弹幕->输入' 字符串'回车")
+			cmdlog.L(`I: `, "房间信息->输入' room'回车")
 			cmdlog.L(`I: `, "查看直播中主播->输入' live'回车")
 			cmdlog.L(`I: `, "其他输出隔断不影响")
 		} else if inputs[0] == 27 {//屏蔽功能键
 			cmdlog.L(`W: `, "不支持功能键")
 		} else if inputs[0] == 32 {// 开头
-			if strings.Contains(inputs, ` live`) {//直播间切换
+			//直播间切换
+			if strings.Contains(inputs, ` live`) {
 				if len(inputs) > 5 {
 					if room,ok := liveList[inputs];ok{
 						c.Roomid = room
@@ -44,6 +48,32 @@ func Cmd() {
 					cmdlog.L(`I: `, k, v.Uname, v.Title)
 				}
 				cmdlog.L(`I: `, "回复' live(序号)'进入直播间")
+				continue
+			}
+			//当前直播间信息
+			if strings.Contains(inputs, ` room`) {
+				cmdlog.L(`I: `, "当前直播间信息")
+				{
+					living := `未在直播`
+					if c.Liveing {living = `直播中`}
+					cmdlog.L(`I: `, c.Uname, c.Title, living)
+				}
+				{
+					if c.Liveing {
+						d := time.Since(c.Live_Start_Time).Round(time.Second)
+						h := d / time.Hour
+						d -= h * time.Hour
+						m := d / time.Minute
+						d -= m * time.Minute
+						s := d / time.Second
+						cmdlog.L(`I: `, `已直播时长:`, fmt.Sprintf("%02d:%02d:%02d", h, m, s))
+					}
+				}
+				{
+					cmdlog.L(`I: `, `营收:`, fmt.Sprintf("￥%.2f",c.Rev))
+				}
+				cmdlog.L(`I: `, `舰长数:`, c.GuardNum)
+				cmdlog.L(`I: `, `分区排行:`, c.Note, `人气：`, c.Renqi)
 				continue
 			}
 			{//弹幕发送

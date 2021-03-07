@@ -163,16 +163,20 @@ func Demo(roomid ...int) {
 			
 		//命令行操作 切换房间 发送弹幕
 		go F.Cmd()
-
+		//兑换硬币
+		F.Silver_2_coin()
+		//每日签到
+		F.Dosign()
+		//附加功能 保持牌子点亮
+		go reply.Keep_medal_light()
+		//附加功能 自动发送即将过期礼物
+		go reply.AutoSend_silver_gift()
+		
 		for !exit_sign {
 			danmulog.L(`T: `,"准备")
 			//获取房间相关信息
 			api := F.New_api(c.Roomid).Get_host_Token().Get_live()
 			c.Roomid = api.Roomid
-			//每日签到
-			F.Dosign()
-			//每日兑换硬币
-			F.Silver_2_coin()
 			//获取用户版本
 			api.Get_Version()
 			//获取热门榜
@@ -260,6 +264,8 @@ func Demo(roomid ...int) {
 							`new day`:func(data interface{})(bool){//日期更换
 								//每日签到
 								F.Dosign()
+								//获取用户版本
+								go api.Get_Version()
 								//每日兑换硬币
 								go F.Silver_2_coin()
 								//小心心
@@ -288,10 +294,6 @@ func Demo(roomid ...int) {
 							go reply.Entry_danmu()
 							go reply.Saveflvf()
 							go reply.ShowRevf()
-							//附加功能 保持牌子点亮
-							go reply.Keep_medal_light()
-							//附加功能 自动发送即将过期礼物
-							go reply.AutoSend_silver_gift()
 						}
 					}()
 				}
