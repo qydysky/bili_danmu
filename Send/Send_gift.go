@@ -28,7 +28,6 @@ func Send_gift(gift_id,bag_id,gift_num int) {
 		`ruid=`+strconv.Itoa(c.UpUid)+`&`+
 		`send_ruid=0&`+
 		`gift_num=`+strconv.Itoa(gift_num)+`&`+
-		`coin_type=silver&`+
 		`bag_id=`+strconv.Itoa(bag_id)+`&`+
 		`platform=pc&`+
 		`biz_code=live&`+
@@ -49,7 +48,7 @@ func Send_gift(gift_id,bag_id,gift_num int) {
 		
 		req := p.Req()
 		if e:= req.Reqf(p.Rval{
-			Url:`https://api.live.bilibili.com/gift/v2/Live/send`,
+			Url:`https://api.live.bilibili.com/gift/v2/live/bag_send`,
 			PostStr:url.PathEscape(sendStr),
 			Timeout:10,
 			Header:map[string]string{
