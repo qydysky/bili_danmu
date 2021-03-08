@@ -3,6 +3,7 @@ package send
 import (
 	"strings"
 	"strconv"
+	"encoding/json"
 
 	c "github.com/qydysky/bili_danmu/CV"
 	p "github.com/qydysky/part"
@@ -44,7 +45,8 @@ func Danmu_s(msg,Cookie string, roomid int) {
 	err := r.Reqf(p.Rval{
 		Url:"https://api.live.bilibili.com/msg/send",
 		PostStr:PostStr,
-		Timeout:5,
+		Retry:2,
+		Timeout:10,
 		Header:map[string]string{
 			`Host`: `api.live.bilibili.com`,
 			`User-Agent`: `Mozilla/5.0 (X11; Linux x86_64; rv:83.0) Gecko/20100101 Firefox/83.0`,
@@ -65,13 +67,18 @@ func Danmu_s(msg,Cookie string, roomid int) {
 		return
 	}
 	
-	if code := p.Json().GetValFromS(string(r.Respon), "code");code == nil || code.(float64) != 0 {
-		if message := p.Json().GetValFromS(string(r.Respon), "message");message != nil {
-			l.L(`E: `,message)
-		} else {
-			l.L(`E: `,string(r.Respon))
-		}
-		return
+	var res struct{
+		Code int `json:"code"`
+		Message string `json:"message"`
 	}
+
+	if e := json.Unmarshal(r.Respon, &res);e != nil{
+		l.L(`E: `,e)
+	}
+
+	if res.Code != 0 {
+		l.L(`E: `, res.Code, res.Message)
+	}
+	l.L(`E: `, res.Message)
 
 }

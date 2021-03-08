@@ -936,7 +936,8 @@ type TGet_list_in_room struct{
 	Medal_name string `json:"medal_name"`//牌子名
 	Target_id int `json:"target_id"`//牌子up主uid
 	Target_name string `json:"target_name"`//牌子up主名
-	Room_id int `json:"room_id"`//牌子直播间
+	Room_id int `json:"roomid"`//牌子直播间
+	Last_wear_time int `json:"last_wear_time"`//上次佩戴时间
 	Today_intimacy int `json:"today_intimacy"`//今日亲密(0:未发送弹幕 100:已发送弹幕)
 	Is_lighted int `json:"is_lighted"`//牌子是否熄灭(0:熄灭 1:亮)
 }
@@ -960,36 +961,52 @@ func Get_list_in_room() (array []TGet_list_in_room) {
 	})
 
 	{//获取牌子列表
-		r := p.Req()
-		if e := r.Reqf(p.Rval{
-			Url:`https://api.live.bilibili.com/fans_medal/v1/FansMedal/get_list_in_room`,
-			Header:map[string]string{
-				`Cookie`:p.Map_2_Cookies_String(Cookie),
-			},
-			Timeout:10,
-			Retry:2,
-		});e != nil {
-			apilog.L(`E: `,e)
-			return
+		var medalList []TGet_list_in_room
+		for pageNum:=1; true;pageNum+=1{
+			r := p.Req()
+			if e := r.Reqf(p.Rval{
+				Url:`https://api.live.bilibili.com/fans_medal/v5/live_fans_medal/iApiMedal?page=`+strconv.Itoa(pageNum)+`&pageSize=10`,
+				Header:map[string]string{
+					`Cookie`:p.Map_2_Cookies_String(Cookie),
+				},
+				Timeout:10,
+				Retry:2,
+			});e != nil {
+				apilog.L(`E: `,e)
+				return
+			}
+			
+			var res struct{
+				Code int `json:"code"`
+				Msg string `json:"msg"`
+				Message string `json:"message"`
+				Data struct{
+					FansMedalList []TGet_list_in_room `json"fansMedalList"`
+					Pageinfo struct{
+						Totalpages int `json:"totalpages"`
+						CurPage int `json:"curPage"`
+					} `json:"pageinfo"`
+				} `json:"data"`
+			}
+	
+			if e := json.Unmarshal(r.Respon, &res);e != nil{
+				apilog.L(`E: `,e)
+			}
+	
+			if res.Code != 0 {
+				apilog.L(`E: `,`返回code`, res.Code, res.Msg)
+				return
+			}
+
+			medalList = append(medalList, res.Data.FansMedalList...)
+
+			if res.Data.Pageinfo.CurPage == res.Data.Pageinfo.Totalpages {break}
+
+			time.Sleep(time.Second)
 		}
 		
-		var res struct{
-			Code int `json:"code"`
-			Msg string `json:"msg"`
-			Message string `json:"message"`
-			Data []TGet_list_in_room `json:"data"`
-		}
 
-		if e := json.Unmarshal(r.Respon, &res);e != nil{
-			apilog.L(`E: `,e)
-		}
-
-		if res.Code != 0 {
-			apilog.L(`E: `,`返回code`, res.Code, res.Msg)
-			return
-		}
-
-		return res.Data
+		return medalList
 	}
 }
 

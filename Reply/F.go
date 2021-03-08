@@ -779,7 +779,7 @@ func Keep_medal_light() {
 
 	for _,v := range F.Get_list_in_room() {
 		if v.Is_lighted == 1 {continue}
-		
+		if time.Now().Add(-time.Hour * time.Duration(24 * 7)).Unix() - int64(v.Last_wear_time) > 0 {continue}
 		send.Danmu_s(sendStr,p.Map_2_Cookies_String(Cookie),v.Room_id)
 		time.Sleep(time.Second)
 	}
