@@ -77,8 +77,7 @@ func Danmu_s(msg,Cookie string, roomid int) {
 	}
 
 	if res.Code != 0 {
-		l.L(`E: `, res.Code, res.Message)
+		l.L(`E: `, `产生错误：`,res.Code, res.Message)
 	}
-	l.L(`E: `, res.Message)
 
 }

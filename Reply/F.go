@@ -778,8 +778,10 @@ func Keep_medal_light() {
 	flog.L(`T: `,`开始`)
 
 	for _,v := range F.Get_list_in_room() {
-		if v.Is_lighted == 1 {continue}
-		if time.Now().Add(-time.Hour * time.Duration(24 * 7)).Unix() - int64(v.Last_wear_time) > 0 {continue}
+		if time.Now().Add(-time.Hour * time.Duration(24 * 5)).Unix() - int64(v.Last_wear_time) > 0 {continue}
+		if v.Is_lighted == 0 {continue}
+
+		//5天前有佩戴记录，且仍然点亮的（7天内点亮的），将会进行保持
 		send.Danmu_s(sendStr,p.Map_2_Cookies_String(Cookie),v.Room_id)
 		time.Sleep(time.Second)
 	}
