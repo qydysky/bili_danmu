@@ -758,7 +758,7 @@ func Entry_danmu(){
 
 //保持所有牌子点亮
 func Keep_medal_light() {
-	if v,_ := c.K_v.LoadV(`保持所有牌子亮着`).(bool);!v {
+	if v,_ := c.K_v.LoadV(`保持牌子亮着`).(bool);!v {
 		return
 	}
 	flog := flog.Base_add(`保持亮牌`)
@@ -778,10 +778,9 @@ func Keep_medal_light() {
 	flog.L(`T: `,`开始`)
 
 	for _,v := range F.Get_list_in_room() {
-		if time.Now().Add(-time.Hour * time.Duration(24 * 5)).Unix() - int64(v.Last_wear_time) > 0 {continue}
-		if v.Is_lighted == 0 {continue}
+		if t := int64(v.Last_wear_time) - time.Now().Unix();t > 60*60*24*2 || t < 0{continue}//到期时间在2天以上或已过期
 
-		//5天前有佩戴记录，且仍然点亮的（7天内点亮的），将会进行保持
+		//两天内到期，发弹幕续期
 		send.Danmu_s(sendStr,p.Map_2_Cookies_String(Cookie),v.Room_id)
 		time.Sleep(time.Second)
 	}

@@ -937,7 +937,7 @@ type TGet_list_in_room struct{
 	Target_id int `json:"target_id"`//牌子up主uid
 	Target_name string `json:"target_name"`//牌子up主名
 	Room_id int `json:"roomid"`//牌子直播间
-	Last_wear_time int `json:"last_wear_time"`//上次佩戴时间
+	Last_wear_time int `json:"last_wear_time"`//佩戴有效截止时间（佩戴本身不会刷新，发弹幕，送小心心，送金瓜子礼物才会刷新）
 	Today_intimacy int `json:"today_intimacy"`//今日亲密(0:未发送弹幕 100:已发送弹幕)
 	Is_lighted int `json:"is_lighted"`//牌子是否熄灭(0:熄灭 1:亮)
 }
