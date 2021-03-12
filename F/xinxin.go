@@ -90,7 +90,7 @@ func server() {
 				return false
 			},
 			`error`:func(data interface{})(bool){//websocket错误
-				wslog.L(`E: `,data)
+				wslog.L(`W: `, data)
 				return false
 			},
 		})

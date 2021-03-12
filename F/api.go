@@ -930,6 +930,16 @@ func Get_cookie() {
 	}
 }
 
+//短信登录
+func Get_cookie_by_msg() {
+	/*
+
+	https://passport.bilibili.com/x/passport-login/web/sms/send
+
+
+	*/
+}
+
 //牌子
 type TGet_list_in_room struct{
 	Medal_id int `json:"medal_id"`//牌子id
@@ -1098,7 +1108,7 @@ func (i *api) CheckSwitch_FansMedal() {
 		res := Get_weared_medal()
 
 		c.Wearing_FansMedal = res.Roominfo.Room_id//更新佩戴信息
-		if res.Roominfo.Room_id == c.Roomid {return}
+		if res.Target_id == c.UpUid {return}
 	}
 
 	var medal_id int//将要使用的牌子id
@@ -1106,7 +1116,7 @@ func (i *api) CheckSwitch_FansMedal() {
 	{
 		medal_list := Get_list_in_room()
 		for _,v := range medal_list {
-			if v.Room_id != c.Roomid {continue}
+			if v.Target_id != c.UpUid {continue}
 			medal_id = v.Medal_id
 		}
 		if medal_id == 0 {//无牌
