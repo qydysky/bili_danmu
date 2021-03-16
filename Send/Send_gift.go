@@ -18,6 +18,8 @@ func Send_gift(gift_id,bag_id,gift_num int) {
 
 	if gift_limit.TO() {log.L(`W: `,"超时");return}
 
+	if c.UpUid == 0 {log.L(`W: `,"还未获取到Up主uid");return}
+
 	{//发送请求（银瓜子礼物）
 		csrf,_ := c.Cookie.LoadV(`bili_jct`).(string)
 		if csrf == `` {log.L(`E: `,"Cookie错误,无bili_jct=");return}

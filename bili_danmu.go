@@ -160,7 +160,10 @@ func Demo(roomid ...int) {
 				}
 			}
 		}
-			
+		
+		//api
+		api := F.New_api(c.Roomid)
+
 		//命令行操作 切换房间 发送弹幕
 		go F.Cmd()
 		//兑换硬币
@@ -175,7 +178,7 @@ func Demo(roomid ...int) {
 		for !exit_sign {
 			danmulog.L(`T: `,"准备")
 			//获取房间相关信息
-			api := F.New_api(c.Roomid).Get_host_Token().Get_live()
+			api.Get_info().Get_host_Token().Get_live()
 			c.Roomid = api.Roomid
 			//获取用户版本
 			api.Get_Version()
