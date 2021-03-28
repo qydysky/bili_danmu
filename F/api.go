@@ -271,6 +271,7 @@ func Html() (missKey []string) {
 								c.AcceptQn = tmp
 							}
 							//直播流链接
+							c.Live = []string{}
 							for _,v1 := range v.URLInfo {
 								c.Live = append(c.Live, v1.Host+v.BaseURL+v1.Extra)
 							}
@@ -475,6 +476,7 @@ func getRoomPlayInfo() (missKey []string) {
 						c.AcceptQn = tmp
 					}
 					//直播流链接
+					c.Live = []string{}
 					for _,v1 := range v.URLInfo {
 						c.Live = append(c.Live, v1.Host+v.BaseURL+v1.Extra)
 					}
@@ -579,6 +581,7 @@ func getRoomPlayInfoByQn() (missKey []string) {
 						c.AcceptQn = tmp
 					}
 					//直播流链接
+					c.Live = []string{}
 					for _,v1 := range v.URLInfo {
 						c.Live = append(c.Live, v1.Host+v.BaseURL+v1.Extra)
 					}

@@ -248,14 +248,6 @@ func Saveflvf(){
 			CookieM[k.(string)] = v.(string)
 			return true
 		})
-		Cookie := p.Map_2_Cookies_String(CookieM)
-		if i := strings.Index(Cookie, "PVID="); i != -1 {
-			if d := strings.Index(Cookie[i:], ";"); d == -1 {
-				Cookie = Cookie[:i]
-			} else {
-				Cookie = Cookie[:i] + Cookie[i + d + 1:]
-			}
-		}
 
 		{//重试
 			l.L(`I: `,"尝试连接live")
@@ -264,7 +256,7 @@ func Saveflvf(){
 				Retry:10,
 				SleepTime:5,
 				Header:map[string]string{
-					`Cookie`:Cookie,
+					`Cookie`:p.Map_2_Cookies_String(CookieM),
 				},
 				Timeout:5,
 				JustResponseCode:true,
@@ -288,7 +280,7 @@ func Saveflvf(){
 			Retry:10,
 			SleepTime:5,
 			Header:map[string]string{
-				`Cookie`:Cookie,
+				`Cookie`:p.Map_2_Cookies_String(CookieM),
 			},
 			SaveToPath:saveflv.path + ".flv",
 			Timeout:-1,
