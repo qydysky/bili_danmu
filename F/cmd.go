@@ -26,11 +26,21 @@ func Cmd() {
 			cmdlog.L(`I: `, "切换房间->输入数字回车")
 			cmdlog.L(`I: `, "发送弹幕->输入' 字符串'回车")
 			cmdlog.L(`I: `, "房间信息->输入' room'回车")
+			cmdlog.L(`I: `, "开始结束录制->输入' rec'回车")
 			cmdlog.L(`I: `, "查看直播中主播->输入' live'回车")
 			cmdlog.L(`I: `, "其他输出隔断不影响")
 		} else if inputs[0] == 27 {//屏蔽功能键
 			cmdlog.L(`W: `, "不支持功能键")
 		} else if inputs[0] == 32 {// 开头
+			//录制切换
+			if strings.Contains(inputs, ` rec`) {
+				if !c.Liveing {
+					cmdlog.L(`W: `, "不能切换录制状态，未在直播")
+					continue
+				}
+				c.Danmu_Main_mq.Push_tag(`saveflv`, nil)
+				continue
+			}
 			//直播间切换
 			if strings.Contains(inputs, ` live`) {
 				if len(inputs) > 5 {

@@ -199,6 +199,21 @@ type Saveflv struct {
 var saveflv = Saveflv {
 }
 
+func init(){
+	//使用带tag的消息队列在功能间传递消息
+	c.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
+		`saveflv`:func(data interface{})(bool){//舰长更新
+			if saveflv.cancel.Islive() {
+				Saveflv_wait()
+			} else {
+				go Saveflvf()
+			}
+
+			return false
+		},
+	})
+}
+
 //已go func形式调用，将会获取直播流
 func Saveflvf(){
 	l := c.Log.Base(`saveflv`)

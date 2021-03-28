@@ -9,6 +9,7 @@ golang go version go1.15 linux/amd64
 |CV/|全局变常量|
 |F/|项目小工具(ws消息生成、api、整数字节转换)|
 |Replay/|接收的数据处理区|
+|Json/|json的golang struct表述|
 |Send/|发送数据区|
 |_Screenshot/|截图保存目录|
 |_msg_sample/|ws接收数据示例|
