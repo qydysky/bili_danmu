@@ -40,12 +40,8 @@ func Demo(roomid ...int) {
 	
 	{
 		var groomid = flag.Int("r", 0, "roomid")
-		var live_qn = flag.String("q", "0", "qn")
 		flag.Parse()
-	
-		if _,ok := c.Default_qn[*live_qn]; ok{c.Live_qn = *live_qn}
 
-		var exit_sign bool
 		var change_room_chan = make(chan struct{})
 
 		go func(){
@@ -161,37 +157,31 @@ func Demo(roomid ...int) {
 			}
 		}
 		
-		//api
-		api := F.New_api(c.Roomid)
-
 		//命令行操作 切换房间 发送弹幕
 		go F.Cmd()
 		//兑换硬币
-		F.Silver_2_coin()
+		F.Get(`Silver_2_coin`)
 		//每日签到
 		F.Dosign()
+		//检查与切换粉丝牌，只在cookie存在时启用
+		F.Get(`CheckSwitch_FansMedal`)
+		//客户版本
+		F.Get(`VERSION`)
+		//小心心
+		go F.F_x25Kn()
 		//附加功能 保持牌子点亮
 		go reply.Keep_medal_light()
 		//附加功能 自动发送即将过期礼物
 		go reply.AutoSend_silver_gift()
 		
-		for !exit_sign {
+		var exit_sign = 2
+		for exit_sign > 0 {
+			exit_sign -= 1
+
 			danmulog.L(`T: `,"准备")
-			//获取房间相关信息
-			api.Get_info().Get_host_Token().Get_live()
-			c.Roomid = api.Roomid
-			//获取用户版本
-			api.Get_Version()
 			//获取热门榜
-			api.Get_HotRank()
-			//检查与切换粉丝牌，只在cookie存在时启用
-			api.CheckSwitch_FansMedal()
-			//小心心
-			go api.F_x25Kn()
-			if len(api.Url) == 0 || api.Roomid == 0 || api.Token == "" || api.Uid == 0 || api.Locked {
-				danmulog.L(`E: `,"some err")
-				return
-			}
+			F.Get(`Note`)
+
 			danmulog.L(`I: `,"连接到房间", c.Roomid)
 
 			Cookie := make(map[string]string)
@@ -201,7 +191,8 @@ func Demo(roomid ...int) {
 			})
 
 			//对每个弹幕服务器尝试
-			for _, v := range api.Url {
+			F.Get(`WSURL`)
+			for _, v := range c.WSURL {
 				//ws启动
 				u, _ := url.Parse(v)
 				ws_c := ws.New_client(ws.Client{
@@ -228,7 +219,7 @@ func Demo(roomid ...int) {
 				//SendChan 传入发送[]byte
 				//RecvChan 接收[]byte
 				danmulog.L(`T: `,"连接", v)
-				ws_c.SendChan <- F.HelloGen(c.Roomid, api.Token)
+				ws_c.SendChan <- F.HelloGen(c.Roomid, c.Token)
 				if F.HelloChe(<- ws_c.RecvChan) {
 					danmulog.L(`I: `,"已连接到房间", c.Uname, `(`, c.Roomid, `)`)
 					reply.Gui_show(`进入直播间: `+c.Uname+` (`+strconv.Itoa(c.Roomid)+`)`, `0room`)
@@ -248,17 +239,12 @@ func Demo(roomid ...int) {
 							}
 						}()
 
-						//传输变量，以便响应弹幕"弹幕机在么"
-						c.Live = api.Live
-						//获取过往营收 舰长数量
-						// go api.Get_OnlineGoldRank()//高能榜显示的是在线观众的打赏
-
 						//订阅消息，以便刷新舰长数
-						api.Get_guardNum()
+						F.Get(`GuardNum`)
 						//使用带tag的消息队列在功能间传递消息
 						c.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
 							`guard_update`:func(data interface{})(bool){//舰长更新
-								go api.Get_guardNum()
+								go F.Get(`GuardNum`)
 								return false
 							},
 							`change_room`:func(data interface{})(bool){//换房时退出当前房间
@@ -268,11 +254,11 @@ func Demo(roomid ...int) {
 								//每日签到
 								F.Dosign()
 								//获取用户版本
-								go api.Get_Version()
+								go F.Get(`VERSION`)
 								//每日兑换硬币
 								go F.Silver_2_coin()
 								//小心心
-								go api.F_x25Kn()
+								go F.F_x25Kn()
 								//附加功能 每日发送弹幕
 								go reply.Entry_danmu()
 								//附加功能 保持牌子点亮
@@ -315,11 +301,12 @@ func Demo(roomid ...int) {
 						ws_c.Close()
 						danmulog.L(`I: `,"停止，等待服务器断开连接")
 						break_sign = true
-						exit_sign = true
+						exit_sign = 0
 					case <- change_room_chan:
 						ws_c.Close()
 						danmulog.L(`I: `,"停止，等待服务器断开连接")
 						break_sign = true
+						exit_sign = 2
 					}
 
 				}

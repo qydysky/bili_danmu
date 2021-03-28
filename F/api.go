@@ -2,7 +2,6 @@ package F
 
 import (
 	"time"
-	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -14,6 +13,7 @@ import (
 	"github.com/skratchdot/open-golang/open"
 	qr "github.com/skip2/go-qrcode"
 	c "github.com/qydysky/bili_danmu/CV"
+	J "github.com/qydysky/bili_danmu/Json"
 	web "github.com/qydysky/part/web"
 	funcCtrl "github.com/qydysky/part/funcCtrl"
 	g "github.com/qydysky/part/get"
@@ -21,92 +21,398 @@ import (
 	uuid "github.com/gofrs/uuid"
 )
 
-type api struct {
-	Roomid int
-	Uid int
-	Url []string
-	Live []string
-	Live_status float64
-	Locked bool
-	Token string
-	Parent_area_id int
-	Area_id int
-}
-
 var apilog = c.Log.Base(`api`)
 var api_limit = p.Limit(1,2000,30000)//频率限制1次/2s，最大等待时间30s
 
-func New_api(Roomid int) (o *api) {
-	apilog.Base_add(`新建`).L(`T: `,"ok")
-	o = new(api)
-	o.Roomid = Roomid
-	o.Parent_area_id = -1
-	o.Area_id = -1
-	o.Get_info()
+func Get(key string) {
+	apilog := apilog.Base_add(`Get`).L(`T: `,key)
+
+	if api_limit.TO() {return}//超额请求阻塞，超时将取消
+
+	var api_can_get = map[string][]func()([]string){
+		`UpUid`:[]func()([]string){//主播uid
+			getInfoByRoom,
+			getRoomPlayInfo,
+			Html,
+		},
+		`Live_Start_Time`:[]func()([]string){//直播开始时间
+			getInfoByRoom,
+			getRoomPlayInfo,
+			Html,
+		},
+		`Liveing`:[]func()([]string){//是否在直播
+			getInfoByRoom,
+			getRoomPlayInfo,
+			Html,
+		},
+		`Title`:[]func()([]string){//直播间标题
+			getInfoByRoom,
+			Html,
+		},
+		`Uname`:[]func()([]string){//主播名
+			getInfoByRoom,
+			Html,
+		},
+		`ParentAreaID`:[]func()([]string){//分区
+			getInfoByRoom,
+			Html,
+		},
+		`AreaID`:[]func()([]string){//子分区
+			getInfoByRoom,
+			Html,
+		},
+		`Roomid`:[]func()([]string){//房间id
+			getInfoByRoom,
+			Html,
+		},
+		`GuardNum`:[]func()([]string){//舰长数
+			Get_guardNum,
+			getInfoByRoom,
+			getRoomPlayInfo,
+			Html,
+		},
+		`Note`:[]func()([]string){//分区排行
+			Get_HotRank,
+			getInfoByRoom,
+			Html,
+		},
+		`Locked`:[]func()([]string){//直播间是否被封禁
+			getInfoByRoom,
+			Html,
+		},
+		`Live_qn`:[]func()([]string){//当前直播流质量
+			getRoomPlayInfo,
+			Html,
+		},
+		`AcceptQn`:[]func()([]string){//允许的清晰度
+			getRoomPlayInfo,
+			Html,
+		},
+		`Live`:[]func()([]string){//直播流链接
+			getRoomPlayInfoByQn,
+			getRoomPlayInfo,
+			Html,
+		},
+		`Token`:[]func()([]string){//弹幕钥
+			getDanmuInfo,
+		},
+		`WSURL`:[]func()([]string){//弹幕链接
+			getDanmuInfo,
+		},
+		`VERSION`:[]func()([]string){//客户版本
+			Get_Version,
+		},
+		`LIVE_BUVID`:[]func()([]string){//LIVE_BUVID
+			Get_LIVE_BUVID,
+		},
+
+		`Silver_2_coin`:[]func()([]string){//银瓜子2硬币
+			Silver_2_coin,
+		},
+		`CheckSwitch_FansMedal`:[]func()([]string){//切换粉丝牌
+			CheckSwitch_FansMedal,
+		},
+	}
+	var check = map[string]func()(bool){
+		`UpUid`:func()(bool){//主播uid
+			return c.UpUid != 0
+		},
+		`Live_Start_Time`:func()(bool){//直播开始时间
+			return c.Live_Start_Time != time.Time{}
+		},
+		`Liveing`:func()(bool){//是否在直播
+			return true
+		},
+		`Title`:func()(bool){//直播间标题
+			return c.Title != ``
+		},
+		`Uname`:func()(bool){//主播名
+			return c.Uname != ``
+		},
+		`ParentAreaID`:func()(bool){//分区
+			return c.ParentAreaID != 0
+		},
+		`AreaID`:func()(bool){//子分区
+			return c.AreaID != 0
+		},
+		`Roomid`:func()(bool){//房间id
+			return c.Roomid != 0
+		},
+		`GuardNum`:func()(bool){//舰长数
+			return c.GuardNum != 0
+		},
+		`Note`:func()(bool){//分区排行
+			return c.Note != ``
+		},
+		`Locked`:func()(bool){//直播间是否被封禁
+			return true
+		},
+		`Live_qn`:func()(bool){//当前直播流质量
+			return c.Live_qn != 0
+		},
+		`AcceptQn`:func()(bool){//允许的清晰度
+			return len(c.AcceptQn) != 0
+		},
+		`Live`:func()(bool){//直播流链接
+			return len(c.Live) != 0
+		},
+		`Token`:func()(bool){//弹幕钥
+			return c.Token != ``
+		},
+		`WSURL`:func()(bool){//弹幕链接
+			return len(c.WSURL) != 0
+		},
+		`VERSION`:func()(bool){//客户版本
+			return c.VERSION != `2.0.11`
+		},
+		`LIVE_BUVID`:func()(bool){//LIVE_BUVID
+			return c.LIVE_BUVID
+		},
+
+		`Silver_2_coin`:func()(bool){//银瓜子2硬币
+			return true
+		},
+		`CheckSwitch_FansMedal`:func()(bool){//切换粉丝牌
+			return true
+		},
+	}
+
+	if fList,ok := api_can_get[key];ok{
+		for _,fItem := range fList{
+			missKey := fItem()
+			if len(missKey) > 0 {
+				for _,misskeyitem := range missKey{
+					if checkf,ok := check[misskeyitem];ok && checkf() {
+						continue
+					}
+					if misskeyitem == key {
+						apilog.L(`W: `,`missKey equrt key`,key,missKey)
+						continue
+					}
+					Get(misskeyitem)
+				}
+				missKey := fItem()
+				if len(missKey) > 0 {
+					apilog.L(`W: `,`missKey when get`,key,missKey)
+					continue
+				}
+			}
+			if checkf,ok := check[key];ok && checkf() {
+				break
+			}
+		}
+	}
+}
+
+func Html() (missKey []string) {
+	apilog := apilog.Base_add(`html`)
+
+	if c.Roomid == 0 {
+		missKey = append(missKey, `Roomid`)
+		return
+	}
+	
+
+	Roomid := strconv.Itoa(c.Roomid)
+	
+	//html
+	{
+		r := g.Get(p.Rval{
+			Url:"https://live.bilibili.com/" + Roomid,
+		})
+
+		if tmp := r.S(`<script>window.__NEPTUNE_IS_MY_WAIFU__=`, `</script>`, 0, 0);tmp.Err != nil {
+			apilog.L(`E: `, `不存在<script>window.__NEPTUNE_IS_MY_WAIFU__= </script>`)
+		} else {
+			s := tmp.RS[0]
+
+			//Roominitres
+			{
+				var j struct{
+					Roominitres J.Roominitres  `json:"roomInfoRes"`
+				}
+				if e := json.Unmarshal([]byte(s),&j);e != nil{
+					apilog.L(`E: `, e)
+					return
+				} else if j.Roominitres.Code != 0 {
+					apilog.L(`E: `, j.Roominitres.Message)
+					return
+				}
+	
+				//主播uid
+				c.UpUid = j.Roominitres.Data.UID
+				//房间号（完整）
+				c.Roomid = j.Roominitres.Data.RoomID
+				//直播开始时间
+				c.Live_Start_Time = time.Unix(int64(j.Roominitres.Data.LiveTime),0)
+				//是否在直播
+				c.Liveing = j.Roominitres.Data.LiveStatus == 1
+				
+				//当前直播流
+				for _,v := range j.Roominitres.Data.PlayurlInfo.Playurl.Stream {
+					if v.ProtocolName != `http_stream` {continue}
+	
+					for _,v := range v.Format {
+						if v.FormatName != `flv` {continue}
+						
+						for _,v := range v.Codec {
+							if v.CodecName != `avc` {continue}
+	
+							//当前直播流质量
+							c.Live_qn = v.CurrentQn
+							//允许的清晰度
+							{
+								var tmp = make(map[int]string)
+								for _,v := range v.AcceptQn {
+									if s,ok := c.AcceptQn[v];ok{
+										tmp[v] = s
+									}
+								}
+								c.AcceptQn = tmp
+							}
+							//直播流链接
+							for _,v1 := range v.URLInfo {
+								c.Live = append(c.Live, v1.Host+v.BaseURL+v1.Extra)
+							}
+						}
+					}
+				}
+	
+			}
+
+			//Roominfores
+			{
+				var j struct{
+					Roominfores J.Roominfores `json:"roomInitRes"`
+				}
+
+				if e := json.Unmarshal([]byte(s),&j);e != nil{
+					apilog.L(`E: `, e)
+					return
+				} else if j.Roominfores.Code != 0 {
+					apilog.L(`E: `, j.Roominfores.Message)
+					return
+				}
+
+				//直播间标题
+				c.Title = j.Roominfores.Data.RoomInfo.Title
+				//主播名
+				c.Uname = j.Roominfores.Data.AnchorInfo.BaseInfo.Uname
+				//分区
+				c.ParentAreaID = j.Roominfores.Data.RoomInfo.ParentAreaID
+				//子分区
+				c.AreaID = j.Roominfores.Data.RoomInfo.AreaID
+				//舰长数
+				c.GuardNum = j.Roominfores.Data.GuardInfo.Count
+				//分区排行
+				c.Note = j.Roominfores.Data.HotRankInfo.AreaName
+				if rank := j.Roominfores.Data.HotRankInfo.Rank;rank > 50 || rank == 0 {
+					c.Note += "50+"
+				} else {
+					c.Note += strconv.Itoa(rank)
+				}
+				//直播间是否被封禁
+				if j.Roominfores.Data.RoomInfo.LockStatus == 1{
+					apilog.L(`W: `,"直播间封禁中")
+					c.Locked = true
+					return
+				}
+			}
+		}
+	}
 	return
 }
 
-func (i *api) Get_info() (o *api) {
-	o = i
-	apilog := apilog.Base_add(`获取房号`).L(`T: `, `开始`)
+func getInfoByRoom() (missKey []string) {
+	apilog := apilog.Base_add(`getInfoByRoom`)
 
-	if o.Roomid == 0 {
-		apilog.L(`E: `,"还未New_api")
+	if c.Roomid == 0 {
+		missKey = append(missKey, `Roomid`)
 		return
 	}
-	if api_limit.TO() {return}//超额请求阻塞，超时将取消
-
-	defer o.Get_LIVE_BUVID()
 	
-	Roomid := strconv.Itoa(o.Roomid)
 
-	r := g.Get(p.Rval{
-		Url:"https://live.bilibili.com/blanc/" + Roomid,
-	})
-	//uid
-	if tmp := r.S(`"uid":`, `,`, 0, 0);tmp.Err != nil {
-		// apilog.L(`E: `,"uid", tmp.Err)
-	} else if i,err := strconv.Atoi(tmp.RS[0]); err != nil{
-		apilog.L(`E: `,"uid", err)
-	} else {
-		o.Uid = i
-		c.UpUid = i
-	}
-	//Title
-	if e := r.S(`"title":"`, `",`, 0, 0).Err;e == nil {
-		c.Title = r.RS[0]
-	}
-	//主播id
-	if e := r.S(`"base_info":{"uname":"`, `",`, 0, 0).Err;e == nil {
-		c.Uname = r.RS[0]
-	}
-	//分区
-	if e := r.S(`"parent_area_id":`, `,`, 0, 0).Err;e == nil {
-		if tmp,e := strconv.Atoi(r.RS[0]);e != nil{
-			apilog.L(`E: `,"parent_area_id", e)
-		} else {o.Parent_area_id = tmp}
-	}
-	if e := r.S(`"area_id":`, `,`, 0, 0).Err;e == nil {
-		if tmp,e := strconv.Atoi(r.RS[0]);e != nil{
-			apilog.L(`E: `,"area_id", e)
-		} else {o.Area_id = tmp}
-	}
-	//roomid
-	if tmp := r.S(`"room_id":`, `,`, 0, 0);tmp.Err != nil {
-		// apilog.L(`E: `,"room_id", tmp.Err)
-	} else if i,err := strconv.Atoi(tmp.RS[0]); err != nil{
-		apilog.L(`E: `,"room_id", err)
-	} else {
-		o.Roomid = i
-	}
-
-	if	o.Area_id != -1 && 
-		o.Parent_area_id != -1 &&
-		o.Roomid != 0 &&
-		o.Uid != 0 &&
-		c.Title != ``{return}
+	Roomid := strconv.Itoa(c.Roomid)
 
 	{//使用其他api
+		req := p.Req()
+		if err := req.Reqf(p.Rval{
+			Url:"https://api.live.bilibili.com/xlive/web-room/v1/index/getInfoByRoom?room_id=" + Roomid,
+			Header:map[string]string{
+				`Referer`:"https://live.bilibili.com/" + Roomid,
+			},
+			Timeout:10,
+			Retry:2,
+		});err != nil {
+			apilog.L(`E: `,err)
+			return
+		}
+
+		//Roominfores
+		{
+			var j J.Roominfores
+
+			if e := json.Unmarshal(req.Respon,&j);e != nil{
+				apilog.L(`E: `, e)
+				return
+			} else if j.Code != 0 {
+				apilog.L(`E: `, j.Message)
+				return
+			}
+
+			//直播开始时间
+			c.Live_Start_Time = time.Unix(int64(j.Data.RoomInfo.LiveStartTime),0)
+			//是否在直播
+			c.Liveing = j.Data.RoomInfo.LiveStatus == 1
+			//直播间标题
+			c.Title = j.Data.RoomInfo.Title
+			//主播名
+			c.Uname = j.Data.AnchorInfo.BaseInfo.Uname
+			//分区
+			c.ParentAreaID = j.Data.RoomInfo.ParentAreaID
+			//子分区
+			c.AreaID = j.Data.RoomInfo.AreaID
+			//主播id
+			c.UpUid = j.Data.RoomInfo.UID
+			//房间id
+			c.Roomid = j.Data.RoomInfo.RoomID
+			//舰长数
+			c.GuardNum = j.Data.GuardInfo.Count
+			//分区排行
+			c.Note = j.Data.HotRankInfo.AreaName
+			if rank := j.Data.HotRankInfo.Rank;rank > 50 || rank == 0 {
+				c.Note += "50+"
+			} else {
+				c.Note += strconv.Itoa(rank)
+			}
+			//直播间是否被封禁
+			if j.Data.RoomInfo.LockStatus == 1{
+				apilog.L(`W: `,"直播间封禁中")
+				c.Locked = true
+				return
+			}
+		}
+	}
+	return
+}
+
+func getRoomPlayInfo() (missKey []string) {
+	apilog := apilog.Base_add(`getRoomPlayInfo`)
+
+	if c.Roomid == 0 {
+		missKey = append(missKey, `Roomid`)
+	}
+	if !c.LIVE_BUVID {
+		missKey = append(missKey, `LIVE_BUVID`)
+	}
+	if len(missKey) > 0 {return}
+
+	
+	
+	Roomid := strconv.Itoa(c.Roomid)
+	
+	//Roominitres
+	{
 		Cookie := make(map[string]string)
 		c.Cookie.Range(func(k,v interface{})(bool){
 			Cookie[k.(string)] = v.(string)
@@ -115,7 +421,7 @@ func (i *api) Get_info() (o *api) {
 
 		req := p.Req()
 		if err := req.Reqf(p.Rval{
-			Url:"https://api.live.bilibili.com/xlive/web-room/v1/index/getInfoByRoom?room_id=" + Roomid,
+			Url:"https://api.live.bilibili.com/xlive/web-room/v2/index/getRoomPlayInfo?no_playurl=0&mask=1&qn=0&platform=web&protocol=0,1&format=0,2&codec=0,1&room_id=" + Roomid,
 			Header:map[string]string{
 				`Referer`:"https://live.bilibili.com/" + Roomid,
 				`Cookie`:p.Map_2_Cookies_String(Cookie),
@@ -126,148 +432,103 @@ func (i *api) Get_info() (o *api) {
 			apilog.L(`E: `,err)
 			return
 		}
-		var tmp struct{
-			Code int `json:"code"`
-			Message string `json:"message"`
-			Data struct{
-				Room_info struct{
-					Uid int `json:"uid"`
-					Room_id int `json:"room_id"`
-					Title string `json:"title"`
-					Lock_status int `json:"lock_status"`
-					Area_id int `json:"area_id"`
-					Parent_area_id int `json:"parent_area_id"`
-				} `json:"room_info"`
-				Anchor_info struct{
-					Base_info struct{
-						Uname string `json:"uname"`
-					} `json:"base_info"`
-				} `json:"anchor_info"`
-			} `json:"data"`
-		}
-		if e := json.Unmarshal(req.Respon, &tmp);e != nil{
-			apilog.L(`E: `,e)
+
+		var j J.Roominitres
+
+		if e := json.Unmarshal([]byte(req.Respon),&j);e != nil{
+			apilog.L(`E: `, e)
+			return
+		} else if j.Code != 0 {
+			apilog.L(`E: `, j.Message)
 			return
 		}
 
-		//错误响应
-		if tmp.Code != 0 {
-			apilog.L(`E: `,`code`,tmp.Message)
-			return
-		}
-
-		//主播
-		if tmp.Data.Anchor_info.Base_info.Uname != `` && c.Uname == ``{
-			c.Uname = tmp.Data.Anchor_info.Base_info.Uname
-		}
-
-		//主播id
-		if tmp.Data.Room_info.Uid != 0{
-			o.Uid = tmp.Data.Room_info.Uid
-			c.UpUid = tmp.Data.Room_info.Uid
-		} else {
-			apilog.L(`W: `,"data.room_info.Uid = 0")
-			return
-		}
-
-		//分区
-		if tmp.Data.Room_info.Parent_area_id != 0{
-			o.Parent_area_id = tmp.Data.Room_info.Parent_area_id
-		} else {
-			apilog.L(`W: `,"直播间未设置主分区！")
-			return
-		}
-		if tmp.Data.Room_info.Area_id != 0{
-			o.Area_id = tmp.Data.Room_info.Area_id
-		} else {
-			apilog.L(`W: `,"直播间未设置分区！")
-			return
-		}
-
-		//房间id
-		if tmp.Data.Room_info.Room_id != 0{
-			o.Roomid = tmp.Data.Room_info.Room_id
-		} else {
-			apilog.L(`W: `,"data.room_info.room_id = 0")
-			return
-		}
+		//主播uid
+		c.UpUid = j.Data.UID
+		//房间号（完整）
+		c.Roomid = j.Data.RoomID
+		//直播开始时间
+		c.Live_Start_Time = time.Unix(int64(j.Data.LiveTime),0)
+		//是否在直播
+		c.Liveing = j.Data.LiveStatus == 1
 		
-		//房间标题
-		if tmp.Data.Room_info.Title != ``{
-			c.Title = tmp.Data.Room_info.Title
-		} else {
-			apilog.L(`W: `,"直播间无标题")
-			return
-		}
+		//当前直播流
+		for _,v := range j.Data.PlayurlInfo.Playurl.Stream {
+			if v.ProtocolName != `http_stream` {continue}
 
-		//直播间是否被封禁
-		if tmp.Data.Room_info.Lock_status == 1{
-			apilog.L(`W: `,"直播间封禁中")
-			o.Locked = true
-			return
+			for _,v := range v.Format {
+				if v.FormatName != `flv` {continue}
+				
+				for _,v := range v.Codec {
+					if v.CodecName != `avc` {continue}
+
+					//当前直播流质量
+					c.Live_qn = v.CurrentQn
+					//允许的清晰度
+					{
+						var tmp = make(map[int]string)
+						for _,v := range v.AcceptQn {
+							if s,ok := c.AcceptQn[v];ok{
+								tmp[v] = s
+							}
+						}
+						c.AcceptQn = tmp
+					}
+					//直播流链接
+					for _,v1 := range v.URLInfo {
+						c.Live = append(c.Live, v1.Host+v.BaseURL+v1.Extra)
+					}
+				}
+			}
 		}
 	}
 	return
 }
 
-func (i *api) Get_live(qn ...string) (o *api) {
-	o = i
-	apilog := apilog.Base_add(`直播流信息`)
+func getRoomPlayInfoByQn() (missKey []string) {
+	apilog := apilog.Base_add(`getRoomPlayInfoByQn`)
 
-	if o.Roomid == 0 {
-		apilog.L(`E: `,"还未New_api")
-		return
+	if c.Roomid == 0 {
+		missKey = append(missKey, `Roomid`)
 	}
-	if api_limit.TO() {return}//超额请求阻塞，超时将取消
-	
-	CookieM := make(map[string]string)
-	c.Cookie.Range(func(k,v interface{})(bool){
-		CookieM[k.(string)] = v.(string)
-		return true
-	})
+	if !c.LIVE_BUVID {
+		missKey = append(missKey, `LIVE_BUVID`)
+	}
+	if len(missKey) > 0 {return}
 
-	Cookie := p.Map_2_Cookies_String(CookieM)
-	if i := strings.Index(Cookie, "PVID="); i != -1 {
-		if d := strings.Index(Cookie[i:], ";"); d == -1 {
-			Cookie = Cookie[:i]
-		} else {
-			Cookie = Cookie[:i] + Cookie[i + d + 1:]
+	{
+		AcceptQn := []int{}
+		for k,_ := range c.AcceptQn {
+			if k <= c.Live_qn {AcceptQn = append(AcceptQn, k)}
 		}
-	} else {
-		qn = []string{}
-	}
-
-	if len(qn) == 0 || qn[0] == "0" || qn[0] == "" {//html获取
-		r := g.Get(p.Rval{
-			Url:"https://live.bilibili.com/blanc/" + strconv.Itoa(o.Roomid),
-			Header:map[string]string{
-				`Cookie`:Cookie,
-			},
-		})
-		if e := r.S(`"durl":[`, `]`, 0, 0).Err;e == nil {
-			if urls := p.Json().GetArrayFrom("[" + r.RS[0] + "]", "url");urls != nil {
-				apilog.L(`I: `,"直播中")
-				c.Liveing = true
-				o.Live_status = 1
-				for _,v := range urls {
-					o.Live = append(o.Live, v.(string))
-				}
-				return
+		MaxQn := 0
+		for i:=0; len(AcceptQn)>i; i+=1{
+			if AcceptQn[i] > MaxQn {
+				MaxQn = AcceptQn[i]
 			}
 		}
-		if e := r.S(`"live_time":"`, `"`, 0, 0).Err;e == nil {
-			c.Live_Start_Time,_ = time.Parse("2006-01-02 15:04:05", r.RS[0])
+		if MaxQn == 0 {
+			apilog.L(`W: `,"使用默认")
 		}
+		c.Live_qn = MaxQn
 	}
+	
+	Roomid := strconv.Itoa(c.Roomid)
+	
+	//Roominitres
+	{
+		Cookie := make(map[string]string)
+		c.Cookie.Range(func(k,v interface{})(bool){
+			Cookie[k.(string)] = v.(string)
+			return true
+		})
 
-	cu_qn := "0"
-	{//api获取
 		req := p.Req()
 		if err := req.Reqf(p.Rval{
-			Url:"https://api.live.bilibili.com/xlive/web-room/v2/index/getRoomPlayInfo?no_playurl=0&mask=1&qn=0&platform=web&protocol=0,1&format=0,2&codec=0,1&room_id=" + strconv.Itoa(o.Roomid),
+			Url:"https://api.live.bilibili.com/xlive/web-room/v2/index/getRoomPlayInfo?no_playurl=0&mask=1&qn="+ strconv.Itoa(c.Live_qn) +"&platform=web&protocol=0,1&format=0,2&codec=0,1&room_id=" + Roomid,
 			Header:map[string]string{
-				`Referer`:"https://live.bilibili.com/" + strconv.Itoa(o.Roomid),
-				`Cookie`:Cookie,
+				`Referer`:"https://live.bilibili.com/" + Roomid,
+				`Cookie`:p.Map_2_Cookies_String(Cookie),
 			},
 			Timeout:10,
 			Retry:2,
@@ -275,178 +536,114 @@ func (i *api) Get_live(qn ...string) (o *api) {
 			apilog.L(`E: `,err)
 			return
 		}
-		res := string(req.Respon)
-		if code := p.Json().GetValFromS(res, "code");code == nil || code.(float64) != 0 {
-			apilog.L(`E: `,"code", code)
-			return
-		}
-		if is_locked := p.Json().GetValFrom(res, "data.is_locked");is_locked == nil {
-			apilog.L(`E: `,"data.is_locked", is_locked)
-			return
-		} else if is_locked.(bool) {
-			apilog.L(`W: `,"直播间封禁中")
-			o.Locked = true
-			return
-		}
-		if live_status := p.Json().GetValFrom(res, "data.live_status");live_status == nil {
-			apilog.L(`E: `,"data.live_status", live_status)
-			return
-		} else {
-			o.Live_status = live_status.(float64)
-			switch live_status.(float64) {
-			case 2:
-				c.Liveing = false
-				apilog.L(`I: `,"轮播中")
-				return
-			case 0: //未直播
-				c.Liveing = false
-				apilog.L(`I: `,"未在直播")
-				return
-			case 1:
-				c.Liveing = true
-				apilog.L(`I: `,"直播中")
-			default:
-				apilog.L(`W: `,"live_status:", live_status)
-			}
-		}
-		if codec0 := p.Json().GetValFrom(res, "data.playurl_info.playurl.stream.[0].format.[0].codec.[0]");codec0 != nil {//直播流链接
-			base_url := p.Json().GetValFrom(codec0, "base_url")
-			if base_url == nil {return}
-			url_info := p.Json().GetValFrom(codec0, "url_info")
-			if v,ok := url_info.([]interface{});!ok || len(v) == 0 {return}
-			for _,v := range url_info.([]interface{}) {
-				host := p.Json().GetValFrom(v, "host")
-				extra := p.Json().GetValFrom(v, "extra")
-				if host == nil || extra == nil {continue}
-				o.Live = append(o.Live, host.(string) + base_url.(string) + extra.(string))
-			}
-		}
-		if len(o.Live) == 0 {apilog.L(`E: `,"live url is nil");return}
 
-		if i := p.Json().GetValFrom(res, "data.playurl_info.playurl.stream.[0].format.[0].codec.[0].current_qn"); i != nil {
-			cu_qn = strconv.Itoa(int(i.(float64)))
-		}
-		if i := p.Json().GetValFrom(res, "data.live_time"); i != nil {
-			c.Live_Start_Time = time.Unix(int64(i.(float64)),0).In(time.FixedZone("UTC-8", -8*60*60))
+		var j J.Roominitres
+
+		if e := json.Unmarshal([]byte(req.Respon),&j);e != nil{
+			apilog.L(`E: `, e)
+			return
+		} else if j.Code != 0 {
+			apilog.L(`E: `, j.Message)
+			return
 		}
 
-		if len(qn) != 0 && qn[0] != "0" && qn[0] != "" {
-			var (
-				accept_qn_request bool
-				tmp_qn int
-				e error
-			)
-			if tmp_qn,e = strconv.Atoi(qn[0]);e != nil {apilog.L(`E: `,`qn error`,e);return}
-			if i,ok := p.Json().GetValFrom(res, "data.playurl_info.playurl.stream.[0].format.[0].codec.[0].accept_qn").([]interface{}); ok && len(i) != 0 {
-				for _,v := range i {
-					if o,ok := v.(float64);ok && int(o) == tmp_qn {accept_qn_request = true}
+		//主播uid
+		c.UpUid = j.Data.UID
+		//房间号（完整）
+		c.Roomid = j.Data.RoomID
+		//直播开始时间
+		c.Live_Start_Time = time.Unix(int64(j.Data.LiveTime),0)
+		//是否在直播
+		c.Liveing = j.Data.LiveStatus == 1
+		
+		//当前直播流
+		for _,v := range j.Data.PlayurlInfo.Playurl.Stream {
+			if v.ProtocolName != `http_stream` {continue}
+
+			for _,v := range v.Format {
+				if v.FormatName != `flv` {continue}
+				
+				for _,v := range v.Codec {
+					if v.CodecName != `avc` {continue}
+
+					//当前直播流质量
+					c.Live_qn = v.CurrentQn
+					//允许的清晰度
+					{
+						var tmp = make(map[int]string)
+						for _,v := range v.AcceptQn {
+							if s,ok := c.AcceptQn[v];ok{
+								tmp[v] = s
+							}
+						}
+						c.AcceptQn = tmp
+					}
+					//直播流链接
+					for _,v1 := range v.URLInfo {
+						c.Live = append(c.Live, v1.Host+v.BaseURL+v1.Extra)
+					}
 				}
 			}
-			if !accept_qn_request {
-				apilog.L(`E: `,`qn不在accept_qn中`);
-				return
-			}
-			if _,ok := c.Default_qn[qn[0]];!ok{
-				apilog.L(`W: `,"清晰度未找到", qn[0], ",使用默认")
-				return
-			}
-			if err := req.Reqf(p.Rval{
-				Url:"https://api.live.bilibili.com/xlive/web-room/v2/index/getRoomPlayInfo?no_playurl=0&mask=1&platform=web&protocol=0,1&format=0,2&codec=0,1&room_id=" + strconv.Itoa(o.Roomid) + "&qn=" + qn[0],
-				Header:map[string]string{
-					`Cookie`:Cookie,
-					`Referer`:"https://live.bilibili.com/" + strconv.Itoa(o.Roomid),
-				},
-				Timeout:10,
-				Retry:2,
-			});err != nil {
-				apilog.L(`E: `,err)
-				return
-			}
-			res = string(req.Respon)
-			if codec0 := p.Json().GetValFrom(res, "data.playurl_info.playurl.stream.[0].format.[0].codec.[0]");codec0 != nil {//直播流链接
-				base_url := p.Json().GetValFrom(codec0, "base_url")
-				if base_url == nil {return}
-				url_info := p.Json().GetValFrom(codec0, "url_info")
-				if v,ok := url_info.([]interface{});!ok || len(v) == 0 {return}
-				for _,v := range url_info.([]interface{}) {
-					host := p.Json().GetValFrom(v, "host")
-					extra := p.Json().GetValFrom(v, "extra")
-					if host == nil || extra == nil {continue}
-					o.Live = append(o.Live, host.(string) + base_url.(string) + extra.(string))
-				}
-			}
-			if len(o.Live) == 0 {apilog.L(`E: `,"live url is nil");return}
-	
-			if i := p.Json().GetValFrom(res, "data.playurl_info.playurl.stream.[0].format.[0].codec.[0].current_qn"); i != nil {
-				cu_qn = strconv.Itoa(int(i.(float64)))
-			}
 		}
-	}
+		apilog.L(`I: `,c.AcceptQn[c.Live_qn])
 
-	if v,ok := c.Default_qn[cu_qn];ok {
-		apilog.L(`I: `,"当前清晰度:", v)
 	}
 	return
 }
 
-func (i *api) Get_host_Token() (o *api) {
-	o = i
-	apilog := apilog.Base_add(`获取Token`)
+func getDanmuInfo() (missKey []string) {
+	apilog := apilog.Base_add(`getDanmuInfo`)
 
-	if o.Roomid == 0 {
-		apilog.L(`E: `,"还未New_api")
-		return
+	if c.Roomid == 0 {
+		missKey = append(missKey, `Roomid`)
 	}
-	Roomid := strconv.Itoa(o.Roomid)
-	if api_limit.TO() {return}//超额请求阻塞，超时将取消
+	if !c.LIVE_BUVID {
+		missKey = append(missKey, `LIVE_BUVID`)
+	}
+	if len(missKey) > 0 {return}
+
 	
-	Cookie := make(map[string]string)
-	c.Cookie.Range(func(k,v interface{})(bool){
-		Cookie[k.(string)] = v.(string)
-		return true
-	})
+	
+	Roomid := strconv.Itoa(c.Roomid)
+	
+	//GetDanmuInfo
+	{
+		Cookie := make(map[string]string)
+		c.Cookie.Range(func(k,v interface{})(bool){
+			Cookie[k.(string)] = v.(string)
+			return true
+		})
 
-	req := p.Req()
-	if err := req.Reqf(p.Rval{
-		Url:"https://api.live.bilibili.com/xlive/web-room/v1/index/getDanmuInfo?type=0&id=" + Roomid,
-		Header:map[string]string{
-			`Referer`:"https://live.bilibili.com/" + Roomid,
-			`Cookie`:p.Map_2_Cookies_String(Cookie),
-		},
-		Timeout:10,
-		Retry:2,
-	});err != nil {
-		apilog.L(`E: `,err)
-		return
-	}
-	res := string(req.Respon)
-	if msg := p.Json().GetValFromS(res, "message");msg == nil || msg != "0" {
-		apilog.L(`E: `,"message", msg)
-		return
-	}
-
-	_Token := p.Json().GetValFromS(res, "data.token")
-	if _Token == nil {
-		apilog.L(`E: `,"data.token", _Token, res)
-		return
-	}
-	o.Token = _Token.(string)
-
-	if host_list := p.Json().GetValFromS(res, "data.host_list");host_list == nil {
-		apilog.L(`E: `,"data.host_list", host_list)
-		return
-	} else {
-		for k, v := range host_list.([]interface{}) {
-			if _host := p.Json().GetValFrom(v, "host");_host == nil {
-				apilog.L(`E: `,"data.host_list[", k, "].host", _host)
-				continue
-			} else {
-				o.Url = append(o.Url, "wss://" + _host.(string) + "/sub")
-			}			
+		req := p.Req()
+		if err := req.Reqf(p.Rval{
+			Url:"https://api.live.bilibili.com/xlive/web-room/v1/index/getDanmuInfo?type=0&id=" + Roomid,
+			Header:map[string]string{
+				`Referer`:"https://live.bilibili.com/" + Roomid,
+				`Cookie`:p.Map_2_Cookies_String(Cookie),
+			},
+			Timeout:10,
+		});err != nil {
+			apilog.L(`E: `,err)
+			return
 		}
-		apilog.L(`T: `,"ok")
-	}
 
+		var j J.GetDanmuInfo
+
+		if e := json.Unmarshal([]byte(req.Respon),&j);e != nil{
+			apilog.L(`E: `, e)
+			return
+		} else if j.Code != 0 {
+			apilog.L(`E: `, j.Message)
+			return
+		}
+		
+		//弹幕钥
+		c.Token = j.Data.Token
+		//弹幕链接
+		for _,v := range j.Data.HostList {
+			c.WSURL = append(c.WSURL, "wss://" + v.Host + "/sub")
+		}
+	}
 	return
 }
 
@@ -488,19 +685,29 @@ func Get_face_src(uid string) (string) {
 	return rface.(string) + `@58w_58h`
 }
 
-func (i *api) Get_OnlineGoldRank() {
-	if i.Uid == 0 || c.Roomid == 0 {
-		apilog.Base_add("Get_OnlineGoldRank").L(`E: `,"i.Uid == 0 || c.Roomid == 0")
-		return
-	}
-	if api_limit.TO() {return}//超额请求阻塞，超时将取消
-	apilog := apilog.Base_add(`获取贡献榜`)
+func Get_HotRank() (missKey []string) {
+	apilog := apilog.Base_add(`Get_HotRank`)
 
-	var session_roomid = c.Roomid
-	var self_loop func(page int)
-	self_loop = func(page int){
-		if page <= 0 || session_roomid != c.Roomid{return}
-		
+	if c.UpUid == 0 {
+		missKey = append(missKey, `UpUid`)
+	}
+	if c.Roomid == 0 {
+		missKey = append(missKey, `Roomid`)
+	}
+	if c.ParentAreaID == 0 {
+		missKey = append(missKey, `ParentAreaID`)
+	}
+	if !c.LIVE_BUVID {
+		missKey = append(missKey, `LIVE_BUVID`)
+	}
+	if len(missKey) > 0 {return}
+
+	
+	
+	Roomid := strconv.Itoa(c.Roomid)
+	
+	//getHotRank
+	{
 		Cookie := make(map[string]string)
 		c.Cookie.Range(func(k,v interface{})(bool){
 			Cookie[k.(string)] = v.(string)
@@ -509,7 +716,7 @@ func (i *api) Get_OnlineGoldRank() {
 
 		req := p.Req()
 		if err := req.Reqf(p.Rval{
-			Url:`https://api.live.bilibili.com/xlive/general-interface/v1/rank/getOnlineGoldRank?ruid=`+strconv.Itoa(i.Uid)+`&roomId=`+strconv.Itoa(c.Roomid)+`&page=`+strconv.Itoa(page)+`&pageSize=20`,
+			Url:`https://api.live.bilibili.com/xlive/general-interface/v1/rank/getHotRank?ruid=`+strconv.Itoa(c.UpUid)+`&room_id=`+Roomid+`&is_pre=0&page_size=50&source=2&area_id=`+strconv.Itoa(c.ParentAreaID),
 			Header:map[string]string{
 				`Host`: `api.live.bilibili.com`,
 				`User-Agent`: `Mozilla/5.0 (X11; Linux x86_64; rv:83.0) Gecko/20100101 Firefox/83.0`,
@@ -520,7 +727,7 @@ func (i *api) Get_OnlineGoldRank() {
 				`Connection`: `keep-alive`,
 				`Pragma`: `no-cache`,
 				`Cache-Control`: `no-cache`,
-				`Referer`:"https://live.bilibili.com/" + strconv.Itoa(c.Roomid),
+				`Referer`:"https://live.bilibili.com/" + Roomid,
 				`Cookie`:p.Map_2_Cookies_String(Cookie),
 			},
 			Timeout:3,
@@ -529,170 +736,103 @@ func (i *api) Get_OnlineGoldRank() {
 			apilog.L(`E: `,err)
 			return
 		}
-		res := string(req.Respon)
-		if msg := p.Json().GetValFromS(res, "message");msg == nil || msg != "0" {
-			apilog.L(`E: `,"message", msg)
+
+		var j J.GetHotRank
+
+		if e := json.Unmarshal([]byte(req.Respon),&j);e != nil{
+			apilog.L(`E: `, e)
+			return
+		} else if j.Code != 0 {
+			apilog.L(`E: `, j.Message)
 			return
 		}
-		if onlineNum := p.Json().GetValFromS(res, "data.onlineNum");onlineNum == nil {
-			apilog.L(`E: `,"onlineNum", onlineNum)
-			return
+
+		//获取排名
+		c.Note = j.Data.Own.AreaName + " "
+		if j.Data.Own.Rank == 0 {
+			c.Note += "50+"
 		} else {
-			tmp_onlineNum := onlineNum.(float64)
-			if tmp_onlineNum == 0 {
-				return
-			}
-
-			var score = 0.0
-			if tmp_score_list := p.Json().GetArrayFrom(p.Json().GetValFromS(res, "data.OnlineRankItem"), "score");len(tmp_score_list) != 0 {
-				for _,v := range tmp_score_list {
-					score += v.(float64)/10
-				}
-			}
-			//传入消息队列
-			c.Danmu_Main_mq.Push_tag(`c.Rev_add`,score)
-
-			if rank_list := p.Json().GetArrayFrom(p.Json().GetValFromS(res, "data.OnlineRankItem"), "userRank");rank_list == nil {
-				apilog.L(`E: `,"rank_list", len(rank_list))
-				return
-			} else if len(rank_list) == 0 {
-				// apilog.L(`E: `,"rank_list == tmp_onlineNum")
-				return
-			} else {
-				p.Sys().Timeoutf(1)
-				self_loop(page+1)
-				return
-			}
+			c.Note += strconv.Itoa(j.Data.Own.Rank)
 		}
 	}
 
-	self_loop(1)
-	apilog.Base("获取score").L(`W: `,"以往营收获取成功", fmt.Sprintf("%.2f", c.Rev))
-	// c.Danmu_Main_mq.Push(c.Danmu_Main_mq_item{//传入消息队列
-	// 	Class:`c.Rev_add`,
-	// 	Data:self_loop(1),
-	// })
 	return
 }
 
-//获取热门榜
-func (i *api) Get_HotRank() {
-	if i.Uid == 0 || c.Roomid == 0 {
-		apilog.Base_add("Get_HotRank").L(`E: `,"i.Uid == 0 || c.Roomid == 0")
-		return
-	}
-	if api_limit.TO() {return}//超额请求阻塞，超时将取消
-	apilog := apilog.Base_add(`获取热门榜`)
+func Get_guardNum() (missKey []string) {
+	apilog := apilog.Base_add(`Get_guardNum`)
 
-	Cookie := make(map[string]string)
-	c.Cookie.Range(func(k,v interface{})(bool){
-		Cookie[k.(string)] = v.(string)
-		return true
-	})
-
-	req := p.Req()
-	if err := req.Reqf(p.Rval{
-		Url:`https://api.live.bilibili.com/xlive/general-interface/v1/rank/getHotRank?ruid=`+strconv.Itoa(i.Uid)+`&room_id=`+strconv.Itoa(c.Roomid)+`&is_pre=0&page_size=50&source=2&area_id=`+strconv.Itoa(i.Parent_area_id),
-		Header:map[string]string{
-			`Host`: `api.live.bilibili.com`,
-			`User-Agent`: `Mozilla/5.0 (X11; Linux x86_64; rv:83.0) Gecko/20100101 Firefox/83.0`,
-			`Accept`: `application/json, text/plain, */*`,
-			`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
-			`Accept-Encoding`: `gzip, deflate, br`,
-			`Origin`: `https://live.bilibili.com`,
-			`Connection`: `keep-alive`,
-			`Pragma`: `no-cache`,
-			`Cache-Control`: `no-cache`,
-			`Referer`:"https://live.bilibili.com/" + strconv.Itoa(c.Roomid),
-			`Cookie`:p.Map_2_Cookies_String(Cookie),
-		},
-		Timeout:3,
-		Retry:2,
-	});err != nil {
-		apilog.L(`E: `,err)
-		return
+	if c.UpUid == 0 {
+		missKey = append(missKey, `UpUid`)
 	}
+	if c.Roomid == 0 {
+		missKey = append(missKey, `Roomid`)
+	}
+	if !c.LIVE_BUVID {
+		missKey = append(missKey, `LIVE_BUVID`)
+	}
+	if len(missKey) > 0 {return}
 	
-	var type_item struct{
-		Code int `json:"code"`
-		Message string `json:"message"`
-		Data struct{
-			Own struct{
-				Rank int `json:"rank"`
-				Area_parent_name string `json:"area_parent_name"`
-			} `json:"own"`
-		} `json:"data"`
-	}
-	if e := json.Unmarshal(req.Respon, &type_item);e != nil {
-		apilog.L(`E: `, e)
-	}
-	if type_item.Code != 0 {
-		apilog.L(`E: `,type_item.Message)
-		return
-	}
-	c.Note = type_item.Data.Own.Area_parent_name + " "
-	if type_item.Data.Own.Rank == 0 {
-		c.Note += `50+`
-	} else {
-		c.Note += strconv.Itoa(type_item.Data.Own.Rank)
-	}
-	apilog.L(`I: `,`热门榜:`,c.Note)
-}
+	
 
-func (i *api) Get_guardNum() {
-	if i.Uid == 0 || c.Roomid == 0 {
-		apilog.Base_add("Get_guardNum").L(`E: `,"i.Uid == 0 || c.Roomid == 0")
-		return
-	}
-	if api_limit.TO() {return}//超额请求阻塞，超时将取消
-	apilog := apilog.Base_add(`获取舰长数`)
+	Roomid := strconv.Itoa(c.Roomid)
+	
+	//Get_guardNum
+	{
+		Cookie := make(map[string]string)
+		c.Cookie.Range(func(k,v interface{})(bool){
+			Cookie[k.(string)] = v.(string)
+			return true
+		})
 
-	Cookie := make(map[string]string)
-	c.Cookie.Range(func(k,v interface{})(bool){
-		Cookie[k.(string)] = v.(string)
-		return true
-	})
+		req := p.Req()
+		if err := req.Reqf(p.Rval{
+			Url:`https://api.live.bilibili.com/xlive/app-room/v2/guardTab/topList?roomid=`+Roomid+`&page=1&ruid=`+strconv.Itoa(c.UpUid)+`&page_size=29`,
+			Header:map[string]string{
+				`Host`: `api.live.bilibili.com`,
+				`User-Agent`: `Mozilla/5.0 (X11; Linux x86_64; rv:83.0) Gecko/20100101 Firefox/83.0`,
+				`Accept`: `application/json, text/plain, */*`,
+				`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
+				`Accept-Encoding`: `gzip, deflate, br`,
+				`Origin`: `https://live.bilibili.com`,
+				`Connection`: `keep-alive`,
+				`Pragma`: `no-cache`,
+				`Cache-Control`: `no-cache`,
+				`Referer`:"https://live.bilibili.com/" + Roomid,
+				`Cookie`:p.Map_2_Cookies_String(Cookie),
+			},
+			Timeout:3,
+			Retry:2,
+		});err != nil {
+			apilog.L(`E: `,err)
+			return
+		}
 
-	req := p.Req()
-	if err := req.Reqf(p.Rval{
-		Url:`https://api.live.bilibili.com/xlive/app-room/v2/guardTab/topList?roomid=`+strconv.Itoa(c.Roomid)+`&page=1&ruid=`+strconv.Itoa(i.Uid)+`&page_size=29`,
-		Header:map[string]string{
-			`Host`: `api.live.bilibili.com`,
-			`User-Agent`: `Mozilla/5.0 (X11; Linux x86_64; rv:83.0) Gecko/20100101 Firefox/83.0`,
-			`Accept`: `application/json, text/plain, */*`,
-			`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
-			`Accept-Encoding`: `gzip, deflate, br`,
-			`Origin`: `https://live.bilibili.com`,
-			`Connection`: `keep-alive`,
-			`Pragma`: `no-cache`,
-			`Cache-Control`: `no-cache`,
-			`Referer`:"https://live.bilibili.com/" + strconv.Itoa(c.Roomid),
-			`Cookie`:p.Map_2_Cookies_String(Cookie),
-		},
-		Timeout:3,
-		Retry:2,
-	});err != nil {
-		apilog.L(`E: `,err)
-		return
+		var j J.GetGuardNum
+
+		if e := json.Unmarshal([]byte(req.Respon),&j);e != nil{
+			apilog.L(`E: `, e)
+			return
+		} else if j.Code != 0 {
+			apilog.L(`E: `, j.Message)
+			return
+		}
+
+		//获取舰长数
+		c.GuardNum = j.Data.Info.Num
 	}
-	res := string(req.Respon)
-	if msg := p.Json().GetValFromS(res, "message");msg == nil || msg != "0" {
-		apilog.L(`E: `,"message", msg)
-		return
-	}
-	if num := p.Json().GetValFromS(res, "data.info.num");num == nil {
-		apilog.L(`E: `,"num", num)
-		return
-	} else {
-		c.GuardNum = int(num.(float64))
-		apilog.L(`I: `,"当前舰长数", c.GuardNum)
-	}
+
 	return
 }
 
-func (i *api) Get_Version() {
-	Roomid := strconv.Itoa(i.Roomid)
-	if api_limit.TO() {return}//超额请求阻塞，超时将取消
+func Get_Version() (missKey []string) {
+	if c.Roomid == 0 {
+		missKey = append(missKey, `Roomid`)
+	}
+	if len(missKey) != 0 {return}
+
+	Roomid := strconv.Itoa(c.Roomid)
+	
 	apilog := apilog.Base_add(`获取客户版本`)
 
 	var player_js_url string
@@ -745,6 +885,7 @@ func (i *api) Get_Version() {
 		c.VERSION = r.RS[0]
 		apilog.L(`T: `,"api version", c.VERSION)
 	}
+	return
 }
 
 //调用记录
@@ -752,7 +893,7 @@ var boot_Get_cookie funcCtrl.FlashFunc//新的替代旧的
 
 //扫码登录
 func Get_cookie() {
-	if api_limit.TO() {return}//超额请求阻塞，超时将取消
+	
 	apilog := apilog.Base_add(`获取Cookie`)
 	
 	//获取id
@@ -953,7 +1094,7 @@ type TGet_list_in_room struct{
 }
 //获取牌子信息
 func Get_list_in_room() (array []TGet_list_in_room) {
-	if api_limit.TO() {return}//超额请求阻塞，超时将取消
+	
 	apilog := apilog.Base_add(`获取牌子`)
 	//验证cookie
 	if missKey := CookieCheck([]string{
@@ -1034,7 +1175,7 @@ type Roominfo struct{
 }
 //获取当前佩戴的牌子
 func Get_weared_medal() (item TGet_weared_medal) {
-	if api_limit.TO() {return}//超额请求阻塞，超时将取消
+	
 	apilog := apilog.Base_add(`获取牌子`)
 	//验证cookie
 	if missKey := CookieCheck([]string{
@@ -1086,16 +1227,27 @@ func Get_weared_medal() (item TGet_weared_medal) {
 	
 }
 
-func (i *api) CheckSwitch_FansMedal() {
-	if api_limit.TO() {return}//超额请求阻塞，超时将取消
+func CheckSwitch_FansMedal() (missKey []string) {
+
+	if !c.LIVE_BUVID {
+		missKey = append(missKey, `LIVE_BUVID`)
+	}
+	if c.UpUid == 0{
+		missKey = append(missKey, `UpUid`)
+	}
+	if len(missKey) > 0 {
+		return
+	}
+
+	
 	apilog := apilog.Base_add(`切换粉丝牌`)
 	//验证cookie
-	if missKey := CookieCheck([]string{
+	if missCookie := CookieCheck([]string{
 		`bili_jct`,
 		`DedeUserID`,
 		`LIVE_BUVID`,
-	});len(missKey) != 0 {
-		apilog.L(`T: `,`Cookie无Key:`,missKey)
+	});len(missCookie) != 0 {
+		apilog.L(`T: `,`Cookie无Key:`,missCookie)
 		return
 	}
 
@@ -1108,7 +1260,9 @@ func (i *api) CheckSwitch_FansMedal() {
 		res := Get_weared_medal()
 
 		c.Wearing_FansMedal = res.Roominfo.Room_id//更新佩戴信息
-		if res.Target_id == c.UpUid {return}
+		if res.Target_id == c.UpUid {
+			return
+		}
 	}
 
 	var medal_id int//将要使用的牌子id
@@ -1162,7 +1316,7 @@ func (i *api) CheckSwitch_FansMedal() {
 		}
 		res := string(r.Respon)
 		if v,ok := p.Json().GetValFromS(res, "code").(float64);ok && v == 0 {
-			apilog.L(`I: `,`自动切换粉丝牌`)
+			apilog.L(`I: `,`自动切换粉丝牌 id:`,medal_id)
 			c.Wearing_FansMedal = medal_id//更新佩戴信息
 			return
 		}
@@ -1172,6 +1326,7 @@ func (i *api) CheckSwitch_FansMedal() {
 			apilog.L(`E: `,`Get_FansMedal wear message nil`)
 		}
 	}
+	return
 }
 
 //签到
@@ -1186,7 +1341,7 @@ func Dosign() {
 		apilog.L(`T: `,`Cookie无Key:`,missKey)
 		return
 	}
-	if api_limit.TO() {return}//超额请求阻塞，超时将取消
+	
 
 	{//检查是否签到
 		Cookie := make(map[string]string)
@@ -1280,16 +1435,17 @@ func Dosign() {
 }
 
 //LIVE_BUVID
-func (i *api) Get_LIVE_BUVID() (o *api){
-	o = i
+func Get_LIVE_BUVID() (missKey []string) {
 	apilog := apilog.Base_add(`LIVE_BUVID`).L(`T: `,`获取`)
-	if live_buvid,ok := c.Cookie.LoadV(`LIVE_BUVID`).(string);ok && live_buvid != `` {apilog.L(`T: `,`存在`);return}
-	if c.Roomid == 0 {apilog.L(`E: `,`失败！无Roomid`);return}
-	if api_limit.TO() {apilog.L(`E: `,`超时！`);return}//超额请求阻塞，超时将取消
+
+	if live_buvid,ok := c.Cookie.LoadV(`LIVE_BUVID`).(string);ok && live_buvid != `` {
+		apilog.L(`T: `,`存在`)
+		c.LIVE_BUVID = true
+		return
+	}
 
 	//当房间处于特殊活动状态时，将会获取不到，此处使用了若干著名up主房间进行尝试
 	roomIdList := []string{
-		strconv.Itoa(c.Roomid),//当前
 		"3",//哔哩哔哩音悦台
 		"2",//直播姬
 		"1",//哔哩哔哩直播
@@ -1341,6 +1497,8 @@ func (i *api) Get_LIVE_BUVID() (o *api){
 	
 	CookieSet([]byte(p.Map_2_Cookies_String(Cookie)))
 
+	c.LIVE_BUVID = true
+
 	return
 }
 
@@ -1361,8 +1519,7 @@ type E_json struct{
 //调用记录
 var boot_F_x25Kn funcCtrl.FlashFunc//新的替代旧的
 
-func (i *api) F_x25Kn() (o *api) {
-	o = i
+func F_x25Kn() {
 	apilog := apilog.Base_add(`小心心`)
 	if c.Wearing_FansMedal == 0{apilog.L(`I: `,`无粉丝牌，不获取`);return}
 	//验证cookie
@@ -1374,8 +1531,8 @@ func (i *api) F_x25Kn() (o *api) {
 		apilog.L(`T: `,`Cookie无Key:`,missKey)
 		return
 	}
-	if o.Parent_area_id == -1 {apilog.L(`E: `,`失败！未获取Parent_area_id`);return}
-	if o.Area_id == -1 {apilog.L(`E: `,`失败！未获取Area_id`);return}
+	if c.ParentAreaID == -1 {apilog.L(`E: `,`失败！未获取Parent_area_id`);return}
+	if c.AreaID == -1 {apilog.L(`E: `,`失败！未获取Area_id`);return}
 	if api_limit.TO() {apilog.L(`E: `,`超时！`);return}//超额请求阻塞，超时将取消
 
 	id := boot_F_x25Kn.Flash()//获取函数调用会话id
@@ -1422,7 +1579,7 @@ func (i *api) F_x25Kn() (o *api) {
 		//新调用，此退出
 		if boot_F_x25Kn.NeedExit(id) {return}
 
-		PostStr := `id=[`+strconv.Itoa(o.Parent_area_id)+`,`+strconv.Itoa(o.Area_id)+`,`+strconv.Itoa(loop_num)+`,`+strconv.Itoa(o.Roomid)+`]&`
+		PostStr := `id=[`+strconv.Itoa(c.ParentAreaID)+`,`+strconv.Itoa(c.AreaID)+`,`+strconv.Itoa(loop_num)+`,`+strconv.Itoa(c.Roomid)+`]&`
 		PostStr += `device=["`+LIVE_BUVID+`","`+new_uuid+`"]&`
 		PostStr += `ts=`+strconv.Itoa(int(p.Sys().GetMTime()))
 		PostStr += `&is_patch=0&`
@@ -1451,7 +1608,7 @@ func (i *api) F_x25Kn() (o *api) {
 				`Connection`: `keep-alive`,
 				`Pragma`: `no-cache`,
 				`Cache-Control`: `no-cache`,
-				`Referer`:"https://live.bilibili.com/"+strconv.Itoa(o.Roomid),
+				`Referer`:"https://live.bilibili.com/"+strconv.Itoa(c.Roomid),
 				`Cookie`:p.Map_2_Cookies_String(Cookie),
 			},
 			PostStr:url.PathEscape(PostStr),
@@ -1501,7 +1658,7 @@ func (i *api) F_x25Kn() (o *api) {
 
 			var rt_obj = RT{
 				R:R{
-					Id:`[`+strconv.Itoa(o.Parent_area_id)+`,`+strconv.Itoa(o.Area_id)+`,`+strconv.Itoa(loop_num)+`,`+strconv.Itoa(o.Roomid)+`]`,
+					Id:`[`+strconv.Itoa(c.ParentAreaID)+`,`+strconv.Itoa(c.AreaID)+`,`+strconv.Itoa(loop_num)+`,`+strconv.Itoa(c.Roomid)+`]`,
 					Device:`["`+LIVE_BUVID+`","`+new_uuid+`"]`,
 					Ets:res.Data.Timestamp,
 					Benchmark:res.Data.Secret_key,
@@ -1550,7 +1707,7 @@ func (i *api) F_x25Kn() (o *api) {
 					`Connection`: `keep-alive`,
 					`Pragma`: `no-cache`,
 					`Cache-Control`: `no-cache`,
-					`Referer`:"https://live.bilibili.com/"+strconv.Itoa(o.Roomid),
+					`Referer`:"https://live.bilibili.com/"+strconv.Itoa(c.Roomid),
 					`Cookie`:p.Map_2_Cookies_String(Cookie),
 				},
 				PostStr:url.PathEscape(PostStr),
@@ -1654,18 +1811,23 @@ func Gift_list() (list []Gift_list_type_Data_List) {
 }
 
 //银瓜子2硬币
-func Silver_2_coin() {
-	apilog := apilog.Base_add(`银瓜子=>硬币`).L(`T: `,`开始`)
+func Silver_2_coin() (missKey []string) {
+	apilog := apilog.Base_add(`银瓜子=>硬币`)
+
+	if !c.LIVE_BUVID {
+		missKey = append(missKey, `LIVE_BUVID`)
+	}
+	if len(missKey) > 0 {return}
+
 	//验证cookie
-	if missKey := CookieCheck([]string{
+	if miss := CookieCheck([]string{
 		`bili_jct`,
 		`DedeUserID`,
 		`LIVE_BUVID`,
-	});len(missKey) != 0 {
-		apilog.L(`T: `,`Cookie无Key:`,missKey)
+	});len(miss) != 0 {
+		apilog.L(`T: `,`Cookie无Key:`,miss)
 		return
 	}
-	if api_limit.TO() {apilog.L(`E: `,`超时！`);return}//超额请求阻塞，超时将取消
 
 	var Silver int
 	{//验证是否还有机会
@@ -1838,6 +2000,7 @@ func Silver_2_coin() {
 		}
 		apilog.L(`I: `, res.Message)
 	}
+	return
 }
 
 func save_cookie(Cookies []*http.Cookie){

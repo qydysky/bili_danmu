@@ -12,20 +12,27 @@ import (
 var (
 	Uid = 0//client uid
 
-	Live []string//直播链接
-	Live_qn string
+	Live []string//直播流链接
+	Live_qn int//当前直播流质量
 	Roomid int
 	Cookie syncmap.Map
+	CookieOk bool//
 	Title string//直播标题
 	Uname string//主播名
 	UpUid int//主播uid
 	Rev float64//营收
 	Renqi int//人气
 	GuardNum int//舰长数
+	ParentAreaID int//父分区
+	AreaID int//子分区
+	Locked bool//直播间封禁
 	Note string//分区排行
 	Live_Start_Time time.Time//直播开始时间
 	Liveing bool//是否在直播
 	Wearing_FansMedal int//当前佩戴的粉丝牌
+	Token string//弹幕钥
+	WSURL []string//弹幕链接
+	LIVE_BUVID bool//cookies含LIVE_BUVID
 )
 
 //消息队列
@@ -79,12 +86,13 @@ var (
 	VERSION = "2.0.11"
 )
 
-var Default_qn = map[string]string{
-	"10000":"原画",
-	"800":"4K",
-	"401":"蓝光(杜比)",
-	"400":"蓝光",
-	"250":"超清",
-	"150":"高清",
-	"80":"流畅",
+//允许的清晰度
+var AcceptQn = map[int]string{
+	10000:"原画",
+	800:"4K",
+	401:"蓝光(杜比)",
+	400:"蓝光",
+	250:"超清",
+	150:"高清",
+	80:"流畅",
 }

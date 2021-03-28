@@ -233,17 +233,16 @@ go build -v -tags `gtk` -o demo.exe -i main.go
 #### 方法
 1. 前往[releases](https://github.com/qydysky/bili_danmu/releases)页下载对应系统版本。解压后进入`demo`目录(文件夹)，运行`demo.run`(`demo.exe`)。
 ```
-./demo.run [-q 清晰度 -r 房间ID]
+./demo.run [-r 房间ID]
 ```
 
 2. clone本项目。进入`demo`目录(文件夹)，运行：
 ```
-go run [-tags "gtk"] main.go [-q 清晰度 -r 房间ID]
+go run [-tags "gtk"] main.go [-r 房间ID]
 ```
 
 #### 注意事项
 * 其中[]内的内容为可选项
-* 清晰度可取[数值](https://github.com/qydysky/bili_danmu/blob/cf52498a88e885fb66dbc94fb8652cb6fa35fb26/CV/Var.go#L37)
 * 法2的golang需1.15并建议使用最新提交
 * 弹幕及礼物会记录于danmu.log中
 * 部分功能(如获取小心心、签到、发送弹幕、获取原画等)**需要在`demo`目录(文件夹)下放置`cookie.txt`才可用** 或 **运行时按提示使用扫码登录成功后才可用(登录信息会保存在`demo/cookie.txt`中)**

@@ -201,15 +201,19 @@ var saveflv = Saveflv {
 
 //已go func形式调用，将会获取直播流
 func Saveflvf(){
-	if !IsOn("保存flv直播流") {return}
-	if saveflv.cancel.Islive() {return}
-
 	l := c.Log.Base(`saveflv`)
 
+	qn, ok := c.K_v.LoadV("flv直播流清晰度").(float64)
+	if !ok || qn < 0 {return}
+
+	c.Live_qn = int(qn)
+
+	if saveflv.cancel.Islive() {return}
+
 	cuLinkIndex := 0
-	api := F.New_api(c.Roomid)
-	for api.Get_live(c.Live_qn).Live_status == 1 {
-		c.Live = api.Live
+	for {
+		F.Get(`Live`)
+		if len(c.Live)==0 {break}
 
 		saveflv.path = strconv.Itoa(c.Roomid) + "_" + time.Now().Format("2006_01_02_15-04-05-000")
 
@@ -298,7 +302,9 @@ func Saveflvf(){
 
 //已func形式调用，将会停止保存直播流
 func Saveflv_wait(){
-	if !IsOn("保存flv直播流") {return}
+	qn, ok := c.K_v.LoadV("flv直播流清晰度").(float64)
+	if !ok || qn < 0 {return}
+
 	saveflv.cancel.Done()
 	c.Log.Base(`saveflv`).L(`I: `,"等待")
 	saveflv.wait.Wait()
