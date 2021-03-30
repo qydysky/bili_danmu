@@ -46,7 +46,6 @@ func Cmd() {
 				if len(inputs) > 5 {
 					if room,ok := liveList[inputs];ok{
 						c.Roomid = room
-						cmdlog.L(`I: `, "进入房间",room)
 						c.Danmu_Main_mq.Push_tag(`change_room`,nil)
 						continue
 					}

@@ -14,6 +14,7 @@ var msglog = c.Log.Base(`Msg`)
 
 //Msg类型数据处理方法map
 var Msg_map = map[string]func(replyF, string) {
+	`VTR_GIFT_LOTTERY`:replyF.vtr_gift_lottery,//特别礼物
 	`ENTRY_EFFECT_MUST_RECEIVE`:nil,//高能榜前三进入
 	`GIFT_BAG_DOT`:nil,
 	`LITTLE_MESSAGE_BOX`:replyF.little_message_box,//小消息

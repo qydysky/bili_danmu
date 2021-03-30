@@ -227,6 +227,9 @@ func Saveflvf(){
 
 	cuLinkIndex := 0
 	for {
+		F.Get(`Liveing`)
+		if !c.Liveing {break}
+		
 		F.Get(`Live`)
 		if len(c.Live)==0 {break}
 
@@ -268,6 +271,7 @@ func Saveflvf(){
 				saveflv.cancel.Done()
 				cuLinkIndex += 1
 				if cuLinkIndex >= len(c.Live) {cuLinkIndex = 0}
+				time.Sleep(time.Second*5)
 				continue
 			}
 		}

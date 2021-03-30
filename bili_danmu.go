@@ -163,12 +163,8 @@ func Demo(roomid ...int) {
 		F.Get(`Silver_2_coin`)
 		//每日签到
 		F.Dosign()
-		//检查与切换粉丝牌，只在cookie存在时启用
-		F.Get(`CheckSwitch_FansMedal`)
 		//客户版本
 		F.Get(`VERSION`)
-		//小心心
-		go F.F_x25Kn()
 		//附加功能 保持牌子点亮
 		go reply.Keep_medal_light()
 		//附加功能 自动发送即将过期礼物
@@ -189,6 +185,14 @@ func Demo(roomid ...int) {
 				Cookie[k.(string)] = v.(string)
 				return true
 			})
+
+			F.Get(`Liveing`)
+			//直播状态
+			if c.Liveing {
+				danmulog.L(`I: `,"直播中")
+			} else {
+				danmulog.L(`I: `,"未直播")
+			}
 
 			//对每个弹幕服务器尝试
 			F.Get(`WSURL`)
@@ -283,6 +287,10 @@ func Demo(roomid ...int) {
 							go reply.Entry_danmu()
 							go reply.Saveflvf()
 							go reply.ShowRevf()
+							//检查与切换粉丝牌，只在cookie存在时启用
+							F.Get(`CheckSwitch_FansMedal`)
+							//小心心
+							go F.F_x25Kn()
 						}
 					}()
 				}

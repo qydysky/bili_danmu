@@ -62,8 +62,7 @@ func Get(key string) {
 			Html,
 		},
 		`Roomid`:[]func()([]string){//房间id
-			getInfoByRoom,
-			Html,
+			missRoomId,
 		},
 		`GuardNum`:[]func()([]string){//舰长数
 			Get_guardNum,
@@ -229,7 +228,7 @@ func Html() (missKey []string) {
 			//Roominitres
 			{
 				var j struct{
-					Roominitres J.Roominitres  `json:"roomInfoRes"`
+					Roominitres J.Roominitres  `json:"roomInitRes"`
 				}
 				if e := json.Unmarshal([]byte(s),&j);e != nil{
 					apilog.L(`E: `, e)
@@ -242,7 +241,9 @@ func Html() (missKey []string) {
 				//主播uid
 				c.UpUid = j.Roominitres.Data.UID
 				//房间号（完整）
-				c.Roomid = j.Roominitres.Data.RoomID
+				if j.Roominitres.Data.RoomID != 0 {
+					c.Roomid = j.Roominitres.Data.RoomID
+				}
 				//直播开始时间
 				c.Live_Start_Time = time.Unix(int64(j.Roominitres.Data.LiveTime),0)
 				//是否在直播
@@ -324,6 +325,11 @@ func Html() (missKey []string) {
 	return
 }
 
+func missRoomId() (missKey []string) {
+	apilog.Base_add(`missRoomId`).L(`E: `,`missRoomId`)
+	return
+}
+
 func getInfoByRoom() (missKey []string) {
 	apilog := apilog.Base_add(`getInfoByRoom`)
 
@@ -376,7 +382,9 @@ func getInfoByRoom() (missKey []string) {
 			//主播id
 			c.UpUid = j.Data.RoomInfo.UID
 			//房间id
-			c.Roomid = j.Data.RoomInfo.RoomID
+			if j.Data.RoomInfo.RoomID != 0 {
+				c.Roomid = j.Data.RoomInfo.RoomID
+			}
 			//舰长数
 			c.GuardNum = j.Data.GuardInfo.Count
 			//分区排行
@@ -447,7 +455,9 @@ func getRoomPlayInfo() (missKey []string) {
 		//主播uid
 		c.UpUid = j.Data.UID
 		//房间号（完整）
-		c.Roomid = j.Data.RoomID
+		if j.Data.RoomID != 0{
+			c.Roomid = j.Data.RoomID
+		}
 		//直播开始时间
 		c.Live_Start_Time = time.Unix(int64(j.Data.LiveTime),0)
 		//是否在直播
@@ -552,7 +562,9 @@ func getRoomPlayInfoByQn() (missKey []string) {
 		//主播uid
 		c.UpUid = j.Data.UID
 		//房间号（完整）
-		c.Roomid = j.Data.RoomID
+		if j.Data.RoomID != 0{
+			c.Roomid = j.Data.RoomID
+		}
 		//直播开始时间
 		c.Live_Start_Time = time.Unix(int64(j.Data.LiveTime),0)
 		//是否在直播
@@ -1277,8 +1289,8 @@ func CheckSwitch_FansMedal() (missKey []string) {
 			medal_id = v.Medal_id
 		}
 		if medal_id == 0 {//无牌
+			apilog.L(`I: `,`无主播粉丝牌`)
 			if c.Wearing_FansMedal == 0 {//当前没牌
-				apilog.L(`I: `,`当前无粉丝牌，不切换`)
 				return
 			}
 		}

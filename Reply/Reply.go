@@ -64,6 +64,24 @@ func (replyF) defaultMsg(s string){
 	msglog.Base_add("Unknow").L(`E: `, s)
 }
 
+//msg-特别礼物
+func (replyF) vtr_gift_lottery(s string){
+	msglog := msglog.Base_add("特别礼物")
+	var j ws_msg.VTR_GIFT_LOTTERY
+	if e := json.Unmarshal([]byte(s), &j);e != nil{
+		msglog.L(`E: `, e)
+		return
+	}
+	{//语言tts
+		c.Danmu_Main_mq.Push_tag(`tts`,Danmu_mq_t{
+			uid:`0room`,
+			msg:fmt.Sprint(j.Data.InteractMsg),
+		})
+	}
+	Gui_show(j.Data.InteractMsg,`0room`)
+	msglog.L(`I`, j.Data.InteractMsg)
+}
+
 //msg-直播间进入信息，此处用来提示关注
 func (replyF) interact_word(s string){
 	msg_type := p.Json().GetValFromS(s, "data.msg_type");
