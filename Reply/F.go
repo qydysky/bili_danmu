@@ -221,7 +221,22 @@ func Saveflvf(){
 	qn, ok := c.K_v.LoadV("flv直播流清晰度").(float64)
 	if !ok || qn < 0 {return}
 
-	c.Live_qn = int(qn)
+	{
+		AcceptQn := []int{}
+		for k,_ := range c.AcceptQn {
+			if k <= int(qn) {AcceptQn = append(AcceptQn, k)}
+		}
+		MaxQn := 0
+		for i:=0; len(AcceptQn)>i; i+=1{
+			if AcceptQn[i] > MaxQn {
+				MaxQn = AcceptQn[i]
+			}
+		}
+		if MaxQn == 0 {
+			l.L(`W: `,"使用默认清晰度")
+		}
+		c.Live_qn = MaxQn
+	}
 
 	if saveflv.cancel.Islive() {return}
 
@@ -229,7 +244,7 @@ func Saveflvf(){
 	for {
 		F.Get(`Liveing`)
 		if !c.Liveing {break}
-		
+
 		F.Get(`Live`)
 		if len(c.Live)==0 {break}
 

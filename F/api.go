@@ -600,7 +600,12 @@ func getRoomPlayInfoByQn() (missKey []string) {
 				}
 			}
 		}
-		apilog.L(`I: `,c.AcceptQn[c.Live_qn])
+		if s,ok := c.AcceptQn[c.Live_qn];!ok{
+			apilog.L(`W: `, `未知清晰度`, c.Live_qn)
+		} else {
+			apilog.L(`I: `, s)
+
+		}
 
 	}
 	return
