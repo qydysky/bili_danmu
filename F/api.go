@@ -180,6 +180,7 @@ func Get(key string) {
 		for _,fItem := range fList{
 			missKey := fItem()
 			if len(missKey) > 0 {
+				apilog.L(`T: `,`missKey when get`,key,missKey)
 				for _,misskeyitem := range missKey{
 					if checkf,ok := check[misskeyitem];ok && checkf() {
 						continue
@@ -201,6 +202,36 @@ func Get(key string) {
 			}
 		}
 	}
+}
+
+func Info(UpUid int) (info J.Info) {
+	apilog := apilog.Base_add(`Info`)
+	if api_limit.TO() {return}//超额请求阻塞，超时将取消
+
+	//html
+	{
+		req := p.Req()
+		if err := req.Reqf(p.Rval{
+			Url:`https://api.bilibili.com/x/space/acc/info?mid=`+strconv.Itoa(UpUid)+`&jsonp=jsonp`,
+			Timeout:10,
+			Retry:2,
+		});err != nil {
+			apilog.L(`E: `,err)
+			return
+		}
+
+		//Info
+		{
+			if e := json.Unmarshal(req.Respon,&info);e != nil{
+				apilog.L(`E: `, e)
+				return
+			} else if info.Code != 0 {
+				apilog.L(`E: `, info.Message)
+				return
+			}
+		}
+	}
+	return
 }
 
 func Html() (missKey []string) {
@@ -415,8 +446,6 @@ func getRoomPlayInfo() (missKey []string) {
 		missKey = append(missKey, `LIVE_BUVID`)
 	}
 	if len(missKey) > 0 {return}
-
-	
 	
 	Roomid := strconv.Itoa(c.Roomid)
 	
@@ -622,8 +651,6 @@ func getDanmuInfo() (missKey []string) {
 	}
 	if len(missKey) > 0 {return}
 
-	
-	
 	Roomid := strconv.Itoa(c.Roomid)
 	
 	//GetDanmuInfo
@@ -722,8 +749,6 @@ func Get_HotRank() (missKey []string) {
 	}
 	if len(missKey) > 0 {return}
 
-	
-	
 	Roomid := strconv.Itoa(c.Roomid)
 	
 	//getHotRank
@@ -792,8 +817,6 @@ func Get_guardNum() (missKey []string) {
 		missKey = append(missKey, `LIVE_BUVID`)
 	}
 	if len(missKey) > 0 {return}
-	
-	
 
 	Roomid := strconv.Itoa(c.Roomid)
 	
@@ -1258,7 +1281,6 @@ func CheckSwitch_FansMedal() (missKey []string) {
 	if len(missKey) > 0 {
 		return
 	}
-
 	
 	apilog := apilog.Base_add(`切换粉丝牌`)
 	//验证cookie
@@ -1457,7 +1479,7 @@ func Dosign() {
 //LIVE_BUVID
 func Get_LIVE_BUVID() (missKey []string) {
 	apilog := apilog.Base_add(`LIVE_BUVID`).L(`T: `,`获取`)
-
+	
 	if live_buvid,ok := c.Cookie.LoadV(`LIVE_BUVID`).(string);ok && live_buvid != `` {
 		apilog.L(`T: `,`存在`)
 		c.LIVE_BUVID = true
@@ -1654,7 +1676,7 @@ func F_x25Kn() {
 		for loop_num < (24+2)*5 {
 			loop_num += 1
 			//查看今天小心心数量
-			if loop_num%5 == 0 {//每5min
+			if loop_num > 5 && loop_num%5 == 2 {//5min后每5min
 				{//查看今天小心心数量
 					var num = 0
 					for _,v := range Gift_list() {

@@ -8,7 +8,6 @@ import (
 	"time"
 	"fmt"
 
-	p "github.com/qydysky/part"
 	send "github.com/qydysky/bili_danmu/Send"
 	c "github.com/qydysky/bili_danmu/CV"
 )
@@ -90,24 +89,14 @@ func Cmd() {
 					cmdlog.L(`W: `, "输入长度过短", inputs)
 					continue
 				}
-				Cookie := make(map[string]string)
-				c.Cookie.Range(func(k,v interface{})(bool){
-					Cookie[k.(string)] = v.(string)
-					return true
-				})
-				send.Danmu_s(inputs[1:], p.Map_2_Cookies_String(Cookie),c.Roomid)
+				send.Danmu_s(inputs[1:], c.Roomid)
 			}
 		} else if room,err := strconv.Atoi(inputs);err == nil {//直接进入房间
 			c.Roomid = room
 			cmdlog.L(`I: `, "进入房间",room)
 			c.Danmu_Main_mq.Push_tag(`change_room`,nil)
 		} else {//其余字符串
-			Cookie := make(map[string]string)
-			c.Cookie.Range(func(k,v interface{})(bool){
-				Cookie[k.(string)] = v.(string)
-				return true
-			})
-			send.Danmu_s(inputs, p.Map_2_Cookies_String(Cookie),c.Roomid)
+			send.Danmu_s(inputs, c.Roomid)
 		}
 	}
 }

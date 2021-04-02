@@ -732,12 +732,7 @@ func Msg_senddanmu(msg string){
 		msglog.L(`E: `,`c.Roomid == 0 || Cookie无Key:`,missKey)
 		return
 	}
-	Cookie := make(map[string]string)
-	c.Cookie.Range(func(k,v interface{})(bool){
-		Cookie[k.(string)] = v.(string)
-		return true
-	})
-	send.Danmu_s(msg, p.Map_2_Cookies_String(Cookie), c.Roomid)
+	send.Danmu_s(msg, c.Roomid)
 }
 
 //弹幕显示

@@ -779,12 +779,7 @@ func Entry_danmu(){
 		}
 	}
 	if s,ok := c.K_v.LoadV(`进房弹幕_内容`).(string);ok && s != ``{
-		Cookie := make(map[string]string)
-		c.Cookie.Range(func(k,v interface{})(bool){
-			Cookie[k.(string)] = v.(string)
-			return true
-		})
-		send.Danmu_s(s,p.Map_2_Cookies_String(Cookie),c.Roomid)
+		send.Danmu_s(s, c.Roomid)
 	}
 }
 
@@ -801,21 +796,27 @@ func Keep_medal_light() {
 		return
 	} else {sendStr = s}
 
-	Cookie := make(map[string]string)
-	c.Cookie.Range(func(k,v interface{})(bool){
-		Cookie[k.(string)] = v.(string)
-		return true
-	})
-
 	flog.L(`T: `,`开始`)
 
 	for _,v := range F.Get_list_in_room() {
 		if t := int64(v.Last_wear_time) - time.Now().Unix();t > 60*60*24*2 || t < 0{continue}//到期时间在2天以上或已过期
 
+		info := F.Info(v.Target_id)
 		//两天内到期，发弹幕续期
-		send.Danmu_s(sendStr,p.Map_2_Cookies_String(Cookie),v.Room_id)
+		send.Danmu_s(sendStr, info.Data.LiveRoom.Roomid)
 		time.Sleep(time.Second)
 	}
+
+	//recheck
+	for _,v := range F.Get_list_in_room() {
+		if t := int64(v.Last_wear_time) - time.Now().Unix();t > 60*60*24*2 || t < 0{continue}//到期时间在2天以上或已过期
+
+		info := F.Info(v.Target_id)
+		//两天内到期，发弹幕续期，使用随机字符
+		send.Danmu_s(sendStr+p.Stringf().Rand(2,2),info.Data.LiveRoom.Roomid)
+		time.Sleep(time.Second)
+	}
+
 	flog.L(`I: `,`完成`)
 }
 
@@ -828,7 +829,7 @@ func AutoSend_silver_gift() {
 
 	flog := flog.Base_add(`自动送礼`).L(`T: `,`开始`)
 
-	F.Get(`UpUid`)
+	if c.UpUid == 0 {F.Get(`UpUid`)}
 
 	for _,v := range F.Gift_list() {
 		if time.Now().Add(time.Hour * time.Duration(24 * int(day))).Unix() > int64(v.Expire_at) {
