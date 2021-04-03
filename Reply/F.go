@@ -769,12 +769,19 @@ func Save_to_json(Loc int,Context []interface{}) {
 
 //进入房间发送弹幕
 func Entry_danmu(){
+	flog := flog.Base_add(`进房弹幕`)
+
+	//检查与切换粉丝牌，只在cookie存在时启用
+	F.Get(`CheckSwitch_FansMedal`)
+	
 	if v,_ := c.K_v.LoadV(`进房弹幕_有粉丝牌时才发`).(bool);v && c.Wearing_FansMedal == 0{
+		flog.L(`T: `,`无粉丝牌`)
 		return
 	}
 	if v,_ := c.K_v.LoadV(`进房弹幕_仅发首日弹幕`).(bool);v {
 		res := F.Get_weared_medal()
 		if res.Today_intimacy > 0 {
+			flog.L(`T: `,`今日已发弹幕`)
 			return
 		}
 	}

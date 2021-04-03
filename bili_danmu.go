@@ -75,6 +75,7 @@ func Demo(roomid ...int) {
 				c.Note = ``//分区排行
 				c.Uname = ``//主播id
 				c.Title = ``
+				c.Wearing_FansMedal = 0
 				reply.Saveflv_wait()//停止保存直播流
 				for len(change_room_chan) != 0 {<-change_room_chan}
 				change_room_chan <- struct{}{}
@@ -187,6 +188,9 @@ func Demo(roomid ...int) {
 			})
 
 			F.Get(`Liveing`)
+			//检查与切换粉丝牌，只在cookie存在时启用
+			F.Get(`CheckSwitch_FansMedal`)
+
 			//直播状态
 			if c.Liveing {
 				danmulog.L(`I: `,"直播中")
@@ -287,8 +291,6 @@ func Demo(roomid ...int) {
 							go reply.Entry_danmu()
 							go reply.Saveflvf()
 							go reply.ShowRevf()
-							//检查与切换粉丝牌，只在cookie存在时启用
-							F.Get(`CheckSwitch_FansMedal`)
 							//小心心
 							go F.F_x25Kn()
 						}
