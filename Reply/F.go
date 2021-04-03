@@ -332,7 +332,7 @@ func Saveflv_wait(){
 	if !ok || qn < 0 {return}
 
 	saveflv.cancel.Done()
-	c.Log.Base(`saveflv`).L(`I: `,"等待")
+	c.Log.Base(`saveflv`).L(`T: `,"等待")
 	saveflv.wait.Wait()
 }
 
@@ -805,8 +805,11 @@ func Keep_medal_light() {
 
 	flog.L(`T: `,`开始`)
 
+	var hasKeep bool
 	for _,v := range F.Get_list_in_room() {
 		if t := int64(v.Last_wear_time) - time.Now().Unix();t > 60*60*24*2 || t < 0{continue}//到期时间在2天以上或已过期
+
+		hasKeep = true
 
 		info := F.Info(v.Target_id)
 		//两天内到期，发弹幕续期
@@ -824,7 +827,11 @@ func Keep_medal_light() {
 		time.Sleep(time.Second)
 	}
 
-	flog.L(`I: `,`完成`)
+	if hasKeep {
+		flog.L(`I: `,`完成`)
+	} else {
+		flog.L(`T: `,`完成`)
+	}
 }
 
 //自动发送即将过期的银瓜子礼物
@@ -838,10 +845,18 @@ func AutoSend_silver_gift() {
 
 	if c.UpUid == 0 {F.Get(`UpUid`)}
 
+	var hasSend bool
+
 	for _,v := range F.Gift_list() {
 		if time.Now().Add(time.Hour * time.Duration(24 * int(day))).Unix() > int64(v.Expire_at) {
+			hasSend = true
 			send.Send_gift(v.Gift_id, v.Bag_id, v.Gift_num)
 		}
 	}
-	flog.L(`I: `,`完成`)
+
+	if hasSend {
+		flog.L(`I: `,`完成`)
+	} else {
+		flog.L(`T: `,`完成`)
+	}
 }
