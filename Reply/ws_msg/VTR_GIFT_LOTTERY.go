@@ -1,13 +1,17 @@
 package part
 
 type VTR_GIFT_LOTTERY struct {
-	Cmd string `json:"cmd"`
+	Cmd  string `json:"cmd"`
 	Data struct {
-		Dark_highlight_col int `json:"dark_highlight_col"`
-        Highlight_col int `json:"highlight_col"`
-        Interact_msg int `json:"interact_msg"`
-        Room_id string `json:"room_id"`
-    	Toast_msg int `json:"toast_msg"`
+		ActName          string `json:"act_name"`
+		AwardUsername    string `json:"award_username"`
+		InteractMsg      string `json:"interact_msg"`
+		ToastMsg         string `json:"toast_msg"`
+		RoomID           int    `json:"room_id"`
+		UID              int    `json:"uid"`
+		HighlightCol     string `json:"highlight_col"`
+		DarkHighlightCol string `json:"dark_highlight_col"`
+		LotteryID        string `json:"lottery_id"`
 	} `json:"data"`
 }
 /*

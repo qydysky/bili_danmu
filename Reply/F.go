@@ -1,7 +1,6 @@
 package reply
 
 import (
-	"os"
 	"fmt"
 	"strconv"
 	"strings"
@@ -23,6 +22,7 @@ import (
 /*
 	F额外功能区
 */
+var flog = c.Log.Base(`功能`)
 
 //功能开关选取函数
 func IsOn(s string) bool {
@@ -198,17 +198,54 @@ type Saveflv struct {
 var saveflv = Saveflv {
 }
 
+func init(){
+	//使用带tag的消息队列在功能间传递消息
+	c.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
+		`saveflv`:func(data interface{})(bool){//舰长更新
+			if saveflv.cancel.Islive() {
+				Saveflv_wait()
+			} else {
+				go Saveflvf()
+			}
+
+			return false
+		},
+	})
+}
+
 //已go func形式调用，将会获取直播流
 func Saveflvf(){
-	if !IsOn("保存flv直播流") {return}
-	if saveflv.cancel.Islive() {return}
-
 	l := c.Log.Base(`saveflv`)
 
+	qn, ok := c.K_v.LoadV("flv直播流清晰度").(float64)
+	if !ok || qn < 0 {return}
+
+	{
+		AcceptQn := []int{}
+		for k,_ := range c.AcceptQn {
+			if k <= int(qn) {AcceptQn = append(AcceptQn, k)}
+		}
+		MaxQn := 0
+		for i:=0; len(AcceptQn)>i; i+=1{
+			if AcceptQn[i] > MaxQn {
+				MaxQn = AcceptQn[i]
+			}
+		}
+		if MaxQn == 0 {
+			l.L(`W: `,"使用默认清晰度")
+		}
+		c.Live_qn = MaxQn
+	}
+
+	if saveflv.cancel.Islive() {return}
+
 	cuLinkIndex := 0
-	api := F.New_api(c.Roomid)
-	for api.Get_live(c.Live_qn).Live_status == 1 {
-		c.Live = api.Live
+	for {
+		F.Get(`Liveing`)
+		if !c.Liveing {break}
+
+		F.Get(`Live`)
+		if len(c.Live)==0 {break}
 
 		saveflv.path = strconv.Itoa(c.Roomid) + "_" + time.Now().Format("2006_01_02_15-04-05-000")
 
@@ -219,7 +256,6 @@ func Saveflvf(){
 		go func(){
 			saveflv.cancel.Wait()
 			rr.Close()
-			os.Rename(saveflv.path+".flv.dtmp", saveflv.path+".flv")
 		}()
 
 
@@ -228,14 +264,6 @@ func Saveflvf(){
 			CookieM[k.(string)] = v.(string)
 			return true
 		})
-		Cookie := p.Map_2_Cookies_String(CookieM)
-		if i := strings.Index(Cookie, "PVID="); i != -1 {
-			if d := strings.Index(Cookie[i:], ";"); d == -1 {
-				Cookie = Cookie[:i]
-			} else {
-				Cookie = Cookie[:i] + Cookie[i + d + 1:]
-			}
-		}
 
 		{//重试
 			l.L(`I: `,"尝试连接live")
@@ -244,7 +272,7 @@ func Saveflvf(){
 				Retry:10,
 				SleepTime:5,
 				Header:map[string]string{
-					`Cookie`:Cookie,
+					`Cookie`:p.Map_2_Cookies_String(CookieM),
 				},
 				Timeout:5,
 				JustResponseCode:true,
@@ -256,6 +284,7 @@ func Saveflvf(){
 				saveflv.cancel.Done()
 				cuLinkIndex += 1
 				if cuLinkIndex >= len(c.Live) {cuLinkIndex = 0}
+				time.Sleep(time.Second*5)
 				continue
 			}
 		}
@@ -268,7 +297,7 @@ func Saveflvf(){
 			Retry:10,
 			SleepTime:5,
 			Header:map[string]string{
-				`Cookie`:Cookie,
+				`Cookie`:p.Map_2_Cookies_String(CookieM),
 			},
 			SaveToPath:saveflv.path + ".flv",
 			Timeout:-1,
@@ -276,6 +305,7 @@ func Saveflvf(){
 
 		l.L(`I: `,"结束")
 		Ass_f("", time.Now())//ass
+		p.FileMove(saveflv.path+".flv.dtmp", saveflv.path+".flv")
 		if !saveflv.cancel.Islive() {break}//cancel
 		/*
 			Saveflv需要外部组件
@@ -297,9 +327,11 @@ func Saveflvf(){
 
 //已func形式调用，将会停止保存直播流
 func Saveflv_wait(){
-	if !IsOn("保存flv直播流") {return}
+	qn, ok := c.K_v.LoadV("flv直播流清晰度").(float64)
+	if !ok || qn < 0 {return}
+
 	saveflv.cancel.Done()
-	c.Log.Base(`saveflv`).L(`I: `,"等待")
+	c.Log.Base(`saveflv`).L(`T: `,"等待")
 	saveflv.wait.Wait()
 }
 
@@ -736,15 +768,94 @@ func Save_to_json(Loc int,Context []interface{}) {
 
 //进入房间发送弹幕
 func Entry_danmu(){
+	flog := flog.Base_add(`进房弹幕`)
+
+	//检查与切换粉丝牌，只在cookie存在时启用
+	F.Get(`CheckSwitch_FansMedal`)
+	
 	if v,_ := c.K_v.LoadV(`进房弹幕_有粉丝牌时才发`).(bool);v && c.Wearing_FansMedal == 0{
+		flog.L(`T: `,`无粉丝牌`)
 		return
 	}
+	if v,_ := c.K_v.LoadV(`进房弹幕_仅发首日弹幕`).(bool);v {
+		res := F.Get_weared_medal()
+		if res.Today_intimacy > 0 {
+			flog.L(`T: `,`今日已发弹幕`)
+			return
+		}
+	}
 	if s,ok := c.K_v.LoadV(`进房弹幕_内容`).(string);ok && s != ``{
-		Cookie := make(map[string]string)
-		c.Cookie.Range(func(k,v interface{})(bool){
-			Cookie[k.(string)] = v.(string)
-			return true
-		})
-		send.Danmu_s(s,p.Map_2_Cookies_String(Cookie),c.Roomid)
+		send.Danmu_s(s, c.Roomid)
+	}
+}
+
+//保持所有牌子点亮
+func Keep_medal_light() {
+	if v,_ := c.K_v.LoadV(`保持牌子亮着`).(bool);!v {
+		return
+	}
+	flog := flog.Base_add(`保持亮牌`)
+
+	var sendStr string
+	if s,ok := c.K_v.LoadV(`进房弹幕_内容`).(string);!ok || s == ``{
+		flog.L(`I: `,`进房弹幕_内容 为 空，退出`)
+		return
+	} else {sendStr = s}
+
+	flog.L(`T: `,`开始`)
+
+	var hasKeep bool
+	for _,v := range F.Get_list_in_room() {
+		if t := int64(v.Last_wear_time) - time.Now().Unix();t > 60*60*24*2 || t < 0{continue}//到期时间在2天以上或已过期
+
+		hasKeep = true
+
+		info := F.Info(v.Target_id)
+		//两天内到期，发弹幕续期
+		send.Danmu_s(sendStr, info.Data.LiveRoom.Roomid)
+		time.Sleep(time.Second)
+	}
+
+	//recheck
+	for _,v := range F.Get_list_in_room() {
+		if t := int64(v.Last_wear_time) - time.Now().Unix();t > 60*60*24*2 || t < 0{continue}//到期时间在2天以上或已过期
+
+		info := F.Info(v.Target_id)
+		//两天内到期，发弹幕续期，使用随机字符
+		send.Danmu_s(sendStr+p.Stringf().Rand(2,2),info.Data.LiveRoom.Roomid)
+		time.Sleep(time.Second)
+	}
+
+	if hasKeep {
+		flog.L(`I: `,`完成`)
+	} else {
+		flog.L(`T: `,`完成`)
+	}
+}
+
+//自动发送即将过期的银瓜子礼物
+func AutoSend_silver_gift() {
+	day,_ := c.K_v.LoadV(`发送还有几天过期的礼物`).(float64)
+	if day <= 0 {
+		return
+	}
+
+	flog := flog.Base_add(`自动送礼`).L(`T: `,`开始`)
+
+	if c.UpUid == 0 {F.Get(`UpUid`)}
+
+	var hasSend bool
+
+	for _,v := range F.Gift_list() {
+		if time.Now().Add(time.Hour * time.Duration(24 * int(day))).Unix() > int64(v.Expire_at) {
+			hasSend = true
+			send.Send_gift(v.Gift_id, v.Bag_id, v.Gift_num)
+		}
+	}
+
+	if hasSend {
+		flog.L(`I: `,`完成`)
+	} else {
+		flog.L(`T: `,`完成`)
 	}
 }

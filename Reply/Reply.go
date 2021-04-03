@@ -64,6 +64,24 @@ func (replyF) defaultMsg(s string){
 	msglog.Base_add("Unknow").L(`E: `, s)
 }
 
+//msg-特别礼物
+func (replyF) vtr_gift_lottery(s string){
+	msglog := msglog.Base_add("特别礼物")
+	var j ws_msg.VTR_GIFT_LOTTERY
+	if e := json.Unmarshal([]byte(s), &j);e != nil{
+		msglog.L(`E: `, e)
+		return
+	}
+	{//语言tts
+		c.Danmu_Main_mq.Push_tag(`tts`,Danmu_mq_t{
+			uid:`0room`,
+			msg:fmt.Sprint(j.Data.InteractMsg),
+		})
+	}
+	Gui_show(j.Data.InteractMsg,`0room`)
+	msglog.L(`I`, j.Data.InteractMsg)
+}
+
 //msg-直播间进入信息，此处用来提示关注
 func (replyF) interact_word(s string){
 	msg_type := p.Json().GetValFromS(s, "data.msg_type");
@@ -714,12 +732,7 @@ func Msg_senddanmu(msg string){
 		msglog.L(`E: `,`c.Roomid == 0 || Cookie无Key:`,missKey)
 		return
 	}
-	Cookie := make(map[string]string)
-	c.Cookie.Range(func(k,v interface{})(bool){
-		Cookie[k.(string)] = v.(string)
-		return true
-	})
-	send.Danmu_s(msg, p.Map_2_Cookies_String(Cookie), c.Roomid)
+	send.Danmu_s(msg, c.Roomid)
 }
 
 //弹幕显示

@@ -60,7 +60,7 @@ func init() {
 	
 		//初始化web服务器，初始化websocket
 		server()
-		wslog.L(`I: `,`启动`)
+		wslog.L(`T: `,`启动`)
 	}()
 }
 
@@ -90,7 +90,7 @@ func server() {
 				return false
 			},
 			`error`:func(data interface{})(bool){//websocket错误
-				wslog.L(`E: `,data)
+				wslog.L(`W: `, data)
 				return false
 			},
 		})
