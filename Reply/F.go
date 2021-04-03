@@ -1,7 +1,6 @@
 package reply
 
 import (
-	"os"
 	"fmt"
 	"strconv"
 	"strings"
@@ -257,7 +256,7 @@ func Saveflvf(){
 		go func(){
 			saveflv.cancel.Wait()
 			rr.Close()
-			os.Rename(saveflv.path+".flv.dtmp", saveflv.path+".flv")
+			p.FileMove(saveflv.path+".flv.dtmp", saveflv.path+".flv")
 		}()
 
 
