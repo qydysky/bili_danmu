@@ -256,7 +256,6 @@ func Saveflvf(){
 		go func(){
 			saveflv.cancel.Wait()
 			rr.Close()
-			p.FileMove(saveflv.path+".flv.dtmp", saveflv.path+".flv")
 		}()
 
 
@@ -306,6 +305,7 @@ func Saveflvf(){
 
 		l.L(`I: `,"结束")
 		Ass_f("", time.Now())//ass
+		p.FileMove(saveflv.path+".flv.dtmp", saveflv.path+".flv")
 		if !saveflv.cancel.Islive() {break}//cancel
 		/*
 			Saveflv需要外部组件

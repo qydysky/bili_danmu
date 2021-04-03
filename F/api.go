@@ -30,6 +30,12 @@ func Get(key string) {
 	if api_limit.TO() {return}//超额请求阻塞，超时将取消
 
 	var api_can_get = map[string][]func()([]string){
+		`Cookie`:[]func()([]string){//Cookie
+			Get_cookie,
+		},
+		`Uid`:[]func()([]string){//用戶uid
+			GetUid,
+		},
 		`UpUid`:[]func()([]string){//主播uid
 			getInfoByRoom,
 			getRoomPlayInfo,
@@ -113,6 +119,9 @@ func Get(key string) {
 		},
 	}
 	var check = map[string]func()(bool){
+		`Uid`:func()(bool){//用戶uid
+			return c.Uid != 0
+		},
 		`UpUid`:func()(bool){//主播uid
 			return c.UpUid != 0
 		},
@@ -174,6 +183,9 @@ func Get(key string) {
 		`CheckSwitch_FansMedal`:func()(bool){//切换粉丝牌
 			return true
 		},
+		`Cookie`:func()(bool){//Cookie
+			return true
+		},
 	}
 
 	if fList,ok := api_can_get[key];ok{
@@ -202,6 +214,17 @@ func Get(key string) {
 			}
 		}
 	}
+}
+
+func GetUid() (missKey []string) {
+	if uid,ok := c.Cookie.LoadV(`DedeUserID`).(string);!ok{//cookie中无DedeUserID
+		missKey = append(missKey, `Cookie`)
+	} else if uid,e := strconv.Atoi(uid);e != nil{
+		missKey = append(missKey, `Cookie`)
+	} else {
+		c.Uid = uid
+	}
+	return
 }
 
 func Info(UpUid int) (info J.Info) {
@@ -935,10 +958,25 @@ func Get_Version() (missKey []string) {
 var boot_Get_cookie funcCtrl.FlashFunc//新的替代旧的
 
 //扫码登录
-func Get_cookie() {
-	
+func Get_cookie() (missKey []string) {
+	if v,ok := c.K_v.LoadV(`扫码登录`).(bool);!ok || !v {return}
+
 	apilog := apilog.Base_add(`获取Cookie`)
 	
+	if p.Checkfile().IsExist("cookie.txt") {//读取cookie文件
+		if cookieString := string(CookieGet());cookieString != ``{
+			for k,v := range p.Cookies_String_2_Map(cookieString){//cookie存入全局变量syncmap
+				c.Cookie.Store(k, v)
+			}
+			if miss := CookieCheck([]string{
+				`bili_jct`,
+				`DedeUserID`,
+			});len(miss) == 0 {
+				return
+			}
+		}
+	}
+
 	//获取id
 	id := boot_Get_cookie.Flash()
 	defer boot_Get_cookie.UnFlash()
@@ -1112,6 +1150,7 @@ func Get_cookie() {
 			return
 		}
 	}
+	return
 }
 
 //短信登录
