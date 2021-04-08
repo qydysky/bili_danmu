@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
+	"errors"
 
 	"github.com/skratchdot/open-golang/open"
 	qr "github.com/skip2/go-qrcode"
@@ -1657,8 +1658,6 @@ func F_x25Kn() {
 	}
 
 	{//初始化
-		//新调用，此退出
-		if boot_F_x25Kn.NeedExit(id) {return}
 
 		PostStr := `id=[`+strconv.Itoa(c.ParentAreaID)+`,`+strconv.Itoa(c.AreaID)+`,`+strconv.Itoa(loop_num)+`,`+strconv.Itoa(c.Roomid)+`]&`
 		PostStr += `device=["`+LIVE_BUVID+`","`+new_uuid+`"]&`
@@ -1676,28 +1675,39 @@ func F_x25Kn() {
 		})
 
 		req := p.Req()
-		if err := req.Reqf(p.Rval{
-			Url:`https://live-trace.bilibili.com/xlive/data-interface/v1/x25Kn/E`,
-			Header:map[string]string{
-				`Host`: `api.live.bilibili.com`,
-				`User-Agent`: `Mozilla/5.0 (X11; Linux x86_64; rv:83.0) Gecko/20100101 Firefox/83.0`,
-				`Accept`: `application/json, text/plain, */*`,
-				`Content-Type`: `application/x-www-form-urlencoded`,
-				`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
-				`Accept-Encoding`: `gzip, deflate, br`,
-				`Origin`: `https://live.bilibili.com`,
-				`Connection`: `keep-alive`,
-				`Pragma`: `no-cache`,
-				`Cache-Control`: `no-cache`,
-				`Referer`:"https://live.bilibili.com/"+strconv.Itoa(c.Roomid),
-				`Cookie`:p.Map_2_Cookies_String(Cookie),
-			},
-			PostStr:url.PathEscape(PostStr),
-			Timeout:3,
-			Retry:2,
-		});err != nil {
-			apilog.L(`E: `,err)
-			return
+		for {
+			//新调用，此退出
+			if boot_F_x25Kn.NeedExit(id) {return}
+
+			if err := req.Reqf(p.Rval{
+				Url:`https://live-trace.bilibili.com/xlive/data-interface/v1/x25Kn/E`,
+				Header:map[string]string{
+					`Host`: `api.live.bilibili.com`,
+					`User-Agent`: `Mozilla/5.0 (X11; Linux x86_64; rv:83.0) Gecko/20100101 Firefox/83.0`,
+					`Accept`: `application/json, text/plain, */*`,
+					`Content-Type`: `application/x-www-form-urlencoded`,
+					`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
+					`Accept-Encoding`: `gzip, deflate, br`,
+					`Origin`: `https://live.bilibili.com`,
+					`Connection`: `keep-alive`,
+					`Pragma`: `no-cache`,
+					`Cache-Control`: `no-cache`,
+					`Referer`:"https://live.bilibili.com/"+strconv.Itoa(c.Roomid),
+					`Cookie`:p.Map_2_Cookies_String(Cookie),
+				},
+				PostStr:url.PathEscape(PostStr),
+				Timeout:3,
+				Retry:2,
+			});err != nil {
+				if !errors.Is(err, context.DeadlineExceeded) {
+					apilog.L(`E: `,err)
+					return
+				}
+				apilog.L(`W: `,`响应超时，1min后重试`)
+				time.Sleep(time.Minute)
+			} else {
+				break
+			}
 		}
 
 		if e := json.Unmarshal(req.Respon,&res);e != nil {
@@ -1795,6 +1805,11 @@ func F_x25Kn() {
 				Timeout:3,
 				Retry:2,
 			});err != nil {
+				if errors.Is(err, context.DeadlineExceeded) {
+					loop_num -= 1
+					apilog.L(`W: `,`响应超时，将重试`)
+					continue
+				}
 				apilog.L(`E: `,err)
 				return
 			}
@@ -2173,5 +2188,38 @@ func Feed_list() (Uplist []UpItem) {
 	}
 
 	apilog.L(`T: `,`完成`)
+	return
+}
+
+func GetHistory(Roomid_int int) (j J.GetHistory) {
+	apilog := apilog.Base_add(`GetHistory`)
+
+	Roomid := strconv.Itoa(Roomid_int)
+
+	{//使用其他api
+		req := p.Req()
+		if err := req.Reqf(p.Rval{
+			Url:"https://api.live.bilibili.com/xlive/web-room/v1/dM/gethistory?roomid=" + Roomid,
+			Header:map[string]string{
+				`Referer`:"https://live.bilibili.com/" + Roomid,
+			},
+			Timeout:10,
+			Retry:2,
+		});err != nil {
+			apilog.L(`E: `,err)
+			return
+		}
+
+		//GetHistory
+		{
+			if e := json.Unmarshal(req.Respon,&j);e != nil{
+				apilog.L(`E: `, e)
+				return
+			} else if j.Code != 0 {
+				apilog.L(`E: `, j.Message)
+				return
+			}
+		}
+	}
 	return
 }

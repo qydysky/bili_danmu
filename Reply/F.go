@@ -784,8 +784,9 @@ func Entry_danmu(){
 			return
 		}
 	}
-	if s,ok := c.K_v.LoadV(`进房弹幕_内容`).(string);ok && s != ``{
-		send.Danmu_s(s, c.Roomid)
+	if array,ok := c.K_v.LoadV(`进房弹幕_内容`).([]interface{});ok && len(array) != 0{
+		rand := p.Rand().MixRandom(0,int64(len(array)-1))
+		send.Danmu_s(array[rand].(string), c.Roomid)
 	}
 }
 
@@ -796,11 +797,11 @@ func Keep_medal_light() {
 	}
 	flog := flog.Base_add(`保持亮牌`)
 
-	var sendStr string
-	if s,ok := c.K_v.LoadV(`进房弹幕_内容`).(string);!ok || s == ``{
+	array,ok := c.K_v.LoadV(`进房弹幕_内容`).([]interface{})
+	if !ok || len(array) == 0{
 		flog.L(`I: `,`进房弹幕_内容 为 空，退出`)
 		return
-	} else {sendStr = s}
+	}
 
 	flog.L(`T: `,`开始`)
 
@@ -812,17 +813,29 @@ func Keep_medal_light() {
 
 		info := F.Info(v.Target_id)
 		//两天内到期，发弹幕续期
-		send.Danmu_s(sendStr, info.Data.LiveRoom.Roomid)
+		rand := p.Rand().MixRandom(0,int64(len(array)-1))
+		send.Danmu_s(array[rand].(string), info.Data.LiveRoom.Roomid)
 		time.Sleep(time.Second)
 	}
 
-	//recheck
+	//重试，使用历史弹幕
 	for _,v := range F.Get_list_in_room() {
 		if t := int64(v.Last_wear_time) - time.Now().Unix();t > 60*60*24*2 || t < 0{continue}//到期时间在2天以上或已过期
 
 		info := F.Info(v.Target_id)
-		//两天内到期，发弹幕续期，使用随机字符
-		send.Danmu_s(sendStr+p.Stringf().Rand(2,2),info.Data.LiveRoom.Roomid)
+		//两天内到期，发弹幕续期
+		var Str string
+		for _,v := range F.GetHistory(info.Data.LiveRoom.Roomid).Data.Room{
+			if v.Text != "" {
+				Str = v.Text
+				break
+			}
+		}
+		if Str == "" {
+			rand := p.Rand().MixRandom(0,int64(len(array)-1))
+			Str = array[rand].(string)
+		}
+		send.Danmu_s(Str,info.Data.LiveRoom.Roomid)
 		time.Sleep(time.Second)
 	}
 
