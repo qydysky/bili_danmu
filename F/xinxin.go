@@ -2,12 +2,14 @@ package F
 
 import (
 	"net/http"
+	"strconv"
 	"encoding/json"
     "time"
 	"github.com/skratchdot/open-golang/open"
 	websocket "github.com/qydysky/part/websocket"
 	msgq "github.com/qydysky/part/msgq"
 	web "github.com/qydysky/part/web"
+	p "github.com/qydysky/part"
 	c "github.com/qydysky/bili_danmu/CV"
 )
 
@@ -23,6 +25,7 @@ type R struct {
 	Benchmark string `json:"benchmark"`
 	Time int `json:"time"`
 	Ts int `json:"ts"`
+	Ua string `json:"ua"`
 }
 
 //发送的原始对象
@@ -44,6 +47,7 @@ var (
 	rec_chan = make(chan S,5)//收通道
 	webpath string//web地址,由于实时获取空闲端口，故将在稍后web启动后赋值
 	ws = websocket.New_server()//新建websocket实例
+	nodeJsUrl string
 )
 
 func init() {
@@ -59,7 +63,17 @@ func init() {
 		}
 	
 		//初始化web服务器，初始化websocket
-		server()
+		NodeJsUrl,ok := c.K_v.LoadV("小心心nodjs加密服务地址").(string)
+		if ok && NodeJsUrl != "" {
+			nodeJsUrl = NodeJsUrl
+			if test(0) {
+				wslog.L(`I: `,`使用NodeJs`,NodeJsUrl,`进行加密`)
+			} else {
+				wslog.L(`E: `,`发生错误！`)
+			}
+		} else {
+			server()
+		}
 		wslog.L(`T: `,`启动`)
 	}()
 }
@@ -120,37 +134,80 @@ func server() {
 func Wasm(maxloop int, uid uintptr,s RT) (o string) {//maxloop 超时重试
 	if maxloop <= 0 {return}
 
-	for try:=5;try > 0 && ws.Len() == 0;try-=1 {//没有从池中取出
-		open.Run(webpath)
-		wslog.L(`I: `,`浏览器打开`,webpath)
-		time.Sleep(time.Second*time.Duration(3))
-	}
+	{//nodejs
+		if nodeJsUrl != "" {
+			req := p.Req()
+			if err := req.Reqf(p.Rval{
+				Header:map[string]string{
+					`Content-Type`: `application/json`,
+				},
+				Url:nodeJsUrl,
+				PostStr:toNodeJsString(s),
+				Timeout:3,
+			});err != nil {
+				wslog.L(`E: `,err)
+				//重试时刷新时间
+				s.R.Ts = int(p.Sys().GetMTime())
+				o = Wasm(maxloop-1, uid, s)
+				return
+			}
 
-	b, e := json.Marshal(s)
-	if e != nil {
-		wslog.L(`E: `,e)
-	}
+			var res struct{
+				Code int `json:"code"`
+				S string `json:"s"`
+				Message string `json:"message"`
+			}
 
-	//获取websocket操作对象 发送
-	ws.Interface().Push_tag(`send`,websocket.Uinterface{
-		Id:uid,
-		Data:b,
-	})
-
-	for {
-		select {
-		case r :=<- rec_chan:
-			if r.Id != s.R.Id {break}//或许接收到之前的请求，校验Id字段
-			return r.S
-		case <- time.After(time.Second*time.Duration(3)):
-			wslog.L(`E: `,`超时！响应>1s，确认保持`,webpath,`开启`)
-			o = Wasm(maxloop-1, uid, s)
+			if e := json.Unmarshal(req.Respon, &res);e != nil {
+				wslog.L(`E: `,e)
+			} else if res.Code != 0 {
+				wslog.L(`E: `,res.Message)
+			} else {
+				o = res.S
+			}
 			return
+		}
+	}
+
+	{//web
+		b, e := json.Marshal(s)
+		if e != nil {
+			wslog.L(`E: `,e)
+		}
+
+		for try:=5;try > 0 && ws.Len() == 0;try-=1 {//没有从池中取出
+			open.Run(webpath)
+			wslog.L(`I: `,`浏览器打开`,webpath)
+			time.Sleep(time.Second*time.Duration(3))
+		}
+
+		//获取websocket操作对象 发送
+		ws.Interface().Push_tag(`send`,websocket.Uinterface{
+			Id:uid,
+			Data:b,
+		})
+
+		for {
+			select {
+			case r :=<- rec_chan:
+				if r.Id != s.R.Id {break}//或许接收到之前的请求，校验Id字段
+				return r.S
+			case <- time.After(time.Second*time.Duration(3)):
+				wslog.L(`E: `,`超时！响应>1s，确认保持`,webpath,`开启`)
+				//重试时刷新时间
+				s.R.Ts = int(p.Sys().GetMTime())
+				o = Wasm(maxloop-1, uid, s)
+				return
+			}
 		}
 	}
 }
 
 func Close(uid uintptr){
+	//nodejs不需要关闭
+	if nodeJsUrl != "" {
+		return
+	}
 	//获取websocket操作对象 关闭
 	ws.Interface().Push_tag(`close`,websocket.Uinterface{
 		Id:uid,
@@ -168,6 +225,7 @@ func test(uid uintptr) bool {
 		Benchmark: "seacasdgyijfhofiuxoannn",
 		Time: 60,
 		Ts: 1611836642190,
+		Ua:`Mozilla/5.0 (X11; Linux x86_64; rv:84.0) Gecko/20100101 Firefox/84.0`,
 		},
 		T: []int{2, 5, 1, 4},
 	});s != `e4249b7657c2d4a44955548eb814797d41ddd99bfdfa5974462b8c387d701b8c83898f6d7dde1772c67fad6a113d20c20e454be1d1627e7ea99617a8a1f99bd0` {
@@ -175,4 +233,21 @@ func test(uid uintptr) bool {
 		return false
 	}
 	return true
+}
+
+func toNodeJsString(r RT) (o string) {
+	o += `{"t":{"id":`
+	o += r.R.Id+`,`
+	o += `"device":`+r.R.Device+`,`
+	o += `"ets":`+strconv.Itoa(r.R.Ets)+`,`
+	o += `"benchmark":"`+r.R.Benchmark+`",`
+	o += `"time":`+strconv.Itoa(r.R.Time)+`,`
+	o += `"ts":`+strconv.Itoa(r.R.Ts)+`,`
+	o += `"ua":"`+r.R.Ua+`"},"r":[`
+	o += strconv.Itoa(r.T[0])+`,`
+	o += strconv.Itoa(r.T[1])+`,`
+	o += strconv.Itoa(r.T[2])+`,`
+	o += strconv.Itoa(r.T[3])
+	o += `]}`
+	return
 }

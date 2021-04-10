@@ -1763,6 +1763,7 @@ func F_x25Kn() {
 					Benchmark:res.Data.Secret_key,
 					Time:res.Data.Heartbeat_interval,
 					Ts:int(p.Sys().GetMTime()),
+					Ua:`Mozilla/5.0 (X11; Linux x86_64; rv:84.0) Gecko/20100101 Firefox/84.0`,
 				},
 				T:res.Data.Secret_rule,
 			}
@@ -1775,7 +1776,7 @@ func F_x25Kn() {
 			PostStr += `&ts=`+strconv.Itoa(rt_obj.R.Ts)
 			PostStr += `&is_patch=0&`
 			PostStr += `heart_beat=[]&`
-			PostStr += `ua=Mozilla/5.0 (X11; Linux x86_64; rv:84.0) Gecko/20100101 Firefox/84.0&`
+			PostStr += `ua=`+rt_obj.R.Ua+`&`
 			PostStr += `csrf_token=`+csrf+`&csrf=`+csrf+`&`
 			PostStr += `visit_id=`
 			

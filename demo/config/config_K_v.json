@@ -19,6 +19,8 @@
     "save_to_json": "",
     "get_xiao_xinxin-help": "获取小心心",
     "get_xiao_xinxin": true,
+    "小心心nodjs加密服务地址-help": "请查看项目README",
+    "小心心nodjs加密服务地址": "",
     "进房弹幕-help": "进入房间发送弹幕，似乎屏蔽了一些字符",
     "进房弹幕_内容": [
         "(｀・ω・´)",

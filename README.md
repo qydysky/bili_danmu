@@ -162,11 +162,27 @@ openssl genrsa -out private.pem 2048
 openssl rsa -in private.pem -pubout -out public.pem
 ```
 #### 小心心
-在登录后，可以自动获取小心心
+在登录后，可以自动获取小心心，获取小心心需要加密
 
-需要支持webassembly的浏览器(通常可以在bili直播间获得小心心的浏览器均可)
+加密方式：
+- 浏览器(默认)
 
+当`小心心nodjs加密服务地址`为空时启用，需要支持webassembly的浏览器(通常可以在bili直播间获得小心心的浏览器均可)  
 golang通过websocket与浏览器js进行通讯，在浏览器js调用bilibili的webassembly组件，对信息进行加密。最后返回加密字符串，并由golang进行获取请求。因此需要保持浏览器的相关标签页不被关闭。
+
+- NodeJs
+
+支持使用nodeJs服务来进行加密，在`config/config_K_v.json`配置。当`小心心nodjs加密服务地址`不为空(如Nodejs服务在本地`5200`端口启动：`http://127.0.0.1:5200/enc`)时，将使用此服务来进行加密。注意：加密失败将导致小心心获取退出。  
+nodejs小心心加密项目地址[lkeme/bilibili-pcheartbeat](https://github.com/lkeme/bilibili-pcheartbeat)。请自行配置启动。
+
+- golang?暂无
+
+至于为什么没有直接的golang实现，是因为查找资料一番后发现golang执行wasm是使用虚拟机。出于效率及平台普遍性的考量，故没使用，等相关项目更加完善在添加。
+
+相关项目
+
+- [mathetake/gasm](https://github.com/mathetake/gasm)
+- [wasmerio/wasmer-go](https://github.com/wasmerio/wasmer-go)
 
 #### 私信
 在登录后，可以使用私信
