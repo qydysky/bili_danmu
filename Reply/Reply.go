@@ -607,6 +607,9 @@ func (replyF) little_message_box(s string){
 	}
 	if type_item.Data.Msg != `` {
 		msglog.L(`I: `, type_item.Data.Msg)
+		if strings.Contains(type_item.Data.Msg,`小心心`) && strings.Contains(type_item.Data.Msg,`上限`) {
+				F.F_x25Kn_cancel()
+		}
 	}
 }
 

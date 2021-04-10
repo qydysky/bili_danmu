@@ -1601,6 +1601,12 @@ type E_json struct{
 //调用记录
 var boot_F_x25Kn funcCtrl.FlashFunc//新的替代旧的
 
+func F_x25Kn_cancel() {
+	apilog.Base_add(`小心心`).L(`T: `,`取消`)
+	boot_F_x25Kn.Flash()//获取函数调用会话id
+	boot_F_x25Kn.UnFlash()
+}
+
 func F_x25Kn() {
 	apilog := apilog.Base_add(`小心心`)
 	if c.Wearing_FansMedal == 0{apilog.L(`I: `,`无粉丝牌，不获取`);return}
@@ -1629,7 +1635,8 @@ func F_x25Kn() {
 		}
 		if num == 24 {
 			Close(0)//关闭全部（0）浏览器websocket连接
-			apilog.L(`I: `,`今天小心心已满！`);return
+			apilog.L(`I: `,`今天小心心已满！`)
+			return
 		} else {
 			apilog.L(`I: `,`今天已有`,num,`个小心心，开始获取`)
 			defer apilog.L(`T: `,`退出`)
@@ -1696,7 +1703,7 @@ func F_x25Kn() {
 					`Cookie`:p.Map_2_Cookies_String(Cookie),
 				},
 				PostStr:url.PathEscape(PostStr),
-				Timeout:3,
+				Timeout:5,
 				Retry:2,
 			});err != nil {
 				if !errors.Is(err, context.DeadlineExceeded) {
@@ -1735,7 +1742,8 @@ func F_x25Kn() {
 					}
 					if num == 24 {
 						Close(0)//关闭全部（0）浏览器websocket连接
-						apilog.L(`I: `,`今天小心心已满！`);return
+						apilog.L(`I: `,`今天小心心已满！`)
+						return
 					} else {
 						apilog.L(`I: `,`获取了今天的第`,num,`个小心心`)
 					}
@@ -1802,7 +1810,7 @@ func F_x25Kn() {
 					`Cookie`:p.Map_2_Cookies_String(Cookie),
 				},
 				PostStr:url.PathEscape(PostStr),
-				Timeout:3,
+				Timeout:5,
 				Retry:2,
 			});err != nil {
 				if errors.Is(err, context.DeadlineExceeded) {

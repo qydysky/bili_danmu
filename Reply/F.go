@@ -8,12 +8,14 @@ import (
 	"math"
 	"time"
 	"os/exec"
+    "path/filepath"
 
 	c "github.com/qydysky/bili_danmu/CV"
 	F "github.com/qydysky/bili_danmu/F"
 	send "github.com/qydysky/bili_danmu/Send"
 	"github.com/christopher-dG/go-obs-websocket"
 	p "github.com/qydysky/part"
+	funcCtrl "github.com/qydysky/part/funcCtrl"
 	msgq "github.com/qydysky/part/msgq"
 	b "github.com/qydysky/part/buf"
 	s "github.com/qydysky/part/signal"
@@ -193,6 +195,7 @@ type Saveflv struct {
 	path string
 	wait *s.Signal
 	cancel *s.Signal
+	skipFunc funcCtrl.SkipFunc
 }
 
 var saveflv = Saveflv {
@@ -201,7 +204,7 @@ var saveflv = Saveflv {
 func init(){
 	//使用带tag的消息队列在功能间传递消息
 	c.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
-		`saveflv`:func(data interface{})(bool){//舰长更新
+		`saveflv`:func(data interface{})(bool){
 			if saveflv.cancel.Islive() {
 				Saveflv_wait()
 			} else {
@@ -216,6 +219,15 @@ func init(){
 //已go func形式调用，将会获取直播流
 func Saveflvf(){
 	l := c.Log.Base(`saveflv`)
+
+	//避免多次开播导致的多次触发
+	{
+		if saveflv.skipFunc.NeedSkip() {
+			l.L(`T: `,`已存在实例`)
+			return
+		}
+		defer saveflv.skipFunc.UnSet()
+	}
 
 	qn, ok := c.K_v.LoadV("flv直播流清晰度").(float64)
 	if !ok || qn < 0 {return}
@@ -247,7 +259,14 @@ func Saveflvf(){
 		F.Get(`Live`)
 		if len(c.Live)==0 {break}
 
-		saveflv.path = strconv.Itoa(c.Roomid) + "_" + time.Now().Format("2006_01_02_15-04-05-000")
+		if path,ok := c.K_v.LoadV("直播流保存位置").(string);ok{
+			if path,err := filepath.Abs(path);err == nil{
+				saveflv.path = path+"/"
+			}
+		}
+		
+
+		saveflv.path += strconv.Itoa(c.Roomid) + "_" + time.Now().Format("2006_01_02_15-04-05-000")
 
 		saveflv.wait = s.Init()
 		saveflv.cancel = s.Init()
