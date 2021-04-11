@@ -13,12 +13,15 @@ import (
 	c "github.com/qydysky/bili_danmu/CV"
 	F "github.com/qydysky/bili_danmu/F"
 	send "github.com/qydysky/bili_danmu/Send"
-	"github.com/christopher-dG/go-obs-websocket"
+	
 	p "github.com/qydysky/part"
 	funcCtrl "github.com/qydysky/part/funcCtrl"
 	msgq "github.com/qydysky/part/msgq"
+	reqf "github.com/qydysky/part/reqf"
 	b "github.com/qydysky/part/buf"
 	s "github.com/qydysky/part/signal"
+
+	"github.com/christopher-dG/go-obs-websocket"
 )
 
 /*
@@ -271,7 +274,7 @@ func Saveflvf(){
 		saveflv.wait = s.Init()
 		saveflv.cancel = s.Init()
 		
-		rr := p.Req()
+		rr := reqf.Req()
 		go func(){
 			saveflv.cancel.Wait()
 			rr.Close()
@@ -286,12 +289,12 @@ func Saveflvf(){
 
 		{//重试
 			l.L(`I: `,"尝试连接live")
-			if e := rr.Reqf(p.Rval{
+			if e := rr.Reqf(reqf.Rval{
 				Url:c.Live[cuLinkIndex],
 				Retry:10,
 				SleepTime:5,
 				Header:map[string]string{
-					`Cookie`:p.Map_2_Cookies_String(CookieM),
+					`Cookie`:reqf.Map_2_Cookies_String(CookieM),
 				},
 				Timeout:5,
 				JustResponseCode:true,
@@ -311,12 +314,12 @@ func Saveflvf(){
 		Ass_f(saveflv.path, time.Now())
 		l.L(`I: `,"保存到", saveflv.path + ".flv")
 
-		if e := rr.Reqf(p.Rval{
+		if e := rr.Reqf(reqf.Rval{
 			Url:c.Live[cuLinkIndex],
 			Retry:10,
 			SleepTime:5,
 			Header:map[string]string{
-				`Cookie`:p.Map_2_Cookies_String(CookieM),
+				`Cookie`:reqf.Map_2_Cookies_String(CookieM),
 			},
 			SaveToPath:saveflv.path + ".flv",
 			Timeout:-1,

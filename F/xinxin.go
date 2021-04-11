@@ -5,12 +5,16 @@ import (
 	"strconv"
 	"encoding/json"
     "time"
-	"github.com/skratchdot/open-golang/open"
+
+	c "github.com/qydysky/bili_danmu/CV"
+
+	p "github.com/qydysky/part"
 	websocket "github.com/qydysky/part/websocket"
 	msgq "github.com/qydysky/part/msgq"
 	web "github.com/qydysky/part/web"
-	p "github.com/qydysky/part"
-	c "github.com/qydysky/bili_danmu/CV"
+	reqf "github.com/qydysky/part/reqf"
+
+	"github.com/skratchdot/open-golang/open"
 )
 
 /*
@@ -128,7 +132,7 @@ func server() {
 	})
 	webpath = `http://`+w.Server.Addr
 	//提示
-	wslog.L(`I: `,`如需加密，会自动打开`,webpath)
+	wslog.L(`I: `,`使用WebJs`,webpath,`进行加密`)
 }
 
 func Wasm(maxloop int, uid uintptr,s RT) (o string) {//maxloop 超时重试
@@ -136,8 +140,8 @@ func Wasm(maxloop int, uid uintptr,s RT) (o string) {//maxloop 超时重试
 
 	{//nodejs
 		if nodeJsUrl != "" {
-			req := p.Req()
-			if err := req.Reqf(p.Rval{
+			req := reqf.Req()
+			if err := req.Reqf(reqf.Rval{
 				Header:map[string]string{
 					`Content-Type`: `application/json`,
 				},

@@ -8,14 +8,16 @@ import (
 	"strconv"
 	"os"
 	"os/signal"
-
-	p "github.com/qydysky/part"
-	ws "github.com/qydysky/part/websocket"
-	msgq "github.com/qydysky/part/msgq"
+		
 	reply "github.com/qydysky/bili_danmu/Reply"
 	send "github.com/qydysky/bili_danmu/Send"
 	c "github.com/qydysky/bili_danmu/CV"
 	F "github.com/qydysky/bili_danmu/F"
+	
+	p "github.com/qydysky/part"
+	ws "github.com/qydysky/part/websocket"
+	msgq "github.com/qydysky/part/msgq"
+	reqf "github.com/qydysky/part/reqf"
 )
 
 func init() {
@@ -108,9 +110,6 @@ func Demo(roomid ...int) {
 
 		<-change_room_chan
 
-		//ctrl+c退出
-		signal.Notify(interrupt, os.Interrupt)
-
 		//获取cookie
 		F.Get(`Cookie`)
 		//获取uid
@@ -127,7 +126,10 @@ func Demo(roomid ...int) {
 		go reply.Keep_medal_light()
 		//附加功能 自动发送即将过期礼物
 		go reply.AutoSend_silver_gift()
-		
+
+		//捕获ctrl+c退出
+		signal.Notify(interrupt, os.Interrupt)
+
 		var exit_sign = 2
 		for exit_sign > 0 {
 			exit_sign -= 1
@@ -166,7 +168,7 @@ func Demo(roomid ...int) {
 					Func_abort_close:func(){danmulog.L(`I: `,`服务器连接中断`)},
 					Func_normal_close:func(){danmulog.L(`I: `,`服务器连接关闭`)},
 					Header: map[string]string{
-						`Cookie`:p.Map_2_Cookies_String(Cookie),
+						`Cookie`:reqf.Map_2_Cookies_String(Cookie),
 						`Host`: u.Hostname(),
 						`User-Agent`: `Mozilla/5.0 (X11; Linux x86_64; rv:84.0) Gecko/20100101 Firefox/84.0`,
 						`Accept`: `*/*`,

@@ -5,8 +5,11 @@ import (
 	"errors"
 	"strings"
 	"strconv"
-	p "github.com/qydysky/part"
 	c "github.com/qydysky/bili_danmu/CV"
+
+	p "github.com/qydysky/part"
+	reqf "github.com/qydysky/part/reqf"
+
 	uuid "github.com/gofrs/uuid"
 )
 
@@ -56,8 +59,8 @@ func Send_pm(uid int, msg string) error {
 		return true
 	})
 	
-	req := p.Req()
-	if e:= req.Reqf(p.Rval{
+	req := reqf.Req()
+	if e:= req.Reqf(reqf.Rval{
 		Url:`https://api.vc.bilibili.com/web_im/v1/web_im/send_msg`,
 		PostStr:url.PathEscape(send_str),
 		Timeout:10,
@@ -73,7 +76,7 @@ func Send_pm(uid int, msg string) error {
 			`Pragma`: `no-cache`,
 			`Cache-Control`: `no-cache`,
 			`Referer`:"https://message.bilibili.com",
-			`Cookie`:p.Map_2_Cookies_String(Cookie),
+			`Cookie`:reqf.Map_2_Cookies_String(Cookie),
 		},
 	});e != nil {
 		log.L(`E: `,e)

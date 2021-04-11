@@ -6,8 +6,10 @@ import (
 	"encoding/json"
 	"strconv"
 
-	p "github.com/qydysky/part"
 	c "github.com/qydysky/bili_danmu/CV"
+
+	p "github.com/qydysky/part"
+	reqf "github.com/qydysky/part/reqf"
 )
 
 //每2s一个令牌，最多等10秒
@@ -48,8 +50,8 @@ func Send_gift(gift_id,bag_id,gift_num int) {
 			return true
 		})
 		
-		req := p.Req()
-		if e:= req.Reqf(p.Rval{
+		req := reqf.Req()
+		if e:= req.Reqf(reqf.Rval{
 			Url:`https://api.live.bilibili.com/gift/v2/live/bag_send`,
 			PostStr:url.PathEscape(sendStr),
 			Timeout:10,
@@ -65,7 +67,7 @@ func Send_gift(gift_id,bag_id,gift_num int) {
 				`Pragma`: `no-cache`,
 				`Cache-Control`: `no-cache`,
 				`Referer`:"https://message.bilibili.com",
-				`Cookie`:p.Map_2_Cookies_String(Cookie),
+				`Cookie`:reqf.Map_2_Cookies_String(Cookie),
 			},
 		});e != nil {
 			log.L(`E: `,e)

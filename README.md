@@ -35,6 +35,7 @@ golang go version go1.15 linux/amd64
 - [github.com/gofrs/uuid](https://github.com/gofrs/uuid) under [MIT](https://github.com/gofrs/uuid/blob/master/LICENSE)
 - [github.com/skratchdot/open-golang/open](https://github.com/skratchdot/open-golang) under [MIT](https://raw.githubusercontent.com/skratchdot/open-golang/master/LICENSE)
 - [7z](https://www.7-zip.org/) under [LICENSE](https://www.7-zip.org/license.txt)
+- [github.com/mdp/qrterminal/v3](github.com/mdp/qrterminal/v3) under [MIT](https://github.com/mdp/qrterminal/blob/master/LICENSE)
 ---
 
 ### 当前支持显示/功能
@@ -68,7 +69,7 @@ golang go version go1.15 linux/amd64
 - [x] 每日有粉丝牌获取小心心
 - [x] 自定义私信
 - [x] 自动切换粉丝牌
-- [x] 扫码登录
+- [x] 扫码登录(qrcode in webServer and cmd)
 - [x] 自定义语音提醒
 - [x] GTK弹幕窗
 - [x] GTK信息窗
