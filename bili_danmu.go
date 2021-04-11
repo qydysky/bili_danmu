@@ -13,7 +13,7 @@ import (
 	send "github.com/qydysky/bili_danmu/Send"
 	c "github.com/qydysky/bili_danmu/CV"
 	F "github.com/qydysky/bili_danmu/F"
-	
+
 	p "github.com/qydysky/part"
 	ws "github.com/qydysky/part/websocket"
 	msgq "github.com/qydysky/part/msgq"
@@ -38,8 +38,16 @@ func Demo(roomid ...int) {
 	defer danmulog.Block(1000)
 
 	//ctrl+c退出
-	interrupt := make(chan os.Signal, 1)
-	
+	interrupt := make(chan os.Signal,2)
+	go func(){
+		danmulog.L(`T: `, "两次ctrl+c强制退出")
+		for len(interrupt) < 2 {
+			time.Sleep(time.Second*3)
+		}
+		danmulog.L(`I: `, "强制退出!").Block(1000)
+		os.Exit(1)
+	}()
+
 	{
 		var groomid = flag.Int("r", 0, "roomid")
 		flag.Parse()
@@ -78,7 +86,6 @@ func Demo(roomid ...int) {
 				c.Uname = ``//主播id
 				c.Title = ``
 				c.Wearing_FansMedal = 0
-				reply.Saveflv_wait()//停止保存直播流
 				for len(change_room_chan) != 0 {<-change_room_chan}
 				change_room_chan <- struct{}{}
 				return false
@@ -110,6 +117,10 @@ func Demo(roomid ...int) {
 
 		<-change_room_chan
 
+		//捕获ctrl+c退出
+		signal.Notify(interrupt, os.Interrupt)
+		//如果连接中断，则等待
+		F.KeepConnect()
 		//获取cookie
 		F.Get(`Cookie`)
 		//获取uid
@@ -127,14 +138,16 @@ func Demo(roomid ...int) {
 		//附加功能 自动发送即将过期礼物
 		go reply.AutoSend_silver_gift()
 
-		//捕获ctrl+c退出
-		signal.Notify(interrupt, os.Interrupt)
-
 		var exit_sign = 2
 		for exit_sign > 0 {
 			exit_sign -= 1
 
 			danmulog.L(`T: `,"准备")
+			//如果连接中断，则等待
+			if F.KeepConnect() {
+				//成功保持连接
+				exit_sign = 2
+			}
 			//获取热门榜
 			F.Get(`Note`)
 
@@ -282,15 +295,14 @@ func Demo(roomid ...int) {
 
 				if break_sign {break}
 			}
-
+			{//附加功能 直播流停止
+				reply.Saveflv_wait()
+				reply.Save_to_json(-1, []interface{}{`{}]`})
+			}
 			p.Sys().Timeoutf(1)
 		}
 
 		close(interrupt)
-		{//附加功能 直播流
-			reply.Saveflv_wait()
-			reply.Save_to_json(-1, []interface{}{`{}]`})
-		}
 		danmulog.L(`I: `,"结束退出")
 	}
 }

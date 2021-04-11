@@ -2242,3 +2242,31 @@ func GetHistory(Roomid_int int) (j J.GetHistory) {
 	}
 	return
 }
+
+func KeepConnect() (o bool) {
+	for !IsConnected() {
+		o = true
+		time.Sleep(time.Duration(30)*time.Second)
+	}
+	return
+}
+
+func IsConnected() bool {
+	apilog := apilog.Base_add(`IsConnected`)
+
+	v,ok := c.K_v.LoadV(`网络中断不退出`).(bool)
+	if !ok || !v {return true}
+
+	req := reqf.Req()
+	if err := req.Reqf(reqf.Rval{
+		Url:"https://www.bilibili.com",
+		Timeout:10,
+		JustResponseCode:true,
+	});err != nil {
+		apilog.L(`W: `,`网络中断`,err)
+		return false
+	}
+
+	apilog.L(`T: `,`已连接`)
+	return true
+}

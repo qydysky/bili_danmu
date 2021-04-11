@@ -316,8 +316,8 @@ func Saveflvf(){
 
 		if e := rr.Reqf(reqf.Rval{
 			Url:c.Live[cuLinkIndex],
-			Retry:10,
-			SleepTime:5,
+			Retry:3,
+			SleepTime:3,
 			Header:map[string]string{
 				`Cookie`:reqf.Map_2_Cookies_String(CookieM),
 			},
