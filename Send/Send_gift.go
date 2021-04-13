@@ -8,12 +8,12 @@ import (
 
 	c "github.com/qydysky/bili_danmu/CV"
 
-	p "github.com/qydysky/part"
 	reqf "github.com/qydysky/part/reqf"
+	limit "github.com/qydysky/part/limit"
 )
 
 //每2s一个令牌，最多等10秒
-var gift_limit = p.Limit(1, 2000, 10000)
+var gift_limit = limit.New(1, 2000, 10000)
 
 func Send_gift(gift_id,bag_id,gift_num int) {
 	log := c.Log.Base_add(`发送礼物`)

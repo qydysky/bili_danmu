@@ -10,6 +10,7 @@ import (
 	msgq "github.com/qydysky/part/msgq"
 	s "github.com/qydysky/part/buf"
 	reqf "github.com/qydysky/part/reqf"
+	limit "github.com/qydysky/part/limit"
 )
 
 var tts_setting = map[string]string{
@@ -19,7 +20,7 @@ var tts_setting = map[string]string{
 }
 var tts_List = make(chan interface{},20)
 
-var tts_limit = p.Limit(1,5000,15000)//频率限制1次/5s，最大等待时间15s
+var tts_limit = limit.New(1,5000,15000)//频率限制1次/5s，最大等待时间15s
 
 var tts_log = c.Log.Base_add(`TTS`)
 

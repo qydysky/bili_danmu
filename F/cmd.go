@@ -82,6 +82,8 @@ func Cmd() {
 				}
 				cmdlog.L(`I: `, `舰长数:`, c.GuardNum)
 				cmdlog.L(`I: `, `分区排行:`, c.Note, `人气：`, c.Renqi)
+				if c.Stream_url != ""{cmdlog.L(`I: `, `直播Web服务:`, c.Stream_url)}
+
 				continue
 			}
 			{//弹幕发送

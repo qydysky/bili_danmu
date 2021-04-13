@@ -17,6 +17,7 @@ import (
 	g "github.com/qydysky/part/get"
 	web "github.com/qydysky/part/web"
 	reqf "github.com/qydysky/part/reqf"
+	limit "github.com/qydysky/part/limit"
 	funcCtrl "github.com/qydysky/part/funcCtrl"
 
 	uuid "github.com/gofrs/uuid"
@@ -26,7 +27,7 @@ import (
 )
 
 var apilog = c.Log.Base(`api`)
-var api_limit = p.Limit(1,2000,30000)//频率限制1次/2s，最大等待时间30s
+var api_limit = limit.New(1,2000,30000)//频率限制1次/2s，最大等待时间30s
 
 func Get(key string) {
 	apilog := apilog.Base_add(`Get`).L(`T: `,key)

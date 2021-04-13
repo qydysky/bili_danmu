@@ -8,6 +8,7 @@
 |ws_msg/|弹幕服务器传回的Msg类型json的golang struct表述|
 |0Init.go|最初始载入配置|
 |F.go|附加功能|
+|flvDecode.go|直播流转局域网直播流|
 |Heartbeat.go|人气数据分派|
 |Msg.go|消息数据分派|
 |Reply.go|分派数据处理|

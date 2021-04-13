@@ -35,6 +35,10 @@ var (
 	LIVE_BUVID bool//cookies含LIVE_BUVID
 )
 
+var (
+	Stream_url string//直播Web服务
+)
+
 //消息队列
 type Danmu_Main_mq_item struct {
 	Class string

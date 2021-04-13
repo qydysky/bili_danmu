@@ -9,6 +9,8 @@ import (
 	"time"
 	"os/exec"
     "path/filepath"
+    "net/http"
+	"context"
 
 	c "github.com/qydysky/bili_danmu/CV"
 	F "github.com/qydysky/bili_danmu/F"
@@ -18,8 +20,10 @@ import (
 	funcCtrl "github.com/qydysky/part/funcCtrl"
 	msgq "github.com/qydysky/part/msgq"
 	reqf "github.com/qydysky/part/reqf"
+	web "github.com/qydysky/part/web"
 	b "github.com/qydysky/part/buf"
 	s "github.com/qydysky/part/signal"
+	limit "github.com/qydysky/part/limit"
 
 	"github.com/christopher-dG/go-obs-websocket"
 )
@@ -618,24 +622,68 @@ func Autoskipf(s string) uint {
 
 type Lessdanmu struct {
 	buf []string
+	limit *limit.Limit
+	max_num int
+	threshold float32
+
+	sync.RWMutex
 }
 
 var lessdanmu = Lessdanmu{
+	threshold:0.7,
 }
 
-func Lessdanmuf(s string, bufsize int) float32 {
-	if !IsOn("相似弹幕忽略") {return 0}
-	if len(lessdanmu.buf) < bufsize {
+func init() {
+	if max_num,ok := c.K_v.LoadV(`每10秒显示弹幕数`).(float64);ok && int(max_num) >= 1 {
+		flog.Base_add(`更少弹幕`).L(`T: `,`每10秒弹幕数:`,int(max_num))
+		lessdanmu.max_num = int(max_num)
+		lessdanmu.limit = limit.New(int(max_num),10000,0)
+		go func(){
+			//等待启动
+			for lessdanmu.limit.PTK() == lessdanmu.max_num {
+				time.Sleep(time.Second*3)
+			}
+	
+			for {
+				time.Sleep(time.Second*10)
+	
+				lessdanmu.Lock()
+				if ptk := lessdanmu.limit.PTK();ptk == lessdanmu.max_num {
+					if lessdanmu.threshold > 0.71 {
+						lessdanmu.threshold -= 0.01
+					}
+				} else if ptk == 0 {
+					if lessdanmu.threshold < 0.99 {
+						lessdanmu.threshold += 0.01
+					}
+				}
+				lessdanmu.Unlock()
+			}
+		}()
+	}
+}
+
+func Lessdanmuf(s string) (show bool) {
+	if !IsOn("相似弹幕忽略") {return true}
+	if len(lessdanmu.buf) < 20 {
 		lessdanmu.buf = append(lessdanmu.buf, s)
-		return 0
+		return true
 	}
 
 	o := cross(s, lessdanmu.buf)
-	if o == 1 {return 1}//完全无用
+	if o == 1 {return false}//完全无用
+	
 	Jiezouf(lessdanmu.buf)
 	lessdanmu.buf = append(lessdanmu.buf[1:], s)
 
-	return o
+	lessdanmu.RLock()
+	show = o > lessdanmu.threshold
+	lessdanmu.RUnlock()
+
+	if show && lessdanmu.max_num > 0 {
+		lessdanmu.limit.TO()
+	}
+	return 
 }
 
 /*
@@ -892,5 +940,66 @@ func AutoSend_silver_gift() {
 		flog.L(`I: `,`完成`)
 	} else {
 		flog.L(`T: `,`完成`)
+	}
+}
+
+//直播保存位置Web服务
+func init() {
+	if v,ok := c.K_v.LoadV(`直播保存位置Web服务`).(bool);ok && v {
+		base_dir := ""
+		if path,ok := c.K_v.LoadV(`直播流保存位置`).(string);ok && path !="" {
+			if path,err := filepath.Abs(path);err == nil{
+				base_dir = path+"/"
+			}
+		}
+		s := web.New(&http.Server{
+			Addr: "0.0.0.0:"+strconv.Itoa(p.Sys().GetFreePort()),
+		})
+		s.Handle(map[string]func(http.ResponseWriter,*http.Request){
+			`/`:func(w http.ResponseWriter,r *http.Request){
+				var path string = r.URL.Path[1:]
+				if path == `` {
+					http.FileServer(http.Dir(base_dir)).ServeHTTP(w,r)
+				} else {
+					path = base_dir+path
+
+					if !p.Checkfile().IsExist(path) {
+						w.WriteHeader(404)
+						return
+					}
+
+					w.WriteHeader(200)
+					if f, ok := w.(http.Flusher); ok { 
+						f.Flush() 
+					}
+
+					byteC := make(chan []byte,1024*1024)
+					cancel := make(chan struct{})
+					defer close(cancel)
+					go func() {
+						if e := Stream(path,byteC,cancel);e != nil {
+							flog.Base_add(`直播Web服务`).L(`T: `,`E: `,e);
+							return
+						}
+					}()
+
+					for {
+						buf := <- byteC
+						if len(buf) == 0 {break}
+
+						if _,err := w.Write(buf);err != nil {
+							flog.Base_add(`直播Web服务`).L(`T: `,`E: `,err);
+							break
+						}
+					}
+				}
+			},
+			`/exit`:func(w http.ResponseWriter,r *http.Request){
+				s.Server.Shutdown(context.Background())
+			},
+		})
+		host := p.Sys().GetIntranetIp()
+		c.Stream_url = strings.Replace(`http://`+s.Server.Addr,`0.0.0.0`,host,-1)
+		flog.Base_add(`直播Web服务`).L(`I: `,`启动于`,c.Stream_url)
 	}
 }

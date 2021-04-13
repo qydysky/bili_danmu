@@ -114,7 +114,9 @@ func server() {
 		})
 	}
 
-	w := web.New(&http.Server{})//新建web实例
+	w := web.New(&http.Server{
+		Addr: "127.0.0.1:"+strconv.Itoa(p.Sys().GetFreePort()),
+	})//新建web实例
 	w.Handle(map[string]func(http.ResponseWriter,*http.Request){//路径处理函数
 		`/`:func(w http.ResponseWriter,r *http.Request){
 			var path string = r.URL.Path[1:]

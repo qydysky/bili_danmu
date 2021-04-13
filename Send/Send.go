@@ -9,10 +9,11 @@ import (
 
 	p "github.com/qydysky/part"
 	reqf "github.com/qydysky/part/reqf"
+	limit "github.com/qydysky/part/limit"
 )
 
 //每5s一个令牌，最多等20秒
-var danmu_s_limit = p.Limit(1, 5000, 20000)
+var danmu_s_limit = limit.New(1, 5000, 20000)
 
 //弹幕发送
 func Danmu_s(msg string, roomid int) {

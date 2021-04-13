@@ -25,6 +25,8 @@ var reply_log = c.Log.Base(`Reply`)
 func Reply(b []byte) {
 	reply_log := reply_log.Base_add(`返回分派`)
 
+	if len(b) <= c.WS_PACKAGE_HEADER_TOTAL_LENGTH {reply_log.L(`W: `,"包缺损");return}
+
 	head := F.HeadChe(b[:c.WS_PACKAGE_HEADER_TOTAL_LENGTH])
 	if int(head.PackL) > len(b) {reply_log.L(`E: `,"包缺损");return}
 
@@ -744,7 +746,7 @@ func Msg_showdanmu(auth interface{}, m ...string) {
 	msg := m[0]
 	msglog := msglog.Log_show_control(false)
 	{//附加功能 更少弹幕
-		if Lessdanmuf(msg, 20) > 0.7 {//与前20条弹幕重复的字数占比度>0.7的屏蔽
+		if !Lessdanmuf(msg) {
 			if auth != nil {msglog.L(`I: `, auth, ":", msg)}
 			return
 		}
