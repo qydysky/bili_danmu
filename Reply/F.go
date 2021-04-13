@@ -958,7 +958,7 @@ func init() {
 		s.Handle(map[string]func(http.ResponseWriter,*http.Request){
 			`/`:func(w http.ResponseWriter,r *http.Request){
 				var path string = r.URL.Path[1:]
-				if path == `` {
+				if ext := filepath.Ext(path);ext == `` || ext != `.dtmp` || ext != `.flv` {
 					http.FileServer(http.Dir(base_dir)).ServeHTTP(w,r)
 				} else {
 					path = base_dir+path
@@ -966,11 +966,6 @@ func init() {
 					if !p.Checkfile().IsExist(path) {
 						w.WriteHeader(404)
 						return
-					}
-
-					w.WriteHeader(200)
-					if f, ok := w.(http.Flusher); ok { 
-						f.Flush() 
 					}
 
 					byteC := make(chan []byte,1024*1024)
@@ -983,6 +978,8 @@ func init() {
 						}
 					}()
 
+					
+					var fastRespon = true
 					for {
 						buf := <- byteC
 						if len(buf) == 0 {break}
@@ -990,6 +987,9 @@ func init() {
 						if _,err := w.Write(buf);err != nil {
 							flog.Base_add(`直播Web服务`).L(`T: `,`E: `,err);
 							break
+						} else if fastRespon {
+							fastRespon = false
+							if flusher, flushSupport := w.(http.Flusher);flushSupport {flusher.Flush()}
 						}
 					}
 				}
