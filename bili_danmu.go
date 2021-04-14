@@ -131,8 +131,8 @@ func Demo(roomid ...int) {
 		F.Get(`Silver_2_coin`)
 		//每日签到
 		F.Dosign()
-		//客户版本
-		F.Get(`VERSION`)
+		// //客户版本 不再需要
+		// F.Get(`VERSION`)
 		//附加功能 保持牌子点亮
 		go reply.Keep_medal_light()
 		//附加功能 自动发送即将过期礼物
@@ -233,8 +233,8 @@ func Demo(roomid ...int) {
 							`new day`:func(data interface{})(bool){//日期更换
 								//每日签到
 								F.Dosign()
-								//获取用户版本
-								go F.Get(`VERSION`)
+								// //获取用户版本  不再需要
+								// go F.Get(`VERSION`)
 								//每日兑换硬币
 								go F.Silver_2_coin()
 								//小心心

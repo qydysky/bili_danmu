@@ -86,9 +86,9 @@ func init() {
 /*
 	customAuthParam
 */
-var (
-	VERSION = "2.0.11"
-)
+// var (
+// 	VERSION = "2.0.11"
+// ) // 不再需要
 
 //允许的清晰度
 var AcceptQn = map[int]string{

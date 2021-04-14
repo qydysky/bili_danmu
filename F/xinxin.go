@@ -152,8 +152,6 @@ func Wasm(maxloop int, uid uintptr,s RT) (o string) {//maxloop 超时重试
 				Timeout:3,
 			});err != nil {
 				wslog.L(`E: `,err)
-				//重试时刷新时间
-				s.R.Ts = int(p.Sys().GetMTime())
 				o = Wasm(maxloop-1, uid, s)
 				return
 			}
@@ -198,10 +196,8 @@ func Wasm(maxloop int, uid uintptr,s RT) (o string) {//maxloop 超时重试
 			case r :=<- rec_chan:
 				if r.Id != s.R.Id {break}//或许接收到之前的请求，校验Id字段
 				return r.S
-			case <- time.After(time.Second*time.Duration(3)):
+			case <- time.After(time.Second*time.Duration(1)):
 				wslog.L(`E: `,`超时！响应>1s，确认保持`,webpath,`开启`)
-				//重试时刷新时间
-				s.R.Ts = int(p.Sys().GetMTime())
 				o = Wasm(maxloop-1, uid, s)
 				return
 			}

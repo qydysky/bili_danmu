@@ -4,7 +4,7 @@ import (
 	"time"
 	"os"
 	"strconv"
-	"strings"
+	// "strings"
     "context"
 	"encoding/json"
 	"net/http"
@@ -109,9 +109,9 @@ func Get(key string) {
 		`WSURL`:[]func()([]string){//弹幕链接
 			getDanmuInfo,
 		},
-		`VERSION`:[]func()([]string){//客户版本
-			Get_Version,
-		},
+		// `VERSION`:[]func()([]string){//客户版本  不再需要
+		// 	Get_Version,
+		// },
 		`LIVE_BUVID`:[]func()([]string){//LIVE_BUVID
 			Get_LIVE_BUVID,
 		},
@@ -175,9 +175,9 @@ func Get(key string) {
 		`WSURL`:func()(bool){//弹幕链接
 			return len(c.WSURL) != 0
 		},
-		`VERSION`:func()(bool){//客户版本
-			return c.VERSION != `2.0.11`
-		},
+		// `VERSION`:func()(bool){//客户版本  不再需要
+		// 	return c.VERSION != `2.0.11`
+		// },
 		`LIVE_BUVID`:func()(bool){//LIVE_BUVID
 			return c.LIVE_BUVID
 		},
@@ -896,68 +896,68 @@ func Get_guardNum() (missKey []string) {
 	return
 }
 
-func Get_Version() (missKey []string) {
-	if c.Roomid == 0 {
-		missKey = append(missKey, `Roomid`)
-	}
-	if len(missKey) != 0 {return}
+// func Get_Version() (missKey []string) {  不再需要
+// 	if c.Roomid == 0 {
+// 		missKey = append(missKey, `Roomid`)
+// 	}
+// 	if len(missKey) != 0 {return}
 
-	Roomid := strconv.Itoa(c.Roomid)
+// 	Roomid := strconv.Itoa(c.Roomid)
 	
-	apilog := apilog.Base_add(`获取客户版本`)
+// 	apilog := apilog.Base_add(`获取客户版本`)
 
-	var player_js_url string
-	{//获取player_js_url
-		r := g.Get(reqf.Rval{
-			Url:"https://live.bilibili.com/blanc/" + Roomid,
-		})
+// 	var player_js_url string
+// 	{//获取player_js_url
+// 		r := g.Get(reqf.Rval{
+// 			Url:"https://live.bilibili.com/blanc/" + Roomid,
+// 		})
 
-		if r.Err != nil {
-			apilog.L(`E: `,r.Err)
-			return
-		}
+// 		if r.Err != nil {
+// 			apilog.L(`E: `,r.Err)
+// 			return
+// 		}
 
-		r.S2(`<script src=`,`.js`)
-		if r.Err != nil {
-			apilog.L(`E: `,r.Err)
-			return
-		}
+// 		r.S2(`<script src=`,`.js`)
+// 		if r.Err != nil {
+// 			apilog.L(`E: `,r.Err)
+// 			return
+// 		}
 
-		for _,v := range r.RS {
-			tmp := string(v) + `.js`
-			if strings.Contains(tmp,`http`) {continue}
-			tmp = `https:` + tmp
-			if strings.Contains(tmp,`player`) {
-				player_js_url = tmp
-				break
-			}
-		}
-		if player_js_url == `` {
-			apilog.L(`E: `,`no found player js`)
-			return
-		}
-	}
+// 		for _,v := range r.RS {
+// 			tmp := string(v) + `.js`
+// 			if strings.Contains(tmp,`http`) {continue}
+// 			tmp = `https:` + tmp
+// 			if strings.Contains(tmp,`player`) {
+// 				player_js_url = tmp
+// 				break
+// 			}
+// 		}
+// 		if player_js_url == `` {
+// 			apilog.L(`E: `,`no found player js`)
+// 			return
+// 		}
+// 	}
 
-	{//获取VERSION
-		r := g.Get(reqf.Rval{
-			Url:player_js_url,
-		})
+// 	{//获取VERSION
+// 		r := g.Get(reqf.Rval{
+// 			Url:player_js_url,
+// 		})
 
-		if r.Err != nil {
-			apilog.L(`E: `,r.Err)
-			return
-		}
+// 		if r.Err != nil {
+// 			apilog.L(`E: `,r.Err)
+// 			return
+// 		}
 
-		r.S(`Bilibili HTML5 Live Player v`,` `,0,0)
-		if r.Err != nil {
-			apilog.L(`E: `,r.Err)
-			return
-		}
-		c.VERSION = r.RS[0]
-		apilog.L(`T: `,"api version", c.VERSION)
-	}
-	return
-}
+// 		r.S(`Bilibili HTML5 Live Player v`,` `,0,0)
+// 		if r.Err != nil {
+// 			apilog.L(`E: `,r.Err)
+// 			return
+// 		}
+// 		c.VERSION = r.RS[0]
+// 		apilog.L(`T: `,"api version", c.VERSION)
+// 	}
+// 	return
+// }
 
 //调用记录
 var boot_Get_cookie funcCtrl.FlashFunc//新的替代旧的

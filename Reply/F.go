@@ -957,10 +957,12 @@ func init() {
 		})
 		s.Handle(map[string]func(http.ResponseWriter,*http.Request){
 			`/`:func(w http.ResponseWriter,r *http.Request){
+
+				//header
+				w.Header().Set("Access-Control-Allow-Origin", "*")
+
 				var path string = r.URL.Path[1:]
-				if ext := filepath.Ext(path);ext == `` || ext != `.dtmp` || ext != `.flv` {
-					http.FileServer(http.Dir(base_dir)).ServeHTTP(w,r)
-				} else {
+				if ext := filepath.Ext(path); ext == `.dtmp` {
 					path = base_dir+path
 
 					if !p.Checkfile().IsExist(path) {
@@ -972,8 +974,8 @@ func init() {
 					cancel := make(chan struct{})
 					defer close(cancel)
 					go func() {
-						if e := Stream(path,byteC,cancel);e != nil {
-							flog.Base_add(`直播Web服务`).L(`T: `,`E: `,e);
+						if err := Stream(path,byteC,cancel);err != nil {
+							flog.Base_add(`直播Web服务`).L(`T: `,err);
 							return
 						}
 					}()
@@ -985,13 +987,15 @@ func init() {
 						if len(buf) == 0 {break}
 
 						if _,err := w.Write(buf);err != nil {
-							flog.Base_add(`直播Web服务`).L(`T: `,`E: `,err);
+							flog.Base_add(`直播Web服务`).L(`T: `,err);
 							break
 						} else if fastRespon {
 							fastRespon = false
 							if flusher, flushSupport := w.(http.Flusher);flushSupport {flusher.Flush()}
 						}
 					}
+				} else {
+					http.FileServer(http.Dir(base_dir)).ServeHTTP(w,r)
 				}
 			},
 			`/exit`:func(w http.ResponseWriter,r *http.Request){
