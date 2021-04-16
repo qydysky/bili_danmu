@@ -102,10 +102,10 @@ golang go version go1.15 linux/amd64
 #### 直播流Web服务
 启动Web流服务，为下载的直播流提供局域网内的流服务。
 
-在`demo/config/config_K_v.json`中可找到配置项，默认开启。
+在`demo/config/config_K_v.json`中可找到配置项，0:随机可用端口 >0:固定可用端口 <0:禁用服务。
 
 ```
-    "直播保存位置Web服务":true,
+    "直播保存位置Web服务":0,
 ```
 
 开启之后，启动会显示服务地址，在局域网内打开网址可以取得所有直播流的串流地址。

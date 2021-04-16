@@ -332,6 +332,10 @@ func Saveflvf(){
 		l.L(`I: `,"结束")
 		Ass_f("", time.Now())//ass
 		p.FileMove(saveflv.path+".flv.dtmp", saveflv.path+".flv")
+
+		//set ro ``
+		saveflv.path = ``
+
 		if !saveflv.cancel.Islive() {break}//cancel
 		/*
 			Saveflv需要外部组件
@@ -945,15 +949,24 @@ func AutoSend_silver_gift() {
 
 //直播保存位置Web服务
 func init() {
-	if v,ok := c.K_v.LoadV(`直播保存位置Web服务`).(bool);ok && v {
+	if port_f,ok := c.K_v.LoadV(`直播保存位置Web服务`).(float64);ok && port_f >= 0 {
+		port := int(port_f)
+
 		base_dir := ""
 		if path,ok := c.K_v.LoadV(`直播流保存位置`).(string);ok && path !="" {
 			if path,err := filepath.Abs(path);err == nil{
 				base_dir = path+"/"
 			}
 		}
+
+		addr := "0.0.0.0:"
+		if port == 0 {
+			addr += strconv.Itoa(p.Sys().GetFreePort())
+		} else {
+			addr += strconv.Itoa(port)
+		}
 		s := web.New(&http.Server{
-			Addr: "0.0.0.0:"+strconv.Itoa(p.Sys().GetFreePort()),
+			Addr: addr,
 		})
 		s.Handle(map[string]func(http.ResponseWriter,*http.Request){
 			`/`:func(w http.ResponseWriter,r *http.Request){
@@ -962,37 +975,48 @@ func init() {
 				w.Header().Set("Access-Control-Allow-Origin", "*")
 
 				var path string = r.URL.Path[1:]
-				if ext := filepath.Ext(path); ext == `.dtmp` {
+				if filepath.Ext(path) == `.dtmp` || path == `now` {
+					//最新直播流
+					if path == `now` && saveflv.path != `` {
+						path = filepath.Base(saveflv.path)+".flv.dtmp"
+					}
+
 					path = base_dir+path
 
 					if !p.Checkfile().IsExist(path) {
-						w.WriteHeader(404)
+						w.WriteHeader(http.StatusNotFound)
 						return
 					}
 
-					byteC := make(chan []byte,1024*1024)
+					w.Header().Set("Connection", "Keep-Alive")
+					w.Header().Set("Content-Type", "video/x-flv")
+					w.Header().Set("X-Content-Type-Options", "nosniff")
+					w.WriteHeader(http.StatusOK)
+
+					byteC := make(chan []byte,1024*1024*10)
 					cancel := make(chan struct{})
 					defer close(cancel)
-					go func() {
+
+					go func(){
 						if err := Stream(path,byteC,cancel);err != nil {
 							flog.Base_add(`直播Web服务`).L(`T: `,err);
 							return
 						}
 					}()
 
-					
-					var fastRespon = true
-					for {
-						buf := <- byteC
-						if len(buf) == 0 {break}
+					flusher, flushSupport := w.(http.Flusher);
+					if flushSupport {flusher.Flush()}
 
-						if _,err := w.Write(buf);err != nil {
-							flog.Base_add(`直播Web服务`).L(`T: `,err);
+					var (
+						err error
+					)
+					for err == nil {
+						if b := <- byteC;len(b) != 0 {
+							_,err = w.Write(b)
+						} else {
 							break
-						} else if fastRespon {
-							fastRespon = false
-							if flusher, flushSupport := w.(http.Flusher);flushSupport {flusher.Flush()}
 						}
+						if flushSupport {flusher.Flush()}
 					}
 				} else {
 					http.FileServer(http.Dir(base_dir)).ServeHTTP(w,r)

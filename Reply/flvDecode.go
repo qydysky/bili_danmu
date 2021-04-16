@@ -2,9 +2,11 @@ package reply
 
 import (
 	"os"
+	// "fmt"
 	"bytes"
 	"time"
 	"errors"
+	// "math"
 
 	c "github.com/qydysky/bili_danmu/CV"
 	F "github.com/qydysky/bili_danmu/F"
@@ -21,17 +23,17 @@ const (
 
 	//custom define
 	eof_tag = byte(0x00)
-	copy_buf_size = 1024*1024*10
 )
 
 var (
 	flv_header_sign = []byte{0x46,0x4c,0x56}
 	flvlog = c.Log.Base(`flv解码`)
+	send_sign = []byte{0x00}
 )
 
 func Stream(path string,streamChan chan []byte,cancel chan struct{}) (error) {
-	flvlog.L(`I: `,path)
-	defer flvlog.L(`I: `,`退出`)
+	flvlog.L(`T: `,path)
+	defer flvlog.L(`T: `,`退出`)
 	//file
 	f,err := os.OpenFile(path,os.O_RDONLY,0644)
 	if err != nil {
@@ -47,93 +49,161 @@ func Stream(path string,streamChan chan []byte,cancel chan struct{}) (error) {
 	{
 		buf := make([]byte, flv_header_size+previou_tag_size)
 		if _,err := f.Read(buf);err != nil {return err}
-		if !bytes.Contains(buf,flv_header_sign) {return errors.New(`no flv`)}
+		if bytes.Index(buf,flv_header_sign) != 0 {return errors.New(`no flv`)}
 		streamChan <- buf
 	}
 
+	type flv_tag struct {
+		Tag byte
+		Offset int64
+		Timestamp int32
+		PreSize int32
+		VideoFrame byte
+		Buf *[]byte
+	}
+
+	var seachtag = func(f *os.File)(offset int64){
+		cur_offset,_ := f.Seek(0,1)
+		defer f.Seek(cur_offset,0)
+
+		f.Seek(tag_header_size,1)
+		buf := make([]byte, 1024*1024)
+		for {
+			if size,_ := f.Read(buf);size == 0 {
+				return
+			} else {
+				for offset=0;offset<int64(size); {
+					streamid_loc := bytes.Index(buf[offset:], []byte{0x00,0x00,0x00})
+					if streamid_loc == -1 {break}
+					offset += int64(streamid_loc)
+
+					if tag_type := buf[offset-6];tag_type != video_tag && tag_type != audio_tag && tag_type != script_tag {
+						continue
+					}
+					offset += int64(tag_header_size-6)
+					return
+				}
+				f.Seek(-5,1)
+			}
+		}
+	}
+
 	//get tag func
-	var getTag = func(f *os.File)(tag byte,offset int64,buf_p *[]byte,data_p *[]byte){
+	var getTag = func(f *os.File)(t flv_tag){
+		t.Offset,_ = f.Seek(0,1)
+		Buf := []byte{}
+		t.Buf = &Buf
+
 		buf := make([]byte, tag_header_size)
-		buf_p = &buf
-		if _,err := f.Read(buf);err != nil {tag = eof_tag;return}
-		tag = buf[0]
+		if size,err := f.Read(buf);err != nil || size == 0 {
+			t.Tag = eof_tag
+			return
+		}
+		Buf = append(Buf, buf...)
+		t.Tag = buf[0]
+		t.Timestamp = F.Btoi32([]byte{buf[7],buf[4],buf[5],buf[6]},0)
+
 		size := F.Btoi32(append([]byte{0x00},buf[1:4]...),0)
 
-		data := make([]byte, size+previou_tag_size)
-		data_p = &data
-		if _,err := f.Read(data);err != nil {tag = eof_tag;return}
+		data := make([]byte, size)
+		if size,err := f.Read(data);err != nil || size == 0 {
+			t.Tag = eof_tag
+			return
+		}
+		t.VideoFrame = data[0]
+
+		pre_tag := make([]byte, previou_tag_size)
+		if size,err := f.Read(pre_tag);err != nil || size == 0 {
+			t.Tag = eof_tag
+			return
+		} 
+		t.PreSize = F.Btoi32(pre_tag,0)
 		
-		offset,_ = f.Seek(0,1)
-		offset -= tag_header_size+int64(size)+previou_tag_size
+		Buf = append(Buf, append(data, pre_tag...)...)
+		// if t.PreSize == 0{fmt.Println(t.Tag,size,data[size:])}
+
 		return
 	}
 
 	//get first video and audio tag
 	//find last_keyframe_video_offset
-	var last_keyframe_video_offsets []int64
-	first_video_tag,first_audio_tag := false,false
+	var (
+		last_keyframe_video_offsets []int64
+		first_video_tag bool
+		first_audio_tag bool
+		// last_timestamps []int32
+	)
 	for {
-		tag,offset,buf_p,data_p := getTag(f)
-		if tag == script_tag {
-			streamChan <- *buf_p
-			streamChan <- *data_p
-		} else if tag == video_tag {
+		t := getTag(f)
+		if t.Tag == script_tag {
+			streamChan <- *t.Buf
+		} else if t.Tag == video_tag {
 			if !first_video_tag {
 				first_video_tag = true
-				streamChan <- *buf_p
-				streamChan <- *data_p
+				streamChan <- *t.Buf
 			}
 
-			if (*data_p)[0] & 0xf0 == 0x10 {
+			if t.VideoFrame & 0xf0 == 0x10 {
 				if len(last_keyframe_video_offsets) > 2 {
-					last_keyframe_video_offsets = append(last_keyframe_video_offsets[1:], offset)
+					// last_timestamps = append(last_timestamps[1:], t.Timestamp)
+					last_keyframe_video_offsets = append(last_keyframe_video_offsets[1:], t.Offset)
 				} else {
-					last_keyframe_video_offsets = append(last_keyframe_video_offsets, offset)
+					// last_timestamps = append(last_timestamps, t.Timestamp)
+					last_keyframe_video_offsets = append(last_keyframe_video_offsets, t.Offset)
 				}
 			}
-		} else if tag == audio_tag {
+		} else if t.Tag == audio_tag {
 			if !first_audio_tag {
 				first_audio_tag = true
-				streamChan <- *buf_p
-				streamChan <- *data_p
+				streamChan <- *t.Buf
 			}
-		} else {//eof_tag
+		} else {//eof_tag 
 			break;
 		}
 	}
 
 	//seed to the second last tag
+	if len(last_keyframe_video_offsets) == 0 {flvlog.L(`W: `,`no keyframe`);return errors.New(`no keyframe`)}
 	f.Seek(last_keyframe_video_offsets[0],0)
 
+
+	// var (
+	// 	last_video_keyframe_timestramp int32
+	// 	video_keyframe_speed int32
+	// )
 	//copy
 	{
-		buf := make([]byte, copy_buf_size)
-		preOffset,_ := f.Seek(0,1)
+		last_available_offset := last_keyframe_video_offsets[0]
+		// last_Timestamp := last_timestamps[0]
 		for {
-
 			//退出
 			select {
 			case <-cancel:return nil;
 			default:;
 			}
-
-			size,err := f.Read(buf)
-			if err != nil {
-				if err.Error() != `EOF` {
-					return err
-				} else if offset,_ := f.Seek(0,1);offset == preOffset {
-					break
-				}
+			t := getTag(f)
+			if t.Tag == eof_tag {
+				f.Seek(last_available_offset,0)
+				time.Sleep(time.Second)
+				continue
+			} else if t.PreSize == 0 {
+				f.Seek(last_available_offset,0)
+				f.Seek(seachtag(f),1)
+				continue
+			} else if t.Tag == video_tag {
+				// if t.VideoFrame & 0xf0 == 0x10 {
+				// 	video_keyframe_speed = t.Timestamp - last_video_keyframe_timestramp
+				// 	fmt.Println(`video_keyframe_speed`,video_keyframe_speed)
+				// 	last_video_keyframe_timestramp = t.Timestamp
+				// }
+				streamChan <- *t.Buf
+			} else if t.Tag == audio_tag {
+				streamChan <- *t.Buf
+			} else if t.Tag != script_tag {
+				;
 			}
-
-			if size > 0 {
-				streamChan <- buf[:size]
-			}
-
-			if err != nil {
-				preOffset,_ = f.Seek(0,1)
-				time.Sleep(time.Duration(1) * time.Second)
-			}
+			
+			last_available_offset = t.Offset
 
 		}
 	}
