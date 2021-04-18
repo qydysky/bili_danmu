@@ -463,14 +463,6 @@ func Savestreamf(){
 			last_download := ""
 			expires := 0
 			for savestream.cancel.Islive() {
-				if expires != 0 && p.Sys().GetSTime() > int64(expires+60) {
-					F.Get(`Liveing`)
-					if !c.Liveing {break}
-	
-					F.Get(`Live`)
-					if len(c.Live)==0 {break}
-				}
-
 				links,file_add,exp,e := hls_get_link(c.Live[0],last_download)
 				expires = exp
 				if e != nil {l.L(`E: `,e);break}
@@ -493,7 +485,8 @@ func Savestreamf(){
 						filename = filename[:query_offset]
 					}
 					go func(url,path string){
-						if e := rr.Reqf(reqf.Rval{
+						r := reqf.Req()
+						if e := r.Reqf(reqf.Rval{
 							Url:url,
 							Retry:2,
 							SleepTime:1,
@@ -503,7 +496,17 @@ func Savestreamf(){
 					}(links[i],savestream.path+filename)
 					last_download = links[i]
 				}
-				time.Sleep(time.Second)
+
+				//m3u8_url 将过期
+				if expires != 0 && p.Sys().GetSTime() > int64(expires+60) {
+					F.Get(`Liveing`)
+					if !c.Liveing {break}
+	
+					F.Get(`Live`)
+					if len(c.Live)==0 {break}
+				} else {
+					time.Sleep(time.Second)
+				}
 			}
 
 			f := p.File()
@@ -1210,16 +1213,16 @@ func init() {
 						}
 						defer f.Close()
 					
-						w.Header().Set("Cache-Control", "max-age=1")
+						w.Header().Set("Cache-Control", "max-age=3")
 						w.Header().Set("Content-Type", "application/vnd.apple.mpegurl")
 						w.Header().Set("Connection", "Keep-Alive")
-						w.WriteHeader(http.StatusOK)
 
 						var res []byte
 						{
 							buf := make([]byte, 200)
 							if _,err := f.Read(buf);err != nil {
 								flog.L(`E: `,err);
+								w.WriteHeader(http.StatusServiceUnavailable)
 								return
 							}
 							fin_offset := bytes.LastIndex(buf, []byte("EXT-X-MEDIA-SEQUENCE:"))+21
@@ -1231,7 +1234,31 @@ func init() {
 
 							buf := make([]byte, 1000)
 							if _,err := f.Read(buf);err != nil {
+								e = err
 								return
+							}
+
+							//fast seed a suit m4s
+							var sign_offset int
+							{
+								if offset := bytes.Index(buf, []byte("#EXTINF"));offset != -1 {
+									sign_offset = offset
+								} else {
+									e = errors.New(`no found first #EXTINF`)
+									return
+								}
+								for sign_offset < len(buf) {
+									if offset := bytes.Index(buf[sign_offset:], []byte(".m4s"));offset != -1 {
+										sign_offset = offset + sign_offset
+									} else if sign_offset==0 {
+										e = errors.New(`sign_offset`)
+										return
+									} else {
+										break
+									}
+									if sign := buf[sign_offset-1] - 48;sign%3 == 0 {break}
+									sign_offset += 4
+								}
 							}
 
 							var (
@@ -1241,38 +1268,27 @@ func init() {
 								m4s_end_offset int
 							)
 
-							for start_offset < len(buf) {
-								if offset := bytes.Index(buf[start_offset:], []byte("#EXTINF"));offset != -1 {
-									start_offset = offset + start_offset
-								} else if start_offset==0 {
-									e = errors.New(`start_offset`)
-									return
-								} else {
-									break
-								}
-
-								if offset := bytes.Index(buf[start_offset:], []byte{0x0a});offset != -1 {
-									m4s_start_offset = offset+start_offset+1
-								} else if m4s_start_offset==0 {
-									e = errors.New(`m4s_start_offset`)
-									return
-								} else {
-									break
-								}
-
-								if offset := bytes.Index(buf[m4s_start_offset:], []byte{0x0a});offset != -1 {
-									m4s_end_offset = offset+m4s_start_offset+1
-								} else if m4s_end_offset==0 {
-									e = errors.New(`m4s_end_offset`)
-									return
-								} else {
-									break
-								}
-
-								if sign := buf[m4s_end_offset-6] - 48;sign%3 == 0 {break}
-								start_offset += 7
+							if offset := bytes.Index(buf[sign_offset:], []byte("#EXTINF"));offset != -1 {
+								start_offset = offset + sign_offset
+							} else {
+								e = errors.New(`start_offset`)
+								return
 							}
-							
+
+							if offset := bytes.Index(buf[start_offset:], []byte{0x0a});offset != -1 {
+								m4s_start_offset = offset+start_offset+1
+							} else {
+								e = errors.New(`m4s_start_offset`)
+								return
+							}
+
+							if offset := bytes.Index(buf[m4s_start_offset:], []byte{0x0a});offset != -1 {
+								m4s_end_offset = offset+m4s_start_offset+1
+							} else {
+								e = errors.New(`m4s_end_offset`)
+								return
+							}
+
 							end_offset += start_offset+7
 
 							for i:=0;end_offset < len(buf);i+=1{
@@ -1282,12 +1298,12 @@ func init() {
 									e = errors.New(`end_offset`)
 									return
 								} else {
-									break
+									e = errors.New("not enough data "+strconv.Itoa(i))
+									return
 								}
-								if i>6 {break}
+								if i>12 {break}
 								end_offset += 7
 							}
-							// end_offset = bytes.LastIndex(buf, []byte("#EXTINF"))
 
 							A = buf[m4s_start_offset:m4s_end_offset]
 							B = buf[start_offset:end_offset]
@@ -1298,7 +1314,8 @@ func init() {
 							A,B,e := seed_m4s(f)
 
 							if e != nil {
-								flog.L(`E: `,`error when seed_m4s`, e);
+								flog.L(`W: `,e);
+								w.WriteHeader(http.StatusServiceUnavailable)
 								return
 							}
 
