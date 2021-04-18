@@ -435,10 +435,10 @@ func (replyF) preparing(s string) {
 		msglog.L(`E: `, "roomid", roomid)
 		return
 	} else {
-		{//附加功能 obs结束 saveflv结束
+		{//附加功能 obs结束 `savestream`结束
 			Obs_R(false)
 			Obsf(false)
-			Saveflv_wait()
+			Savestream_wait()
 			go ShowRevf()
 			c.Liveing = false
 		}
@@ -463,7 +463,7 @@ func (replyF) live(s string) {
 		{//附加功能 obs录播
 			Obsf(true)
 			Obs_R(true)
-			go Saveflvf()
+			go Savestreamf()
 		}
 		{
 			c.Rev = 0.0 //营收

@@ -218,9 +218,9 @@ func init(){
 	c.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
 		`savestream`:func(data interface{})(bool){
 			if savestream.cancel.Islive() {
-				Saveflv_wait()
+				Savestream_wait()
 			} else {
-				go Saveflvf()
+				go Savestreamf()
 			}
 
 			return false
@@ -229,7 +229,7 @@ func init(){
 }
 
 //已go func形式调用，将会获取直播流
-func Saveflvf(){
+func Savestreamf(){
 	l := c.Log.Base(`savestream`)
 
 	//避免多次开播导致的多次触发
@@ -265,28 +265,6 @@ func Saveflvf(){
 
 	var (
 		no_found_link = errors.New("no_found_link")
-		// next_link = func(links []string,last_link string) (link string,err error) {
-		// 	if len(links) == 0 {
-		// 		err = no_found_link
-		// 		return
-		// 	}
-
-		// 	var found bool
-			
-		// 	link = links[0]
-
-		// 	if last_link == "" {return}
-
-		// 	for i:=0;i<len(links);i+=1 {
-		// 		if found {
-		// 			link = links[i]
-		// 			break
-		// 		}
-		// 		found = last_link == links[i]
-		// 	}
-
-		// 	return
-		// }
 		hls_get_link = func(m3u8_url,last_download string) (need_download []string,m3u8_file_addition []byte,expires int,err error) {
 			url_struct,e := url.Parse(m3u8_url)
 			if e != nil {
@@ -299,9 +277,9 @@ func Saveflvf(){
 			r := reqf.Req()
 			if e := r.Reqf(reqf.Rval{
 				Url:m3u8_url,
-				Retry:3,
+				Retry:2,
 				SleepTime:1,
-				Timeout:3,
+				Timeout:4,
 				Header:map[string]string{
 					`Host`: url_struct.Host,
 					`User-Agent`: `Mozilla/5.0 (X11; Linux x86_64; rv:83.0) Gecko/20100101 Firefox/83.0`,
@@ -406,7 +384,6 @@ func Saveflvf(){
 		}
 	)
 
-	// cuLinkIndex := 0
 	for {
 		F.Get(`Liveing`)
 		if !c.Liveing {break}
@@ -454,16 +431,12 @@ func Saveflvf(){
 			rr.Response.StatusCode != 200 {
 				savestream.wait.Done()
 				savestream.cancel.Done()
-				// cuLinkIndex += 1
-				// if cuLinkIndex >= len(c.Live) {cuLinkIndex = 0}
 				time.Sleep(time.Second*5)
 				continue
 			}
 		}
 
-		stream_type_is_flv := strings.Contains(c.Live[0],"flv")
-
-		if stream_type_is_flv {
+		if strings.Contains(c.Live[0],"flv") {
 			l.L(`I: `,"保存到", savestream.path + ".flv")
 			Ass_f(savestream.path, time.Now())
 
@@ -525,7 +498,7 @@ func Saveflvf(){
 							Retry:2,
 							SleepTime:1,
 							SaveToPath:path,
-							Timeout:3,
+							Timeout:4,
 						}); e != nil{l.L(`W: `,e)}
 					}(links[i],savestream.path+filename)
 					last_download = links[i]
@@ -549,7 +522,7 @@ func Saveflvf(){
 
 		if !savestream.cancel.Islive() {break}//cancel
 		/*
-			Saveflv需要外部组件
+			Savestream需要外部组件
 			ffmpeg http://ffmpeg.org/download.html
 		*/
 		// if p.Checkfile().IsExist(savestream.path+".flv"){
@@ -567,7 +540,7 @@ func Saveflvf(){
 }
 
 //已func形式调用，将会停止保存直播流
-func Saveflv_wait(){
+func Savestream_wait(){
 	if !savestream.cancel.Islive() {return}
 	// qn, ok := c.K_v.LoadV("flv直播流清晰度").(float64)
 	// if !ok || qn < 0 {return}
@@ -1161,6 +1134,7 @@ func AutoSend_silver_gift() {
 
 //直播保存位置Web服务
 func init() {
+	flog := flog.Base_add(`直播Web服务`)
 	if port_f,ok := c.K_v.LoadV(`直播保存位置Web服务`).(float64);ok && port_f >= 0 {
 		port := int(port_f)
 
@@ -1182,24 +1156,19 @@ func init() {
 		})
 		s.Handle(map[string]func(http.ResponseWriter,*http.Request){
 			`/`:func(w http.ResponseWriter,r *http.Request){
-
 				//header
 				w.Header().Set("Access-Control-Allow-Origin", "*")
 
 				var path string = r.URL.Path[1:]
-				if filepath.Ext(path) == `.dtmp` {
-					// 	//最新直播流
-					// 	if path == `now` && savestream.path != `` {
-					// 		path = filepath.Base(savestream.path)+".flv.dtmp"
-					// 	}
 
+				if !p.Checkfile().IsExist(base_dir+path) {
+					w.WriteHeader(http.StatusNotFound)
+					return
+				}
+
+				if filepath.Ext(path) == `.dtmp` {
 					if strings.Contains(path,"flv") {
 						path = base_dir+path
-
-						if !p.Checkfile().IsExist(path) {
-							w.WriteHeader(http.StatusNotFound)
-							return
-						}
 
 						w.Header().Set("Connection", "Keep-Alive")
 						w.Header().Set("Content-Type", "video/x-flv")
@@ -1212,7 +1181,7 @@ func init() {
 
 						go func(){
 							if err := Stream(path,byteC,cancel);err != nil {
-								flog.Base_add(`直播Web服务`).L(`T: `,err);
+								flog.L(`T: `,err);
 								return
 							}
 						}()
@@ -1236,7 +1205,7 @@ func init() {
 
 						f,err := os.OpenFile(m3u8_file,os.O_RDONLY,0644)
 						if err != nil {
-							flog.Base_add(`直播Web服务`).L(`E: `,err);
+							flog.L(`E: `,err);
 							return
 						}
 						defer f.Close()
@@ -1244,12 +1213,13 @@ func init() {
 						w.Header().Set("Cache-Control", "max-age=1")
 						w.Header().Set("Content-Type", "application/vnd.apple.mpegurl")
 						w.Header().Set("Connection", "Keep-Alive")
+						w.WriteHeader(http.StatusOK)
 
 						var res []byte
 						{
 							buf := make([]byte, 200)
 							if _,err := f.Read(buf);err != nil {
-								flog.Base_add(`直播Web服务`).L(`E: `,err);
+								flog.L(`E: `,err);
 								return
 							}
 							fin_offset := bytes.LastIndex(buf, []byte("EXT-X-MEDIA-SEQUENCE:"))+21
@@ -1299,7 +1269,7 @@ func init() {
 									break
 								}
 
-								if sign := buf[m4s_end_offset-6] - 48;sign == 0 || sign == 5 {break}
+								if sign := buf[m4s_end_offset-6] - 48;sign%3 == 0 {break}
 								start_offset += 7
 							}
 							
@@ -1314,7 +1284,7 @@ func init() {
 								} else {
 									break
 								}
-								if i>15 {break}
+								if i>6 {break}
 								end_offset += 7
 							}
 							// end_offset = bytes.LastIndex(buf, []byte("#EXTINF"))
@@ -1328,7 +1298,7 @@ func init() {
 							A,B,e := seed_m4s(f)
 
 							if e != nil {
-								flog.Base_add(`直播Web服务`).L(`E: `,`error when seed_m4s`, e);
+								flog.L(`E: `,`error when seed_m4s`, e);
 								return
 							}
 
@@ -1338,7 +1308,7 @@ func init() {
 						}
 
 						if _,err = w.Write(res);err != nil {
-							flog.Base_add(`直播Web服务`).L(`E: `,err);
+							flog.L(`E: `,err);
 							return
 						}
 					}
@@ -1346,12 +1316,46 @@ func init() {
 					http.FileServer(http.Dir(base_dir)).ServeHTTP(w,r)
 				}
 			},
+			`/now`:func(w http.ResponseWriter,r *http.Request){
+				//header
+				w.Header().Set("Access-Control-Allow-Origin", "*")
+				w.Header().Set("Cache-Control", "max-age=3")
+
+				//最新直播流
+				if savestream.path == `` {
+					flog.L(`I: `,`还没有下载直播流`)
+					w.WriteHeader(http.StatusNotFound)
+					return
+				}
+
+				path := filepath.Base(savestream.path)
+				if strings.Contains(c.Live[0],"flv") {
+					path += ".flv.dtmp"
+				} else {
+					path += "/0.m3u8.dtmp"
+				}
+
+				if !p.Checkfile().IsExist(base_dir+path) {
+					flog.L(`I: `,`还没有下载直播流`)
+					w.WriteHeader(http.StatusNotFound)
+				} else {
+					u, e := url.Parse("../"+path)
+					if e != nil {
+						flog.L(`E: `,e)
+						w.WriteHeader(http.StatusServiceUnavailable)
+						return
+					}
+					w.Header().Set("Location", r.URL.ResolveReference(u).String())
+					w.WriteHeader(http.StatusTemporaryRedirect)
+				}
+				return
+			},
 			`/exit`:func(w http.ResponseWriter,r *http.Request){
 				s.Server.Shutdown(context.Background())
 			},
 		})
 		host := p.Sys().GetIntranetIp()
 		c.Stream_url = strings.Replace(`http://`+s.Server.Addr,`0.0.0.0`,host,-1)
-		flog.Base_add(`直播Web服务`).L(`I: `,`启动于`,c.Stream_url)
+		flog.L(`I: `,`启动于`,c.Stream_url)
 	}
 }

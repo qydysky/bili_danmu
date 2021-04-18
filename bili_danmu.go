@@ -261,7 +261,7 @@ func Demo(roomid ...int) {
 
 						{//附加功能 进房间发送弹幕 直播流保存 营收
 							go reply.Entry_danmu()
-							go reply.Saveflvf()
+							go reply.Savestreamf()
 							go reply.ShowRevf()
 							//小心心
 							go F.F_x25Kn()
@@ -296,7 +296,7 @@ func Demo(roomid ...int) {
 				if break_sign {break}
 			}
 			{//附加功能 直播流停止
-				reply.Saveflv_wait()
+				reply.Savestream_wait()
 				reply.Save_to_json(-1, []interface{}{`{}]`})
 			}
 			p.Sys().Timeoutf(1)

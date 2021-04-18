@@ -60,7 +60,8 @@ golang go version go1.15 linux/amd64
 - [x] 排行榜
 
 #### 当前支持功能
-以下内容可能过时，点击查看[~~当前支持功能(旧)~~](https://github.com/qydysky/bili_danmu/blob/9731f69d06a15645c6cb1d41379520a5a3f519f1/Reply/F.go#L26)，[功能配置(新)](https://github.com/qydysky/bili_danmu/blob/maintenance/demo/config/config_K_v.json)
+以下内容可能过时，点击查看[功能配置](https://github.com/qydysky/bili_danmu/blob/maintenance/demo/config/config_K_v.json)
+- [x] 直播流服务
 - [x] 每天自动发送将要过期的银瓜子礼物(默认发送3天内过期的)
 - [x] 保持当前已点亮的粉丝牌总是点亮
 - [x] 银瓜子自动兑换硬币
@@ -111,8 +112,11 @@ golang go version go1.15 linux/amd64
 开启之后，启动会显示服务地址，在局域网内打开网址可以取得所有直播流的串流地址。
 
 - dtmp结尾：当前正在获取的流，播放此链接时进度将保持当前流进度
-- flv结尾：保存完毕的直播流，播放此链接时将从头开始播放
+- flv/m3u8结尾：保存完毕的直播流，播放此链接时将从头开始播放
 - ass结尾：保存完毕的直播流字幕，有些播放器会在串流时获取此文件
+- m4s结尾：hls切片
+
+**特殊的：路径为`/now`(例：当服务地址为下方的38259口时，此对应的路径为`http://192.168.31.245:38259/now`)，会重定向到当前正在获取的流，播放此链接时进度将保持当前流进度**
 
 服务地址也可通过命令行` room`查看。
 

@@ -328,12 +328,12 @@ func Html() (missKey []string) {
 						},
 					}
 						
-					want_type := name_map[`flv`]
+					want_type := name_map[`hls`]
 					if v,ok := c.K_v.LoadV(`直播流类型`).(string);ok {
 						if v,ok := name_map[v];ok {
 							want_type = v
 						} else {
-							apilog.L(`I: `, `未找到`,v,`,默认flv`)
+							apilog.L(`I: `, `未找到`,v,`,默认hls`)
 						}
 					} else {
 						apilog.L(`T: `, `默认flv`)
@@ -570,15 +570,15 @@ func getRoomPlayInfo() (missKey []string) {
 				},
 			}
 				
-			want_type := name_map[`flv`]
+			want_type := name_map[`hls`]
 			if v,ok := c.K_v.LoadV(`直播流类型`).(string);ok {
 				if v,ok := name_map[v];ok {
 					want_type = v
 				} else {
-					apilog.L(`I: `, `未找到`,v,`,默认flv`)
+					apilog.L(`I: `, `未找到`,v,`,默认hls`)
 				}
 			} else {
-				apilog.L(`T: `, `默认flv`)
+				apilog.L(`T: `, `默认hls`)
 			}
 	
 			for _,v := range j.Data.PlayurlInfo.Playurl.Stream {
@@ -708,15 +708,15 @@ func getRoomPlayInfoByQn() (missKey []string) {
 				},
 			}
 				
-			want_type := name_map[`flv`]
+			want_type := name_map[`hls`]
 			if v,ok := c.K_v.LoadV(`直播流类型`).(string);ok {
 				if v,ok := name_map[v];ok {
 					want_type = v
 				} else {
-					apilog.L(`I: `, `未找到`,v,`,默认flv`)
+					apilog.L(`I: `, `未找到`,v,`,默认hls`)
 				}
 			} else {
-				apilog.L(`T: `, `默认flv`)
+				apilog.L(`T: `, `默认hls`)
 			}
 	
 			for _,v := range j.Data.PlayurlInfo.Playurl.Stream {
