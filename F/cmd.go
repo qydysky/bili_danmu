@@ -37,7 +37,7 @@ func Cmd() {
 					cmdlog.L(`W: `, "不能切换录制状态，未在直播")
 					continue
 				}
-				c.Danmu_Main_mq.Push_tag(`saveflv`, nil)
+				c.Danmu_Main_mq.Push_tag(`savestream`, nil)
 				continue
 			}
 			//直播间切换

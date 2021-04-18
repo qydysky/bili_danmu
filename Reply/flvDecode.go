@@ -42,9 +42,6 @@ func Stream(path string,streamChan chan []byte,cancel chan struct{}) (error) {
 	defer f.Close()
 	defer close(streamChan)
 
-	//init
-	f.Seek(0,0)
-
 	//get flv header(9byte) + FirstTagSize(4byte)
 	{
 		buf := make([]byte, flv_header_size+previou_tag_size)
@@ -58,7 +55,7 @@ func Stream(path string,streamChan chan []byte,cancel chan struct{}) (error) {
 		Offset int64
 		Timestamp int32
 		PreSize int32
-		VideoFrame byte
+		FirstByte byte
 		Buf *[]byte
 	}
 
@@ -110,7 +107,7 @@ func Stream(path string,streamChan chan []byte,cancel chan struct{}) (error) {
 			t.Tag = eof_tag
 			return
 		}
-		t.VideoFrame = data[0]
+		t.FirstByte = data[0]
 
 		pre_tag := make([]byte, previou_tag_size)
 		if size,err := f.Read(pre_tag);err != nil || size == 0 {
@@ -143,7 +140,7 @@ func Stream(path string,streamChan chan []byte,cancel chan struct{}) (error) {
 				streamChan <- *t.Buf
 			}
 
-			if t.VideoFrame & 0xf0 == 0x10 {
+			if t.FirstByte & 0xf0 == 0x10 {
 				if len(last_keyframe_video_offsets) > 2 {
 					// last_timestamps = append(last_timestamps[1:], t.Timestamp)
 					last_keyframe_video_offsets = append(last_keyframe_video_offsets[1:], t.Offset)
@@ -191,7 +188,7 @@ func Stream(path string,streamChan chan []byte,cancel chan struct{}) (error) {
 				f.Seek(seachtag(f),1)
 				continue
 			} else if t.Tag == video_tag {
-				// if t.VideoFrame & 0xf0 == 0x10 {
+				// if t.FirstByte & 0xf0 == 0x10 {
 				// 	video_keyframe_speed = t.Timestamp - last_video_keyframe_timestramp
 				// 	fmt.Println(`video_keyframe_speed`,video_keyframe_speed)
 				// 	last_video_keyframe_timestramp = t.Timestamp
