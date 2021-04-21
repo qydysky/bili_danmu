@@ -7,7 +7,7 @@ import (
 )
 
 /*
-	数据为WS_OP_MESSAGE类型的数据分派https://baidu.com
+	数据为WS_OP_MESSAGE类型的数据分派
 */
 
 var msglog = c.Log.Base(`Msg`)

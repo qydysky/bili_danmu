@@ -899,7 +899,7 @@ func init() {
 	
 				lessdanmu.Lock()
 				if ptk := lessdanmu.limit.PTK();ptk == lessdanmu.max_num {
-					if lessdanmu.threshold > 0.71 {
+					if lessdanmu.threshold > 0.01 {
 						lessdanmu.threshold -= 0.01
 					}
 				} else if ptk == 0 {
@@ -927,7 +927,7 @@ func Lessdanmuf(s string) (show bool) {
 	lessdanmu.buf = append(lessdanmu.buf[1:], s)
 
 	lessdanmu.RLock()
-	show = o > lessdanmu.threshold
+	show = o < lessdanmu.threshold
 	lessdanmu.RUnlock()
 
 	if show && lessdanmu.max_num > 0 {
