@@ -66,6 +66,32 @@ func (replyF) defaultMsg(s string){
 	msglog.Base_add("Unknow").L(`E: `, s)
 }
 
+//大乱斗pk开始
+func (replyF) pk_lottery_start(s string){
+	msglog := msglog.Base_add("大乱斗")
+	var j ws_msg.PK_LOTTERY_START
+	if e := json.Unmarshal([]byte(s), &j);e != nil{
+		msglog.L(`E: `, e)
+		return
+	}
+	Gui_show(j.Data.Title,`0room`)
+	msglog.L(`I`, j.Data.Title)
+}
+
+//大乱斗pk状态
+func (replyF) pk_battle_process_new(s string){
+	msglog := msglog.Base_add("大乱斗")
+	var j ws_msg.PK_BATTLE_PROCESS_NEW
+	if e := json.Unmarshal([]byte(s), &j);e != nil{
+		msglog.L(`E: `, e)
+		return
+	}
+	if diff := j.Data.InitInfo.Votes-j.Data.MatchInfo.Votes;diff<0 {
+		Gui_show(`大乱斗落后`,strconv.Itoa(diff),`0room`)
+		msglog.L(`I`, `大乱斗落后`,diff)
+	}
+}
+
 //msg-特别礼物
 func (replyF) vtr_gift_lottery(s string){
 	msglog := msglog.Base_add("特别礼物")

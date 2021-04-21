@@ -16,7 +16,7 @@ import (
 	"net/url"
 	"errors"
 	"bytes"
-
+	
 	c "github.com/qydysky/bili_danmu/CV"
 	F "github.com/qydysky/bili_danmu/F"
 	send "github.com/qydysky/bili_danmu/Send"
@@ -241,31 +241,17 @@ func Savestreamf(){
 		defer savestream.skipFunc.UnSet()
 	}
 
-	qn, ok := c.K_v.LoadV("直播流清晰度").(float64)
-	if !ok || qn < 0 {return}
+	want_qn, ok := c.K_v.LoadV("直播流清晰度").(float64)
+	if !ok || want_qn < 0 {return}
+	c.Live_want_qn = int(want_qn)
 
-	{
-		AcceptQn := []int{}
-		for k,_ := range c.AcceptQn {
-			if k <= int(qn) {AcceptQn = append(AcceptQn, k)}
-		}
-		MaxQn := 0
-		for i:=0; len(AcceptQn)>i; i+=1{
-			if AcceptQn[i] > MaxQn {
-				MaxQn = AcceptQn[i]
-			}
-		}
-		if MaxQn == 0 {
-			l.L(`W: `,"使用默认清晰度")
-		}
-		c.Live_qn = MaxQn
-	}
+	F.Get(`Live`)
 
 	if savestream.cancel.Islive() {return}
 
 	var (
 		no_found_link = errors.New("no_found_link")
-		hls_get_link = func(m3u8_url,last_download string) (need_download []string,m3u8_file_addition []byte,expires int,err error) {
+		hls_get_link = func(m3u8_url,last_download string) (need_download [][]string,m3u8_file_addition []byte,expires int,err error) {
 			url_struct,e := url.Parse(m3u8_url)
 			if e != nil {
 				err = e
@@ -277,9 +263,9 @@ func Savestreamf(){
 			r := reqf.Req()
 			if e := r.Reqf(reqf.Rval{
 				Url:m3u8_url,
-				Retry:2,
+				Retry:4,
 				SleepTime:1,
-				Timeout:4,
+				Timeout:3,
 				Header:map[string]string{
 					`Host`: url_struct.Host,
 					`User-Agent`: `Mozilla/5.0 (X11; Linux x86_64; rv:83.0) Gecko/20100101 Firefox/83.0`,
@@ -340,7 +326,7 @@ func Savestreamf(){
 			if last_download == "" {
 				m3u8_file_addition = r.Respon
 				for i:=0;i<len(m4s_links);i+=1 {
-					need_download = append(need_download, m4s_links[i].Url)
+					need_download = append(need_download, []string{m4s_links[i].Url, m4s_links[i].Base})
 				}
 				return
 			}
@@ -357,11 +343,11 @@ func Savestreamf(){
 
 
 					for ii:=i;ii<len(m4s_links);ii+=1 {
-						need_download = append(need_download, m4s_links[ii].Url)
+						need_download = append(need_download, []string{m4s_links[ii].Url, m4s_links[ii].Base})
 					}
 					break
 				}
-				found = last_download == m4s_links[i].Url
+				found = last_download == m4s_links[i].Base
 			}
 			if !found {
 				offset := m4s_links[1].Offset_line-1
@@ -372,7 +358,7 @@ func Savestreamf(){
 				m3u8_file_addition = m3u8_file_addition[:len(m3u8_file_addition)-1]
 
 				for i:=1;i<len(m4s_links);i+=1 {
-					need_download = append(need_download, m4s_links[i].Url)
+					need_download = append(need_download, []string{m4s_links[i].Url, m4s_links[i].Base})
 				}
 			}
 
@@ -440,6 +426,25 @@ func Savestreamf(){
 			l.L(`I: `,"保存到", savestream.path + ".flv")
 			Ass_f(savestream.path, time.Now())
 
+			// no expect qn
+			exit_chan := make(chan struct{})
+			if c.Live_want_qn < c.Live_qn {
+				go func(){
+					for c.Live_want_qn < c.Live_qn {
+						select{
+						case <- time.After(time.Minute):;
+						case <- exit_chan:return;
+						}
+						F.Get(`Liveing`)
+						if !c.Liveing {break}
+		
+						F.Get(`Live`)
+						if len(c.Live)==0 {break}
+					}
+					Savestream_wait()
+				}()
+			}
+
 			link := flv_get_link(c.Live[0])
 			if e := rr.Reqf(reqf.Rval{
 				Url:link,
@@ -451,6 +456,8 @@ func Savestreamf(){
 				SaveToPath:savestream.path + ".flv",
 				Timeout:-1,
 			}); e != nil{l.L(`W: `,e)}
+			
+			close(exit_chan)
 
 			l.L(`I: `,"结束")
 			Ass_f("", time.Now())//ass
@@ -460,15 +467,67 @@ func Savestreamf(){
 			l.L(`I: `,"保存到", savestream.path)
 			Ass_f(savestream.path+"0", time.Now())
 			
-			last_download := ""
-			expires := 0
+			var last_download = []string{"",""}
+			expires := time.Now().Add(time.Minute*2).Unix()
+
+			var (
+				path_front string
+				path_behind string
+			)
+			
 			for savestream.cancel.Islive() {
-				links,file_add,exp,e := hls_get_link(c.Live[0],last_download)
-				expires = exp
-				if e != nil {l.L(`E: `,e);break}
-				if len(links) == 0 {
+				links_and_Base,file_add,exp,e := hls_get_link(c.Live[0],last_download[1])
+
+				if e != nil && !reqf.IsTimeout(e) {
+					l.L(`E: `,e)
+					break
+				}
+
+				if len(links_and_Base) == 0 {
 					time.Sleep(time.Second)
 					continue
+				}
+
+				//qn in expect , set expires
+				if c.Live_want_qn >= c.Live_qn {
+					expires = int64(exp)
+				}
+
+				//use guess
+				if last_download[1] != "" {
+					previou,_ := strconv.Atoi(last_download[1][:len(last_download[1])-4])
+					now,_ := strconv.Atoi(links_and_Base[0][1][:len(links_and_Base[0][1])-4])
+					if previou != now-1 {
+						if diff := now - previou;diff > 15 {
+							l.L(`W: `,`diff too large `,diff)
+							break
+						} else {
+							l.L(`I: `,`猜测hls`,previou,`-`,now,`(`,diff,`)`)
+						}
+	
+						{//file_add
+							for i:=now-1;i>previou;i-=1 {
+								file_add = append([]byte(strconv.Itoa(i)+".m4s"),file_add...)
+							}
+						}
+						{//links_and_Base
+							if path_front == "" || path_behind == "" {
+								u, e := url.Parse(links_and_Base[0][0])
+								if e != nil {
+									l.L(`E: `,`fault to enable guess`,e)
+									return
+								}
+								path_front = u.Scheme+"://"+path.Dir(u.Host+u.Path)+"/"
+								path_behind = "?"+u.RawQuery
+							}
+							for i:=now-1;i>previou;i-=1 {
+								base := strconv.Itoa(i)+".m4s"
+								links_and_Base = append([][]string{[]string{
+									path_front+base+path_behind,
+									base}},links_and_Base...)
+							}
+						}
+					}
 				}
 
 				f := p.File()
@@ -479,31 +538,32 @@ func Savestreamf(){
 					Context:[]interface{}{file_add},
 				})
 	
-				for i:=0;i<len(links);i+=1 {
-					filename := path.Base(links[i])
-					if query_offset := strings.Index(filename, "?");query_offset != -1 {
-						filename = filename[:query_offset]
-					}
+				for i:=0;i<len(links_and_Base);i+=1 {
 					go func(url,path string){
 						r := reqf.Req()
 						if e := r.Reqf(reqf.Rval{
 							Url:url,
-							Retry:2,
+							Retry:3,
 							SleepTime:1,
 							SaveToPath:path,
-							Timeout:4,
+							Timeout:3,
 						}); e != nil{l.L(`W: `,e)}
-					}(links[i],savestream.path+filename)
-					last_download = links[i]
+					}(links_and_Base[i][0],savestream.path+links_and_Base[i][1])
+					last_download = links_and_Base[i]
 				}
 
 				//m3u8_url 将过期
-				if expires != 0 && p.Sys().GetSTime() > int64(expires+60) {
+				if p.Sys().GetSTime()+60 > expires {
 					F.Get(`Liveing`)
 					if !c.Liveing {break}
 	
 					F.Get(`Live`)
 					if len(c.Live)==0 {break}
+
+					// no expect qn
+					if c.Live_want_qn < c.Live_qn {
+						expires = time.Now().Add(time.Minute*2).Unix()
+					}
 				} else {
 					time.Sleep(time.Second)
 				}
@@ -545,8 +605,6 @@ func Savestreamf(){
 //已func形式调用，将会停止保存直播流
 func Savestream_wait(){
 	if !savestream.cancel.Islive() {return}
-	// qn, ok := c.K_v.LoadV("flv直播流清晰度").(float64)
-	// if !ok || qn < 0 {return}
 
 	savestream.cancel.Done()
 	c.Log.Base(`savestream`).L(`I: `,"等待停止")

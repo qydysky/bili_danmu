@@ -7,13 +7,17 @@ import (
 )
 
 /*
-	数据为WS_OP_MESSAGE类型的数据分派
+	数据为WS_OP_MESSAGE类型的数据分派https://baidu.com
 */
 
 var msglog = c.Log.Base(`Msg`)
 
 //Msg类型数据处理方法map
 var Msg_map = map[string]func(replyF, string) {
+	`PK_LOTTERY_START`:replyF.pk_lottery_start,//大乱斗pk
+	`PK_BATTLE_PRE_NEW`:nil,//pk准备
+	`PK_BATTLE_START_NEW`:nil,//pk开始
+	`PK_BATTLE_PROCESS_NEW`:replyF.pk_battle_process_new,//pk进行中
 	`VTR_GIFT_LOTTERY`:replyF.vtr_gift_lottery,//特别礼物
 	`ENTRY_EFFECT_MUST_RECEIVE`:nil,//高能榜前三进入
 	`GIFT_BAG_DOT`:nil,

@@ -14,6 +14,7 @@ var (
 
 	Live []string//直播流链接
 	Live_qn int//当前直播流质量
+	Live_want_qn int//期望直播流质量
 	Roomid int
 	Cookie syncmap.Map
 	CookieOk bool//
@@ -91,12 +92,24 @@ func init() {
 // ) // 不再需要
 
 //允许的清晰度
-var AcceptQn = map[int]string{
-	10000:"原画",
-	800:"4K",
-	401:"蓝光(杜比)",
-	400:"蓝光",
-	250:"超清",
-	150:"高清",
-	80:"流畅",
-}
+
+var (
+	AcceptQn = map[int]string{
+		10000:"原画",
+		800:"4K",
+		401:"蓝光(杜比)",
+		400:"蓝光",
+		250:"超清",
+		150:"高清",
+		80:"流畅",
+	}
+	Qn = map[int]string{// no change
+		10000:"原画",
+		800:"4K",
+		401:"蓝光(杜比)",
+		400:"蓝光",
+		250:"超清",
+		150:"高清",
+		80:"流畅",
+	}
+)

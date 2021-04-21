@@ -308,6 +308,14 @@ func Html() (missKey []string) {
 				//是否在直播
 				c.Liveing = j.Roominitres.Data.LiveStatus == 1
 				
+				//未在直播，不获取直播流
+				if !c.Liveing {
+					c.Live_qn = 0
+					c.AcceptQn = c.Qn
+					c.Live = []string{}
+					return
+				}
+
 				//当前直播流
 				{
 					type Stream_name struct {
@@ -354,7 +362,7 @@ func Html() (missKey []string) {
 								{
 									var tmp = make(map[int]string)
 									for _,v := range v.AcceptQn {
-										if s,ok := c.AcceptQn[v];ok{
+										if s,ok := c.Qn[v];ok{
 											tmp[v] = s
 										}
 									}
@@ -550,6 +558,14 @@ func getRoomPlayInfo() (missKey []string) {
 		//是否在直播
 		c.Liveing = j.Data.LiveStatus == 1
 		
+		//未在直播，不获取直播流
+		if !c.Liveing {
+			c.Live_qn = 0
+			c.AcceptQn = c.Qn
+			c.Live = []string{}
+			return
+		}
+
 		//当前直播流
 		{
 			type Stream_name struct {
@@ -580,34 +596,48 @@ func getRoomPlayInfo() (missKey []string) {
 			} else {
 				apilog.L(`T: `, `默认hls`)
 			}
-	
-			for _,v := range j.Data.PlayurlInfo.Playurl.Stream {
-				if v.ProtocolName != want_type.Protocol_name {continue}
-	
-				for _,v := range v.Format {
-					if v.FormatName != want_type.Format_name {continue}
-					
-					for _,v := range v.Codec {
-						if v.CodecName != want_type.Codec_name {continue}
-	
-						//当前直播流质量
-						c.Live_qn = v.CurrentQn
-						//允许的清晰度
-						{
-							var tmp = make(map[int]string)
-							for _,v := range v.AcceptQn {
-								if s,ok := c.AcceptQn[v];ok{
-									tmp[v] = s
+			no_found_type := true
+			for {
+				for _,v := range j.Data.PlayurlInfo.Playurl.Stream {
+					if v.ProtocolName != want_type.Protocol_name {continue}
+		
+					for _,v := range v.Format {
+						if v.FormatName != want_type.Format_name {continue}
+						
+						for _,v := range v.Codec {
+							if v.CodecName != want_type.Codec_name {continue}
+		
+							//当前直播流质量
+							c.Live_qn = v.CurrentQn
+							//允许的清晰度
+							{
+								var tmp = make(map[int]string)
+								for _,v := range v.AcceptQn {
+									if s,ok := c.Qn[v];ok{
+										tmp[v] = s
+									}
 								}
+								c.AcceptQn = tmp
 							}
-							c.AcceptQn = tmp
-						}
-						//直播流链接
-						c.Live = []string{}
-						for _,v1 := range v.URLInfo {
-							c.Live = append(c.Live, v1.Host+v.BaseURL+v1.Extra)
+							//直播流链接
+							c.Live = []string{}
+							for _,v1 := range v.URLInfo {
+								c.Live = append(c.Live, v1.Host+v.BaseURL+v1.Extra)
+							}
 						}
 					}
+				}
+				if no_found_type {
+					if want_type.Protocol_name == "http_stream" {
+						apilog.L(`I: `, `不支持flv，使用hls`)
+						want_type = name_map[`hls`]
+					} else {
+						apilog.L(`I: `, `不支持hls，使用flv`)
+						want_type = name_map[`flv`]
+					}
+					no_found_type = false
+				} else {
+					break
 				}
 			}
 		}
@@ -629,7 +659,7 @@ func getRoomPlayInfoByQn() (missKey []string) {
 	{
 		AcceptQn := []int{}
 		for k,_ := range c.AcceptQn {
-			if k <= c.Live_qn {AcceptQn = append(AcceptQn, k)}
+			if k <= c.Live_want_qn {AcceptQn = append(AcceptQn, k)}
 		}
 		MaxQn := 0
 		for i:=0; len(AcceptQn)>i; i+=1{
@@ -688,6 +718,14 @@ func getRoomPlayInfoByQn() (missKey []string) {
 		//是否在直播
 		c.Liveing = j.Data.LiveStatus == 1
 		
+		//未在直播，不获取直播流
+		if !c.Liveing {
+			c.Live_qn = 0
+			c.AcceptQn = c.Qn
+			c.Live = []string{}
+			return
+		}
+
 		//当前直播流
 		{
 			type Stream_name struct {
@@ -719,36 +757,53 @@ func getRoomPlayInfoByQn() (missKey []string) {
 				apilog.L(`T: `, `默认hls`)
 			}
 	
-			for _,v := range j.Data.PlayurlInfo.Playurl.Stream {
-				if v.ProtocolName != want_type.Protocol_name {continue}
+			no_found_type := true
+			for {
+				for _,v := range j.Data.PlayurlInfo.Playurl.Stream {
+					if v.ProtocolName != want_type.Protocol_name {continue}
+		
+					for _,v := range v.Format {
+						if v.FormatName != want_type.Format_name {continue}
+						
+						for _,v := range v.Codec {
+							if v.CodecName != want_type.Codec_name {continue}
+		
+							no_found_type = false
 	
-				for _,v := range v.Format {
-					if v.FormatName != want_type.Format_name {continue}
-					
-					for _,v := range v.Codec {
-						if v.CodecName != want_type.Codec_name {continue}
-	
-						//当前直播流质量
-						c.Live_qn = v.CurrentQn
-						//允许的清晰度
-						{
-							var tmp = make(map[int]string)
-							for _,v := range v.AcceptQn {
-								if s,ok := c.AcceptQn[v];ok{
-									tmp[v] = s
+							//当前直播流质量
+							c.Live_qn = v.CurrentQn
+							//允许的清晰度
+							{
+								var tmp = make(map[int]string)
+								for _,v := range v.AcceptQn {
+									if s,ok := c.Qn[v];ok{
+										tmp[v] = s
+									}
 								}
+								c.AcceptQn = tmp
 							}
-							c.AcceptQn = tmp
-						}
-						//直播流链接
-						c.Live = []string{}
-						for _,v1 := range v.URLInfo {
-							c.Live = append(c.Live, v1.Host+v.BaseURL+v1.Extra)
+							//直播流链接
+							c.Live = []string{}
+							for _,v1 := range v.URLInfo {
+								c.Live = append(c.Live, v1.Host+v.BaseURL+v1.Extra)
+							}
 						}
 					}
 				}
+				if no_found_type {
+					if want_type.Protocol_name == "http_stream" {
+						apilog.L(`I: `, `不支持flv，使用hls`)
+						want_type = name_map[`hls`]
+					} else {
+						apilog.L(`I: `, `不支持hls，使用flv`)
+						want_type = name_map[`flv`]
+					}
+					no_found_type = false
+				} else {
+					break
+				}
 			}
-			if s,ok := c.AcceptQn[c.Live_qn];!ok{
+			if s,ok := c.Qn[c.Live_qn];!ok{
 				apilog.L(`W: `, `未知清晰度`, c.Live_qn)
 			} else {
 				apilog.L(`I: `, s)
