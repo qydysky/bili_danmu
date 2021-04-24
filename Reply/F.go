@@ -443,12 +443,16 @@ func Savestreamf(){
 				byteC := make(chan []byte,1024*1024*30)//传来的关键帧间隔buf为3s，避免超出buf，设为30M
 
 				go func(){
-					for !p.Checkfile().IsExist(savestream.path + ".flv.dtmp") {
-						time.Sleep(time.Second)
-					}
-					if err := Stream(savestream.path + ".flv.dtmp",&savestream.flv_front,byteC,exit_chan);err != nil {
-						flog.L(`T: `,err);
-						return
+					for !p.Checkfile().IsExist(savestream.path + ".flv.dtmp") {time.Sleep(time.Second)}
+					for {
+						if err := Stream(savestream.path + ".flv.dtmp",&savestream.flv_front,byteC,exit_chan);err != nil {
+							flog.L(`T: `,err);
+							return
+						}
+						select {
+						case <-exit_chan:return;
+						default:;
+						}
 					}
 				}()
 

@@ -109,7 +109,9 @@ golang go version go1.15 linux/amd64
     "直播保存位置Web服务":0,
 ```
 
-开启之后，启动会显示服务地址，在局域网内打开网址可以取得所有直播流的串流地址。
+开启之后，启动会显示服务地址，在局域网内打开网址可以取得所有直播流的串流地址
+
+支持跨域，注意：在https网站默认无法加载非本机http服务
 
 - dtmp结尾：当前正在获取的流，播放此链接时进度将保持当前流进度
 - flv/m3u8结尾：保存完毕的直播流，播放此链接时将从头开始播放
@@ -123,6 +125,13 @@ golang go version go1.15 linux/amd64
 ```
 I: 2021/04/13 20:07:45 命令行操作 [直播Web服务: http://192.168.31.245:38259]
 ```
+
+测试可用项目：
+
+- [bilibili/flv.js](https://github.com/bilibili/flv.js)
+- [bytedance/xgplayer](https://github.com/bytedance/xgplayer)
+- [video-dev/hls.js](https://github.com/video-dev/hls.js)
+- [mpv](https://mpv.io/)
 
 
 #### 命令行操作
