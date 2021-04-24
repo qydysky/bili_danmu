@@ -137,9 +137,7 @@ func server() {
 	wslog.L(`I: `,`使用WebJs`,webpath,`进行加密`)
 }
 
-func Wasm(maxloop int, uid uintptr,s RT) (o string) {//maxloop 超时重试
-	if maxloop <= 0 {return}
-
+func Wasm(uid uintptr,s RT) (o string) {//maxloop 超时重试
 	{//nodejs
 		if nodeJsUrl != "" {
 			req := reqf.Req()
@@ -149,10 +147,11 @@ func Wasm(maxloop int, uid uintptr,s RT) (o string) {//maxloop 超时重试
 				},
 				Url:nodeJsUrl,
 				PostStr:toNodeJsString(s),
+				Proxy:c.Proxy,
 				Timeout:3,
 			});err != nil {
 				wslog.L(`E: `,err)
-				o = Wasm(maxloop-1, uid, s)
+				o = Wasm(uid, s)
 				return
 			}
 
@@ -185,6 +184,11 @@ func Wasm(maxloop int, uid uintptr,s RT) (o string) {//maxloop 超时重试
 			time.Sleep(time.Second*time.Duration(3))
 		}
 
+		if ws.Len() == 0 {
+			wslog.L(`W: `,`浏览器打开`,webpath,`失败，请手动打开`)
+			return
+		}
+
 		//获取websocket操作对象 发送
 		ws.Interface().Push_tag(`send`,websocket.Uinterface{
 			Id:uid,
@@ -198,7 +202,6 @@ func Wasm(maxloop int, uid uintptr,s RT) (o string) {//maxloop 超时重试
 				return r.S
 			case <- time.After(time.Second*time.Duration(1)):
 				wslog.L(`E: `,`超时！响应>1s，确认保持`,webpath,`开启`)
-				o = Wasm(maxloop-1, uid, s)
 				return
 			}
 		}
@@ -219,7 +222,7 @@ func Close(uid uintptr){
 
 func test(uid uintptr) bool {
 	time.Sleep(time.Second*time.Duration(3))
-	if s := Wasm(3, uid, RT{
+	if s := Wasm(uid, RT{
 		R:R{
 		Id: "[9,371,1,22613059]",
 		Device: "[\"AUTO8216117272375373\",\"77bee604-b591-4664-845b-b69603f8c71c\"]",

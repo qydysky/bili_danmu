@@ -178,6 +178,7 @@ func Demo(roomid ...int) {
 				ws_c := ws.New_client(ws.Client{
 					Url:v,
 					TO:35 * 1000,
+					Proxy:c.Proxy,
 					Func_abort_close:func(){danmulog.L(`I: `,`服务器连接中断`)},
 					Func_normal_close:func(){danmulog.L(`I: `,`服务器连接关闭`)},
 					Header: map[string]string{

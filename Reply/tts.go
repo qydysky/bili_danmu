@@ -93,6 +93,7 @@ func TTS(uid,msg string) {
 		Timeout:3,
 		Retry:1,
 		SleepTime:500,
+		Proxy:c.Proxy,
 	});err != nil {
 		tts_log.L(`E: `,err)
 		return

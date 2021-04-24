@@ -288,6 +288,7 @@ func Savestreamf(){
 				Url:m3u8_url,
 				Retry:4,
 				SleepTime:1,
+				Proxy:c.Proxy,
 				Timeout:3,
 				Header:map[string]string{
 					`Host`: url_struct.Host,
@@ -417,6 +418,7 @@ func Savestreamf(){
 				Url:c.Live[0],
 				Retry:10,
 				SleepTime:5,
+				Proxy:c.Proxy,
 				Header:map[string]string{
 					`Cookie`:reqf.Map_2_Cookies_String(CookieM),
 				},
@@ -443,7 +445,12 @@ func Savestreamf(){
 				byteC := make(chan []byte,1024*1024*30)//传来的关键帧间隔buf为3s，避免超出buf，设为30M
 
 				go func(){
-					for !p.Checkfile().IsExist(savestream.path + ".flv.dtmp") {time.Sleep(time.Second)}
+					for !p.Checkfile().IsExist(savestream.path + ".flv.dtmp") {
+						select {
+						case <-exit_chan:return;
+						case <-time.After(time.Second):;
+						}
+					}
 					for {
 						if err := Stream(savestream.path + ".flv.dtmp",&savestream.flv_front,byteC,exit_chan);err != nil {
 							flog.L(`T: `,err);
@@ -487,6 +494,7 @@ func Savestreamf(){
 			if e := rr.Reqf(reqf.Rval{
 				Url:link,
 				Retry:3,
+				Proxy:c.Proxy,
 				SleepTime:3,
 				Header:map[string]string{
 					`Cookie`:reqf.Map_2_Cookies_String(CookieM),
@@ -680,6 +688,7 @@ func Savestreamf(){
 							SleepTime:1,
 							SaveToPath:path+(*link).Base,
 							Timeout:3,
+							Proxy:c.Proxy,
 						}); e != nil{
 							l.L(`I: `,e,`将重试！`)
 							//避免影响后续猜测
@@ -1396,12 +1405,10 @@ func init() {
 						if flushSupport {flusher.Flush()}
 
 						//写入flv头，首tag
-						if n,err := w.Write(savestream.flv_front);err != nil {
+						if _,err := w.Write(savestream.flv_front);err != nil {
 							return
 						} else if flushSupport {
 							flusher.Flush()
-						} else {
-							fmt.Println("pass",n)
 						}
 
 						cancel := make(chan struct{})

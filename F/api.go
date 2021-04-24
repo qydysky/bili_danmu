@@ -241,6 +241,7 @@ func Info(UpUid int) (info J.Info) {
 		req := reqf.Req()
 		if err := req.Reqf(reqf.Rval{
 			Url:`https://api.bilibili.com/x/space/acc/info?mid=`+strconv.Itoa(UpUid)+`&jsonp=jsonp`,
+			Proxy:c.Proxy,
 			Timeout:10,
 			Retry:2,
 		});err != nil {
@@ -277,6 +278,7 @@ func Html() (missKey []string) {
 	{
 		r := g.Get(reqf.Rval{
 			Url:"https://live.bilibili.com/" + Roomid,
+			Proxy:c.Proxy,
 		})
 
 		if tmp := r.S(`<script>window.__NEPTUNE_IS_MY_WAIFU__=`, `</script>`, 0, 0);tmp.Err != nil {
@@ -445,6 +447,7 @@ func getInfoByRoom() (missKey []string) {
 			Header:map[string]string{
 				`Referer`:"https://live.bilibili.com/" + Roomid,
 			},
+			Proxy:c.Proxy,
 			Timeout:10,
 			Retry:2,
 		});err != nil {
@@ -530,6 +533,7 @@ func getRoomPlayInfo() (missKey []string) {
 				`Referer`:"https://live.bilibili.com/" + Roomid,
 				`Cookie`:reqf.Map_2_Cookies_String(Cookie),
 			},
+			Proxy:c.Proxy,
 			Timeout:10,
 			Retry:2,
 		});err != nil {
@@ -690,6 +694,7 @@ func getRoomPlayInfoByQn() (missKey []string) {
 				`Referer`:"https://live.bilibili.com/" + Roomid,
 				`Cookie`:reqf.Map_2_Cookies_String(Cookie),
 			},
+			Proxy:c.Proxy,
 			Timeout:10,
 			Retry:2,
 		});err != nil {
@@ -841,6 +846,7 @@ func getDanmuInfo() (missKey []string) {
 				`Referer`:"https://live.bilibili.com/" + Roomid,
 				`Cookie`:reqf.Map_2_Cookies_String(Cookie),
 			},
+			Proxy:c.Proxy,
 			Timeout:10,
 		});err != nil {
 			apilog.L(`E: `,err)
@@ -885,6 +891,7 @@ func Get_face_src(uid string) (string) {
 			`Referer`:"https://live.bilibili.com/" + strconv.Itoa(c.Roomid),
 			`Cookie`:reqf.Map_2_Cookies_String(Cookie),
 		},
+		Proxy:c.Proxy,
 		Timeout:10,
 		Retry:2,
 	});err != nil {
@@ -948,6 +955,7 @@ func Get_HotRank() (missKey []string) {
 				`Referer`:"https://live.bilibili.com/" + Roomid,
 				`Cookie`:reqf.Map_2_Cookies_String(Cookie),
 			},
+			Proxy:c.Proxy,
 			Timeout:3,
 			Retry:2,
 		});err != nil {
@@ -1017,6 +1025,7 @@ func Get_guardNum() (missKey []string) {
 				`Referer`:"https://live.bilibili.com/" + Roomid,
 				`Cookie`:reqf.Map_2_Cookies_String(Cookie),
 			},
+			Proxy:c.Proxy,
 			Timeout:3,
 			Retry:2,
 		});err != nil {
@@ -1137,6 +1146,7 @@ func Get_cookie() (missKey []string) {
 		r := reqf.Req()
 		if e := r.Reqf(reqf.Rval{
 			Url:`https://passport.bilibili.com/qrcode/getLoginUrl`,
+			Proxy:c.Proxy,
 			Timeout:10,
 			Retry:2,
 		});e != nil {
@@ -1239,6 +1249,7 @@ func Get_cookie() (missKey []string) {
 					`Referer`: `https://passport.bilibili.com/login`,
 					`Cookie`:reqf.Map_2_Cookies_String(Cookie),
 				},
+				Proxy:c.Proxy,
 				Timeout:10,
 				Retry:2,	
 			});e != nil {
@@ -1359,6 +1370,7 @@ func Get_list_in_room() (array []TGet_list_in_room) {
 				Header:map[string]string{
 					`Cookie`:reqf.Map_2_Cookies_String(Cookie),
 				},
+				Proxy:c.Proxy,
 				Timeout:10,
 				Retry:2,
 			});e != nil {
@@ -1438,6 +1450,7 @@ func Get_weared_medal() (item TGet_weared_medal) {
 			Header:map[string]string{
 				`Cookie`:reqf.Map_2_Cookies_String(Cookie),
 			},
+			Proxy:c.Proxy,
 			Timeout:10,
 			Retry:2,
 		});e != nil {
@@ -1546,6 +1559,7 @@ func CheckSwitch_FansMedal() (missKey []string) {
 				`Content-Type`:`application/x-www-form-urlencoded; charset=UTF-8`,
 				`Referer`: `https://passport.bilibili.com/login`,
 			},
+			Proxy:c.Proxy,
 			Timeout:10,
 			Retry:2,
 		});e != nil {
@@ -1604,6 +1618,7 @@ func Dosign() {
 				`Referer`:"https://live.bilibili.com/all",
 				`Cookie`:reqf.Map_2_Cookies_String(Cookie),
 			},
+			Proxy:c.Proxy,
 			Timeout:3,
 			Retry:2,
 		});err != nil {
@@ -1650,6 +1665,7 @@ func Dosign() {
 				`Referer`:"https://live.bilibili.com/all",
 				`Cookie`:reqf.Map_2_Cookies_String(Cookie),
 			},
+			Proxy:c.Proxy,
 			Timeout:3,
 			Retry:2,
 		});err != nil {
@@ -1705,6 +1721,7 @@ func Get_LIVE_BUVID() (missKey []string) {
 				`DNT`: `1`,
 				`Upgrade-Insecure-Requests`: `1`,
 			},
+			Proxy:c.Proxy,
 			Timeout:3,
 			Retry:2,
 		});err != nil {
@@ -1859,6 +1876,7 @@ func F_x25Kn() {
 					`Cookie`:reqf.Map_2_Cookies_String(Cookie),
 				},
 				PostStr:url.PathEscape(PostStr),
+				Proxy:c.Proxy,
 				Timeout:5,
 				Retry:2,
 			});err != nil {
@@ -1936,7 +1954,7 @@ func F_x25Kn() {
 			PostStr += `csrf_token=`+csrf+`&csrf=`+csrf+`&`
 			PostStr += `visit_id=`
 			
-			if wasm := Wasm(3, 0, rt_obj);wasm == `` {//0全局
+			if wasm := Wasm(0, rt_obj);wasm == `` {//0全局
 				apilog.L(`E: `,`发生错误`)
 				return
 			} else {
@@ -1967,6 +1985,7 @@ func F_x25Kn() {
 					`Cookie`:reqf.Map_2_Cookies_String(Cookie),
 				},
 				PostStr:url.PathEscape(PostStr),
+				Proxy:c.Proxy,
 				Timeout:5,
 				Retry:2,
 			});err != nil {
@@ -2048,6 +2067,7 @@ func Gift_list() (list []Gift_list_type_Data_List) {
 			`Referer`:"https://live.bilibili.com/"+strconv.Itoa(c.Roomid),
 			`Cookie`:reqf.Map_2_Cookies_String(Cookie),
 		},
+		Proxy:c.Proxy,
 		Timeout:3,
 		Retry:2,
 	});err != nil {
@@ -2114,6 +2134,7 @@ func Silver_2_coin() (missKey []string) {
 				`Referer`:`https://link.bilibili.com/p/center/index`,
 				`Cookie`:reqf.Map_2_Cookies_String(Cookie),
 			},
+			Proxy:c.Proxy,
 			Timeout:3,
 			Retry:2,
 		});err != nil {
@@ -2173,6 +2194,7 @@ func Silver_2_coin() (missKey []string) {
 				`Referer`:`https://link.bilibili.com/p/center/index`,
 				`Cookie`:reqf.Map_2_Cookies_String(Cookie),
 			},
+			Proxy:c.Proxy,
 			Timeout:3,
 			Retry:2,
 		});err != nil {
@@ -2235,6 +2257,7 @@ func Silver_2_coin() (missKey []string) {
 				`Referer`:`https://link.bilibili.com/p/center/index`,
 				`Cookie`:reqf.Map_2_Cookies_String(Cookie),
 			},
+			Proxy:c.Proxy,
 			Timeout:3,
 			Retry:2,
 		});err != nil {
@@ -2319,6 +2342,7 @@ func Feed_list() (Uplist []UpItem) {
 				`Referer`:`https://t.bilibili.com/pages/nav/index_new`,
 				`Cookie`:reqf.Map_2_Cookies_String(Cookie),
 			},
+			Proxy:c.Proxy,
 			Timeout:3,
 			Retry:2,
 		});err != nil {
@@ -2368,6 +2392,7 @@ func GetHistory(Roomid_int int) (j J.GetHistory) {
 			Header:map[string]string{
 				`Referer`:"https://live.bilibili.com/" + Roomid,
 			},
+			Proxy:c.Proxy,
 			Timeout:10,
 			Retry:2,
 		});err != nil {
@@ -2406,6 +2431,7 @@ func IsConnected() bool {
 	req := reqf.Req()
 	if err := req.Reqf(reqf.Rval{
 		Url:"https://www.bilibili.com",
+		Proxy:c.Proxy,
 		Timeout:10,
 		JustResponseCode:true,
 	});err != nil {

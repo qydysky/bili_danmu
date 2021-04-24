@@ -55,6 +55,7 @@ func Send_gift(gift_id,bag_id,gift_num int) {
 			Url:`https://api.live.bilibili.com/gift/v2/live/bag_send`,
 			PostStr:url.PathEscape(sendStr),
 			Timeout:10,
+			Proxy:c.Proxy,
 			Header:map[string]string{
 				`Host`: `api.vc.bilibili.com`,
 				`User-Agent`: `Mozilla/5.0 (X11; Linux x86_64; rv:83.0) Gecko/20100101 Firefox/83.0`,

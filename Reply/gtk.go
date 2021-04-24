@@ -476,6 +476,7 @@ func Gtk_danmu() {
 						Url:src,
 						SaveToPath:Gtk_img_path + `/` + uid,
 						Timeout:3,
+						Proxy:c.Proxy,
 					}); e != nil{log.Println(e);}
 				}()
 			default:

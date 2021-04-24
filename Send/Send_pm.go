@@ -65,6 +65,7 @@ func Send_pm(uid int, msg string) error {
 		Url:`https://api.vc.bilibili.com/web_im/v1/web_im/send_msg`,
 		PostStr:url.PathEscape(send_str),
 		Timeout:10,
+		Proxy:c.Proxy,
 		Header:map[string]string{
 			`Host`: `api.vc.bilibili.com`,
 			`User-Agent`: `Mozilla/5.0 (X11; Linux x86_64; rv:83.0) Gecko/20100101 Firefox/83.0`,

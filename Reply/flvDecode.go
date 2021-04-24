@@ -59,30 +59,28 @@ func Stream(path string,front_buf *[]byte,streamChan chan []byte,cancel chan str
 		Buf *[]byte
 	}
 
-	var seachtag = func(f *os.File)(offset int64){
-		cur_offset,_ := f.Seek(0,1)
-		defer f.Seek(cur_offset,0)
+	var seachtag = func(f *os.File, begin_offset int64)(available_offset int64){
+		available_offset += begin_offset
+		f.Seek(begin_offset, 0)//seek to begin
 
-		f.Seek(tag_header_size,1)
-		buf := make([]byte, 1024*1024)
-		for {
-			if size,_ := f.Read(buf);size == 0 {
-				return
-			} else {
-				for offset=0;offset<int64(size); {
-					streamid_loc := bytes.Index(buf[offset:], []byte{0x00,0x00,0x00})
-					if streamid_loc == -1 {break}
-					offset += int64(streamid_loc)
-
-					if tag_type := buf[offset-6];tag_type != video_tag && tag_type != audio_tag && tag_type != script_tag {
-						continue
-					}
-					offset += int64(tag_header_size-6)
+		buf := make([]byte, 1024*1024*10)
+		if size,_ := f.Read(buf);size == 0 {
+			return
+		} else {
+			for buf_offset:=0;buf_offset<size; {
+				if tag_offset := bytes.IndexAny(buf[buf_offset:], string([]byte{video_tag,audio_tag,script_tag}));tag_offset == -1 {
 					return
+				} else if streamid_offset := bytes.Index(buf[tag_offset:], []byte{0x00,0x00,0x00});streamid_offset == -1 {
+					return
+				} else if streamid_offset == 8 {
+					available_offset += int64(tag_offset + buf_offset)
+					return
+				} else {
+					buf_offset += tag_offset + 1
 				}
-				f.Seek(-5,1)
 			}
 		}
+		return
 	}
 
 	//get tag func
@@ -185,8 +183,7 @@ func Stream(path string,front_buf *[]byte,streamChan chan []byte,cancel chan str
 				time.Sleep(time.Second)
 				continue
 			} else if t.PreSize == 0 {
-				f.Seek(last_available_offset,0)
-				f.Seek(seachtag(f),1)
+				f.Seek(seachtag(f, last_available_offset),0)
 				continue
 			} else if t.Tag == video_tag {
 				if t.FirstByte & 0xf0 == 0x10 {

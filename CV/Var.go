@@ -59,6 +59,14 @@ func init() {
 	}
 }
 
+//constKv
+var (
+	Proxy string//全局代理
+)
+func init() {
+	Proxy,_ = K_v.LoadV("http代理地址").(string)
+}
+
 //日志
 var Log = log.New(log.Config{
 	File:`danmu.log`,
