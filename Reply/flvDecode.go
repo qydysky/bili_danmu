@@ -31,7 +31,7 @@ var (
 	send_sign = []byte{0x00}
 )
 
-func Stream(path string,streamChan chan []byte,cancel chan struct{}) (error) {
+func Stream(path string,front_buf *[]byte,streamChan chan []byte,cancel chan struct{}) (error) {
 	flvlog.L(`T: `,path)
 	defer flvlog.L(`T: `,`退出`)
 	//file
@@ -47,7 +47,7 @@ func Stream(path string,streamChan chan []byte,cancel chan struct{}) (error) {
 		buf := make([]byte, flv_header_size+previou_tag_size)
 		if _,err := f.Read(buf);err != nil {return err}
 		if bytes.Index(buf,flv_header_sign) != 0 {return errors.New(`no flv`)}
-		streamChan <- buf
+		*front_buf = append(*front_buf, buf...)
 	}
 
 	type flv_tag struct {
@@ -133,11 +133,11 @@ func Stream(path string,streamChan chan []byte,cancel chan struct{}) (error) {
 	for {
 		t := getTag(f)
 		if t.Tag == script_tag {
-			streamChan <- *t.Buf
+			*front_buf = append(*front_buf, *t.Buf...)
 		} else if t.Tag == video_tag {
 			if !first_video_tag {
 				first_video_tag = true
-				streamChan <- *t.Buf
+				*front_buf = append(*front_buf, *t.Buf...)
 			}
 
 			if t.FirstByte & 0xf0 == 0x10 {
@@ -152,7 +152,7 @@ func Stream(path string,streamChan chan []byte,cancel chan struct{}) (error) {
 		} else if t.Tag == audio_tag {
 			if !first_audio_tag {
 				first_audio_tag = true
-				streamChan <- *t.Buf
+				*front_buf = append(*front_buf, *t.Buf...)
 			}
 		} else {//eof_tag 
 			break;
@@ -168,9 +168,10 @@ func Stream(path string,streamChan chan []byte,cancel chan struct{}) (error) {
 	// 	last_video_keyframe_timestramp int32
 	// 	video_keyframe_speed int32
 	// )
-	//copy
+	//copy when key frame
 	{
 		last_available_offset := last_keyframe_video_offsets[0]
+		var buf []byte
 		// last_Timestamp := last_timestamps[0]
 		for {
 			//退出
@@ -188,14 +189,13 @@ func Stream(path string,streamChan chan []byte,cancel chan struct{}) (error) {
 				f.Seek(seachtag(f),1)
 				continue
 			} else if t.Tag == video_tag {
-				// if t.FirstByte & 0xf0 == 0x10 {
-				// 	video_keyframe_speed = t.Timestamp - last_video_keyframe_timestramp
-				// 	fmt.Println(`video_keyframe_speed`,video_keyframe_speed)
-				// 	last_video_keyframe_timestramp = t.Timestamp
-				// }
-				streamChan <- *t.Buf
+				if t.FirstByte & 0xf0 == 0x10 {
+					streamChan <- buf
+					buf = []byte{}
+				}
+				buf = append(buf, *t.Buf...)
 			} else if t.Tag == audio_tag {
-				streamChan <- *t.Buf
+				buf = append(buf, *t.Buf...)
 			} else if t.Tag != script_tag {
 				;
 			}
