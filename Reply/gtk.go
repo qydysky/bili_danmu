@@ -471,7 +471,7 @@ func Gtk_danmu() {
 					if p.Checkfile().IsExist(Gtk_img_path + `/` + uid) {return}
 					src := F.Get_face_src(uid)
 					if src == "" {return}
-					req := reqf.Req()
+					req := reqf.New()
 					if e := req.Reqf(reqf.Rval{
 						Url:src,
 						SaveToPath:Gtk_img_path + `/` + uid,

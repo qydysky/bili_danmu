@@ -16,6 +16,7 @@ import (
 	"net/url"
 	"errors"
 	"bytes"
+	// "runtime"
 	
 	c "github.com/qydysky/bili_danmu/CV"
 	F "github.com/qydysky/bili_danmu/F"
@@ -23,6 +24,7 @@ import (
 	
 	p "github.com/qydysky/part"
 	funcCtrl "github.com/qydysky/part/funcCtrl"
+	idpool "github.com/qydysky/part/idpool"
 	msgq "github.com/qydysky/part/msgq"
 	reqf "github.com/qydysky/part/reqf"
 	web "github.com/qydysky/part/web"
@@ -283,7 +285,7 @@ func Savestreamf(){
 
 			query := url_struct.Query()
 
-			r := reqf.Req()
+			r := reqf.New()
 			if e := r.Reqf(reqf.Rval{
 				Url:m3u8_url,
 				Retry:4,
@@ -376,8 +378,17 @@ func Savestreamf(){
 
 			return
 		}
-		flv_get_link = func(link string) (need_download string) {
+		flv_get_link = func(link string) (need_download string,expires int,err error) {
 			need_download = link
+
+			url_struct,e := url.Parse(link)
+			if e != nil {
+				err = e
+				return
+			}
+			query := url_struct.Query()
+			expires,_ = strconv.Atoi(query.Get("expires"))
+
 			return
 		}
 	)
@@ -400,7 +411,7 @@ func Savestreamf(){
 		savestream.wait = s.Init()
 		savestream.cancel = s.Init()
 		
-		rr := reqf.Req()
+		rr := reqf.New()
 		go func(){
 			savestream.cancel.Wait()
 			rr.Close()
@@ -438,71 +449,360 @@ func Savestreamf(){
 		if strings.Contains(c.Live[0],"flv") {
 			l.L(`I: `,"保存到", savestream.path + ".flv")
 			Ass_f(savestream.path, time.Now())
-
+			
 			// no expect qn
 			exit_chan := make(chan struct{})
-			go func(){//flv stream
-				byteC := make(chan []byte,1024*1024*30)//传来的关键帧间隔buf为3s，避免超出buf，设为30M
-
-				go func(){
-					for !p.Checkfile().IsExist(savestream.path + ".flv.dtmp") {
-						select {
-						case <-exit_chan:return;
-						case <-time.After(time.Second):;
-						}
-					}
-					for {
-						if err := Stream(savestream.path + ".flv.dtmp",&savestream.flv_front,byteC,exit_chan);err != nil {
-							flog.L(`T: `,err);
-							return
-						}
-						select {
-						case <-exit_chan:return;
-						default:;
-						}
-					}
-				}()
-
-				for {
-					select{
-					case res :=<- byteC:
-						savestream.flv_stream.Push_tag("stream",res)
-					case <- exit_chan:
-						savestream.flv_stream.Push_tag("close",nil)
-						return;
-					}
-				}
-			}()
-			if c.Live_want_qn < c.Live_qn {
-				go func(){
-					for c.Live_want_qn < c.Live_qn {
-						select{
-						case <- time.After(time.Minute):;
-						case <- exit_chan:return;
-						}
-						F.Get(`Liveing`)
-						if !c.Liveing {break}
-		
-						F.Get(`Live`)
-						if len(c.Live)==0 {break}
-					}
-					Savestream_wait()
-				}()
+			{
+				// go func(){//flv stream
+				// 	byteC := make(chan []byte,1<<17)
+	
+				// 	go func(){
+				// 		for !p.Checkfile().IsExist(savestream.path + ".flv.dtmp") {
+				// 			select {
+				// 			case <-exit_chan:return;
+				// 			case <-time.After(time.Second):;
+				// 			}
+				// 		}
+				// 		for {
+				// 			if err := Stream(savestream.path + ".flv.dtmp",&savestream.flv_front,byteC,exit_chan);err != nil {
+				// 				flog.L(`T: `,err);
+				// 				return
+				// 			}
+				// 			select {
+				// 			case <-exit_chan:return;
+				// 			default:;
+				// 			}
+				// 		}
+				// 	}()
+	
+				// 	var buf []byte
+				// 	for {
+				// 		select{
+				// 		case res :=<- byteC:
+				// 			buf = append(buf, res...)
+				// 			if len(byteC) != 0 {break}
+				// 			savestream.flv_stream.Push_tag("stream",buf)
+				// 			buf = []byte{}
+				// 		case <- exit_chan:
+				// 			savestream.flv_stream.Push_tag("close",nil)
+				// 			return;
+				// 		}
+				// 	}
+				// }()
 			}
 
-			link := flv_get_link(c.Live[0])
-			if e := rr.Reqf(reqf.Rval{
-				Url:link,
-				Retry:3,
-				Proxy:c.Proxy,
-				SleepTime:3,
-				Header:map[string]string{
-					`Cookie`:reqf.Map_2_Cookies_String(CookieM),
-				},
-				SaveToPath:savestream.path + ".flv",
-				Timeout:-1,
-			}); e != nil{l.L(`W: `,e)}
+			// go func(){
+			// 	var count int = 5
+			// 	for count > 0 && c.Live_want_qn < c.Live_qn {
+			// 		count -= 1
+			// 		select{
+			// 		case <- time.After(time.Minute*2):;
+			// 		case <- exit_chan:return;
+			// 		}
+			// 		F.Get(`Liveing`)
+			// 		if !c.Liveing {break}
+	
+			// 		F.Get(`Live`)
+			// 		if len(c.Live)==0 {break}
+			// 	}
+			// 	Savestream_wait()
+			// }()
+
+			type link_stream struct {
+				id *idpool.Id
+				front []byte
+				keyframe [][]byte
+				// sync_buf []byte
+				close func()
+
+				sync.RWMutex
+			}
 			
+			//chans
+			var (
+				reqs = msgq.New(10)
+				id_pool = idpool.New()
+			)
+
+			//文件
+			out, err := os.Create(savestream.path + ".flv" + ".dtmp")
+			if err != nil {
+				l.L(`E: `,err)
+				return
+			}
+
+			//数据整合
+			{
+				var (
+					reqs_used_id []uintptr
+					reqs_remove_id []uintptr
+					
+					reqs_keyframe [][][]byte
+
+					reqs_func_block funcCtrl.BlockFunc
+					last_time_stamp int
+				)
+				reqs.Pull_tag(map[string]func(interface{})(bool){
+					`req`:func(data interface{})(bool){
+						req,ok := data.(link_stream)
+	
+						if !ok {return false}
+	
+						if len(req.keyframe) == 0 {
+							// fmt.Println(req.id.Id, `没有keyframe，退出`)
+							req.close()
+							return false
+						}
+						// fmt.Println(`处理req_id`,req.id.Id,`keyframe_len`,len(req.keyframe))
+	
+						if offset,_ := out.Seek(0,1);offset == 0 {
+							// fmt.Println(`添加头`,len(req.front))
+							//stream
+							savestream.flv_front = req.front
+							out.Write(req.front)
+						}
+	
+						reqs_func_block.Block()
+						defer reqs_func_block.UnBlock()
+	
+						{
+							var isclose bool
+							for i:=0;i<len(reqs_remove_id);i+=1 {
+								if reqs_remove_id[i] == req.id.Id {
+									isclose = true
+									reqs_remove_id = append(reqs_remove_id[:i], reqs_remove_id[i+1:]...)
+									break
+								}
+							}
+							if isclose {
+								// fmt.Println(`移除req`,req.id.Id)
+								req.close()
+								return false
+							}
+						}
+						
+	
+						var reqs_keyframe_index int = len(reqs_used_id)
+						{
+							var isnew bool = true
+							for i:=0;i<len(reqs_used_id);i+=1 {
+								if reqs_used_id[i] == req.id.Id {
+									reqs_keyframe_index = i
+									isnew = false
+									break
+								}
+							}
+							if isnew {
+								// fmt.Println(`新req`,req.id.Id,reqs_keyframe_index)
+								reqs_used_id = append(reqs_used_id, req.id.Id)
+							}
+						}
+						
+	
+						if len(reqs_used_id) == 1 {
+							// fmt.Println(`单req写入`,len(req.keyframe))
+
+							last_time_stamp,_ = Keyframe_timebase(req.keyframe,last_time_stamp)
+
+							for i:=0;i<len(req.keyframe);i+=1 {
+								//stream
+								savestream.flv_stream.Push_tag("stream",req.keyframe[i])
+								out.Write(req.keyframe[i])
+							}
+							return false
+						}
+	
+						for reqs_keyframe_index >= len(reqs_keyframe) {
+							reqs_keyframe = append(reqs_keyframe, [][]byte{})
+						}
+						reqs_keyframe[reqs_keyframe_index] = append(reqs_keyframe[reqs_keyframe_index], req.keyframe...)
+	
+						// fmt.Println(`merge,添加reqs_keyframe数据`,reqs_keyframe_index,len(reqs_keyframe[reqs_keyframe_index]))
+
+						for _,v := range reqs_keyframe {
+							if len(v) == 0 {
+								// fmt.Println(`merge,req无数据`,k)
+								return false
+							}
+						}
+	
+						if success_last_keyframe_timestramp,b,merged := Merge_stream(reqs_keyframe);merged == 0 {
+							// fmt.Println(`merge失败，reqs_keyframe[1]`,reqs_keyframe[1][0][:11],reqs_keyframe[1][len(reqs_keyframe[1])-1][:11])
+							if reqs_keyframe_index == 0 {
+								// fmt.Println(`merge失败，reqs_keyframe[0]写入`,len(req.keyframe))
+
+								last_time_stamp,_ = Keyframe_timebase(req.keyframe,last_time_stamp)
+
+								for i:=0;i<len(req.keyframe);i+=1 {
+									//stream
+									savestream.flv_stream.Push_tag("stream",req.keyframe[i])
+									out.Write(req.keyframe[i])
+								}
+								reqs_keyframe[0] = [][]byte{reqs_keyframe[0][len(reqs_keyframe[0])-1]}
+							} else if len(reqs_keyframe[len(reqs_used_id)-1]) > 5 {
+								// fmt.Println(`强行merge`)
+
+								// last_time_stamp = int(F.Btoi32([]byte{reqs_keyframe[0][0][7], reqs_keyframe[0][0][4], reqs_keyframe[0][0][5], reqs_keyframe[0][0][6]},0))
+	
+								reqs_keyframe = [][][]byte{}
+								
+								for i:=0;i<len(reqs_used_id)-1;i+=1 {
+									reqs_remove_id = append(reqs_remove_id, reqs_used_id[i])
+								}
+								reqs_used_id = []uintptr{reqs_used_id[len(reqs_used_id)-1]}
+
+								last_time_stamp,_ = Keyframe_timebase(req.keyframe,last_time_stamp)
+
+								for i:=0;i<len(req.keyframe);i+=1 {
+									//stream
+									savestream.flv_stream.Push_tag("stream",req.keyframe[i])
+									out.Write(req.keyframe[i])
+								}
+							}
+						} else {
+							// fmt.Println(`merge成功`,len(b))
+
+							last_time_stamp = success_last_keyframe_timestramp
+	
+							for i:=0;i<merged;i+=1 {
+								reqs_keyframe[i] = [][]byte{}
+								reqs_remove_id = append(reqs_remove_id, reqs_used_id[i])
+							}
+							
+							reqs_used_id = []uintptr{reqs_used_id[merged]}
+
+							//stream
+							savestream.flv_stream.Push_tag("stream",b)
+							out.Write(b)
+						}
+	
+						return false
+					},
+					`close`:func(data interface{})(bool){
+						return true
+					},
+				})
+			}
+
+			//连接保持
+			for savestream.cancel.Islive() {
+				//获取超时时间
+				link,exp,e := flv_get_link(c.Live[0])
+				if e != nil {
+					l.L(`E: `,e)
+					break
+				}
+
+				// 新建chan
+				var (
+					bc = make(chan []byte,1<<17)
+					req = reqf.New()
+				)
+
+				//新建请求
+				go func(r *reqf.Req,rval reqf.Rval){
+					if e := r.Reqf(rval);e != nil {
+						l.L(`E: `,e)
+						return
+					}
+				}(req,reqf.Rval{
+					Url:link,
+					Proxy:c.Proxy,
+					Header:map[string]string{
+						`Cookie`:reqf.Map_2_Cookies_String(CookieM),
+					},
+					//SaveToPath:savestream.path + ".flv",
+					SaveToChan:bc,
+					Timeout:int(int64(exp) - p.Sys().GetSTime()),
+				})
+				
+				//返回通道
+				var item = link_stream{
+					close:req.Close,
+					id:id_pool.Get(),
+				}
+
+				//解析
+				go func(bc chan[]byte,item *link_stream){
+					var buf []byte
+					for {
+						select {
+						case <-exit_chan:return;
+						case b :=<- bc:
+							if len(b) == 0 {
+								// fmt.Println(`req退出`,item.id.Id)
+								id_pool.Put(item.id)
+								return
+							}
+
+							buf = append(buf, b...)
+ 
+							// var tmp_buf []byte
+							// {
+							// 	tmp_buf = make([]byte,len(buf))
+							// 	copy(tmp_buf, buf)
+							// }
+							
+							if len(buf) < 1<<21 {break}
+
+							front,list,_ := Seach_stream_tag(buf)
+
+							// fmt.Println(`=<`,buf[:3])
+
+							if len(front) != 0 && len(item.front) == 0 {
+								// fmt.Println(item.id.Id,`获取到header`,len(front))
+								item.front = make([]byte,len(front))
+								copy(item.front, front)
+							}
+
+							if len(list) == 0 || len(item.front) == 0 {break}
+
+							// total := 0
+							item.keyframe = list
+							// item.keyframe = make([][]byte,len(list))
+							// for i:=0;i<len(list);i+=1 {
+							// 	total += len(list[i])
+							// 	item.keyframe[i] = make([]byte,len(list[i]))
+							// 	copy(item.keyframe[i],list[i])
+							// }
+
+							// fmt.Println(item.id.Id,`获取到keyframe`,len(list))
+
+							{
+								last_keyframe := list[len(list)-1]
+								cut_offset := bytes.LastIndex(buf, last_keyframe)+len(last_keyframe)
+								// fmt.Println(`buf截断 剩余`,len(buf), `下一header`,buf[:11])
+								buf = buf[cut_offset:]
+							}
+
+							reqs.Push_tag(`req`,*item)
+						}
+					}
+				}(bc,&item)
+				
+
+				//等待过期/退出
+				{
+					var exit_sign bool
+					select {
+					case <- savestream.cancel.Chan:
+						exit_sign = true
+					case <- time.After(time.Second*time.Duration(int(int64(exp) - p.Sys().GetSTime())-120)):;
+					}
+					if exit_sign {break}
+				}
+				
+				l.L(`I: `,"flv过期，开始新连接")
+				// fmt.Println(`过期`)
+	
+				//即将过期，刷新c.Live
+				F.Get(`Liveing`)
+				if !c.Liveing {break}
+				F.Get(`Live`)
+				if len(c.Live)==0 {break}
+			}
+			
+			reqs.Push_tag(`close`,nil)
 			close(exit_chan)
 
 			l.L(`I: `,"结束")
@@ -681,7 +981,7 @@ func Savestreamf(){
 				for i:=0;i<len(links);i+=1 {
 					go func(link *m4s_link_item,path string){
 						download_limit.TO()
-						r := reqf.Req()
+						r := reqf.New()
 						if e := r.Reqf(reqf.Rval{
 							Url:(*link).Url,
 							Retry:3,

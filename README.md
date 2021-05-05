@@ -89,6 +89,7 @@ golang go version go1.15 linux/amd64
 
 #### 其他特性
 
+- [x] 使用http代理
 - [x] cookie加密
 - [x] 弹幕自动重连（30s）
 - [x] 直播流开播自动下载

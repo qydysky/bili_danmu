@@ -140,7 +140,7 @@ func server() {
 func Wasm(uid uintptr,s RT) (o string) {//maxloop 超时重试
 	{//nodejs
 		if nodeJsUrl != "" {
-			req := reqf.Req()
+			req := reqf.New()
 			if err := req.Reqf(reqf.Rval{
 				Header:map[string]string{
 					`Content-Type`: `application/json`,

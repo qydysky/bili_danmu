@@ -38,7 +38,7 @@ func Danmu_s(msg string, roomid int) {
 
 	PostStr := `color=16777215&fontsize=25&mode=1&msg=` + msg + `&rnd=` + strconv.Itoa(int(p.Sys().GetSTime())) + `&roomid=` + strconv.Itoa(roomid) + `&bubble=0&csrf_token=` + csrf + `&csrf=` + csrf
 	l.L(`I: `,"发送", msg, "至", roomid)
-	r := reqf.Req()
+	r := reqf.New()
 	err := r.Reqf(reqf.Rval{
 		Url:"https://api.live.bilibili.com/msg/send",
 		PostStr:url.PathEscape(PostStr),

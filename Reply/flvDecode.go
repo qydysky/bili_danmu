@@ -10,6 +10,8 @@ import (
 
 	c "github.com/qydysky/bili_danmu/CV"
 	F "github.com/qydysky/bili_danmu/F"
+
+	reqf "github.com/qydysky/part/reqf"
 )
 
 const (
@@ -30,6 +32,127 @@ var (
 	flvlog = c.Log.Base(`flv解码`)
 	send_sign = []byte{0x00}
 )
+
+type flv_source struct {
+	buf []byte
+	Rval reqf.Rval
+	Inuse bool
+}
+
+// func Stream_sync(sources []*flv_source) (buf_p *[]byte,err error) {
+// 	var (
+// 		sources sync.Map
+// 		buf = []byte{}
+// 	)
+// 	buf_p = &buf
+
+// 	for i:=0;i<len(sources);i+=1 {
+// 		item := *sources[i]
+// 		if _,ok := sources.Load(item.req.Url);ok{
+// 			time.Sleep(time.Second*5)
+// 			continue
+// 		}
+
+// 		if len(sources)
+
+// 		go func(m *sync.Map,source_p *flv_source){
+// 			m.Store(source_p.Rval.Url,interface{})
+// 			defer m.Delete(source_p.Rval.Url)
+
+// 			*source_p.Inuse = true
+// 			rval := *source_p.Rval
+// 			rval.ResponChan = make(chan []byte,1024*1024)
+
+// 			go func(){
+// 				for {
+// 					*source_p.buf = append(*source_p.buf, <-rval.ResponChan)
+
+// 				}
+// 			}()
+
+// 			if e := rr.Reqf(rval); e != nil{l.L(`W: `,e)}
+
+// 			*source_p.Inuse = false
+// 		}(&sources,sources[i])
+// 	}
+// }
+
+type flv_tag struct {
+	Tag byte
+	Offset int64
+	Timestamp int32
+	PreSize int32
+	FirstByte byte
+	Buf *[]byte
+}
+
+// func Tag_stream(c chan []byte,co chan []byte) ( bool) {
+// 	//check channel
+// 	if c == nil || co == nil {return}
+		
+// 	var (
+// 		buf []byte
+// 		seach_stream_tag = func(buf []byte)(front_buf []byte,available_offset int64){
+// 			//get flv header(9byte) + FirstTagSize(4byte)
+// 			{
+// 				if bytes.Index(buf,flv_header_sign) == 0 {
+// 					front_buf = buf[:flv_header_size+previou_tag_size]
+// 				} else {
+// 					defer front_buf = []byte{}
+// 				}
+// 			}
+
+// 			var sign = 0x00
+// 			for buf_offset:=0;buf_offset<len(buf); {
+// 				if tag_offset := buf_offset+bytes.IndexAny(buf[buf_offset:], string([]byte{video_tag,audio_tag,script_tag}));tag_offset == buf_offset-1 {
+// 					return//no found available video,audio,script tag
+// 				} else if streamid_offset := tag_offset+bytes.Index(buf[tag_offset:], []byte{0x00,0x00,0x00});streamid_offset == tag_offset-1 {
+// 					return//no found available streamid
+// 				} else if streamid_offset-8 != tag_offset {
+// 					buf_offset = tag_offset + 1
+// 					continue//streamid offset error
+// 				} else if time_offset := tag_offset+4;buf[time_offset:time_offset+2] == []byte{0x00,0x00,0x00}{
+
+// 					size := F.Btoi32(append([]byte{0x00},buf[tag_offset+1:tag_offset+3]...),0)+7
+// 					if (buf[tag_offset] == video_tag) && (sign & 0x04 == 0x00) {
+// 						sign |= 0x04
+// 						front_buf = append(front_buf, buf[tag_offset:tag_offset+size])
+// 					} else if (buf[tag_offset] == audio_tag) && (sign & 0x02 == 0x00) {
+// 						sign |= 0x02
+// 						front_buf = append(front_buf, buf[tag_offset:tag_offset+size])
+// 					} else if (buf[tag_offset] == script_tag) && (sign & 0x01 == 0x00) {
+// 						sign |= 0x01
+// 						front_buf = append(front_buf, buf[tag_offset:tag_offset+size])
+// 					}
+
+// 					buf_offset = tag_offset + 1
+// 					continue//time error
+
+// 				} else {
+// 					available_offset = tag_offset
+// 					return
+// 				}
+// 			}
+// 			return
+// 		}
+// 	)
+
+// 	for {
+// 		if b:=<- c;len(b) == 0 {
+// 			return
+// 		} else {
+// 			buf = append(buf, b...)
+// 		}
+// 		if _,offset := seach_stream_tag(buf);offset != -1{
+// 			co <- buf[offset:]
+// 			buf = []byte{}
+// 			break
+// 		}
+// 	}
+// 	for len(co) != 0 {runtime.Gosched()}
+// 	co = c
+// 	return true
+// }
 
 func Stream(path string,front_buf *[]byte,streamChan chan []byte,cancel chan struct{}) (error) {
 	flvlog.L(`T: `,path)
@@ -203,4 +326,411 @@ func Stream(path string,front_buf *[]byte,streamChan chan []byte,cancel chan str
 	}
 
 	return nil
+}
+
+// this fuction read []byte and return flv header and all complete keyframe if possible.
+// complete keyframe means the video and audio tags between two video key frames tag
+func Seach_stream_tag(buf []byte)(front_buf []byte, keyframe[][]byte,err error){
+	//get flv header(9byte) + FirstTagSize(4byte)
+	if header_offset := bytes.Index(buf,flv_header_sign);header_offset != -1 {
+		front_buf = buf[header_offset:header_offset+flv_header_size+previou_tag_size]
+	}
+
+	var (
+		sign = 0x00
+		keyframe_num = -1
+		tag_num = 0
+	)
+
+	defer func(){
+		if sign != 0x07 {
+			front_buf = []byte{}
+		}
+		if len(keyframe) > 0 {
+			keyframe = keyframe[:len(keyframe)-1]
+		}
+	}()
+
+	for buf_offset:=0;buf_offset+tag_header_size<len(buf); {
+
+		tag_offset := buf_offset+bytes.IndexAny(buf[buf_offset:], string([]byte{video_tag,audio_tag,script_tag}));
+		if tag_offset == buf_offset-1 {
+			err = errors.New(`no found available tag`)
+			// fmt.Printf("last %x\n",buf[tag_offset:tag_offset+tag_header_size])
+			return//no found available video,audio,script tag
+		}
+		if tag_offset+tag_header_size > len(buf) {
+			err = errors.New(`reach end when get tag header`)
+			// fmt.Printf("last %x\n",buf[tag_offset:tag_offset+tag_header_size])
+			return//buf end
+		}
+
+		streamid := int(F.Btoi32([]byte{0x00,buf[tag_offset+8],buf[tag_offset+9],buf[tag_offset+10]},0))
+		if streamid != 0 {
+			buf_offset = tag_offset + 1
+			// fmt.Printf("streamid error %x\n",buf[tag_offset:tag_offset+tag_header_size])
+			continue//streamid error
+		}
+
+		tag_size := int(F.Btoi32([]byte{0x00,buf[tag_offset+1],buf[tag_offset+2],buf[tag_offset+3]},0))
+		if tag_offset+tag_header_size+tag_size+previou_tag_size > len(buf) {
+			err = errors.New(`reach end when get tag body`)
+			// fmt.Printf("last %x\n",buf[tag_offset:tag_offset+tag_header_size])
+			return//buf end
+		}
+		if tag_size == 0 {
+			buf_offset = tag_offset + 1
+			// fmt.Printf("tag_size error %x\n",buf[tag_offset:tag_offset+tag_header_size])
+			continue//tag_size error
+		}
+
+		tag_size_check := int(F.Btoi32(buf[tag_offset+tag_header_size+tag_size:tag_offset+tag_header_size+tag_size+previou_tag_size],0))
+		if tag_num + tag_size_check == 0 {tag_size_check = tag_size+tag_header_size}
+		if tag_size_check != tag_size+tag_header_size {
+			buf_offset = tag_offset + 1
+			// fmt.Printf("tag_size_check error %x\n",buf[tag_offset:tag_offset+tag_header_size])
+			continue//tag_size_check error
+		}
+
+		time_stamp := int(F.Btoi32([]byte{buf[tag_offset+7], buf[tag_offset+4], buf[tag_offset+5], buf[tag_offset+6]},0))
+	
+		// fmt.Printf("%x\n",buf[tag_offset:tag_offset+tag_header_size])
+
+		tag_num += 1
+
+		if time_stamp == 0 {
+			if len(front_buf) != 0 {
+				if (buf[tag_offset] == video_tag) && (sign & 0x04 == 0x00) {
+					sign |= 0x04
+					front_buf = append(front_buf, buf[tag_offset:tag_offset+tag_size_check+previou_tag_size]...)
+				} else if (buf[tag_offset] == audio_tag) && (sign & 0x02 == 0x00) {
+					sign |= 0x02
+					front_buf = append(front_buf, buf[tag_offset:tag_offset+tag_size_check+previou_tag_size]...)
+				} else if (buf[tag_offset] == script_tag) && (sign & 0x01 == 0x00) {
+					sign |= 0x01
+					front_buf = append(front_buf, buf[tag_offset:tag_offset+tag_size_check+previou_tag_size]...)
+				}
+			}
+			buf_offset = tag_offset+tag_size_check+previou_tag_size
+			continue
+		}
+		
+		if buf[tag_offset] == video_tag {
+			if buf[tag_offset+11] & 0xf0 == 0x10 {//key frame
+				keyframe_num += 1
+				keyframe = append(keyframe,[]byte{})
+			}
+
+			if keyframe_num >= 0 {
+				keyframe[keyframe_num] = append(keyframe[keyframe_num], buf[tag_offset:tag_offset+tag_size_check+previou_tag_size]...)
+			}
+		} else if buf[tag_offset] == audio_tag {
+			if keyframe_num >= 0 {
+				keyframe[keyframe_num] = append(keyframe[keyframe_num], buf[tag_offset:tag_offset+tag_size_check+previou_tag_size]...)
+			}
+		} else {;}
+
+		buf_offset = tag_offset+tag_size_check+previou_tag_size
+	}
+	
+	return
+}
+
+//same as Seach_stream_tag but faster
+func Seach_keyframe_tag(buf []byte)(front_buf []byte, keyframe[][]byte,err error){
+
+	var (
+		sign = 0x00
+		// keyframe_num = -1
+		tag_num = 0
+		buf_offset = 0
+	)
+
+	defer func(){
+		if sign != 0x07 {
+			front_buf = []byte{}
+		}
+	}()
+
+	//front_buf
+	if header_offset := bytes.Index(buf,flv_header_sign);header_offset != -1 {
+		front_buf = buf[header_offset:header_offset+flv_header_size+previou_tag_size]
+
+		for ;buf_offset+tag_header_size<len(buf); {
+
+			tag_offset := buf_offset+bytes.IndexAny(buf[buf_offset:], string([]byte{video_tag,audio_tag,script_tag}));
+			if tag_offset == buf_offset-1 {
+				err = errors.New(`no found available tag`)
+				// fmt.Printf("last %x\n",buf[tag_offset:tag_offset+tag_header_size])
+				return//no found available video,audio,script tag
+			}
+			if tag_offset+tag_header_size > len(buf) {
+				err = errors.New(`reach end when get tag header`)
+				// fmt.Printf("last %x\n",buf[tag_offset:tag_offset+tag_header_size])
+				return//buf end
+			}
+	
+			if buf[tag_offset+8] | buf[tag_offset+9] | buf[tag_offset+10] != 0 {
+				buf_offset = tag_offset + 1
+				// fmt.Printf("streamid error %x\n",buf[tag_offset:tag_offset+tag_header_size])
+				continue//streamid error
+			}
+	
+			tag_size := int(F.Btoi32([]byte{0x00,buf[tag_offset+1],buf[tag_offset+2],buf[tag_offset+3]},0))
+			if tag_offset+tag_header_size+tag_size+previou_tag_size > len(buf) {
+				err = errors.New(`reach end when get tag body`)
+				// fmt.Printf("last %x\n",buf[tag_offset:tag_offset+tag_header_size])
+				return//buf end
+			}
+			if tag_size == 0 {
+				buf_offset = tag_offset + 1
+				// fmt.Printf("tag_size error %x\n",buf[tag_offset:tag_offset+tag_header_size])
+				continue//tag_size error
+			}
+	
+			tag_size_check := int(F.Btoi32(buf[tag_offset+tag_header_size+tag_size:tag_offset+tag_header_size+tag_size+previou_tag_size],0))
+			if tag_num + tag_size_check == 0 {tag_size_check = tag_size+tag_header_size}
+			if tag_size_check != tag_size+tag_header_size {
+				buf_offset = tag_offset + 1
+				// fmt.Printf("tag_size_check error %x\n",buf[tag_offset:tag_offset+tag_header_size])
+				continue//tag_size_check error
+			}
+	
+			tag_num += 1
+	
+			if buf[tag_offset+7] | buf[tag_offset+4] | buf[tag_offset+5] | buf[tag_offset+6] == 0 {
+
+				if len(front_buf) != 0 {
+					if (buf[tag_offset] == video_tag) && (sign & 0x04 == 0x00) {
+						sign |= 0x04
+						front_buf = append(front_buf, buf[tag_offset:tag_offset+tag_size_check+previou_tag_size]...)
+					} else if (buf[tag_offset] == audio_tag) && (sign & 0x02 == 0x00) {
+						sign |= 0x02
+						front_buf = append(front_buf, buf[tag_offset:tag_offset+tag_size_check+previou_tag_size]...)
+					} else if (buf[tag_offset] == script_tag) && (sign & 0x01 == 0x00) {
+						sign |= 0x01
+						front_buf = append(front_buf, buf[tag_offset:tag_offset+tag_size_check+previou_tag_size]...)
+					}
+				}
+				buf_offset = tag_offset+tag_size_check+previou_tag_size
+			}
+			if sign == 0x07 {break}
+		}
+	}
+
+	//keyframe
+	var last_keyframe_offset int
+	for ;buf_offset+tag_header_size<len(buf); {
+
+		tag_offset := buf_offset+bytes.Index(buf[buf_offset:], []byte{video_tag})
+		if tag_offset == buf_offset-1 {
+			err = errors.New(`no found available tag`)
+			// fmt.Printf("last %x\n",buf[tag_offset:tag_offset+tag_header_size])
+			return//no found available video,audio,script tag
+		}
+		if tag_offset+tag_header_size > len(buf) {
+			err = errors.New(`reach end when get tag header`)
+			// fmt.Printf("last %x\n",buf[tag_offset:tag_offset+tag_header_size])
+			return//buf end
+		}
+
+		if buf[tag_offset+8] | buf[tag_offset+9] | buf[tag_offset+10] != 0 {
+			buf_offset = tag_offset + 1
+			// fmt.Printf("streamid error %x\n",buf[tag_offset:tag_offset+tag_header_size])
+			continue//streamid error
+		}
+
+		tag_size := int(F.Btoi32([]byte{0x00,buf[tag_offset+1],buf[tag_offset+2],buf[tag_offset+3]},0))
+		if tag_offset+tag_header_size+tag_size+previou_tag_size > len(buf) {
+			err = errors.New(`reach end when get tag body`)
+			// fmt.Printf("last %x\n",buf[tag_offset:tag_offset+tag_header_size])
+			return//buf end
+		}
+		if tag_size == 0 {
+			buf_offset = tag_offset + 1
+			// fmt.Printf("tag_size error %x\n",buf[tag_offset:tag_offset+tag_header_size])
+			continue//tag_size error
+		}
+
+		tag_size_check := int(F.Btoi32(buf[tag_offset+tag_header_size+tag_size:tag_offset+tag_header_size+tag_size+previou_tag_size],0))
+		if tag_num + tag_size_check == 0 {tag_size_check = tag_size+tag_header_size}
+		if tag_size_check != tag_size+tag_header_size {
+			buf_offset = tag_offset + 1
+			// fmt.Printf("tag_size_check error %x\n",buf[tag_offset:tag_offset+tag_header_size])
+			continue//tag_size_check error
+		}
+	
+		// fmt.Printf("%x\n",buf[tag_offset:tag_offset+tag_header_size])
+
+		tag_num += 1
+		
+		if buf[tag_offset] == video_tag {
+			if buf[tag_offset+11] & 0xf0 == 0x10 {//key frame
+				if last_keyframe_offset != 0 {
+					keyframe = append(keyframe,buf[last_keyframe_offset:tag_offset])
+				}
+
+				last_keyframe_offset = tag_offset
+			}
+		}
+
+		buf_offset = tag_offset+tag_size_check+previou_tag_size
+	}
+
+	return
+}
+
+//this fuction merge two stream and return the merge buffer,which has the newest frame.
+//once len(merge_buf) isn't 0,old_buf can be drop and new_buf can be used from now on.or it's still need to keep buf until find the same tag.
+func Merge_stream(keyframe_lists [][][]byte)(last_keyframe_timestramp int,merge_buf []byte,merged int){
+
+	if len(keyframe_lists) == 0 {return}
+
+	// var keyframe_lists [][][]byte
+	// for i:=0;i<len(bufs);i+=1 {
+	// 	_,keyframe_list,_ := Seach_stream_tag(bufs[i])
+	// 	keyframe_lists = append(keyframe_lists, keyframe_list)
+	// }
+
+	var (
+		buf [][]byte
+		buf_o int
+	)
+	buf = keyframe_lists[0]
+	
+	// fmt.Println(`buf:`,len(buf[0]),buf[0][:tag_header_size])
+	// fmt.Println(`buf:`,buf[len(buf)-1][:tag_header_size])	
+	// fmt.Println(`buf1:`,len(keyframe_lists[1]),keyframe_lists[1][0][:tag_header_size])
+	// fmt.Println(`buf1:`,keyframe_lists[1][len(keyframe_lists[1])-1][:tag_header_size])
+
+	for i:=1;i<len(keyframe_lists);i+=1 {
+		for n:=buf_o;n<len(buf);n+=1 {
+			for o:=0;o<len(keyframe_lists[i]);o+=1 {
+			// fmt.Println(keyframe_lists[o])
+			// keyframe_list_i_header := fmt.Sprintf("%x",keyframe_lists[i][o][:tag_header_size-3])
+			// old_buf_o := buf_o
+				if bytes.Index(buf[n][tag_header_size:],keyframe_lists[i][o][tag_header_size:]) != -1 {
+
+					last_time_stamp := int(F.Btoi32([]byte{buf[n][7], buf[n][4], buf[n][5], buf[n][6]},0))
+
+					// tmp_kfs := make([][]byte,len(keyframe_lists[i][o:]))
+
+					last_keyframe_timestramp,_ = Keyframe_timebase(keyframe_lists[i][o:],last_time_stamp)
+
+					buf = append(buf[:n], keyframe_lists[i][o:]...)
+					merged = i
+					break
+				}
+
+				// if keyframe_list_i_header == fmt.Sprintf("%x",buf[n][:tag_header_size-3]) {
+				// 	// buf_o = n
+				// 	buf = append(buf[:buf_o], keyframe_lists[i][o:]...)
+				// 	merged = true
+				// 	break
+				// }
+			}
+			// if old_buf_o != buf_o {break}
+		}
+	}
+
+	// merged = len(buf) != len(keyframe_lists[0])
+
+	for n:=0;n<len(buf);n+=1 {
+		merge_buf = append(merge_buf, buf[n]...)
+	}
+	return
+
+	// for i:=0;i<len(old_list);i+=1 {
+	// 	old_tag_header := fmt.Sprintf("%x",old_list[i][:tag_header_size])
+	// 	for n:=0;n<len(new_list);n+=1 {
+	// 		new_tag_header := fmt.Sprintf("%x",new_list[n][:tag_header_size])
+	// 		if old_tag_header == new_tag_header {
+	// 			old_offset := bytes.Index(old_buf, old_list[i][:tag_header_size])
+	// 			new_offset := bytes.Index(new_buf, new_list[n][:tag_header_size])
+	// 			merge_buf = append(old_buf[:old_offset], new_buf[new_offset:]...)
+	// 			return
+	// 		}
+	// 	}
+	// }
+
+	// return
+}
+
+func Keyframe_timebase(buf [][]byte,last_time_stamp int)(newest_time_stamp int,err error){
+	var (
+		tag_num int
+		diff_time int
+	)
+	
+	// defer func(){
+	// 	fmt.Printf("时间戳调整 newest:%d\n",newest_time_stamp)
+	// }()
+
+	for i:=0;i<len(buf);i+=1 {
+		for buf_offset:=0;buf_offset+tag_header_size<len(buf[i]); {
+
+			tag_offset := buf_offset+bytes.IndexAny(buf[i][buf_offset:], string([]byte{video_tag,audio_tag,script_tag}));
+			if tag_offset == buf_offset-1 {
+				err = errors.New(`no found available tag`)
+				// fmt.Printf("last %x\n",buf[tag_offset:tag_offset+tag_header_size])
+				return//no found available video,audio,script tag
+			}
+			if tag_offset+tag_header_size > len(buf[i]) {
+				err = errors.New(`reach end when get tag header`)
+				// fmt.Printf("last %x\n",buf[tag_offset:tag_offset+tag_header_size])
+				return//buf end
+			}
+	
+			if buf[i][tag_offset+8] | buf[i][tag_offset+9] | buf[i][tag_offset+10] != 0 {
+				buf_offset = tag_offset + 1
+				// fmt.Printf("streamid error %x\n",buf[tag_offset:tag_offset+tag_header_size])
+				continue//streamid error
+			}
+	
+			tag_size := int(F.Btoi32([]byte{0x00,buf[i][tag_offset+1],buf[i][tag_offset+2],buf[i][tag_offset+3]},0))
+			if tag_offset+tag_header_size+tag_size+previou_tag_size > len(buf[i]) {
+				err = errors.New(`reach end when get tag body`)
+				// fmt.Printf("last %x\n",buf[tag_offset:tag_offset+tag_header_size])
+				return//buf end
+			}
+			if tag_size == 0 {
+				buf_offset = tag_offset + 1
+				// fmt.Printf("tag_size error %x\n",buf[tag_offset:tag_offset+tag_header_size])
+				continue//tag_size error
+			}
+	
+			tag_size_check := int(F.Btoi32(buf[i][tag_offset+tag_header_size+tag_size:tag_offset+tag_header_size+tag_size+previou_tag_size],0))
+			if tag_num + tag_size_check == 0 {tag_size_check = tag_size+tag_header_size}
+			if tag_size_check != tag_size+tag_header_size {
+				buf_offset = tag_offset + 1
+				// fmt.Printf("tag_size_check error %x\n",buf[tag_offset:tag_offset+tag_header_size])
+				continue//tag_size_check error
+			}
+	
+			tag_num += 1
+	
+			time_stamp := int(F.Btoi32([]byte{buf[i][tag_offset+7], buf[i][tag_offset+4], buf[i][tag_offset+5], buf[i][tag_offset+6]},0))
+	
+			if tag_num == 1 && last_time_stamp != 0 {
+				diff_time = last_time_stamp + 3000 - time_stamp
+				// fmt.Printf("时间戳调整 last:%d now:%d diff:%d\n",last_time_stamp,time_stamp,diff_time)
+			}
+
+			if buf[i][tag_offset] == video_tag {
+				if buf[i][tag_offset+11] & 0xf0 == 0x10 {//key frame
+					newest_time_stamp = time_stamp+diff_time
+				}
+			}
+
+			time_stamp_byte := F.Itob32(int32(time_stamp+diff_time))
+	
+			buf[i][tag_offset+7] = time_stamp_byte[0]
+			buf[i][tag_offset+4] = time_stamp_byte[1]
+			buf[i][tag_offset+5] = time_stamp_byte[2]
+			buf[i][tag_offset+6] = time_stamp_byte[3]
+	
+			buf_offset = tag_offset+tag_size_check+previou_tag_size
+		}
+	}
+	return
 }

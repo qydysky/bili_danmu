@@ -86,7 +86,7 @@ func TTS(uid,msg string) {
 
 	msg = strings.ReplaceAll(v, "{D}", msg)
 
-	req := reqf.Req()
+	req := reqf.New()
 	if err := req.Reqf(reqf.Rval{
 		Url:`https://fanyi.baidu.com/gettts?lan=zh&text=`+ url.QueryEscape(msg) +`&spd=5&source=web`,
 		SaveToPath:p.Sys().Cdir()+`/tts.mp3`,
