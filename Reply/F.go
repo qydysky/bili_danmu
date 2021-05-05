@@ -804,7 +804,8 @@ func Savestreamf(){
 			
 			reqs.Push_tag(`close`,nil)
 			close(exit_chan)
-
+			out.Close()
+			
 			l.L(`I: `,"结束")
 			Ass_f("", time.Now())//ass
 			savestream.flv_front = []byte{}//flv头及首tag置空
