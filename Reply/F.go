@@ -16,6 +16,7 @@ import (
 	"net/url"
 	"errors"
 	"bytes"
+	"encoding/base64"
 	// "runtime"
 	
 	c "github.com/qydysky/bili_danmu/CV"
@@ -311,9 +312,19 @@ func Savestreamf(){
 
 			trid := query.Get("trid")
 			expires,_ = strconv.Atoi(query.Get("expires"))
+			buf := r.Respon
+
+			//base-64
+			if len(buf) != 0 && !bytes.Contains(buf, []byte("#")) {
+				buf,err = base64.StdEncoding.DecodeString(string(buf))
+				if err != nil {
+					return
+				}
+				// fmt.Println(`base64`)
+			}
 
 			var m4s_links []*m4s_link_item
-			lines := bytes.Split(r.Respon, []byte("\n"))
+			lines := bytes.Split(buf, []byte("\n"))
 			for i:=0;i<len(lines);i+=1 {
 				line := lines[i]
 				m4s_link := ""
@@ -345,7 +356,7 @@ func Savestreamf(){
 			}
 
 			if last_download == nil {
-				m3u8_file_addition = r.Respon
+				m3u8_file_addition = buf
 				need_download = m4s_links
 				return
 			}
@@ -514,8 +525,6 @@ func Savestreamf(){
 				keyframe [][]byte
 				// sync_buf []byte
 				close func()
-
-				sync.RWMutex
 			}
 			
 			//chans
@@ -678,7 +687,37 @@ func Savestreamf(){
 	
 						return false
 					},
+					`closereq`:func(data interface{})(bool){
+						req,ok := data.(link_stream)
+	
+						if !ok {return false}
+
+						req.close()
+
+						for i:=0;i<len(reqs_used_id);i+=1 {
+							if reqs_used_id[i] == req.id.Id {
+								reqs_used_id = append(reqs_used_id[:i],reqs_used_id[i+1:]...)
+								if len(reqs_used_id) != 1 {
+									reqs_keyframe = append(reqs_keyframe[:i],reqs_keyframe[i+1:]...)
+								}
+								return false
+							}
+						}
+						
+						for i:=0;i<len(reqs_remove_id);i+=1 {
+							if reqs_remove_id[i] == req.id.Id {
+								reqs_remove_id = append(reqs_remove_id[:i], reqs_remove_id[i+1:]...)
+								return false
+							}
+						}
+						
+						return false
+					},
 					`close`:func(data interface{})(bool){
+						reqs_used_id = []uintptr{}
+						reqs_remove_id = []uintptr{}
+						reqs_keyframe = [][][]byte{}
+						last_time_stamp = 0
 						return true
 					},
 				})
@@ -714,6 +753,7 @@ func Savestreamf(){
 					//SaveToPath:savestream.path + ".flv",
 					SaveToChan:bc,
 					Timeout:int(int64(exp) - p.Sys().GetSTime()),
+					ReadTimeout:7,
 				})
 				
 				//返回通道
@@ -724,7 +764,10 @@ func Savestreamf(){
 
 				//解析
 				go func(bc chan[]byte,item *link_stream){
-					var buf []byte
+					var (
+						buf []byte
+						skip_buf_size int
+					)
 					for {
 						select {
 						case <-exit_chan:return;
@@ -732,6 +775,7 @@ func Savestreamf(){
 							if len(b) == 0 {
 								// fmt.Println(`req退出`,item.id.Id)
 								id_pool.Put(item.id)
+								reqs.Push_tag(`closereq`,*item)
 								return
 							}
 
@@ -742,12 +786,11 @@ func Savestreamf(){
 							// 	tmp_buf = make([]byte,len(buf))
 							// 	copy(tmp_buf, buf)
 							// }
-							
-							if len(buf) < 1<<21 {break}
+							// fmt.Println(buf[:11])
+
+							if len(buf) < skip_buf_size {break}
 
 							front,list,_ := Seach_stream_tag(buf)
-
-							// fmt.Println(`=<`,buf[:3])
 
 							if len(front) != 0 && len(item.front) == 0 {
 								// fmt.Println(item.id.Id,`获取到header`,len(front))
@@ -755,7 +798,11 @@ func Savestreamf(){
 								copy(item.front, front)
 							}
 
-							if len(list) == 0 || len(item.front) == 0 {break}
+							if len(list) == 0 || len(item.front) == 0 {
+								// fmt.Println(`再次查询bufsize`,skip_buf_size)
+								skip_buf_size = 2*len(buf)
+								break
+							}
 
 							// total := 0
 							item.keyframe = list
@@ -775,11 +822,12 @@ func Savestreamf(){
 								buf = buf[cut_offset:]
 							}
 
+							skip_buf_size = len(buf)+len(list[0])
+
 							reqs.Push_tag(`req`,*item)
 						}
 					}
 				}(bc,&item)
-				
 
 				//等待过期/退出
 				{
@@ -802,8 +850,8 @@ func Savestreamf(){
 				if len(c.Live)==0 {break}
 			}
 			
-			reqs.Push_tag(`close`,nil)
 			close(exit_chan)
+			reqs.Push_tag(`close`,nil)
 			out.Close()
 			
 			l.L(`I: `,"结束")
@@ -1031,14 +1079,16 @@ func Savestreamf(){
 				}
 			}
 
-			f := p.File()
-			f.FileWR(p.Filel{
-				File:savestream.path+"0.m3u8.dtmp",
-				Write:true,
-				Loc:-1,
-				Context:[]interface{}{"#EXT-X-ENDLIST"},
-			})
-			p.FileMove(savestream.path+"0.m3u8.dtmp", savestream.path+"0.m3u8")
+			if p.Checkfile().IsExist(savestream.path+"0.m3u8.dtmp") {
+				f := p.File()
+				f.FileWR(p.Filel{
+					File:savestream.path+"0.m3u8.dtmp",
+					Write:true,
+					Loc:-1,
+					Context:[]interface{}{"#EXT-X-ENDLIST"},
+				})
+				p.FileMove(savestream.path+"0.m3u8.dtmp", savestream.path+"0.m3u8")
+			}
 			l.L(`I: `,"结束")
 			close(exit_chan)//hls_stream
 			Ass_f("", time.Now())//ass

@@ -129,6 +129,7 @@ I: 2021/04/13 20:07:45 命令行操作 [直播Web服务: http://192.168.31.245:3
 
 测试可用项目：
 
+- [xqq/mpegts.js](https://github.com/xqq/mpegts.js)
 - [bilibili/flv.js](https://github.com/bilibili/flv.js)
 - [bytedance/xgplayer](https://github.com/bytedance/xgplayer)
 - [video-dev/hls.js](https://github.com/video-dev/hls.js)
