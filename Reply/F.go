@@ -542,14 +542,19 @@ func Savestreamf(){
 
 			//数据整合
 			{
+				type id_close struct {
+					id uintptr
+					close func()
+				}
+
 				var (
-					reqs_used_id []uintptr
-					reqs_remove_id []uintptr
+					reqs_used_id []id_close
+					// reqs_remove_id []id_close
 					
 					reqs_keyframe [][][]byte
 
 					reqs_func_block funcCtrl.BlockFunc
-					last_time_stamp int
+					last_keyframe_timestamp int
 				)
 				reqs.Pull_tag(map[string]func(interface{})(bool){
 					`req`:func(data interface{})(bool){
@@ -574,28 +579,27 @@ func Savestreamf(){
 						reqs_func_block.Block()
 						defer reqs_func_block.UnBlock()
 	
-						{
-							var isclose bool
-							for i:=0;i<len(reqs_remove_id);i+=1 {
-								if reqs_remove_id[i] == req.id.Id {
-									isclose = true
-									reqs_remove_id = append(reqs_remove_id[:i], reqs_remove_id[i+1:]...)
-									break
-								}
-							}
-							if isclose {
-								// fmt.Println(`移除req`,req.id.Id)
-								req.close()
-								return false
-							}
-						}
-						
-	
+						// {
+						// 	var isclose bool
+						// 	for i:=0;i<len(reqs_remove_id);i+=1 {
+						// 		if reqs_remove_id[i].id == req.id.Id {
+						// 			isclose = true
+						// 			reqs_remove_id = append(reqs_remove_id[:i], reqs_remove_id[i+1:]...)
+						// 			break
+						// 		}
+						// 	}
+						// 	if isclose {
+						// 		// fmt.Println(`移除req`,req.id.Id)
+						// 		req.close()
+						// 		return false
+						// 	}
+						// }
+
 						var reqs_keyframe_index int = len(reqs_used_id)
 						{
 							var isnew bool = true
 							for i:=0;i<len(reqs_used_id);i+=1 {
-								if reqs_used_id[i] == req.id.Id {
+								if reqs_used_id[i].id == req.id.Id {
 									reqs_keyframe_index = i
 									isnew = false
 									break
@@ -603,15 +607,16 @@ func Savestreamf(){
 							}
 							if isnew {
 								// fmt.Println(`新req`,req.id.Id,reqs_keyframe_index)
-								reqs_used_id = append(reqs_used_id, req.id.Id)
+								reqs_used_id = append(reqs_used_id, id_close{
+									id:req.id.Id,
+									close:req.close,
+								})
 							}
 						}
-						
-	
+
 						if len(reqs_used_id) == 1 {
 							// fmt.Println(`单req写入`,len(req.keyframe))
-
-							last_time_stamp,_ = Keyframe_timebase(req.keyframe,last_time_stamp)
+							last_keyframe_timestamp,_ = Keyframe_timebase(req.keyframe,last_keyframe_timestamp)
 
 							for i:=0;i<len(req.keyframe);i+=1 {
 								//stream
@@ -620,7 +625,7 @@ func Savestreamf(){
 							}
 							return false
 						}
-	
+
 						for reqs_keyframe_index >= len(reqs_keyframe) {
 							reqs_keyframe = append(reqs_keyframe, [][]byte{})
 						}
@@ -635,50 +640,74 @@ func Savestreamf(){
 							}
 						}
 	
-						if success_last_keyframe_timestramp,b,merged := Merge_stream(reqs_keyframe);merged == 0 {
+						if success_last_keyframe_timestamp,b,merged := Merge_stream(reqs_keyframe,last_keyframe_timestamp);merged == 0 {
 							// fmt.Println(`merge失败，reqs_keyframe[1]`,reqs_keyframe[1][0][:11],reqs_keyframe[1][len(reqs_keyframe[1])-1][:11])
 							if reqs_keyframe_index == 0 {
 								// fmt.Println(`merge失败，reqs_keyframe[0]写入`,len(req.keyframe))
 
-								last_time_stamp,_ = Keyframe_timebase(req.keyframe,last_time_stamp)
+								last_keyframe_timestamp,_ = Keyframe_timebase(req.keyframe,last_keyframe_timestamp)
 
 								for i:=0;i<len(req.keyframe);i+=1 {
 									//stream
 									savestream.flv_stream.Push_tag("stream",req.keyframe[i])
 									out.Write(req.keyframe[i])
 								}
-								reqs_keyframe[0] = [][]byte{reqs_keyframe[0][len(reqs_keyframe[0])-1]}
+								// reqs_keyframe[0] = [][]byte{reqs_keyframe[0][len(reqs_keyframe[0])-1]} 
 							} else if len(reqs_keyframe[len(reqs_used_id)-1]) > 5 {
 								// fmt.Println(`强行merge`)
-
+								// reqs_remove_id = append(reqs_remove_id, reqs_used_id[0])
 								// last_time_stamp = int(F.Btoi32([]byte{reqs_keyframe[0][0][7], reqs_keyframe[0][0][4], reqs_keyframe[0][0][5], reqs_keyframe[0][0][6]},0))
-	
+
 								reqs_keyframe = [][][]byte{}
 								
 								for i:=0;i<len(reqs_used_id)-1;i+=1 {
-									reqs_remove_id = append(reqs_remove_id, reqs_used_id[i])
+									reqs_used_id[i].close()
+									// reqs_remove_id = append(reqs_remove_id, reqs_used_id[i])
 								}
-								reqs_used_id = []uintptr{reqs_used_id[len(reqs_used_id)-1]}
+								// reqs_used_id = []uintptr{reqs_used_id[len(reqs_used_id)-1]}
+								reqs_used_id = reqs_used_id[1:]
 
-								last_time_stamp,_ = Keyframe_timebase(req.keyframe,last_time_stamp)
+								last_keyframe_timestamp,_ = Keyframe_timebase(req.keyframe,last_keyframe_timestamp)
 
 								for i:=0;i<len(req.keyframe);i+=1 {
 									//stream
 									savestream.flv_stream.Push_tag("stream",req.keyframe[i])
 									out.Write(req.keyframe[i])
 								}
+							} else if len(reqs_keyframe[len(reqs_used_id)-1]) > 2 {
+								// fmt.Println(`merge 旧连接退出`)
+								reqs_used_id[0].close()
+								// reqs_used_id = reqs_used_id[1:]
+								// last_time_stamp = int(F.Btoi32([]byte{reqs_keyframe[0][0][7], reqs_keyframe[0][0][4], reqs_keyframe[0][0][5], reqs_keyframe[0][0][6]},0))
+
+								// reqs_keyframe = [][][]byte{}
+								
+								// for i:=0;i<len(reqs_used_id)-1;i+=1 {
+								// 	reqs_remove_id = append(reqs_remove_id, reqs_used_id[i])
+								// }
+								// reqs_used_id = []uintptr{reqs_used_id[len(reqs_used_id)-1]}
+
+								// last_keyframe_timestamp,_ = Keyframe_timebase(req.keyframe,last_keyframe_timestamp)
+
+								// for i:=0;i<len(req.keyframe);i+=1 {
+								// 	//stream
+								// 	savestream.flv_stream.Push_tag("stream",req.keyframe[i])
+								// 	out.Write(req.keyframe[i])
+								// }
 							}
 						} else {
-							// fmt.Println(`merge成功`,len(b))
+							fmt.Println(`merge成功`,len(b))
 
-							last_time_stamp = success_last_keyframe_timestramp
+							last_keyframe_timestamp = success_last_keyframe_timestamp
 	
-							for i:=0;i<merged;i+=1 {
-								reqs_keyframe[i] = [][]byte{}
-								reqs_remove_id = append(reqs_remove_id, reqs_used_id[i])
-							}
+							// for i:=0;i<merged;i+=1 {
+							// 	reqs_used_id[i].close()
+							// 	reqs_keyframe[i] = [][]byte{}
+							// 	// reqs_remove_id = append(reqs_remove_id, reqs_used_id[i])
+							// }
+							reqs_keyframe = [][][]byte{}
 							
-							reqs_used_id = []uintptr{reqs_used_id[merged]}
+							reqs_used_id = reqs_used_id[merged:merged]
 
 							//stream
 							savestream.flv_stream.Push_tag("stream",b)
@@ -687,37 +716,12 @@ func Savestreamf(){
 	
 						return false
 					},
-					`closereq`:func(data interface{})(bool){
-						req,ok := data.(link_stream)
-	
-						if !ok {return false}
-
-						req.close()
-
-						for i:=0;i<len(reqs_used_id);i+=1 {
-							if reqs_used_id[i] == req.id.Id {
-								reqs_used_id = append(reqs_used_id[:i],reqs_used_id[i+1:]...)
-								if len(reqs_used_id) != 1 {
-									reqs_keyframe = append(reqs_keyframe[:i],reqs_keyframe[i+1:]...)
-								}
-								return false
-							}
-						}
-						
-						for i:=0;i<len(reqs_remove_id);i+=1 {
-							if reqs_remove_id[i] == req.id.Id {
-								reqs_remove_id = append(reqs_remove_id[:i], reqs_remove_id[i+1:]...)
-								return false
-							}
-						}
-						
-						return false
-					},
+					// 11区	1
 					`close`:func(data interface{})(bool){
-						reqs_used_id = []uintptr{}
-						reqs_remove_id = []uintptr{}
+						reqs_used_id = []id_close{}
+						// reqs_remove_id = []id_close{}
 						reqs_keyframe = [][][]byte{}
-						last_time_stamp = 0
+						last_keyframe_timestamp = 0
 						return true
 					},
 				})
@@ -753,17 +757,20 @@ func Savestreamf(){
 					//SaveToPath:savestream.path + ".flv",
 					SaveToChan:bc,
 					Timeout:int(int64(exp) - p.Sys().GetSTime()),
-					ReadTimeout:7,
+					ReadTimeout:5,
 				})
 				
 				//返回通道
-				var item = link_stream{
-					close:req.Close,
-					id:id_pool.Get(),
-				}
+				var (
+					item = link_stream{
+						close:req.Close,
+						id:id_pool.Get(),
+					}
+					http_error = make(chan error)
+				)
 
 				//解析
-				go func(bc chan[]byte,item *link_stream){
+				go func(http_error chan error,bc chan[]byte,item *link_stream){
 					var (
 						buf []byte
 						skip_buf_size int
@@ -775,7 +782,8 @@ func Savestreamf(){
 							if len(b) == 0 {
 								// fmt.Println(`req退出`,item.id.Id)
 								id_pool.Put(item.id)
-								reqs.Push_tag(`closereq`,*item)
+								http_error <- errors.New(`EOF`)
+								// reqs.Push_tag(`closereq`,*item)
 								return
 							}
 
@@ -827,7 +835,7 @@ func Savestreamf(){
 							reqs.Push_tag(`req`,*item)
 						}
 					}
-				}(bc,&item)
+				}(http_error,bc,&item)
 
 				//等待过期/退出
 				{
@@ -835,7 +843,9 @@ func Savestreamf(){
 					select {
 					case <- savestream.cancel.Chan:
 						exit_sign = true
-					case <- time.After(time.Second*time.Duration(int(int64(exp) - p.Sys().GetSTime())-120)):;
+					case <- time.After(time.Second*time.Duration(int(int64(exp) - p.Sys().GetSTime())-60)):;
+					case e :=<- http_error:
+						l.L(`W: `,`连接`,item.id.Id,e)
 					}
 					if exit_sign {break}
 				}

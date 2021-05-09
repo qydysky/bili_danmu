@@ -14,6 +14,7 @@ var msglog = c.Log.Base(`Msg`)
 
 //Msg类型数据处理方法map
 var Msg_map = map[string]func(replyF, string) {
+	`STOP_LIVE_ROOM_LIST`:nil,//停止直播的直播间
 	`PK_LOTTERY_START`:replyF.pk_lottery_start,//大乱斗pk
 	`PK_BATTLE_PRE_NEW`:nil,//pk准备
 	`PK_BATTLE_START_NEW`:nil,//pk开始

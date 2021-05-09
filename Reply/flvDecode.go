@@ -582,7 +582,7 @@ func Seach_keyframe_tag(buf []byte)(front_buf []byte, keyframe[][]byte,err error
 
 //this fuction merge two stream and return the merge buffer,which has the newest frame.
 //once len(merge_buf) isn't 0,old_buf can be drop and new_buf can be used from now on.or it's still need to keep buf until find the same tag.
-func Merge_stream(keyframe_lists [][][]byte)(last_keyframe_timestramp int,merge_buf []byte,merged int){
+func Merge_stream(keyframe_lists [][][]byte,last_keyframe_timestramp int)(keyframe_timestamp int,merge_buf []byte,merged int){
 
 	if len(keyframe_lists) == 0 {return}
 
@@ -611,11 +611,11 @@ func Merge_stream(keyframe_lists [][][]byte)(last_keyframe_timestramp int,merge_
 			// old_buf_o := buf_o
 				if bytes.Index(buf[n][tag_header_size:],keyframe_lists[i][o][tag_header_size:]) != -1 {
 
-					last_time_stamp := int(F.Btoi32([]byte{buf[n][7], buf[n][4], buf[n][5], buf[n][6]},0))
+					// last_time_stamp := int(F.Btoi32([]byte{buf[n][7], buf[n][4], buf[n][5], buf[n][6]},0))
 
 					// tmp_kfs := make([][]byte,len(keyframe_lists[i][o:]))
 
-					last_keyframe_timestramp,_ = Keyframe_timebase(keyframe_lists[i][o:],last_time_stamp)
+					keyframe_timestamp,_ = Keyframe_timebase(keyframe_lists[i][o:],last_keyframe_timestramp)
 
 					buf = append(buf[:n], keyframe_lists[i][o:]...)
 					merged = i
@@ -656,17 +656,20 @@ func Merge_stream(keyframe_lists [][][]byte)(last_keyframe_timestramp int,merge_
 	// return
 }
 
-func Keyframe_timebase(buf [][]byte,last_time_stamp int)(newest_time_stamp int,err error){
+func Keyframe_timebase(buf [][]byte,last_keyframe_timestamp int)(keyframe_timestamp int,err error){
 	var (
 		tag_num int
-		diff_time int
+		base_keyframe_time int
 	)
 	
 	// defer func(){
-	// 	fmt.Printf("时间戳调整 newest:%d\n",newest_time_stamp)
+	// 	fmt.Printf("时间戳调整 newest:%d\n",keyframe_timestamp)
 	// }()
+	// keyframe_timestamp = last_keyframe_timestamp+3000
 
 	for i:=0;i<len(buf);i+=1 {
+		keyframe_timestamp = last_keyframe_timestamp+3000
+
 		for buf_offset:=0;buf_offset+tag_header_size<len(buf[i]); {
 
 			tag_offset := buf_offset+bytes.IndexAny(buf[i][buf_offset:], string([]byte{video_tag,audio_tag,script_tag}));
@@ -711,18 +714,23 @@ func Keyframe_timebase(buf [][]byte,last_time_stamp int)(newest_time_stamp int,e
 	
 			time_stamp := int(F.Btoi32([]byte{buf[i][tag_offset+7], buf[i][tag_offset+4], buf[i][tag_offset+5], buf[i][tag_offset+6]},0))
 	
-			if tag_num == 1 && last_time_stamp != 0 {
-				diff_time = last_time_stamp + 3000 - time_stamp
-				// fmt.Printf("时间戳调整 last:%d now:%d diff:%d\n",last_time_stamp,time_stamp,diff_time)
-			}
+			// if tag_num == 1 && last_keyframe_timestamp != 0 {
+			// 	diff_time = last_keyframe_timestamp + 3000 - time_stamp
+			// 	fmt.Printf("时间戳调整 last:%d now:%d diff:%d\n",last_keyframe_timestamp,time_stamp,diff_time)
 
-			if buf[i][tag_offset] == video_tag {
-				if buf[i][tag_offset+11] & 0xf0 == 0x10 {//key frame
-					newest_time_stamp = time_stamp+diff_time
+				if buf[i][tag_offset] == video_tag && buf[i][tag_offset+11] & 0xf0 == 0x10{
+					// if  {//key frame
+						base_keyframe_time = time_stamp
+						time_stamp = keyframe_timestamp
+						last_keyframe_timestamp = keyframe_timestamp
+						// fmt.Printf("当前关键帧时间戳 %d %d=>%d\n",last_keyframe_timestamp,base_keyframe_time,keyframe_timestamp)
+						// }
+				} else {
+					time_stamp += keyframe_timestamp-base_keyframe_time
 				}
-			}
+			// }
 
-			time_stamp_byte := F.Itob32(int32(time_stamp+diff_time))
+			time_stamp_byte := F.Itob32(int32(time_stamp))
 	
 			buf[i][tag_offset+7] = time_stamp_byte[0]
 			buf[i][tag_offset+4] = time_stamp_byte[1]
