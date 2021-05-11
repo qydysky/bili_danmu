@@ -12,7 +12,7 @@ require (
 	github.com/mdp/qrterminal/v3 v3.0.0
 	github.com/miekg/dns v1.1.41 // indirect
 	github.com/mitchellh/mapstructure v1.4.1 // indirect
-	github.com/qydysky/part v0.5.13
+	github.com/qydysky/part v0.5.14
 	github.com/shirou/gopsutil v3.21.4+incompatible // indirect
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966

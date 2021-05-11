@@ -421,12 +421,6 @@ func Savestreamf(){
 
 		savestream.wait = s.Init()
 		savestream.cancel = s.Init()
-		
-		rr := reqf.New()
-		go func(){
-			savestream.cancel.Wait()
-			rr.Close()
-		}()
 
 		CookieM := make(map[string]string)
 		c.Cookie.Range(func(k,v interface{})(bool){
@@ -435,6 +429,11 @@ func Savestreamf(){
 		})
 
 		{//重试
+			rr := reqf.New()
+			go func(){
+				savestream.cancel.Wait()
+				rr.Close()
+			}()
 			l.L(`I: `,"尝试连接live")
 			if e := rr.Reqf(reqf.Rval{
 				Url:c.Live[0],
@@ -653,7 +652,8 @@ func Savestreamf(){
 									out.Write(req.keyframe[i])
 								}
 								// reqs_keyframe[0] = [][]byte{reqs_keyframe[0][len(reqs_keyframe[0])-1]} 
-							} else if len(reqs_keyframe[len(reqs_used_id)-1]) > 5 {
+							} else if len(reqs_keyframe[len(reqs_used_id)-1]) > 3 {
+								l.L(`T: `,"flv强行拼合")
 								// fmt.Println(`强行merge`)
 								// reqs_remove_id = append(reqs_remove_id, reqs_used_id[0])
 								// last_time_stamp = int(F.Btoi32([]byte{reqs_keyframe[0][0][7], reqs_keyframe[0][0][4], reqs_keyframe[0][0][5], reqs_keyframe[0][0][6]},0))
@@ -674,7 +674,7 @@ func Savestreamf(){
 									savestream.flv_stream.Push_tag("stream",req.keyframe[i])
 									out.Write(req.keyframe[i])
 								}
-							} else if len(reqs_keyframe[len(reqs_used_id)-1]) > 2 {
+							} else if len(reqs_keyframe[len(reqs_used_id)-1]) > 1 {
 								// fmt.Println(`merge 旧连接退出`)
 								reqs_used_id[0].close()
 								// reqs_used_id = reqs_used_id[1:]
@@ -696,7 +696,8 @@ func Savestreamf(){
 								// }
 							}
 						} else {
-							fmt.Println(`merge成功`,len(b))
+							// fmt.Println(`merge成功`,len(b))
+							l.L(`T: `,"flv拼合成功")
 
 							last_keyframe_timestamp = success_last_keyframe_timestamp
 	
@@ -718,6 +719,7 @@ func Savestreamf(){
 					},
 					// 11区	1
 					`close`:func(data interface{})(bool){
+						// defer l.L(`I: `,"处理退出")
 						reqs_used_id = []id_close{}
 						// reqs_remove_id = []id_close{}
 						reqs_keyframe = [][][]byte{}
@@ -728,11 +730,11 @@ func Savestreamf(){
 			}
 
 			//连接保持
-			for savestream.cancel.Islive() {
+			for {
 				//获取超时时间
 				link,exp,e := flv_get_link(c.Live[0])
 				if e != nil {
-					l.L(`E: `,e)
+					l.L(`W: `,e)
 					break
 				}
 
@@ -744,8 +746,13 @@ func Savestreamf(){
 
 				//新建请求
 				go func(r *reqf.Req,rval reqf.Rval){
+					go func(){
+						savestream.cancel.Wait()
+						req.Close()
+					}()
+
 					if e := r.Reqf(rval);e != nil {
-						l.L(`E: `,e)
+						l.L(`W: `,e)
 						return
 					}
 				}(req,reqf.Rval{
@@ -771,6 +778,7 @@ func Savestreamf(){
 
 				//解析
 				go func(http_error chan error,bc chan[]byte,item *link_stream){
+					// defer l.L(`I: `,"解析退出")
 					var (
 						buf []byte
 						skip_buf_size int
@@ -813,6 +821,11 @@ func Savestreamf(){
 							}
 
 							// total := 0
+							// var tmp_buf []byte
+							// {
+							// 	tmp_buf = make([]byte,len(buf))
+							// 	copy(tmp_buf, buf)
+							// }
 							item.keyframe = list
 							// item.keyframe = make([][]byte,len(list))
 							// for i:=0;i<len(list);i+=1 {
@@ -826,7 +839,7 @@ func Savestreamf(){
 							{
 								last_keyframe := list[len(list)-1]
 								cut_offset := bytes.LastIndex(buf, last_keyframe)+len(last_keyframe)
-								// fmt.Println(`buf截断 剩余`,len(buf), `下一header`,buf[:11])
+								// fmt.Printf("buf截断 当前%d=>%d 下一header %b\n",len(buf),len(buf)-cut_offset,buf[:11])
 								buf = buf[cut_offset:]
 							}
 
@@ -847,11 +860,14 @@ func Savestreamf(){
 					case e :=<- http_error:
 						l.L(`W: `,`连接`,item.id.Id,e)
 					}
-					if exit_sign {break}
+					if exit_sign {
+						//退出
+						// l.L(`T: `,"chan退出")
+						break
+					}
 				}
 				
 				l.L(`I: `,"flv过期，开始新连接")
-				// fmt.Println(`过期`)
 	
 				//即将过期，刷新c.Live
 				F.Get(`Liveing`)
@@ -948,7 +964,7 @@ func Savestreamf(){
 				links,file_add,exp,e := hls_get_link(c.Live[0],last_download)
 
 				if e != nil && !reqf.IsTimeout(e) {
-					l.L(`E: `,e)
+					l.L(`W: `,e)
 					break
 				}
 
@@ -1106,7 +1122,10 @@ func Savestreamf(){
 		//set ro ``
 		savestream.path = ``
 
-		if !savestream.cancel.Islive() {break}//cancel
+		if !savestream.cancel.Islive() {
+			// l.L(`I: `,"退出")
+			break
+		}//cancel
 		/*
 			Savestream需要外部组件
 			ffmpeg http://ffmpeg.org/download.html
@@ -1422,12 +1441,12 @@ func init() {
 	
 				lessdanmu.Lock()
 				if ptk := lessdanmu.limit.PTK();ptk == lessdanmu.max_num {
-					if lessdanmu.threshold > 0.01 {
-						lessdanmu.threshold -= 0.01
+					if lessdanmu.threshold > 0.03 {
+						lessdanmu.threshold -= 0.03
 					}
 				} else if ptk == 0 {
-					if lessdanmu.threshold < 0.99 {
-						lessdanmu.threshold += 0.01
+					if lessdanmu.threshold < 0.97 {
+						lessdanmu.threshold += 0.03
 					}
 				}
 				lessdanmu.Unlock()
