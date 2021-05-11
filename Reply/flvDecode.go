@@ -2,7 +2,7 @@ package reply
 
 import (
 	"os"
-	// "fmt"
+	"fmt"
 	"bytes"
 	"time"
 	"errors"
@@ -325,6 +325,88 @@ func Stream(path string,front_buf *[]byte,streamChan chan []byte,cancel chan str
 		}
 	}
 
+	return nil
+}
+
+func TimeStramp_Check(path string) (error) {
+	//file
+	f,err := os.OpenFile(path,os.O_RDONLY,0644)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	//get flv header(9byte) + FirstTagSize(4byte)
+	{
+		buf := make([]byte, flv_header_size+previou_tag_size)
+		if _,err := f.Read(buf);err != nil {return err}
+		if bytes.Index(buf,flv_header_sign) != 0 {return errors.New(`no flv`)}
+	}
+
+	type flv_tag struct {
+		Tag byte
+		Offset int64
+		Timestamp int32
+		PreSize int32
+		FirstByte byte
+	}
+
+	//get tag func
+	var getTag = func(f *os.File)(t flv_tag){
+		t.Offset,_ = f.Seek(0,1)
+
+		buf := make([]byte, tag_header_size)
+		if size,err := f.Read(buf);err != nil || size == 0 {
+			t.Tag = eof_tag
+			return
+		}
+		t.Tag = buf[0]
+		t.Timestamp = F.Btoi32([]byte{buf[7],buf[4],buf[5],buf[6]},0)
+
+		size := F.Btoi32(append([]byte{0x00},buf[1:4]...),0)
+
+		data := make([]byte, size)
+		if size,err := f.Read(data);err != nil || size == 0 {
+			t.Tag = eof_tag
+			return
+		}
+		t.FirstByte = data[0]
+
+		pre_tag := make([]byte, previou_tag_size)
+		if size,err := f.Read(pre_tag);err != nil || size == 0 {
+			t.Tag = eof_tag
+			return
+		} 
+		t.PreSize = F.Btoi32(pre_tag,0)
+		
+		// if t.PreSize == 0{fmt.Println(t.Tag,size,data[size:])}
+
+		return
+	}
+
+	//get first video and audio tag
+	//find last_keyframe_video_offset
+	var (
+		lasttimestramp int32
+		// last_timestamps []int32
+	)
+	for {
+		t := getTag(f)
+		if t.Tag == script_tag && t.Timestamp == 0 {
+			continue
+		} else if t.Tag == video_tag || t.Tag == audio_tag {
+			if t.Timestamp < lasttimestramp {
+				fmt.Printf("error: now %d < pre %d\n",t.Timestamp,lasttimestramp)
+				lasttimestramp = t.Timestamp
+				continue
+			}
+			fmt.Printf("%d\r",t.Timestamp)
+			lasttimestramp = t.Timestamp
+		} else {//eof_tag 
+			break;
+		}
+	}
+	fmt.Printf("ok\n")
 	return nil
 }
 

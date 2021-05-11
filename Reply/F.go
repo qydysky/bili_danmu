@@ -548,7 +548,7 @@ func Savestreamf(){
 
 				var (
 					reqs_used_id []id_close
-					// reqs_remove_id []id_close
+					reqs_remove_id []id_close
 					
 					reqs_keyframe [][][]byte
 
@@ -562,7 +562,7 @@ func Savestreamf(){
 						if !ok {return false}
 	
 						if len(req.keyframe) == 0 {
-							// fmt.Println(req.id.Id, `没有keyframe，退出`)
+							// fmt.Println(`没有keyframe，退出`)
 							req.close()
 							return false
 						}
@@ -578,25 +578,16 @@ func Savestreamf(){
 						reqs_func_block.Block()
 						defer reqs_func_block.UnBlock()
 	
-						// {
-						// 	var isclose bool
-						// 	for i:=0;i<len(reqs_remove_id);i+=1 {
-						// 		if reqs_remove_id[i].id == req.id.Id {
-						// 			isclose = true
-						// 			reqs_remove_id = append(reqs_remove_id[:i], reqs_remove_id[i+1:]...)
-						// 			break
-						// 		}
-						// 	}
-						// 	if isclose {
-						// 		// fmt.Println(`移除req`,req.id.Id)
-						// 		req.close()
-						// 		return false
-						// 	}
-						// }
+						for i:=0;i<len(reqs_remove_id);i+=1 {
+							if reqs_remove_id[i].id == req.id.Id {return false}
+						}
 
 						var reqs_keyframe_index int = len(reqs_used_id)
 						{
 							var isnew bool = true
+							// for i:=0;i<len(reqs_used_id);i+=1 {
+							// 	fmt.Println(reqs_used_id[i].id,i)
+							// }
 							for i:=0;i<len(reqs_used_id);i+=1 {
 								if reqs_used_id[i].id == req.id.Id {
 									reqs_keyframe_index = i
@@ -642,6 +633,7 @@ func Savestreamf(){
 						if success_last_keyframe_timestamp,b,merged := Merge_stream(reqs_keyframe,last_keyframe_timestamp);merged == 0 {
 							// fmt.Println(`merge失败，reqs_keyframe[1]`,reqs_keyframe[1][0][:11],reqs_keyframe[1][len(reqs_keyframe[1])-1][:11])
 							if reqs_keyframe_index == 0 {
+								// l.L(`T: `,"flv拼合失败，reqs_keyframe[0]写入")
 								// fmt.Println(`merge失败，reqs_keyframe[0]写入`,len(req.keyframe))
 
 								last_keyframe_timestamp,_ = Keyframe_timebase(req.keyframe,last_keyframe_timestamp)
@@ -676,6 +668,9 @@ func Savestreamf(){
 								}
 							} else if len(reqs_keyframe[len(reqs_used_id)-1]) > 1 {
 								// fmt.Println(`merge 旧连接退出`)
+								// for k,v := range reqs_used_id {
+								// 	fmt.Println(k,v.id)
+								// }
 								reqs_used_id[0].close()
 								// reqs_used_id = reqs_used_id[1:]
 								// last_time_stamp = int(F.Btoi32([]byte{reqs_keyframe[0][0][7], reqs_keyframe[0][0][4], reqs_keyframe[0][0][5], reqs_keyframe[0][0][6]},0))
@@ -701,14 +696,17 @@ func Savestreamf(){
 
 							last_keyframe_timestamp = success_last_keyframe_timestamp
 	
-							// for i:=0;i<merged;i+=1 {
-							// 	reqs_used_id[i].close()
-							// 	reqs_keyframe[i] = [][]byte{}
-							// 	// reqs_remove_id = append(reqs_remove_id, reqs_used_id[i])
-							// }
+							if len(reqs_remove_id) > 5 {reqs_remove_id = reqs_remove_id[1:]}
+
+							for i:=0;i<merged;i+=1 {
+								reqs_remove_id = append(reqs_remove_id, reqs_used_id[i])
+								reqs_used_id[i].close()
+								// reqs_keyframe[i] = [][]byte{}
+								// reqs_remove_id = append(reqs_remove_id, reqs_used_id[i])
+							}
 							reqs_keyframe = [][][]byte{}
 							
-							reqs_used_id = reqs_used_id[merged:merged]
+							reqs_used_id = reqs_used_id[merged:merged+1]
 
 							//stream
 							savestream.flv_stream.Push_tag("stream",b)
@@ -734,7 +732,7 @@ func Savestreamf(){
 				//获取超时时间
 				link,exp,e := flv_get_link(c.Live[0])
 				if e != nil {
-					l.L(`W: `,e)
+					l.L(`W: `,`流链接获取错误`,e)
 					break
 				}
 
@@ -744,6 +742,8 @@ func Savestreamf(){
 					req = reqf.New()
 				)
 
+				l.L(`T: `,`新建请求`,req.Id())
+
 				//新建请求
 				go func(r *reqf.Req,rval reqf.Rval){
 					go func(){
@@ -752,7 +752,7 @@ func Savestreamf(){
 					}()
 
 					if e := r.Reqf(rval);e != nil {
-						l.L(`W: `,e)
+						l.L(`W: `,`请求退出`,r.Id(),e)
 						return
 					}
 				}(req,reqf.Rval{
@@ -775,6 +775,7 @@ func Savestreamf(){
 					}
 					http_error = make(chan error)
 				)
+				l.L(`T: `,`新建连接`,item.id.Id)
 
 				//解析
 				go func(http_error chan error,bc chan[]byte,item *link_stream){
@@ -858,7 +859,7 @@ func Savestreamf(){
 						exit_sign = true
 					case <- time.After(time.Second*time.Duration(int(int64(exp) - p.Sys().GetSTime())-60)):;
 					case e :=<- http_error:
-						l.L(`W: `,`连接`,item.id.Id,e)
+						l.L(`W: `,`连接退出`,item.id.Id,e)
 					}
 					if exit_sign {
 						//退出
@@ -867,7 +868,7 @@ func Savestreamf(){
 					}
 				}
 				
-				l.L(`I: `,"flv过期，开始新连接")
+				l.L(`I: `,"flv关闭，开始新连接")
 	
 				//即将过期，刷新c.Live
 				F.Get(`Liveing`)
