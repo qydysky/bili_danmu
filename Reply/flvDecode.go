@@ -400,8 +400,9 @@ func TimeStramp_Check(path string) (error) {
 				lasttimestramp = t.Timestamp
 				continue
 			}
-			fmt.Printf("%d\r",t.Timestamp)
+			fmt.Printf("%d\n",t.Timestamp)
 			lasttimestramp = t.Timestamp
+			if lasttimestramp > 10000 {return nil}
 		} else {//eof_tag 
 			break;
 		}
@@ -742,15 +743,77 @@ func Keyframe_timebase(buf [][]byte,last_keyframe_timestamp int)(keyframe_timest
 	var (
 		tag_num int
 		base_keyframe_time int
+		keyframe_interval int
 	)
+
+	//search keyframe
+	{
+		var first_t,last_t int
+		for buf_offset:=0;buf_offset+tag_header_size<len(buf[0]); {
+
+			tag_offset := buf_offset+bytes.IndexAny(buf[0][buf_offset:], string([]byte{video_tag,audio_tag,script_tag}));
+			if tag_offset == buf_offset-1 {
+				err = errors.New(`no found available tag`)
+				// fmt.Printf("last %x\n",buf[tag_offset:tag_offset+tag_header_size])
+				return//no found available video,audio,script tag
+			}
+			if tag_offset+tag_header_size > len(buf[0]) {
+				err = errors.New(`reach end when get tag header`)
+				// fmt.Printf("last %x\n",buf[tag_offset:tag_offset+tag_header_size])
+				return//buf end
+			}
 	
-	// defer func(){
-	// 	fmt.Printf("时间戳调整 newest:%d\n",keyframe_timestamp)
-	// }()
-	// keyframe_timestamp = last_keyframe_timestamp+3000
+			if buf[0][tag_offset+8] | buf[0][tag_offset+9] | buf[0][tag_offset+10] != 0 {
+				buf_offset = tag_offset + 1
+				// fmt.Printf("streamid error %x\n",buf[tag_offset:tag_offset+tag_header_size])
+				continue//streamid error
+			}
+	
+			tag_size := int(F.Btoi32([]byte{0x00,buf[0][tag_offset+1],buf[0][tag_offset+2],buf[0][tag_offset+3]},0))
+			if tag_offset+tag_header_size+tag_size+previou_tag_size > len(buf[0]) {
+				err = errors.New(`reach end when get tag body`)
+				// fmt.Printf("last %x\n",buf[tag_offset:tag_offset+tag_header_size])
+				return//buf end
+			}
+			if tag_size == 0 {
+				buf_offset = tag_offset + 1
+				// fmt.Printf("tag_size error %x\n",buf[tag_offset:tag_offset+tag_header_size])
+				continue//tag_size error
+			}
+	
+			tag_size_check := int(F.Btoi32(buf[0][tag_offset+tag_header_size+tag_size:tag_offset+tag_header_size+tag_size+previou_tag_size],0))
+			if tag_num + tag_size_check == 0 {tag_size_check = tag_size+tag_header_size}
+			if tag_size_check != tag_size+tag_header_size {
+				buf_offset = tag_offset + 1
+				// fmt.Printf("tag_size_check error %x\n",buf[tag_offset:tag_offset+tag_header_size])
+				continue//tag_size_check error
+			}
+	
+			tag_num += 1
+	
+			time_stamp := int(F.Btoi32([]byte{buf[0][tag_offset+7], buf[0][tag_offset+4], buf[0][tag_offset+5], buf[0][tag_offset+6]},0))
+	
+			// if tag_num == 1 && last_keyframe_timestamp != 0 {
+			// 	diff_time = last_keyframe_timestamp + 3000 - time_stamp
+			// 	fmt.Printf("时间戳调整 last:%d now:%d diff:%d\n",last_keyframe_timestamp,time_stamp,diff_time)
+	
+				if buf[0][tag_offset] == video_tag && buf[0][tag_offset+11] & 0xf0 == 0x10{
+					first_t = time_stamp
+				} else {
+					last_t = time_stamp
+				}
+			// }
+	
+			buf_offset = tag_offset+tag_size_check+previou_tag_size
+		}
+		for keyframe_interval=100;keyframe_interval<=last_t-first_t;keyframe_interval+=100 {}
+	}
+
+	tag_num = 0
+	base_keyframe_time = 0
 
 	for i:=0;i<len(buf);i+=1 {
-		keyframe_timestamp = last_keyframe_timestamp+3000
+		keyframe_timestamp = last_keyframe_timestamp+keyframe_interval
 
 		for buf_offset:=0;buf_offset+tag_header_size<len(buf[i]); {
 
