@@ -475,7 +475,7 @@ func Gtk_danmu() {
 					if e := req.Reqf(reqf.Rval{
 						Url:src,
 						SaveToPath:Gtk_img_path + `/` + uid,
-						Timeout:3,
+						Timeout:3*1000,
 						Proxy:c.Proxy,
 					}); e != nil{log.Println(e);}
 				}()

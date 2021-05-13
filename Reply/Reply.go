@@ -254,10 +254,24 @@ func (replyF) user_toast_msg(s string){
 }
 
 //HeartBeat-心跳用来传递人气值
+var renqi_old int
 func (replyF) heartbeat(s int){
 	c.Danmu_Main_mq.Push_tag(`c.Renqi`,s)//使用连续付费的新舰长无法区分，刷新舰长数
 	if s == 1 {return}//人气为1,不输出
-	reply_log.Base_add(`人气`).L(`I: `,"当前人气", s)
+	var (
+		tmp string
+	)
+	if renqi_old != 0 {
+		if s > renqi_old {
+			tmp += `+`
+		}
+		tmp += fmt.Sprintf("%.1f%%",100*float64(s - renqi_old)/float64(renqi_old))
+		tmp = `(`+tmp+`)`
+	}
+
+	fmt.Printf("\t人气:%d %s\n", s, tmp)
+	reply_log.Base_add(`人气`).Log_show_control(false).L(`I: `,"当前人气", s)
+	renqi_old = s
 }
 
 //Msg-房间特殊活动

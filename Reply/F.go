@@ -290,9 +290,9 @@ func Savestreamf(){
 			if e := r.Reqf(reqf.Rval{
 				Url:m3u8_url,
 				Retry:4,
-				SleepTime:1,
+				SleepTime:1000,
 				Proxy:c.Proxy,
-				Timeout:3,
+				Timeout:3*1000,
 				Header:map[string]string{
 					`Host`: url_struct.Host,
 					`User-Agent`: `Mozilla/5.0 (X11; Linux x86_64; rv:83.0) Gecko/20100101 Firefox/83.0`,
@@ -429,26 +429,32 @@ func Savestreamf(){
 		})
 
 		{//重试
-			rr := reqf.New()
+			r := reqf.New()
 			go func(){
 				savestream.cancel.Wait()
-				rr.Close()
+				r.Close()
 			}()
 			l.L(`I: `,"尝试连接live")
-			if e := rr.Reqf(reqf.Rval{
+			if e := r.Reqf(reqf.Rval{
 				Url:c.Live[0],
 				Retry:10,
-				SleepTime:5,
+				SleepTime:1000,
 				Proxy:c.Proxy,
 				Header:map[string]string{
 					`Cookie`:reqf.Map_2_Cookies_String(CookieM),
 				},
-				Timeout:5,
+				Timeout:5*1000,
 				JustResponseCode:true,
 			}); e != nil{l.L(`W: `,e)}
 
-			if rr.Response == nil ||
-			rr.Response.StatusCode != 200 {
+			if r.Response == nil {
+				l.L(`W: `,`live响应错误`)
+				savestream.wait.Done()
+				savestream.cancel.Done()
+				time.Sleep(time.Second*5)
+				continue
+			} else if r.Response.StatusCode != 200 {
+				l.L(`W: `,`live响应错误`,r.Response.Status,string(r.Respon))
 				savestream.wait.Done()
 				savestream.cancel.Done()
 				time.Sleep(time.Second*5)
@@ -461,62 +467,11 @@ func Savestreamf(){
 			Ass_f(savestream.path, time.Now())
 			
 			// no expect qn
-			exit_chan := make(chan struct{})
-			{
-				// go func(){//flv stream
-				// 	byteC := make(chan []byte,1<<17)
-	
-				// 	go func(){
-				// 		for !p.Checkfile().IsExist(savestream.path + ".flv.dtmp") {
-				// 			select {
-				// 			case <-exit_chan:return;
-				// 			case <-time.After(time.Second):;
-				// 			}
-				// 		}
-				// 		for {
-				// 			if err := Stream(savestream.path + ".flv.dtmp",&savestream.flv_front,byteC,exit_chan);err != nil {
-				// 				flog.L(`T: `,err);
-				// 				return
-				// 			}
-				// 			select {
-				// 			case <-exit_chan:return;
-				// 			default:;
-				// 			}
-				// 		}
-				// 	}()
-	
-				// 	var buf []byte
-				// 	for {
-				// 		select{
-				// 		case res :=<- byteC:
-				// 			buf = append(buf, res...)
-				// 			if len(byteC) != 0 {break}
-				// 			savestream.flv_stream.Push_tag("stream",buf)
-				// 			buf = []byte{}
-				// 		case <- exit_chan:
-				// 			savestream.flv_stream.Push_tag("close",nil)
-				// 			return;
-				// 		}
-				// 	}
-				// }()
-			}
-
-			// go func(){
-			// 	var count int = 5
-			// 	for count > 0 && c.Live_want_qn < c.Live_qn {
-			// 		count -= 1
-			// 		select{
-			// 		case <- time.After(time.Minute*2):;
-			// 		case <- exit_chan:return;
-			// 		}
-			// 		F.Get(`Liveing`)
-			// 		if !c.Liveing {break}
-	
-			// 		F.Get(`Live`)
-			// 		if len(c.Live)==0 {break}
-			// 	}
-			// 	Savestream_wait()
-			// }()
+			exit_chan := s.Init()
+			go func(){
+				savestream.cancel.Wait()
+				exit_chan.Done()
+			}()
 
 			type link_stream struct {
 				id *idpool.Id
@@ -579,15 +534,15 @@ func Savestreamf(){
 						defer reqs_func_block.UnBlock()
 	
 						for i:=0;i<len(reqs_remove_id);i+=1 {
-							if reqs_remove_id[i].id == req.id.Id {return false}
+							if reqs_remove_id[i].id == req.id.Id {
+								req.close()
+								return false
+							}
 						}
 
 						var reqs_keyframe_index int = len(reqs_used_id)
 						{
 							var isnew bool = true
-							// for i:=0;i<len(reqs_used_id);i+=1 {
-							// 	fmt.Println(reqs_used_id[i].id,i)
-							// }
 							for i:=0;i<len(reqs_used_id);i+=1 {
 								if reqs_used_id[i].id == req.id.Id {
 									reqs_keyframe_index = i
@@ -605,7 +560,7 @@ func Savestreamf(){
 						}
 
 						if len(reqs_used_id) == 1 {
-							// fmt.Println(`单req写入`,len(req.keyframe))
+							// l.L(`T: `,"单req写入",len(req.keyframe))
 							last_keyframe_timestamp,_ = Keyframe_timebase(req.keyframe,last_keyframe_timestamp)
 
 							for i:=0;i<len(req.keyframe);i+=1 {
@@ -632,6 +587,9 @@ func Savestreamf(){
 	
 						if success_last_keyframe_timestamp,b,merged := Merge_stream(reqs_keyframe,last_keyframe_timestamp);merged == 0 {
 							// fmt.Println(`merge失败，reqs_keyframe[1]`,reqs_keyframe[1][0][:11],reqs_keyframe[1][len(reqs_keyframe[1])-1][:11])
+							size := 0
+							for i:=1;i<len(reqs_keyframe);i+=1 {size += len(reqs_keyframe[i])}
+
 							if reqs_keyframe_index == 0 {
 								// l.L(`T: `,"flv拼合失败，reqs_keyframe[0]写入")
 								// fmt.Println(`merge失败，reqs_keyframe[0]写入`,len(req.keyframe))
@@ -644,51 +602,30 @@ func Savestreamf(){
 									out.Write(req.keyframe[i])
 								}
 								// reqs_keyframe[0] = [][]byte{reqs_keyframe[0][len(reqs_keyframe[0])-1]} 
-							} else if len(reqs_keyframe[len(reqs_used_id)-1]) > 3 {
-								l.L(`T: `,"flv强行拼合")
-								// fmt.Println(`强行merge`)
-								// reqs_remove_id = append(reqs_remove_id, reqs_used_id[0])
-								// last_time_stamp = int(F.Btoi32([]byte{reqs_keyframe[0][0][7], reqs_keyframe[0][0][4], reqs_keyframe[0][0][5], reqs_keyframe[0][0][6]},0))
-
-								reqs_keyframe = [][][]byte{}
+							} else if size > 4 {
+								if reqs_keyframe_index == len(reqs_used_id)-1 {
+									l.L(`T: `,"flv强行拼合")
 								
-								for i:=0;i<len(reqs_used_id)-1;i+=1 {
-									reqs_used_id[i].close()
-									// reqs_remove_id = append(reqs_remove_id, reqs_used_id[i])
+									for i:=0;i<reqs_keyframe_index;i+=1 {
+										reqs_remove_id = append(reqs_remove_id, reqs_used_id[i])
+										reqs_used_id[i].close()
+									}
+									reqs_used_id = reqs_used_id[reqs_keyframe_index:]
+	
+									last_keyframe_timestamp,_ = Keyframe_timebase(req.keyframe,last_keyframe_timestamp)
+	
+	
+									for i:=0;i<len(req.keyframe);i+=1 {
+										//stream
+										savestream.flv_stream.Push_tag("stream",req.keyframe[i])
+										out.Write(req.keyframe[i])
+									}
+	
+									reqs_keyframe = [][][]byte{}
+								} else {
+									req.close()
+									return false
 								}
-								// reqs_used_id = []uintptr{reqs_used_id[len(reqs_used_id)-1]}
-								reqs_used_id = reqs_used_id[1:]
-
-								last_keyframe_timestamp,_ = Keyframe_timebase(req.keyframe,last_keyframe_timestamp)
-
-								for i:=0;i<len(req.keyframe);i+=1 {
-									//stream
-									savestream.flv_stream.Push_tag("stream",req.keyframe[i])
-									out.Write(req.keyframe[i])
-								}
-							} else if len(reqs_keyframe[len(reqs_used_id)-1]) > 1 {
-								// fmt.Println(`merge 旧连接退出`)
-								// for k,v := range reqs_used_id {
-								// 	fmt.Println(k,v.id)
-								// }
-								reqs_used_id[0].close()
-								// reqs_used_id = reqs_used_id[1:]
-								// last_time_stamp = int(F.Btoi32([]byte{reqs_keyframe[0][0][7], reqs_keyframe[0][0][4], reqs_keyframe[0][0][5], reqs_keyframe[0][0][6]},0))
-
-								// reqs_keyframe = [][][]byte{}
-								
-								// for i:=0;i<len(reqs_used_id)-1;i+=1 {
-								// 	reqs_remove_id = append(reqs_remove_id, reqs_used_id[i])
-								// }
-								// reqs_used_id = []uintptr{reqs_used_id[len(reqs_used_id)-1]}
-
-								// last_keyframe_timestamp,_ = Keyframe_timebase(req.keyframe,last_keyframe_timestamp)
-
-								// for i:=0;i<len(req.keyframe);i+=1 {
-								// 	//stream
-								// 	savestream.flv_stream.Push_tag("stream",req.keyframe[i])
-								// 	out.Write(req.keyframe[i])
-								// }
 							}
 						} else {
 							// fmt.Println(`merge成功`,len(b))
@@ -696,17 +633,13 @@ func Savestreamf(){
 
 							last_keyframe_timestamp = success_last_keyframe_timestamp
 	
-							if len(reqs_remove_id) > 5 {reqs_remove_id = reqs_remove_id[1:]}
-
 							for i:=0;i<merged;i+=1 {
 								reqs_remove_id = append(reqs_remove_id, reqs_used_id[i])
 								reqs_used_id[i].close()
-								// reqs_keyframe[i] = [][]byte{}
-								// reqs_remove_id = append(reqs_remove_id, reqs_used_id[i])
 							}
 							reqs_keyframe = [][][]byte{}
 							
-							reqs_used_id = reqs_used_id[merged:merged+1]
+							reqs_used_id = reqs_used_id[merged:]
 
 							//stream
 							savestream.flv_stream.Push_tag("stream",b)
@@ -718,6 +651,9 @@ func Savestreamf(){
 					// 11区	1
 					`close`:func(data interface{})(bool){
 						// defer l.L(`I: `,"处理退出")
+						for i:=0;i<len(reqs_used_id);i+=1 {
+							reqs_used_id[i].close()
+						}
 						reqs_used_id = []id_close{}
 						// reqs_remove_id = []id_close{}
 						reqs_keyframe = [][][]byte{}
@@ -729,8 +665,13 @@ func Savestreamf(){
 
 			//连接保持
 			for {
-				//获取超时时间
-				link,exp,e := flv_get_link(c.Live[0])
+				//随机选取服务器，获取超时时间
+
+				live_index := 0
+				if len(c.Live) > 0 {
+					live_index = int(p.Rand().MixRandom(0,int64(len(c.Live)-1)))
+				}
+				link,exp,e := flv_get_link(c.Live[live_index])
 				if e != nil {
 					l.L(`W: `,`流链接获取错误`,e)
 					break
@@ -740,6 +681,7 @@ func Savestreamf(){
 				var (
 					bc = make(chan []byte,1<<17)
 					req = reqf.New()
+					req_exit = s.Init()
 				)
 
 				l.L(`T: `,`新建请求`,req.Id())
@@ -747,13 +689,20 @@ func Savestreamf(){
 				//新建请求
 				go func(r *reqf.Req,rval reqf.Rval){
 					go func(){
-						savestream.cancel.Wait()
-						req.Close()
+						select {
+						case <-exit_chan.WaitC():;
+						case <-req_exit.WaitC():;
+						}
+						r.Close()
 					}()
-
-					if e := r.Reqf(rval);e != nil {
+					defer req_exit.Done()
+					e := r.Reqf(rval)
+					if r.Response == nil {
 						l.L(`W: `,`请求退出`,r.Id(),e)
-						return
+					} else if r.Response.StatusCode != 200 {
+						l.L(`W: `,`请求退出`,r.Id(),e,r.Response.Status,string(r.Respon))
+					} else {
+						l.L(`W: `,`请求退出`,r.Id(),e,r.Response.Status)
 					}
 				}(req,reqf.Rval{
 					Url:link,
@@ -763,103 +712,79 @@ func Savestreamf(){
 					},
 					//SaveToPath:savestream.path + ".flv",
 					SaveToChan:bc,
-					Timeout:int(int64(exp) - p.Sys().GetSTime()),
-					ReadTimeout:5,
+					Timeout:int(int64(exp) - p.Sys().GetSTime())*1000,
+					ReadTimeout:5*1000,
+					ConnectTimeout:10*1000,
 				})
 				
 				//返回通道
-				var (
-					item = link_stream{
+				var item = link_stream{
 						close:req.Close,
 						id:id_pool.Get(),
 					}
-					http_error = make(chan error)
-				)
 				l.L(`T: `,`新建连接`,item.id.Id)
 
 				//解析
-				go func(http_error chan error,bc chan[]byte,item *link_stream){
-					// defer l.L(`I: `,"解析退出")
+				go func(bc chan[]byte,item *link_stream,exit_chan *s.Signal){
 					var (
 						buf []byte
 						skip_buf_size int
 					)
-					for {
+					defer req_exit.Done()
+					defer l.L(`W: `,`连接退出`,item.id.Id)
+					for exit_chan.Islive() && req_exit.Islive() {
 						select {
-						case <-exit_chan:return;
+						case <-exit_chan.WaitC():return;
+						case <-req_exit.WaitC():return;
 						case b :=<- bc:
 							if len(b) == 0 {
 								// fmt.Println(`req退出`,item.id.Id)
 								id_pool.Put(item.id)
-								http_error <- errors.New(`EOF`)
 								// reqs.Push_tag(`closereq`,*item)
 								return
 							}
-
+	
 							buf = append(buf, b...)
- 
-							// var tmp_buf []byte
-							// {
-							// 	tmp_buf = make([]byte,len(buf))
-							// 	copy(tmp_buf, buf)
-							// }
-							// fmt.Println(buf[:11])
-
+	
 							if len(buf) < skip_buf_size {break}
-
+	
 							front,list,_ := Seach_stream_tag(buf)
-
+	
 							if len(front) != 0 && len(item.front) == 0 {
 								// fmt.Println(item.id.Id,`获取到header`,len(front))
 								item.front = make([]byte,len(front))
 								copy(item.front, front)
 							}
-
+	
 							if len(list) == 0 || len(item.front) == 0 {
 								// fmt.Println(`再次查询bufsize`,skip_buf_size)
 								skip_buf_size = 2*len(buf)
 								break
 							}
-
-							// total := 0
-							// var tmp_buf []byte
-							// {
-							// 	tmp_buf = make([]byte,len(buf))
-							// 	copy(tmp_buf, buf)
-							// }
+	
 							item.keyframe = list
-							// item.keyframe = make([][]byte,len(list))
-							// for i:=0;i<len(list);i+=1 {
-							// 	total += len(list[i])
-							// 	item.keyframe[i] = make([]byte,len(list[i]))
-							// 	copy(item.keyframe[i],list[i])
-							// }
-
-							// fmt.Println(item.id.Id,`获取到keyframe`,len(list))
-
+	
 							{
 								last_keyframe := list[len(list)-1]
 								cut_offset := bytes.LastIndex(buf, last_keyframe)+len(last_keyframe)
 								// fmt.Printf("buf截断 当前%d=>%d 下一header %b\n",len(buf),len(buf)-cut_offset,buf[:11])
 								buf = buf[cut_offset:]
 							}
-
+	
 							skip_buf_size = len(buf)+len(list[0])
-
 							reqs.Push_tag(`req`,*item)
 						}
 					}
-				}(http_error,bc,&item)
+				}(bc,&item,exit_chan)
 
 				//等待过期/退出
 				{
 					var exit_sign bool
 					select {
-					case <- savestream.cancel.Chan:
-						exit_sign = true
-					case <- time.After(time.Second*time.Duration(int(int64(exp) - p.Sys().GetSTime())-60)):;
-					case e :=<- http_error:
-						l.L(`W: `,`连接退出`,item.id.Id,e)
+					case <- req_exit.Chan:;//本次连接错误，退出重试
+					case <- exit_chan.Chan://要求退出
+						exit_sign = true//
+					case <- time.After(time.Second*time.Duration(int(int64(exp) - p.Sys().GetSTime())-120)):;
 					}
 					if exit_sign {
 						//退出
@@ -877,7 +802,7 @@ func Savestreamf(){
 				if len(c.Live)==0 {break}
 			}
 			
-			close(exit_chan)
+			exit_chan.Done()
 			reqs.Push_tag(`close`,nil)
 			out.Close()
 			
@@ -1061,9 +986,9 @@ func Savestreamf(){
 						if e := r.Reqf(reqf.Rval{
 							Url:(*link).Url,
 							Retry:3,
-							SleepTime:1,
+							SleepTime:1000,
 							SaveToPath:path+(*link).Base,
-							Timeout:3,
+							Timeout:3*1000,
 							Proxy:c.Proxy,
 						}); e != nil{
 							l.L(`I: `,e,`将重试！`)
@@ -1890,7 +1815,7 @@ func init() {
 
 				//最新直播流
 				if savestream.path == `` {
-					flog.L(`I: `,`还没有下载直播流`)
+					flog.L(`T: `,`还没有下载直播流`)
 					w.WriteHeader(http.StatusNotFound)
 					return
 				}
@@ -1903,7 +1828,7 @@ func init() {
 				}
 
 				if !p.Checkfile().IsExist(base_dir+path) {
-					flog.L(`I: `,`还没有下载直播流`)
+					flog.L(`T: `,`还没有下载直播流`)
 					w.WriteHeader(http.StatusNotFound)
 				} else {
 					u, e := url.Parse("../"+path)

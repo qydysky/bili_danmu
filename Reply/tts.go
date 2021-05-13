@@ -90,9 +90,9 @@ func TTS(uid,msg string) {
 	if err := req.Reqf(reqf.Rval{
 		Url:`https://fanyi.baidu.com/gettts?lan=zh&text=`+ url.QueryEscape(msg) +`&spd=5&source=web`,
 		SaveToPath:p.Sys().Cdir()+`/tts.mp3`,
-		Timeout:3,
+		Timeout:3*1000,
 		Retry:1,
-		SleepTime:500,
+		SleepTime:5000,
 		Proxy:c.Proxy,
 	});err != nil {
 		tts_log.L(`E: `,err)

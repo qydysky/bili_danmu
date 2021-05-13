@@ -692,7 +692,7 @@ func Merge_stream(keyframe_lists [][][]byte,last_keyframe_timestramp int)(keyfra
 			// fmt.Println(keyframe_lists[o])
 			// keyframe_list_i_header := fmt.Sprintf("%x",keyframe_lists[i][o][:tag_header_size-3])
 			// old_buf_o := buf_o
-				if bytes.Index(buf[n][tag_header_size:],keyframe_lists[i][o][tag_header_size:]) != -1 {
+				if bytes.Index(buf[n][1:4],keyframe_lists[i][o][1:4]) != -1 {
 
 					// last_time_stamp := int(F.Btoi32([]byte{buf[n][7], buf[n][4], buf[n][5], buf[n][6]},0))
 

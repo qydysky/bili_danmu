@@ -64,7 +64,7 @@ func Send_pm(uid int, msg string) error {
 	if e:= req.Reqf(reqf.Rval{
 		Url:`https://api.vc.bilibili.com/web_im/v1/web_im/send_msg`,
 		PostStr:url.PathEscape(send_str),
-		Timeout:10,
+		Timeout:10*1000,
 		Proxy:c.Proxy,
 		Header:map[string]string{
 			`Host`: `api.vc.bilibili.com`,

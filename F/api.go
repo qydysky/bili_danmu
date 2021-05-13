@@ -242,7 +242,7 @@ func Info(UpUid int) (info J.Info) {
 		if err := req.Reqf(reqf.Rval{
 			Url:`https://api.bilibili.com/x/space/acc/info?mid=`+strconv.Itoa(UpUid)+`&jsonp=jsonp`,
 			Proxy:c.Proxy,
-			Timeout:10,
+			Timeout:10*1000,
 			Retry:2,
 		});err != nil {
 			apilog.L(`E: `,err)
@@ -448,7 +448,7 @@ func getInfoByRoom() (missKey []string) {
 				`Referer`:"https://live.bilibili.com/" + Roomid,
 			},
 			Proxy:c.Proxy,
-			Timeout:10,
+			Timeout:10*1000,
 			Retry:2,
 		});err != nil {
 			apilog.L(`E: `,err)
@@ -534,7 +534,7 @@ func getRoomPlayInfo() (missKey []string) {
 				`Cookie`:reqf.Map_2_Cookies_String(Cookie),
 			},
 			Proxy:c.Proxy,
-			Timeout:10,
+			Timeout:10*1000,
 			Retry:2,
 		});err != nil {
 			apilog.L(`E: `,err)
@@ -695,7 +695,7 @@ func getRoomPlayInfoByQn() (missKey []string) {
 				`Cookie`:reqf.Map_2_Cookies_String(Cookie),
 			},
 			Proxy:c.Proxy,
-			Timeout:10,
+			Timeout:10*1000,
 			Retry:2,
 		});err != nil {
 			apilog.L(`E: `,err)
@@ -847,7 +847,7 @@ func getDanmuInfo() (missKey []string) {
 				`Cookie`:reqf.Map_2_Cookies_String(Cookie),
 			},
 			Proxy:c.Proxy,
-			Timeout:10,
+			Timeout:10*1000,
 		});err != nil {
 			apilog.L(`E: `,err)
 			return
@@ -892,7 +892,7 @@ func Get_face_src(uid string) (string) {
 			`Cookie`:reqf.Map_2_Cookies_String(Cookie),
 		},
 		Proxy:c.Proxy,
-		Timeout:10,
+		Timeout:10*1000,
 		Retry:2,
 	});err != nil {
 		apilog.L(`E: `,err)
@@ -956,7 +956,7 @@ func Get_HotRank() (missKey []string) {
 				`Cookie`:reqf.Map_2_Cookies_String(Cookie),
 			},
 			Proxy:c.Proxy,
-			Timeout:3,
+			Timeout:3*1000,
 			Retry:2,
 		});err != nil {
 			apilog.L(`E: `,err)
@@ -1026,7 +1026,7 @@ func Get_guardNum() (missKey []string) {
 				`Cookie`:reqf.Map_2_Cookies_String(Cookie),
 			},
 			Proxy:c.Proxy,
-			Timeout:3,
+			Timeout:3*1000,
 			Retry:2,
 		});err != nil {
 			apilog.L(`E: `,err)
@@ -1147,7 +1147,7 @@ func Get_cookie() (missKey []string) {
 		if e := r.Reqf(reqf.Rval{
 			Url:`https://passport.bilibili.com/qrcode/getLoginUrl`,
 			Proxy:c.Proxy,
-			Timeout:10,
+			Timeout:10*1000,
 			Retry:2,
 		});e != nil {
 			apilog.L(`E: `,e)
@@ -1250,7 +1250,7 @@ func Get_cookie() (missKey []string) {
 					`Cookie`:reqf.Map_2_Cookies_String(Cookie),
 				},
 				Proxy:c.Proxy,
-				Timeout:10,
+				Timeout:10*1000,
 				Retry:2,	
 			});e != nil {
 				apilog.L(`E: `,e)
@@ -1371,7 +1371,7 @@ func Get_list_in_room() (array []TGet_list_in_room) {
 					`Cookie`:reqf.Map_2_Cookies_String(Cookie),
 				},
 				Proxy:c.Proxy,
-				Timeout:10,
+				Timeout:10*1000,
 				Retry:2,
 			});e != nil {
 				apilog.L(`E: `,e)
@@ -1451,7 +1451,7 @@ func Get_weared_medal() (item TGet_weared_medal) {
 				`Cookie`:reqf.Map_2_Cookies_String(Cookie),
 			},
 			Proxy:c.Proxy,
-			Timeout:10,
+			Timeout:10*1000,
 			Retry:2,
 		});e != nil {
 			apilog.L(`E: `,e)
@@ -1560,7 +1560,7 @@ func CheckSwitch_FansMedal() (missKey []string) {
 				`Referer`: `https://passport.bilibili.com/login`,
 			},
 			Proxy:c.Proxy,
-			Timeout:10,
+			Timeout:10*1000,
 			Retry:2,
 		});e != nil {
 			apilog.L(`E: `,e)
@@ -1619,7 +1619,7 @@ func Dosign() {
 				`Cookie`:reqf.Map_2_Cookies_String(Cookie),
 			},
 			Proxy:c.Proxy,
-			Timeout:3,
+			Timeout:3*1000,
 			Retry:2,
 		});err != nil {
 			apilog.L(`E: `,err)
@@ -1666,7 +1666,7 @@ func Dosign() {
 				`Cookie`:reqf.Map_2_Cookies_String(Cookie),
 			},
 			Proxy:c.Proxy,
-			Timeout:3,
+			Timeout:3*1000,
 			Retry:2,
 		});err != nil {
 			apilog.L(`E: `,err)
@@ -1722,7 +1722,7 @@ func Get_LIVE_BUVID() (missKey []string) {
 				`Upgrade-Insecure-Requests`: `1`,
 			},
 			Proxy:c.Proxy,
-			Timeout:3,
+			Timeout:3*1000,
 			Retry:2,
 		});err != nil {
 			apilog.L(`E: `,err)
@@ -1877,7 +1877,7 @@ func F_x25Kn() {
 				},
 				PostStr:url.PathEscape(PostStr),
 				Proxy:c.Proxy,
-				Timeout:5,
+				Timeout:5*1000,
 				Retry:2,
 			});err != nil {
 				if !reqf.IsTimeout(err) {
@@ -1986,7 +1986,7 @@ func F_x25Kn() {
 				},
 				PostStr:url.PathEscape(PostStr),
 				Proxy:c.Proxy,
-				Timeout:5,
+				Timeout:5*1000,
 				Retry:2,
 			});err != nil {
 				if !reqf.IsTimeout(err) {
@@ -2068,7 +2068,7 @@ func Gift_list() (list []Gift_list_type_Data_List) {
 			`Cookie`:reqf.Map_2_Cookies_String(Cookie),
 		},
 		Proxy:c.Proxy,
-		Timeout:3,
+		Timeout:3*1000,
 		Retry:2,
 	});err != nil {
 		apilog.L(`E: `,err)
@@ -2135,7 +2135,7 @@ func Silver_2_coin() (missKey []string) {
 				`Cookie`:reqf.Map_2_Cookies_String(Cookie),
 			},
 			Proxy:c.Proxy,
-			Timeout:3,
+			Timeout:3*1000,
 			Retry:2,
 		});err != nil {
 			apilog.L(`E: `,err)
@@ -2195,7 +2195,7 @@ func Silver_2_coin() (missKey []string) {
 				`Cookie`:reqf.Map_2_Cookies_String(Cookie),
 			},
 			Proxy:c.Proxy,
-			Timeout:3,
+			Timeout:3*1000,
 			Retry:2,
 		});err != nil {
 			apilog.L(`E: `,err)
@@ -2258,7 +2258,7 @@ func Silver_2_coin() (missKey []string) {
 				`Cookie`:reqf.Map_2_Cookies_String(Cookie),
 			},
 			Proxy:c.Proxy,
-			Timeout:3,
+			Timeout:3*1000,
 			Retry:2,
 		});err != nil {
 			apilog.L(`E: `,err)
@@ -2328,7 +2328,7 @@ func Feed_list() (Uplist []UpItem) {
 	req := reqf.New()
 	for pageNum:=1; true; pageNum+=1 {
 		if err := req.Reqf(reqf.Rval{
-			Url:`https://api.live.bilibili.com/relation/v1/feed/feed_list?page=`+strconv.Itoa(pageNum)+`&pagesize=10`,
+			Url:`https://api.live.bilibili.com/xlive/web-ucenter/v1/xfetter/FeedList?page=`+strconv.Itoa(pageNum)+`&pagesize=10`,
 			Header:map[string]string{
 				`Host`: `api.live.bilibili.com`,
 				`User-Agent`: `Mozilla/5.0 (X11; Linux x86_64; rv:83.0) Gecko/20100101 Firefox/83.0`,
@@ -2343,7 +2343,7 @@ func Feed_list() (Uplist []UpItem) {
 				`Cookie`:reqf.Map_2_Cookies_String(Cookie),
 			},
 			Proxy:c.Proxy,
-			Timeout:3,
+			Timeout:3*1000,
 			Retry:2,
 		});err != nil {
 			apilog.L(`E: `,err)
@@ -2393,7 +2393,7 @@ func GetHistory(Roomid_int int) (j J.GetHistory) {
 				`Referer`:"https://live.bilibili.com/" + Roomid,
 			},
 			Proxy:c.Proxy,
-			Timeout:10,
+			Timeout:10*1000,
 			Retry:2,
 		});err != nil {
 			apilog.L(`E: `,err)
@@ -2432,7 +2432,7 @@ func IsConnected() bool {
 	if err := req.Reqf(reqf.Rval{
 		Url:"https://www.bilibili.com",
 		Proxy:c.Proxy,
-		Timeout:10,
+		Timeout:10*1000,
 		JustResponseCode:true,
 	});err != nil {
 		apilog.L(`W: `,`网络中断`,err)

@@ -43,7 +43,7 @@ func Danmu_s(msg string, roomid int) {
 		Url:"https://api.live.bilibili.com/msg/send",
 		PostStr:url.PathEscape(PostStr),
 		Retry:2,
-		Timeout:5,
+		Timeout:5*1000,
 		Proxy:c.Proxy,
 		Header:map[string]string{
 			`Host`: `api.live.bilibili.com`,

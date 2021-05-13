@@ -148,7 +148,7 @@ func Wasm(uid uintptr,s RT) (o string) {//maxloop 超时重试
 				Url:nodeJsUrl,
 				PostStr:toNodeJsString(s),
 				Proxy:c.Proxy,
-				Timeout:3,
+				Timeout:3*1000,
 			});err != nil {
 				wslog.L(`E: `,err)
 				o = Wasm(uid, s)

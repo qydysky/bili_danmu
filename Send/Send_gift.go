@@ -54,7 +54,7 @@ func Send_gift(gift_id,bag_id,gift_num int) {
 		if e:= req.Reqf(reqf.Rval{
 			Url:`https://api.live.bilibili.com/gift/v2/live/bag_send`,
 			PostStr:url.PathEscape(sendStr),
-			Timeout:10,
+			Timeout:10*1000,
 			Proxy:c.Proxy,
 			Header:map[string]string{
 				`Host`: `api.vc.bilibili.com`,
