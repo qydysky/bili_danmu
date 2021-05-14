@@ -269,7 +269,9 @@ func (replyF) heartbeat(s int){
 		tmp = `(`+tmp+`)`
 	}
 
-	fmt.Printf("\t人气:%d %s\n", s, tmp)
+	if renqi_old != s {
+		fmt.Printf("\t人气:%d %s\n", s, tmp)
+	}
 	reply_log.Base_add(`人气`).Log_show_control(false).L(`I: `,"当前人气", s)
 	renqi_old = s
 }

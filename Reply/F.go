@@ -777,6 +777,12 @@ func Savestreamf(){
 					}
 				}(bc,&item,exit_chan)
 
+				expires := int64(exp) - p.Sys().GetSTime()-120
+				// no expect qn
+				if c.Live_want_qn < c.Live_qn {
+					expires = time.Now().Add(time.Minute*2).Unix()
+				}
+
 				//等待过期/退出
 				{
 					var exit_sign bool
@@ -784,7 +790,7 @@ func Savestreamf(){
 					case <- req_exit.Chan:;//本次连接错误，退出重试
 					case <- exit_chan.Chan://要求退出
 						exit_sign = true//
-					case <- time.After(time.Second*time.Duration(int(int64(exp) - p.Sys().GetSTime())-120)):;
+					case <- time.After(time.Second*time.Duration(int(expires))):;
 					}
 					if exit_sign {
 						//退出
