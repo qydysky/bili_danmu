@@ -684,7 +684,7 @@ func Savestreamf(){
 					req_exit = s.Init()
 				)
 
-				l.L(`T: `,`新建请求`,req.Id())
+				l.L(`I: `,`新建请求`,req.Id())
 
 				//新建请求
 				go func(r *reqf.Req,rval reqf.Rval){
@@ -722,7 +722,7 @@ func Savestreamf(){
 						close:req.Close,
 						id:id_pool.Get(),
 					}
-				l.L(`T: `,`新建连接`,item.id.Id)
+				l.L(`I: `,`新建连接`,item.id.Id)
 
 				//解析
 				go func(bc chan[]byte,item *link_stream,exit_chan *s.Signal){

@@ -1187,7 +1187,9 @@ func Get_cookie() (missKey []string) {
 	//有新实例，退出
 	if boot_Get_cookie.NeedExit(id) {return}
 
-	var server = new(http.Server)
+	var server = &http.Server{
+		Addr: p.Sys().GetIntranetIp()+":"+strconv.Itoa(p.Sys().GetFreePort()),
+	}
 	{//生成二维码
 		qr.WriteFile(img_url,qr.Medium,256,`qr.png`)
 		if !p.Checkfile().IsExist(`qr.png`) {
@@ -1209,14 +1211,15 @@ func Get_cookie() (missKey []string) {
 		defer server.Shutdown(context.Background())
 
 		if c.K_v.LoadV(`扫码登录自动打开标签页`).(bool) {open.Run(`http://`+server.Addr+`/qr.png`)}
-		apilog.L(`W: `,`打开链接扫码登录：`,`http://`+server.Addr+`/qr.png`).Block(1000)
+		apilog.Block(1000)
 		//show qr code in cmd
 		qrterminal.GenerateWithConfig(img_url, qrterminal.Config{
 			Level: qrterminal.L,
 			Writer: os.Stdout,
-			BlackChar: qrterminal.BLACK,
-			WhiteChar: qrterminal.WHITE,
+			BlackChar: `  `,
+			WhiteChar: `OO`,
 		})
+		apilog.L(`W: `,`打开链接扫码(命令行黑底)登录：`,`http://`+server.Addr+`/qr.png`)
 		p.Sys().Timeoutf(1)
 	}
 	
