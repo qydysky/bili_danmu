@@ -1747,9 +1747,8 @@ func init() {
 						<- cancel
 					} else if strings.Contains(path,"m3u8")  {
 					
-						gmt, _ := time.LoadLocation("GMT")
 						w.Header().Set("Cache-Control", "max-age=1")
-						w.Header().Set("Last-Modified", time.Now().Add(time.Second).In(gmt).Format(time.RFC1123))
+						w.Header().Set("Last-Modified", time.Now().Add(time.Second).Format(time.RFC1123))
 						w.Header().Set("Content-Type", "application/vnd.apple.mpegurl")
 						w.Header().Set("Connection", "Keep-Alive")
 						
