@@ -17,7 +17,6 @@ var (
 	Live_want_qn int//期望直播流质量
 	Roomid int
 	Cookie syncmap.Map
-	CookieOk bool//
 	Title string//直播标题
 	Uname string//主播名
 	UpUid int//主播uid

@@ -22,12 +22,19 @@ func Cmd() {
 
 	for scanner.Scan() {
 		if inputs := scanner.Text();inputs == `` {//帮助
-			cmdlog.L(`I: `, "切换房间->输入数字回车")
-			cmdlog.L(`I: `, "发送弹幕->输入' 字符串'回车")
-			cmdlog.L(`I: `, "房间信息->输入' room'回车")
-			cmdlog.L(`I: `, "开始结束录制->输入' rec'回车")
-			cmdlog.L(`I: `, "查看直播中主播->输入' live'回车")
-			cmdlog.L(`I: `, "其他输出隔断不影响")
+			fmt.Print("\n")
+			fmt.Println("切换房间->输入数字回车")
+			if _,ok := c.Cookie.LoadV(`bili_jct`).(string);ok {
+				fmt.Println("发送弹幕->输入' 字符串'回车")
+				fmt.Println("查看直播中主播->输入' live'回车")
+				fmt.Println("获取小心心->输入' getheart'回车")
+			} else {
+				fmt.Println("登陆->输入' login'回车")
+			}
+			fmt.Println("房间信息->输入' room'回车")
+			fmt.Println("开始结束录制->输入' rec'回车")
+			fmt.Println("其他输出隔断不影响")
+			fmt.Print("\n")
 		} else if inputs[0] == 27 {//屏蔽功能键
 			cmdlog.L(`W: `, "不支持功能键")
 		} else if inputs[0] == 32 {// 开头
@@ -42,6 +49,11 @@ func Cmd() {
 			}
 			//直播间切换
 			if strings.Contains(inputs, ` live`) {
+				if _,ok := c.Cookie.LoadV(`bili_jct`).(string);!ok {
+					cmdlog.L(`W: `, "尚未登陆，未能获取关注主播")
+					continue
+				}
+				fmt.Print("\n")
 				if len(inputs) > 5 {
 					if room,ok := liveList[inputs];ok{
 						c.Roomid = room
@@ -53,18 +65,42 @@ func Cmd() {
 				}
 				for k,v := range Feed_list() {
 					liveList[` live`+strconv.Itoa(k)] = v.Roomid
-					cmdlog.L(`I: `, k, v.Uname, v.Title)
+					fmt.Println(k, v.Uname, v.Title)
 				}
-				cmdlog.L(`I: `, "回复' live(序号)'进入直播间")
+				fmt.Println("回复' live(序号)'进入直播间")
+				fmt.Print("\n")
+				continue
+			}
+			//登陆
+			if strings.Contains(inputs, ` login`) {
+				if _,ok := c.Cookie.LoadV(`bili_jct`).(string);ok {
+					cmdlog.L(`W: `, "已登陆")
+					continue
+				}
+				//获取cookie
+				Get(`Cookie`)
+
+				continue
+			}
+			//获取小心心
+			if strings.Contains(inputs, ` getheart`) {
+				if _,ok := c.Cookie.LoadV(`bili_jct`).(string);!ok {
+					cmdlog.L(`W: `, "尚未登陆，不能获取小心心")
+					continue
+				}
+				//获取小心心
+				go F_x25Kn()
+
 				continue
 			}
 			//当前直播间信息
 			if strings.Contains(inputs, ` room`) {
-				cmdlog.L(`I: `, "当前直播间信息")
+				fmt.Print("\n")
+				fmt.Println("当前直播间信息")
 				{
 					living := `未在直播`
 					if c.Liveing {living = `直播中`}
-					cmdlog.L(`I: `, c.Uname, c.Title, living)
+					fmt.Println(c.Uname, c.Title, living)
 				}
 				{
 					if c.Liveing {
@@ -74,19 +110,24 @@ func Cmd() {
 						m := d / time.Minute
 						d -= m * time.Minute
 						s := d / time.Second
-						cmdlog.L(`I: `, `已直播时长:`, fmt.Sprintf("%02d:%02d:%02d", h, m, s))
+						fmt.Println(`已直播时长:`, fmt.Sprintf("%02d:%02d:%02d", h, m, s))
 					}
 				}
 				{
-					cmdlog.L(`I: `, `营收:`, fmt.Sprintf("￥%.2f",c.Rev))
+					fmt.Println(`营收:`, fmt.Sprintf("￥%.2f",c.Rev))
 				}
-				cmdlog.L(`I: `, `舰长数:`, c.GuardNum)
-				cmdlog.L(`I: `, `分区排行:`, c.Note, `人气：`, c.Renqi)
-				if c.Stream_url != ""{cmdlog.L(`I: `, `直播Web服务:`, c.Stream_url)}
+				fmt.Println(`舰长数:`, c.GuardNum)
+				fmt.Println(`分区排行:`, c.Note, `人气：`, c.Renqi)
+				if c.Stream_url != ""{fmt.Println(`直播Web服务:`, c.Stream_url)}
+				fmt.Print("\n")
 
 				continue
 			}
 			{//弹幕发送
+				if _,ok := c.Cookie.LoadV(`bili_jct`).(string);!ok {
+					cmdlog.L(`W: `, "尚未登陆，不能发送弹幕")
+					continue
+				}
 				if len(inputs) < 2 {
 					cmdlog.L(`W: `, "输入长度过短", inputs)
 					continue
