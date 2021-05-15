@@ -6,11 +6,14 @@ import (
 	"net/url"
 
 	c "github.com/qydysky/bili_danmu/CV"
+
 	p "github.com/qydysky/part"
+	reqf "github.com/qydysky/part/reqf"
+	limit "github.com/qydysky/part/limit"
 )
 
 //每5s一个令牌，最多等20秒
-var danmu_s_limit = p.Limit(1, 5000, 20000)
+var danmu_s_limit = limit.New(1, 5000, 20000)
 
 //弹幕发送
 func Danmu_s(msg string, roomid int) {
@@ -35,12 +38,13 @@ func Danmu_s(msg string, roomid int) {
 
 	PostStr := `color=16777215&fontsize=25&mode=1&msg=` + msg + `&rnd=` + strconv.Itoa(int(p.Sys().GetSTime())) + `&roomid=` + strconv.Itoa(roomid) + `&bubble=0&csrf_token=` + csrf + `&csrf=` + csrf
 	l.L(`I: `,"发送", msg, "至", roomid)
-	r := p.Req()
-	err := r.Reqf(p.Rval{
+	r := reqf.New()
+	err := r.Reqf(reqf.Rval{
 		Url:"https://api.live.bilibili.com/msg/send",
 		PostStr:url.PathEscape(PostStr),
 		Retry:2,
-		Timeout:5,
+		Timeout:5*1000,
+		Proxy:c.Proxy,
 		Header:map[string]string{
 			`Host`: `api.live.bilibili.com`,
 			`User-Agent`: `Mozilla/5.0 (X11; Linux x86_64; rv:83.0) Gecko/20100101 Firefox/83.0`,
@@ -53,7 +57,7 @@ func Danmu_s(msg string, roomid int) {
 			`Pragma`: `no-cache`,
 			`Cache-Control`: `no-cache`,
 			`Referer`:"https://live.bilibili.com/" + strconv.Itoa(roomid),
-			`Cookie`:p.Map_2_Cookies_String(Cookie),
+			`Cookie`:reqf.Map_2_Cookies_String(Cookie),
 		},
 	})
 	if err != nil {

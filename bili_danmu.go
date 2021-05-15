@@ -8,14 +8,16 @@ import (
 	"strconv"
 	"os"
 	"os/signal"
-
-	p "github.com/qydysky/part"
-	ws "github.com/qydysky/part/websocket"
-	msgq "github.com/qydysky/part/msgq"
+		
 	reply "github.com/qydysky/bili_danmu/Reply"
 	send "github.com/qydysky/bili_danmu/Send"
 	c "github.com/qydysky/bili_danmu/CV"
 	F "github.com/qydysky/bili_danmu/F"
+
+	p "github.com/qydysky/part"
+	ws "github.com/qydysky/part/websocket"
+	msgq "github.com/qydysky/part/msgq"
+	reqf "github.com/qydysky/part/reqf"
 )
 
 func init() {
@@ -36,8 +38,16 @@ func Demo(roomid ...int) {
 	defer danmulog.Block(1000)
 
 	//ctrl+c退出
-	interrupt := make(chan os.Signal, 1)
-	
+	interrupt := make(chan os.Signal,2)
+	go func(){
+		danmulog.L(`T: `, "两次ctrl+c强制退出")
+		for len(interrupt) < 2 {
+			time.Sleep(time.Second*3)
+		}
+		danmulog.L(`I: `, "强制退出!").Block(1000)
+		os.Exit(1)
+	}()
+
 	{
 		var groomid = flag.Int("r", 0, "roomid")
 		flag.Parse()
@@ -76,7 +86,6 @@ func Demo(roomid ...int) {
 				c.Uname = ``//主播id
 				c.Title = ``
 				c.Wearing_FansMedal = 0
-				reply.Saveflv_wait()//停止保存直播流
 				for len(change_room_chan) != 0 {<-change_room_chan}
 				change_room_chan <- struct{}{}
 				return false
@@ -108,9 +117,10 @@ func Demo(roomid ...int) {
 
 		<-change_room_chan
 
-		//ctrl+c退出
+		//捕获ctrl+c退出
 		signal.Notify(interrupt, os.Interrupt)
-
+		//如果连接中断，则等待
+		F.KeepConnect()
 		//获取cookie
 		F.Get(`Cookie`)
 		//获取uid
@@ -121,18 +131,23 @@ func Demo(roomid ...int) {
 		F.Get(`Silver_2_coin`)
 		//每日签到
 		F.Dosign()
-		//客户版本
-		F.Get(`VERSION`)
+		// //客户版本 不再需要
+		// F.Get(`VERSION`)
 		//附加功能 保持牌子点亮
 		go reply.Keep_medal_light()
 		//附加功能 自动发送即将过期礼物
 		go reply.AutoSend_silver_gift()
-		
+
 		var exit_sign = 2
 		for exit_sign > 0 {
 			exit_sign -= 1
 
 			danmulog.L(`T: `,"准备")
+			//如果连接中断，则等待
+			if F.KeepConnect() {
+				//成功保持连接
+				exit_sign = 2
+			}
 			//获取热门榜
 			F.Get(`Note`)
 
@@ -163,10 +178,11 @@ func Demo(roomid ...int) {
 				ws_c := ws.New_client(ws.Client{
 					Url:v,
 					TO:35 * 1000,
+					Proxy:c.Proxy,
 					Func_abort_close:func(){danmulog.L(`I: `,`服务器连接中断`)},
 					Func_normal_close:func(){danmulog.L(`I: `,`服务器连接关闭`)},
 					Header: map[string]string{
-						`Cookie`:p.Map_2_Cookies_String(Cookie),
+						`Cookie`:reqf.Map_2_Cookies_String(Cookie),
 						`Host`: u.Hostname(),
 						`User-Agent`: `Mozilla/5.0 (X11; Linux x86_64; rv:84.0) Gecko/20100101 Firefox/84.0`,
 						`Accept`: `*/*`,
@@ -218,8 +234,8 @@ func Demo(roomid ...int) {
 							`new day`:func(data interface{})(bool){//日期更换
 								//每日签到
 								F.Dosign()
-								//获取用户版本
-								go F.Get(`VERSION`)
+								// //获取用户版本  不再需要
+								// go F.Get(`VERSION`)
 								//每日兑换硬币
 								go F.Silver_2_coin()
 								//小心心
@@ -246,7 +262,7 @@ func Demo(roomid ...int) {
 
 						{//附加功能 进房间发送弹幕 直播流保存 营收
 							go reply.Entry_danmu()
-							go reply.Saveflvf()
+							go reply.Savestreamf()
 							go reply.ShowRevf()
 							//小心心
 							go F.F_x25Kn()
@@ -280,15 +296,14 @@ func Demo(roomid ...int) {
 
 				if break_sign {break}
 			}
-
+			{//附加功能 直播流停止
+				reply.Savestream_wait()
+				reply.Save_to_json(-1, []interface{}{`{}]`})
+			}
 			p.Sys().Timeoutf(1)
 		}
 
 		close(interrupt)
-		{//附加功能 直播流
-			reply.Saveflv_wait()
-			reply.Save_to_json(-1, []interface{}{`{}]`})
-		}
 		danmulog.L(`I: `,"结束退出")
 	}
 }

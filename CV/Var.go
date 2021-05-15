@@ -14,9 +14,9 @@ var (
 
 	Live []string//直播流链接
 	Live_qn int//当前直播流质量
+	Live_want_qn int//期望直播流质量
 	Roomid int
 	Cookie syncmap.Map
-	CookieOk bool//
 	Title string//直播标题
 	Uname string//主播名
 	UpUid int//主播uid
@@ -33,6 +33,10 @@ var (
 	Token string//弹幕钥
 	WSURL []string//弹幕链接
 	LIVE_BUVID bool//cookies含LIVE_BUVID
+)
+
+var (
+	Stream_url string//直播Web服务
 )
 
 //消息队列
@@ -52,6 +56,14 @@ func init() {
 	for k,v := range buf.B {
 		K_v.Store(k, v)
 	}
+}
+
+//constKv
+var (
+	Proxy string//全局代理
+)
+func init() {
+	Proxy,_ = K_v.LoadV("http代理地址").(string)
 }
 
 //日志
@@ -82,17 +94,29 @@ func init() {
 /*
 	customAuthParam
 */
-var (
-	VERSION = "2.0.11"
-)
+// var (
+// 	VERSION = "2.0.11"
+// ) // 不再需要
 
 //允许的清晰度
-var AcceptQn = map[int]string{
-	10000:"原画",
-	800:"4K",
-	401:"蓝光(杜比)",
-	400:"蓝光",
-	250:"超清",
-	150:"高清",
-	80:"流畅",
-}
+
+var (
+	AcceptQn = map[int]string{
+		10000:"原画",
+		800:"4K",
+		401:"蓝光(杜比)",
+		400:"蓝光",
+		250:"超清",
+		150:"高清",
+		80:"流畅",
+	}
+	Qn = map[int]string{// no change
+		10000:"原画",
+		800:"4K",
+		401:"蓝光(杜比)",
+		400:"蓝光",
+		250:"超清",
+		150:"高清",
+		80:"流畅",
+	}
+)

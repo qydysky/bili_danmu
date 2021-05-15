@@ -18,3 +18,4 @@ demo/ui/*.glade~
 demo/tts.mp3
 demo/cpu.pprof
 demo/qr.png
+demo/live

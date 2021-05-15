@@ -64,7 +64,7 @@ func HelloGen(roomid int, key string) []byte {
 	`,"roomid":` + strconv.Itoa(roomid) + 
 	`,"protover":` + strconv.Itoa(c.Protover) + 
 	`,"platform":"`+ c.Platform + 
-	`","clientver":"` + c.VERSION + 
+	// `","clientver":"` + c.VERSION + //delete at 2021 4 14
 	`","type":` + strconv.Itoa(c.Type) + 
 	`,"key":"` + key + `"}`
 

@@ -25,6 +25,8 @@ var reply_log = c.Log.Base(`Reply`)
 func Reply(b []byte) {
 	reply_log := reply_log.Base_add(`返回分派`)
 
+	if len(b) <= c.WS_PACKAGE_HEADER_TOTAL_LENGTH {reply_log.L(`W: `,"包缺损");return}
+
 	head := F.HeadChe(b[:c.WS_PACKAGE_HEADER_TOTAL_LENGTH])
 	if int(head.PackL) > len(b) {reply_log.L(`E: `,"包缺损");return}
 
@@ -62,6 +64,32 @@ type replyF struct {}
 //默认未识别Msg
 func (replyF) defaultMsg(s string){
 	msglog.Base_add("Unknow").L(`E: `, s)
+}
+
+//大乱斗pk开始
+func (replyF) pk_lottery_start(s string){
+	msglog := msglog.Base_add("大乱斗")
+	var j ws_msg.PK_LOTTERY_START
+	if e := json.Unmarshal([]byte(s), &j);e != nil{
+		msglog.L(`E: `, e)
+		return
+	}
+	Gui_show(j.Data.Title,`0room`)
+	msglog.L(`I`, j.Data.Title)
+}
+
+//大乱斗pk状态
+func (replyF) pk_battle_process_new(s string){
+	msglog := msglog.Base_add("大乱斗")
+	var j ws_msg.PK_BATTLE_PROCESS_NEW
+	if e := json.Unmarshal([]byte(s), &j);e != nil{
+		msglog.L(`E: `, e)
+		return
+	}
+	if diff := j.Data.InitInfo.Votes-j.Data.MatchInfo.Votes;diff<0 {
+		Gui_show(`大乱斗落后`,strconv.Itoa(diff),`0room`)
+		msglog.L(`I`, `大乱斗落后`,diff)
+	}
 }
 
 //msg-特别礼物
@@ -226,10 +254,26 @@ func (replyF) user_toast_msg(s string){
 }
 
 //HeartBeat-心跳用来传递人气值
+var renqi_old int
 func (replyF) heartbeat(s int){
 	c.Danmu_Main_mq.Push_tag(`c.Renqi`,s)//使用连续付费的新舰长无法区分，刷新舰长数
 	if s == 1 {return}//人气为1,不输出
-	reply_log.Base_add(`人气`).L(`I: `,"当前人气", s)
+	var (
+		tmp string
+	)
+	if renqi_old != 0 {
+		if s > renqi_old {
+			tmp += `+`
+		}
+		tmp += fmt.Sprintf("%.1f%%",100*float64(s - renqi_old)/float64(renqi_old))
+		tmp = `(`+tmp+`)`
+	}
+
+	if renqi_old != s {
+		fmt.Printf("\t人气:%d %s\n", s, tmp)
+	}
+	reply_log.Base_add(`人气`).Log_show_control(false).L(`I: `,"当前人气", s)
+	renqi_old = s
 }
 
 //Msg-房间特殊活动
@@ -433,10 +477,10 @@ func (replyF) preparing(s string) {
 		msglog.L(`E: `, "roomid", roomid)
 		return
 	} else {
-		{//附加功能 obs结束 saveflv结束
+		{//附加功能 obs结束 `savestream`结束
 			Obs_R(false)
 			Obsf(false)
-			Saveflv_wait()
+			Savestream_wait()
 			go ShowRevf()
 			c.Liveing = false
 		}
@@ -461,7 +505,7 @@ func (replyF) live(s string) {
 		{//附加功能 obs录播
 			Obsf(true)
 			Obs_R(true)
-			go Saveflvf()
+			go Savestreamf()
 		}
 		{
 			c.Rev = 0.0 //营收
@@ -607,6 +651,9 @@ func (replyF) little_message_box(s string){
 	}
 	if type_item.Data.Msg != `` {
 		msglog.L(`I: `, type_item.Data.Msg)
+		if strings.Contains(type_item.Data.Msg,`小心心`) && strings.Contains(type_item.Data.Msg,`上限`) {
+				F.F_x25Kn_cancel()
+		}
 	}
 }
 
@@ -741,7 +788,7 @@ func Msg_showdanmu(auth interface{}, m ...string) {
 	msg := m[0]
 	msglog := msglog.Log_show_control(false)
 	{//附加功能 更少弹幕
-		if Lessdanmuf(msg, 20) > 0.7 {//与前20条弹幕重复的字数占比度>0.7的屏蔽
+		if !Lessdanmuf(msg) {
 			if auth != nil {msglog.L(`I: `, auth, ":", msg)}
 			return
 		}

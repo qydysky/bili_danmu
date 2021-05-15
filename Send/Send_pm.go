@@ -5,8 +5,12 @@ import (
 	"errors"
 	"strings"
 	"strconv"
-	p "github.com/qydysky/part"
 	c "github.com/qydysky/bili_danmu/CV"
+
+	p "github.com/qydysky/part"
+	reqf "github.com/qydysky/part/reqf"
+	limit "github.com/qydysky/part/limit"
+
 	uuid "github.com/gofrs/uuid"
 )
 
@@ -16,7 +20,7 @@ type Pm_item struct {
 }
 
 //每5s一个令牌，最多等10秒
-var pm_limit = p.Limit(1, 5000, 10000)
+var pm_limit = limit.New(1, 5000, 10000)
 
 func Send_pm(uid int, msg string) error {
 	if msg == `` || uid == 0 {
@@ -56,11 +60,12 @@ func Send_pm(uid int, msg string) error {
 		return true
 	})
 	
-	req := p.Req()
-	if e:= req.Reqf(p.Rval{
+	req := reqf.New()
+	if e:= req.Reqf(reqf.Rval{
 		Url:`https://api.vc.bilibili.com/web_im/v1/web_im/send_msg`,
 		PostStr:url.PathEscape(send_str),
-		Timeout:10,
+		Timeout:10*1000,
+		Proxy:c.Proxy,
 		Header:map[string]string{
 			`Host`: `api.vc.bilibili.com`,
 			`User-Agent`: `Mozilla/5.0 (X11; Linux x86_64; rv:83.0) Gecko/20100101 Firefox/83.0`,
@@ -73,7 +78,7 @@ func Send_pm(uid int, msg string) error {
 			`Pragma`: `no-cache`,
 			`Cache-Control`: `no-cache`,
 			`Referer`:"https://message.bilibili.com",
-			`Cookie`:p.Map_2_Cookies_String(Cookie),
+			`Cookie`:reqf.Map_2_Cookies_String(Cookie),
 		},
 	});e != nil {
 		log.L(`E: `,e)

@@ -35,6 +35,7 @@ golang go version go1.15 linux/amd64
 - [github.com/gofrs/uuid](https://github.com/gofrs/uuid) under [MIT](https://github.com/gofrs/uuid/blob/master/LICENSE)
 - [github.com/skratchdot/open-golang/open](https://github.com/skratchdot/open-golang) under [MIT](https://raw.githubusercontent.com/skratchdot/open-golang/master/LICENSE)
 - [7z](https://www.7-zip.org/) under [LICENSE](https://www.7-zip.org/license.txt)
+- [github.com/mdp/qrterminal/v3](github.com/mdp/qrterminal/v3) under [MIT](https://github.com/mdp/qrterminal/blob/master/LICENSE)
 ---
 
 ### 当前支持显示/功能
@@ -59,7 +60,8 @@ golang go version go1.15 linux/amd64
 - [x] 排行榜
 
 #### 当前支持功能
-以下内容可能过时，点击查看[~~当前支持功能(旧)~~](https://github.com/qydysky/bili_danmu/blob/9731f69d06a15645c6cb1d41379520a5a3f519f1/Reply/F.go#L26)，[功能配置(新)](https://github.com/qydysky/bili_danmu/blob/maintenance/demo/config/config_K_v.json)
+以下内容可能过时，点击查看[功能配置](https://github.com/qydysky/bili_danmu/blob/maintenance/demo/config/config_K_v.json)
+- [x] 直播流服务
 - [x] 每天自动发送将要过期的银瓜子礼物(默认发送3天内过期的)
 - [x] 保持当前已点亮的粉丝牌总是点亮
 - [x] 银瓜子自动兑换硬币
@@ -68,13 +70,13 @@ golang go version go1.15 linux/amd64
 - [x] 每日有粉丝牌获取小心心
 - [x] 自定义私信
 - [x] 自动切换粉丝牌
-- [x] 扫码登录
+- [x] 扫码登录(qrcode in webServer and cmd)
 - [x] 自定义语音提醒
 - [x] GTK弹幕窗
 - [x] GTK信息窗
 - [x] 营收统计
 - [x] 舰长数统计
-- [x] 直播流保存
+- [x] 直播流保存(默认hls，支持flv)
 - [x] ASS字幕生成
 - [x] OBS调用
 - [x] 节奏提示
@@ -87,6 +89,7 @@ golang go version go1.15 linux/amd64
 
 #### 其他特性
 
+- [x] 使用http代理
 - [x] cookie加密
 - [x] 弹幕自动重连（30s）
 - [x] 直播流开播自动下载
@@ -97,6 +100,41 @@ golang go version go1.15 linux/amd64
 
 ### 说明
 本项目使用github action自动构建，构建过程详见[yml](https://github.com/qydysky/bili_danmu/blob/master/.github/workflows/go.yml)
+
+#### 直播流Web服务
+启动Web流服务，为下载的直播流提供局域网内的流服务。
+
+在`demo/config/config_K_v.json`中可找到配置项，0:随机可用端口 >0:固定可用端口 <0:禁用服务。
+
+```
+    "直播保存位置Web服务":0,
+```
+
+开启之后，启动会显示服务地址，在局域网内打开网址可以取得所有直播流的串流地址
+
+支持跨域，注意：在https网站默认无法加载非本机http服务
+
+- dtmp结尾：当前正在获取的流，播放此链接时进度将保持当前流进度
+- flv/m3u8结尾：保存完毕的直播流，播放此链接时将从头开始播放
+- ass结尾：保存完毕的直播流字幕，有些播放器会在串流时获取此文件
+- m4s结尾：hls切片
+
+**特殊的：路径为`/now`(例：当服务地址为下方的38259口时，此对应的路径为`http://192.168.31.245:38259/now`)，会重定向到当前正在获取的流，播放此链接时进度将保持当前流进度**
+
+服务地址也可通过命令行` room`查看。
+
+```
+I: 2021/04/13 20:07:45 命令行操作 [直播Web服务: http://192.168.31.245:38259]
+```
+
+测试可用项目：
+
+- [xqq/mpegts.js](https://github.com/xqq/mpegts.js)
+- [bilibili/flv.js](https://github.com/bilibili/flv.js)
+- [bytedance/xgplayer](https://github.com/bytedance/xgplayer)
+- [video-dev/hls.js](https://github.com/video-dev/hls.js)
+- [mpv](https://mpv.io/)
+
 
 #### 命令行操作
 在准备动作完成(`T: 2021/03/06 16:22:39 命令行操作 [回车查看帮助]`)后，输入回车将显示帮助
@@ -135,13 +173,17 @@ I: 2021/03/06 16:21:17 弹幕发送 [发送 1 至 7734200]
 - 查看房间信息
 ```
  room
-I: 2021/03/08 01:06:53 命令行操作 [当前直播间信息]
-I: 2021/03/08 01:06:53 命令行操作 [C酱です 213电竞俱乐部开业了！ 直播中]
-I: 2021/03/08 01:06:53 命令行操作 [已直播时长: 07:56:53]
-I: 2021/03/08 01:06:53 命令行操作 [营收: ￥0.00]
-I: 2021/03/08 01:06:53 命令行操作 [舰长数: 1427]
-I: 2021/03/08 01:06:53 命令行操作 [分区排行: 单机游戏 19 人气： 1321956]
+I: 2021/04/13 20:04:56 命令行操作 [当前直播间信息]
+I: 2021/04/13 20:04:56 命令行操作 [哔哩哔哩英雄联盟赛事 【直播】EDG vs RNG 直播中]
+I: 2021/04/13 20:04:56 命令行操作 [已直播时长: 244:02:58]
+I: 2021/04/13 20:04:56 命令行操作 [营收: ￥3193.10]
+I: 2021/04/13 20:04:56 命令行操作 [舰长数: 16]
+I: 2021/04/13 20:04:56 命令行操作 [分区排行: 50+ 人气： 41802746]
+I: 2021/04/13 20:04:56 命令行操作 [直播Web服务: http://192.168.31.245:38259]
 ```
+
+还支持登录、唤起获取小心心等功能
+
 #### cookie加密
 保护cookie.txt
 
@@ -162,11 +204,27 @@ openssl genrsa -out private.pem 2048
 openssl rsa -in private.pem -pubout -out public.pem
 ```
 #### 小心心
-在登录后，可以自动获取小心心
+在登录后，可以自动获取小心心，获取小心心需要加密
 
-需要支持webassembly的浏览器(通常可以在bili直播间获得小心心的浏览器均可)
+加密方式：
+- 浏览器(默认)
 
+当`小心心nodjs加密服务地址`为空时启用，需要支持webassembly的浏览器(通常可以在bili直播间获得小心心的浏览器均可)  
 golang通过websocket与浏览器js进行通讯，在浏览器js调用bilibili的webassembly组件，对信息进行加密。最后返回加密字符串，并由golang进行获取请求。因此需要保持浏览器的相关标签页不被关闭。
+
+- NodeJs
+
+支持使用nodeJs服务来进行加密，在`config/config_K_v.json`配置。当`小心心nodjs加密服务地址`不为空(如Nodejs服务在本地`5200`端口启动：`http://127.0.0.1:5200/enc`)时，将使用此服务来进行加密。注意：加密失败将导致小心心获取退出。  
+nodejs小心心加密项目地址[lkeme/bilibili-pcheartbeat](https://github.com/lkeme/bilibili-pcheartbeat)。请自行配置启动。
+
+- golang?暂无
+
+至于为什么没有直接的golang实现，是因为查找资料一番后发现golang执行wasm是使用虚拟机。出于效率及平台普遍性的考量，故没使用，等相关项目更加完善在添加。
+
+相关项目
+
+- [mathetake/gasm](https://github.com/mathetake/gasm)
+- [wasmerio/wasmer-go](https://github.com/wasmerio/wasmer-go)
 
 #### 私信
 在登录后，可以使用私信

@@ -4,10 +4,13 @@ import (
 	"os/exec"
 	"net/url"
 	"strings"
-	p "github.com/qydysky/part"
 	c "github.com/qydysky/bili_danmu/CV"
+
+	p "github.com/qydysky/part"
 	msgq "github.com/qydysky/part/msgq"
 	s "github.com/qydysky/part/buf"
+	reqf "github.com/qydysky/part/reqf"
+	limit "github.com/qydysky/part/limit"
 )
 
 var tts_setting = map[string]string{
@@ -17,7 +20,7 @@ var tts_setting = map[string]string{
 }
 var tts_List = make(chan interface{},20)
 
-var tts_limit = p.Limit(1,5000,15000)//频率限制1次/5s，最大等待时间15s
+var tts_limit = limit.New(1,5000,15000)//频率限制1次/5s，最大等待时间15s
 
 var tts_log = c.Log.Base_add(`TTS`)
 
@@ -83,13 +86,14 @@ func TTS(uid,msg string) {
 
 	msg = strings.ReplaceAll(v, "{D}", msg)
 
-	req := p.Req()
-	if err := req.Reqf(p.Rval{
+	req := reqf.New()
+	if err := req.Reqf(reqf.Rval{
 		Url:`https://fanyi.baidu.com/gettts?lan=zh&text=`+ url.QueryEscape(msg) +`&spd=5&source=web`,
 		SaveToPath:p.Sys().Cdir()+`/tts.mp3`,
-		Timeout:3,
+		Timeout:3*1000,
 		Retry:1,
-		SleepTime:500,
+		SleepTime:5000,
+		Proxy:c.Proxy,
 	});err != nil {
 		tts_log.L(`E: `,err)
 		return

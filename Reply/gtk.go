@@ -13,14 +13,17 @@ import (
 	"sync"
 	"runtime"
 
+	F "github.com/qydysky/bili_danmu/F"
+	c "github.com/qydysky/bili_danmu/CV"
+
+	p "github.com/qydysky/part"
+	msgq "github.com/qydysky/part/msgq"
+	s "github.com/qydysky/part/buf"
+	reqf "github.com/qydysky/part/reqf"
+
 	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
 	"github.com/gotk3/gotk3/gdk"
-	p "github.com/qydysky/part"
-	msgq "github.com/qydysky/part/msgq"
-	F "github.com/qydysky/bili_danmu/F"
-	c "github.com/qydysky/bili_danmu/CV"
-	s "github.com/qydysky/part/buf"
 )
 
 type danmu_item struct {
@@ -468,11 +471,12 @@ func Gtk_danmu() {
 					if p.Checkfile().IsExist(Gtk_img_path + `/` + uid) {return}
 					src := F.Get_face_src(uid)
 					if src == "" {return}
-					req := p.Req()
-					if e := req.Reqf(p.Rval{
+					req := reqf.New()
+					if e := req.Reqf(reqf.Rval{
 						Url:src,
 						SaveToPath:Gtk_img_path + `/` + uid,
-						Timeout:3,
+						Timeout:3*1000,
+						Proxy:c.Proxy,
 					}); e != nil{log.Println(e);}
 				}()
 			default:
