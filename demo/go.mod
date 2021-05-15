@@ -8,7 +8,7 @@ require (
 	github.com/christopher-dG/go-obs-websocket v0.0.0-20200720193653-c4fed10356a5 // indirect
 	github.com/gofrs/uuid v4.0.0+incompatible // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
-	github.com/gotk3/gotk3 v0.5.2 // indirect
+	github.com/gotk3/gotk3 v0.5.3-0.20210223154815-289cfb6dbf32 // indirect
 	github.com/klauspost/compress v1.12.2 // indirect
 	github.com/mdp/qrterminal/v3 v3.0.0 // indirect
 	github.com/miekg/dns v1.1.42 // indirect
