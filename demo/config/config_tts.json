@@ -1,11 +1,19 @@
 {
-    "help":"空字符串将不触发，{D}会被替换",
-    "0buyguide": "感谢{D}",
-    "0gift": "感谢{D}",
-    "0superchat": "感谢{D}",
-    "0multi": "观众：{D}",
-    "0rank":"{D}",
-    "0level1":"{D}",
-    "0level2":"",
-    "0level3":""
+    "onoff":{
+        "help":"空字符串将不触发，{D}会被替换",
+        "0buyguide": "感谢{D}",
+        "0gift": "感谢{D}",
+        "0superchat": "感谢{D}",
+        "0multi": "观众：{D}",
+        "0rank":"{D}",
+        "0level1":"{D}",
+        "0level2":"",
+        "0level3":""
+    },
+    "replace":{
+        "?":"问号",
+        "？":"问号",
+        "!":"叹号",
+        "！":"叹号"
+    }
 }

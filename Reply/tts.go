@@ -13,11 +13,14 @@ import (
 	limit "github.com/qydysky/part/limit"
 )
 
-var tts_setting = map[string]string{
-	"0buyguide":"感谢{D}",
-	"0gift":"感谢{D}",
-	"0superchat":"感谢{D}",
-}
+var (
+	tts_setting_onoff = map[string]string{
+		"0buyguide":"感谢{D}",
+		"0gift":"感谢{D}",
+		"0superchat":"感谢{D}",
+	}
+	tts_setting_replace = map[string]string{}
+)
 var tts_List = make(chan interface{},20)
 
 var tts_limit = limit.New(1,5000,15000)//频率限制1次/5s，最大等待时间15s
@@ -49,8 +52,15 @@ func init(){
 			}
 		}
 		buf.Load("config/config_tts.json")
-		for k,v := range buf.B {
-			tts_setting[k] = v.(string)
+		if onoff,ok := buf.Get(`onoff`);ok {
+			for k,v := range onoff.(map[string]interface{}) {
+				tts_setting_onoff[k] = v.(string)
+			}
+		}
+		if replace,ok := buf.Get(`replace`);ok {
+			for k,v := range replace.(map[string]interface{}) {
+				tts_setting_replace[k] = v.(string)
+			}
 		}
 	}
 	//启动程序
@@ -67,7 +77,7 @@ func init(){
 	//使用带tag的消息队列在功能间传递消息
 	c.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
 		`tts`:func(data interface{})(bool){//tts
-			if _,ok := tts_setting[data.(Danmu_mq_t).uid];ok {
+			if _,ok := tts_setting_onoff[data.(Danmu_mq_t).uid];ok {
 				tts_List <- data
 			}
 			return false
@@ -79,12 +89,16 @@ func init(){
 func TTS(uid,msg string) {
 	if tts_limit.TO() {return}
 
-	v,ok := tts_setting[uid]
+	v,ok := tts_setting_onoff[uid]
 	if !ok || v == ``{return}
 
 	tts_log.L(`I: `,uid, strings.ReplaceAll(msg, "\n", " "))
 
 	msg = strings.ReplaceAll(v, "{D}", msg)
+
+	for k,v := range tts_setting_replace {
+		msg = strings.ReplaceAll(msg, k, v)
+	}
 
 	req := reqf.New()
 	if err := req.Reqf(reqf.Rval{
