@@ -254,7 +254,10 @@ func (replyF) user_toast_msg(s string){
 }
 
 //HeartBeat-心跳用来传递人气值
-var renqi_old int
+var (
+	renqi_old int
+	continuity int
+)
 func (replyF) heartbeat(s int){
 	c.Danmu_Main_mq.Push_tag(`c.Renqi`,s)//使用连续付费的新舰长无法区分，刷新舰长数
 	if s == 1 {return}//人气为1,不输出
@@ -266,6 +269,21 @@ func (replyF) heartbeat(s int){
 			tmp += `+`
 		}
 		tmp += fmt.Sprintf("%.1f%%",100*float64(s - renqi_old)/float64(renqi_old))
+		if s > renqi_old {
+			continuity += 1
+			if continuity > 2 {
+				tmp = tmp+` 连续上升`+strconv.Itoa(continuity)
+			} else if continuity < 0 {
+				continuity = 1
+			}
+		} else if s < renqi_old {
+			continuity -= 1
+			if continuity < -2 {
+				tmp = tmp+` 连续下降`+strconv.Itoa(-continuity)
+			} else if continuity > 0 {
+				continuity = -1
+			}
+		}
 		tmp = `(`+tmp+`)`
 	}
 

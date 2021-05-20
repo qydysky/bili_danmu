@@ -223,7 +223,6 @@ type Savestream struct {
 type hls_generate struct {
 	hls_file_header []byte//发送给客户的m3u8不变头
 	m4s_list []*m4s_link_item//m4s列表
-	sync.RWMutex
 }
 
 type m4s_link_item struct {//使用指针以设置是否已下载
@@ -822,59 +821,64 @@ func Savestreamf(){
 			Ass_f(savestream.path+"0", time.Now())
 
 			var (
+				hls_msg = msgq.New(10)
 				hls_gen hls_generate
-				exit_chan = make(chan struct{})//退出监听
 			)
-			{//hls stream gen 用户m3u8生成
-				go func(){
-					for {
-						select {
-						case <- time.After(time.Second):;
-						case <- exit_chan:
-							savestream.hls_stream = []byte{}//退出置空
-							return
-						}
-						//在设置下载标志时，需要进行操作，故加锁
-						hls_gen.Lock()
-						var res []byte
-						//add header
-						res = hls_gen.hls_file_header
-		
-						//add EXT-X-MEDIA-SEQUENCE
-						m4s_list := hls_gen.m4s_list
-						if (*m4s_list[0]).Base[0] == 104 {
-							m4s_list = m4s_list[1:]
-						}
-						if len(m4s_list) > savestream.max_m4s_hls {//too much
-							cut_offset := 0
-							for i:=0;i<len(m4s_list);i+=1 {
-								if !(*m4s_list[i]).downloaded {break}
-								if i > savestream.min_m4s_hls {
-									cut_offset = i-savestream.min_m4s_hls
-								}
-							}
-							hls_gen.m4s_list = hls_gen.m4s_list[cut_offset:]
-						}
-						res = append(res, []byte((*m4s_list[0]).Base[:len((*m4s_list[0]).Base)-4])...)
-						res = append(res, []byte("\n")...)
-		
-						//add m4s block
-						for i:=0;i<len(m4s_list);i+=1 {
-							if !(*m4s_list[i]).downloaded {break}
-							res = append(res, []byte("#EXTINF:1\n")...)
-							res = append(res, (*m4s_list[i]).Base...)
-							res = append(res, []byte("\n")...)
-						}
-						hls_gen.Unlock()
-		
-						//去除最后一个换行
-						if len(res) > 0 {res = res[:len(res)-1]}
-
-						//设置到全局变量，方便流服务器获取
-						savestream.hls_stream = res
+			//hls stream gen 用户m3u8生成
+			hls_msg.Pull_tag(map[string]func(interface{})(bool){
+				`header`:func(d interface{})(bool){
+					if b,ok := d.([]byte);ok {
+						hls_gen.hls_file_header = b
 					}
-				}()
-			}
+					return false
+				},
+				`body`:func(d interface{})(bool){
+					links,ok := d.([]*m4s_link_item)
+					if !ok {return false}
+
+					//remove hls first m4s
+					if len(links) > 0 &&
+						len((*links[0]).Base) > 0 &&
+						(*links[0]).Base[0] == 104 {links = links[1:]}
+
+					hls_gen.m4s_list = append(hls_gen.m4s_list, links...)
+					if len(hls_gen.m4s_list) > savestream.max_m4s_hls {//too much
+						cut_offset := 0
+						for i:=0;i<len(hls_gen.m4s_list);i+=1 {
+							if !(*hls_gen.m4s_list[i]).downloaded {break}
+							if i > savestream.min_m4s_hls {
+								cut_offset = i-savestream.min_m4s_hls
+							}
+						}
+						hls_gen.m4s_list = hls_gen.m4s_list[cut_offset:]
+					}
+
+					var res []byte
+					//add header
+					res = hls_gen.hls_file_header
+					res = append(res, []byte((*hls_gen.m4s_list[0]).Base[:len((*hls_gen.m4s_list[0]).Base)-4])...)
+					res = append(res, []byte("\n")...)
+	
+					//add m4s block
+					for i:=0;i<len(hls_gen.m4s_list);i+=1 {
+						if !(*hls_gen.m4s_list[i]).downloaded {break}
+						res = append(res, []byte("#EXTINF:1\n")...)
+						res = append(res, (*hls_gen.m4s_list[i]).Base...)
+						res = append(res, []byte("\n")...)
+					}
+	
+					//去除最后一个换行
+					if len(res) > 0 {res = res[:len(res)-1]}
+
+					//设置到全局变量，方便流服务器获取
+					savestream.hls_stream = res
+					return false
+				},
+				`close`:func(d interface{})(bool){
+					savestream.hls_stream = []byte{}//退出置空
+					return true
+				},
+			})
 
 			type miss_download_T struct{
 				List []*m4s_link_item
@@ -907,9 +911,7 @@ func Savestreamf(){
 						fin_offset := bytes.LastIndex(file_add, []byte("EXT-X-MEDIA-SEQUENCE:"))+21
 						res = file_add[:fin_offset]
 					}
-					hls_gen.Lock()
-					hls_gen.hls_file_header = res
-					hls_gen.Unlock()
+					hls_msg.Push_tag(`header`, res)
 				}
 
 				if len(links) == 0 {
@@ -1012,13 +1014,8 @@ func Savestreamf(){
 					if links[i].Offset_line > 0 {
 						last_download = links[i]
 					}
-
-					{//store m4s to hls_gen
-						hls_gen.Lock()
-						hls_gen.m4s_list = append(hls_gen.m4s_list, links[i])
-						hls_gen.Unlock()
-					}
 				}
+				hls_msg.Push_tag(`body`, links)
 
 				//m3u8_url 将过期
 				if p.Sys().GetSTime()+60 > expires {
@@ -1047,8 +1044,9 @@ func Savestreamf(){
 				})
 				p.FileMove(savestream.path+"0.m3u8.dtmp", savestream.path+"0.m3u8")
 			}
+
+			hls_msg.Push_tag(`close`, nil)
 			l.L(`I: `,"结束")
-			close(exit_chan)//hls_stream
 			Ass_f("", time.Now())//ass
 		}
 		//set ro ``
