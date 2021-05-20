@@ -1224,6 +1224,7 @@ func Autobanf(s string) bool {
 type Danmuji struct {
 	Buf map[string]string
 	Inuse_auto bool
+	reflect_limit *limit.Limit
 
 	mute bool
 }
@@ -1233,20 +1234,28 @@ var danmuji = Danmuji{
 	Buf:map[string]string{
 		"弹幕机在么":"在",
 	},
+	reflect_limit:limit.New(1,4000,8000),
 }
 
 func init(){//初始化反射型弹幕机
 	buf := b.New()
 	buf.Load("config/config_auto_reply.json")
 	for k,v := range buf.B {
+		if k == v {continue}
 		danmuji.Buf[k] = v.(string)
 	}
 }
 
 func Danmujif(s string) {
 	if !IsOn("反射弹幕机") {return}
-	if v, ok := danmuji.Buf[s]; ok {
-		Msg_senddanmu(v)
+
+	if danmuji.reflect_limit.TO() {return}
+
+	for k,v := range danmuji.Buf {
+		if strings.Contains(s, k) {
+			Msg_senddanmu(v)
+			break
+		}
 	}
 }
 
