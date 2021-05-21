@@ -4,7 +4,7 @@ import (
 	"time"
 	"os"
 	"strconv"
-	// "strings"
+	"strings"
     "context"
 	"encoding/json"
 	"net/http"
@@ -30,7 +30,7 @@ var apilog = c.Log.Base(`api`)
 var api_limit = limit.New(1,2000,30000)//频率限制1次/2s，最大等待时间30s
 
 func Get(key string) {
-	apilog := apilog.Base_add(`Get`).L(`T: `,key)
+	apilog := apilog.Base_add(`Get`)
 
 	if api_limit.TO() {return}//超额请求阻塞，超时将取消
 
@@ -195,6 +195,7 @@ func Get(key string) {
 
 	if fList,ok := api_can_get[key];ok{
 		for _,fItem := range fList{
+			apilog.L(`T: `, `Get`, key)
 			missKey := fItem()
 			if len(missKey) > 0 {
 				apilog.L(`T: `,`missKey when get`,key,missKey)
@@ -2414,6 +2415,60 @@ func GetHistory(Roomid_int int) (j J.GetHistory) {
 			}
 		}
 	}
+	return
+}
+
+type searchresult struct{
+	Roomid int
+	Uname string
+	Is_live bool
+}
+
+func SearchUP(s string) (list []searchresult) {
+	apilog := apilog.Base_add(`搜索主播`)
+	if api_limit.TO() {apilog.L(`E: `,`超时！`);return}//超额请求阻塞，超时将取消
+	
+	{//使用其他api
+		req := reqf.New()
+		if err := req.Reqf(reqf.Rval{
+			Url:"https://api.bilibili.com/x/web-interface/search/type?context=&search_type=live_user&cover_type=user_cover&page=1&order=&category_id=&__refresh__=true&_extra=&highlight=1&single_column=0&keyword=" + url.PathEscape(s),
+			Proxy:c.Proxy,
+			Timeout:10*1000,
+			Retry:2,
+		});err != nil {
+			apilog.L(`E: `,err)
+			return
+		}
+
+		var j J.Search
+
+		//Search
+		{
+			if e := json.Unmarshal(req.Respon,&j);e != nil{
+				apilog.L(`E: `, e)
+				return
+			} else if j.Code != 0 {
+				apilog.L(`E: `, j.Message)
+				return
+			}
+		}
+
+		if j.Data.Numresults == 0 {
+			apilog.L(`I: `,`没有匹配`);return
+		}
+
+		for i:=0;i<len(j.Data.Result);i+=1 {
+			uname := strings.ReplaceAll(j.Data.Result[i].Uname, `<em class="keyword">`,``)
+			uname = strings.ReplaceAll(uname, `</em>`,``)
+			list = append(list, searchresult{
+				Roomid: j.Data.Result[i].Roomid,
+				Uname: uname,
+				Is_live: j.Data.Result[i].IsLive,
+			})
+		}
+
+	}
+
 	return
 }
 

@@ -31,6 +31,7 @@ func Cmd() {
 			} else {
 				fmt.Println("登陆->输入' login'回车")
 			}
+			fmt.Println("搜索主播->输入' search关键词'回车")
 			fmt.Println("房间信息->输入' room'回车")
 			fmt.Println("开始结束录制->输入' rec'回车")
 			fmt.Println("其他输出隔断不影响")
@@ -90,6 +91,27 @@ func Cmd() {
 				}
 				//获取小心心
 				go F_x25Kn()
+
+				continue
+			}
+			//搜索主播
+			if strings.Contains(inputs, ` search`) {
+				if len(inputs) == 7 {
+					cmdlog.L(`W: `, "未输入搜索内容")
+					continue
+				}
+
+				fmt.Print("\n")
+				for k,v := range SearchUP(inputs[7:]) {
+					liveList[` live`+strconv.Itoa(k)] = v.Roomid
+					if v.Is_live {
+						fmt.Println(k, `✔`, v.Uname, `(直播中)`)
+					} else {
+						fmt.Println(k, `✘`, v.Uname, `(未直播)`)
+					}
+				}
+				fmt.Println("回复' live(序号)'进入直播间")
+				fmt.Print("\n")
 
 				continue
 			}
