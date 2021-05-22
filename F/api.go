@@ -2472,9 +2472,8 @@ func SearchUP(s string) (list []searchresult) {
 	return
 }
 
-func KeepConnect() (o bool) {
+func KeepConnect() {
 	for !IsConnected() {
-		o = true
 		time.Sleep(time.Duration(30)*time.Second)
 	}
 	return

@@ -138,16 +138,11 @@ func Demo(roomid ...int) {
 		//附加功能 自动发送即将过期礼物
 		go reply.AutoSend_silver_gift()
 
-		var exit_sign = 2
-		for exit_sign > 0 {
-			exit_sign -= 1
+		for exit_sign:=true;exit_sign; {
 
 			danmulog.L(`T: `,"准备")
 			//如果连接中断，则等待
-			if F.KeepConnect() {
-				//成功保持连接
-				exit_sign = 2
-			}
+			F.KeepConnect()
 			//获取热门榜
 			F.Get(`Note`)
 
@@ -284,14 +279,12 @@ func Demo(roomid ...int) {
 						ws_c.Close()
 						danmulog.L(`I: `,"停止，等待服务器断开连接")
 						break_sign = true
-						exit_sign = 0
+						exit_sign = false
 					case <- change_room_chan:
 						ws_c.Close()
 						danmulog.L(`I: `,"停止，等待服务器断开连接")
 						break_sign = true
-						exit_sign = 2
 					}
-
 				}
 
 				if break_sign {break}
