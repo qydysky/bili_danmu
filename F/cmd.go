@@ -105,9 +105,9 @@ func Cmd() {
 				for k,v := range SearchUP(inputs[7:]) {
 					liveList[` live`+strconv.Itoa(k)] = v.Roomid
 					if v.Is_live {
-						fmt.Println(k, `✔`, v.Uname, `(直播中)`)
+						fmt.Printf("%d\t%s\t%s\n", k, `☁`, v.Uname)
 					} else {
-						fmt.Println(k, `✘`, v.Uname, `(未直播)`)
+						fmt.Printf("%d\t%s\t%s\n", k, ` `, v.Uname)
 					}
 				}
 				fmt.Println("回复' live(序号)'进入直播间")

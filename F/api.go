@@ -181,7 +181,6 @@ func Get(key string) {
 		`LIVE_BUVID`:func()(bool){//LIVE_BUVID
 			return c.LIVE_BUVID
 		},
-
 		`Silver_2_coin`:func()(bool){//银瓜子2硬币
 			return true
 		},
@@ -271,7 +270,6 @@ func Html() (missKey []string) {
 		missKey = append(missKey, `Roomid`)
 		return
 	}
-	
 
 	Roomid := strconv.Itoa(c.Roomid)
 	
@@ -437,7 +435,6 @@ func getInfoByRoom() (missKey []string) {
 		missKey = append(missKey, `Roomid`)
 		return
 	}
-	
 
 	Roomid := strconv.Itoa(c.Roomid)
 
