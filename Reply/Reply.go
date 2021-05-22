@@ -75,7 +75,33 @@ func (replyF) pk_lottery_start(s string){
 		return
 	}
 	Gui_show(j.Data.Title,`0room`)
-	msglog.L(`I`, j.Data.Title)
+	msglog.L(`I: `, j.Data.Title)
+}
+
+//连麦人状态
+func (replyF) voice_join_status(s string){
+	msglog := msglog.Base_add("连麦")
+	var j ws_msg.VOICE_JOIN_STATUS
+	if e := json.Unmarshal([]byte(s), &j);e != nil{
+		msglog.L(`E: `, e)
+		return
+	}
+	if j.Data.UserName == `` {return}
+
+	Gui_show(`连麦中:`+j.Data.UserName,`0room`)
+	msglog.L(`I: `, `连麦中:`, j.Data.UserName)
+}
+
+//连麦等待
+func (replyF) voice_join_room_count_info(s string){
+	msglog := msglog.Base_add("连麦")
+	var j ws_msg.VOICE_JOIN_ROOM_COUNT_INFO
+	if e := json.Unmarshal([]byte(s), &j);e != nil{
+		msglog.L(`E: `, e)
+		return
+	}
+	Gui_show(`连麦等待:`+strconv.Itoa(j.Data.ApplyCount),`0room`)
+	msglog.L(`I: `, `连麦等待人数`, j.Data.ApplyCount)
 }
 
 //大乱斗pk状态
@@ -88,7 +114,7 @@ func (replyF) pk_battle_process_new(s string){
 	}
 	if diff := j.Data.InitInfo.Votes-j.Data.MatchInfo.Votes;diff<0 {
 		Gui_show(`大乱斗落后`,strconv.Itoa(diff),`0room`)
-		msglog.L(`I`, `大乱斗落后`,diff)
+		msglog.L(`I: `, `大乱斗落后`,diff)
 	}
 }
 
@@ -107,7 +133,7 @@ func (replyF) vtr_gift_lottery(s string){
 		})
 	}
 	Gui_show(j.Data.InteractMsg,`0room`)
-	msglog.L(`I`, j.Data.InteractMsg)
+	msglog.L(`I: `, j.Data.InteractMsg)
 }
 
 //msg-直播间进入信息，此处用来提示关注
@@ -619,7 +645,7 @@ func (replyF) panel(s string){
 
 //Msg-热门榜变动
 func (replyF) hot_rank_changed(s string){
-	msglog := msglog.Base_add("房")
+	msglog := msglog.Base_add("房").Log_show_control(false)
 
 	var type_item ws_msg.HOT_RANK_CHANGED
 	if e := json.Unmarshal([]byte(s), &type_item);e != nil {
@@ -632,6 +658,7 @@ func (replyF) hot_rank_changed(s string){
 		} else {
 			c.Note += strconv.Itoa(type_item.Data.Rank)
 		}
+		fmt.Printf("%s\t%s\n", "热门榜", c.Note)
 		msglog.L(`I: `, "热门榜", c.Note)
 	}
 }

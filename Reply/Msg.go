@@ -14,6 +14,9 @@ var msglog = c.Log.Base(`Msg`)
 
 //Msg类型数据处理方法map
 var Msg_map = map[string]func(replyF, string) {
+	`VOICE_JOIN_ROOM_COUNT_INFO`:replyF.voice_join_room_count_info,//连麦等待
+	`VOICE_JOIN_LIST`:nil,
+	`VOICE_JOIN_STATUS`:replyF.voice_join_status,//连麦人状态
 	`STOP_LIVE_ROOM_LIST`:nil,//停止直播的直播间
 	`PK_LOTTERY_START`:replyF.pk_lottery_start,//大乱斗pk
 	`PK_BATTLE_PRE_NEW`:nil,//pk准备
