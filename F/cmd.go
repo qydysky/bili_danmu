@@ -66,7 +66,7 @@ func Cmd() {
 				}
 				for k,v := range Feed_list() {
 					liveList[` live`+strconv.Itoa(k)] = v.Roomid
-					fmt.Println(k, v.Uname, v.Title)
+					fmt.Printf("%d\t%s\n\t\t\t%s\n", k, v.Uname, v.Title)
 				}
 				fmt.Println("回复' live(序号)'进入直播间")
 				fmt.Print("\n")
