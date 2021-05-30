@@ -82,6 +82,15 @@ func init(){
 			}
 			return false
 		},
+		`change_room`:func(data interface{})(bool){
+			for {
+				select {
+				case <- tts_List:;
+				default:return false;
+				}
+			}
+			return false
+		},
 	})
 }
 
