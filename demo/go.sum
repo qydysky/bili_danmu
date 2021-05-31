@@ -294,6 +294,8 @@ github.com/qydysky/part v0.5.16 h1:6tdS33wS5u13qEfztzKFDrZ9dPTlhRNoJEHkSH1J+YI=
 github.com/qydysky/part v0.5.16/go.mod h1:43opuciW71sZvOR67kye50jgMDSDrn/t6+LefNdlXPg=
 github.com/qydysky/part v0.5.17 h1:VT+oPSGViUbbPbnN7X0SfRYpZ/i0H9uS4jbiSqAaCuE=
 github.com/qydysky/part v0.5.17/go.mod h1:43opuciW71sZvOR67kye50jgMDSDrn/t6+LefNdlXPg=
+github.com/qydysky/part v0.5.18 h1:izaENzNTwnvhaq3Hd0WXvYsdoGoLcb7cnFLFZCQJbdo=
+github.com/qydysky/part v0.5.18/go.mod h1:43opuciW71sZvOR67kye50jgMDSDrn/t6+LefNdlXPg=
 github.com/qydysky/part/msgq v0.0.0-20201213031129-ca3253dc72ad h1:Jtzf509lQrkUMGTV0Sc6IDCAiR1VrBcHrIban7hpye4=
 github.com/qydysky/part/msgq v0.0.0-20201213031129-ca3253dc72ad/go.mod h1:w32TkJNVtTJd4LOS09cq+4uYG6itcN2vsqw+slp44Rg=
 github.com/qydysky/part/msgq v0.0.0-20201213120821-f36e49c32bba h1:1ew9dRpc0Rux0WkWeT/4AE15ynYWmL2D7onJEJIFOB8=
@@ -467,6 +469,8 @@ golang.org/x/sys v0.0.0-20210511113859-b0526f3d8744 h1:yhBbb4IRs2HS9PPlAg6DMC6mU
 golang.org/x/sys v0.0.0-20210511113859-b0526f3d8744/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.0.0-20210525143221-35b2ab0089ea h1:+WiDlPBBaO+h9vPNZi8uJ3k4BkKQB7Iow3aqwHVA5hI=
 golang.org/x/sys v0.0.0-20210525143221-35b2ab0089ea/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
+golang.org/x/sys v0.0.0-20210531080801-fdfd190a6549 h1:OL5GcZ2XPkte3dpfuFQ9o884vrE3BZQhajdntNMruv4=
+golang.org/x/sys v0.0.0-20210531080801-fdfd190a6549/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/term v0.0.0-20201117132131-f5c789dd3221/go.mod h1:Nr5EML6q2oocZ2LXRh80K7BxOlk5/8JxuGnuhpl+muw=
 golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1/go.mod h1:bj7SfCRtBDWHUb9snDiAeCFNEtKQo2Wmx5Cou7ajbmo=
 golang.org/x/text v0.3.0/go.mod h1:NqM8EUOU14njkJ3fqMW+pc6Ldnwhi/IjpwHt7yyuwOQ=

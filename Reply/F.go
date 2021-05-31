@@ -862,8 +862,6 @@ func Savestreamf(){
 					// }
 
 					var res []byte
-					//add header
-					res = hls_gen.hls_file_header
  	
 					//add m4s block
 					{
@@ -883,9 +881,14 @@ func Savestreamf(){
 							m4s_list_b = append(m4s_list_b, v.Base...)
 							m4s_list_b = append(m4s_list_b, []byte("\n")...)
 						}
+						//no useable m4s
+						if m4s == 0 {return false}
+						//clear
 						if cut := m4s-savestream.m4s_hls;cut > 0 {
 							hls_gen.m4s_list = hls_gen.m4s_list[cut:]
 						}
+						//add header
+						res = hls_gen.hls_file_header
 						//add #EXT-X-DISCONTINUITY
 						res = append(res, []byte("#EXT-X-DISCONTINUITY\n")...)
 						//add #EXT-X-MEDIA-SEQUENCE
@@ -972,10 +975,11 @@ func Savestreamf(){
 
 				links,file_add,exp,e := hls_get_link(c.Live[0],last_download)
 				if e != nil {
-					l.L(`W: `,e)
 					if reqf.IsTimeout(e) || reqf.IsDnsErr(e) {
+						l.L(`I: `,e)
 						continue
 					} else {
+						l.L(`W: `,e)
 						break
 					}
 				}
@@ -1063,11 +1067,8 @@ func Savestreamf(){
 				} else if len(links) > 100 {
 					l.L(`W: `,`重试,等待下载切片：`,len(links))
 
-					F.Get(`Liveing`)
-					if !c.Liveing {break}
-	
-					F.Get(`Live`)
-					if len(c.Live)==0 {break}
+					if F.Get(`Liveing`);!c.Liveing {break}
+					if F.Get(`Live`);len(c.Live) == 0 {break}
 
 					// no expect qn
 					if c.Live_want_qn < c.Live_qn {
@@ -1094,28 +1095,34 @@ func Savestreamf(){
 							// l.L(`T: `, `处理：`, link.Base)
 						// }
 
-						(*link).status = s_loading
+						link.status = s_loading
 						r := reqf.New()
 						if e := r.Reqf(reqf.Rval{
-							Url:(*link).Url,
-							Retry:0,
-							SaveToPath:path+(*link).Base,
-							ConnectTimeout:2000,
-							ReadTimeout:2000,
-							Proxy:c.Proxy,
+							Url: link.Url,
+							SaveToPath: path + link.Base,
+							ConnectTimeout: 2000,
+							ReadTimeout: 2000,
+							Proxy: c.Proxy,
 						}); e != nil{
 							if reqf.IsTimeout(e) {
-								l.L(`I: `,e,`将重试！`)
+								l.L(`I: `, link.Base, `将重试！`)
 								//避免影响后续猜测
-								(*link).Offset_line = 0
+								link.Offset_line = 0
 								miss_download.Lock()
 								miss_download.List = append(miss_download.List, link)
 								miss_download.Unlock()
 							} else {
-								(*link).status = s_fail
+								link.status = s_fail
 							}
 						} else {
-							(*link).status = s_fin
+							link.status = s_fin
+							if _,ok := m4s_cache.Load(path + link.Base);!ok{
+								m4s_cache.Store(path + link.Base, r.Respon)
+								go func(){//移除
+									time.Sleep(time.Second*time.Duration(savestream.m4s_hls+1))
+									m4s_cache.Delete(path + link.Base)
+								}()
+							}
 						}
 					}(links[i],savestream.path)
 
@@ -1128,12 +1135,8 @@ func Savestreamf(){
 
 				//m3u8_url 将过期
 				if p.Sys().GetSTime()+60 > expires {
-					F.Get(`Liveing`)
-					if !c.Liveing {break}
-	
-					F.Get(`Live`)
-					if len(c.Live)==0 {break}
-
+					if F.Get(`Liveing`);!c.Liveing {break}
+					if F.Get(`Live`);len(c.Live) == 0 {break}
 					// no expect qn
 					if c.Live_want_qn < c.Live_qn {
 						expires = time.Now().Add(time.Minute*2).Unix()
@@ -1662,6 +1665,10 @@ func init(){
 			Save_to_json(0, []interface{}{`[`})
 			return false
 		},
+		`flash_room`:func(data interface{})(bool){//房间改变
+			Save_to_json(0, []interface{}{`[`})
+			return false
+		},
 	})
 }
 
@@ -1783,6 +1790,8 @@ func AutoSend_silver_gift() {
 	}
 }
 
+var m4s_cache sync.Map//使用内存cache避免频繁io
+
 //直播保存位置Web服务
 func init() {
 	flog := flog.Base_add(`直播Web服务`)
@@ -1802,8 +1811,6 @@ func init() {
 		} else {
 			addr += strconv.Itoa(port)
 		}
-
-		var cache sync.Map//使用内存cache避免频繁io
 
 		s := web.New(&http.Server{
 			Addr: addr,
@@ -1883,7 +1890,7 @@ func init() {
 
 					var buf []byte
 
-					if b,ok := cache.Load(path);!ok{
+					if b,ok := m4s_cache.Load(path);!ok{
 						f,err := os.OpenFile(path,os.O_RDONLY,0644)
 						if err != nil {
 							flog.L(`E: `,err);
@@ -1902,10 +1909,10 @@ func init() {
 							return
 						} else {
 							buf = b[:n]
-							cache.Store(path,buf)
+							m4s_cache.Store(path,buf)
 							go func(){//移除
 								time.Sleep(time.Second*time.Duration(savestream.m4s_hls+1))
-								cache.Delete(path)
+								m4s_cache.Delete(path)
 							}()
 						}
 					} else {
