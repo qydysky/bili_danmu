@@ -11,6 +11,7 @@ import (
 
 	p "github.com/qydysky/part"
 	mq "github.com/qydysky/part/msgq"
+	limit "github.com/qydysky/part/limit"
 	F "github.com/qydysky/bili_danmu/F"
 	ws_msg "github.com/qydysky/bili_danmu/Reply/ws_msg"
 	send "github.com/qydysky/bili_danmu/Send"
@@ -783,33 +784,44 @@ func (replyF) roominfo(s string){
 }
 
 //Msg-弹幕处理
+var flash_limit = limit.New(1, 10000, -1)//-1 马上超时
 func (replyF) danmu(s string) {
-	if info := p.Json().GetValFromS(s, "info");info == nil {
-		msglog.L(`E: `, "info", info)
-		return
-	} else {
-		infob := info.([]interface{})
-		msg := infob[1].(string)
-		auth := infob[2].([]interface{})[1]
-		uid := strconv.Itoa(int(infob[2].([]interface{})[0].(float64)))
-
-		msglog := msglog.Log_show_control(false)
-
-		{//附加功能 弹幕机 封禁 弹幕合并
-			Danmujif(msg)
-			if Autobanf(msg) {
-				Gui_show(Itos([]interface{}{"风险", auth, ":", msg}))
-				fmt.Println("风险", auth, ":", msg)
-				msglog.Base_add("风险").L(`I: `, auth, ":", msg)
-				return
-			}
-			if i := Autoskipf(msg); i > 0 {
-				msglog.L(`I: `, auth, ":", msg)
-				return
-			}
-		}
-		Msg_showdanmu(auth, msg, uid)
+	var j struct {
+		Cmd  string        `json:"cmd"`
+		Info []interface{} `json:"info"`
 	}
+
+	if e := json.Unmarshal([]byte(s), &j);e != nil {
+		msglog.L(`E: `, e)
+	}
+	
+	infob := j.Info
+	msg := infob[1].(string)
+	auth := infob[2].([]interface{})[1]
+	uid := strconv.Itoa(int(infob[2].([]interface{})[0].(float64)))
+	timeStramp := int64(infob[0].([]interface{})[4].(float64))
+	if t := p.Sys().GetMTime() - timeStramp; t > 60*1000 {
+		if flash_limit.TO() {return}
+		msglog.L(`W: `, `重进,弹幕时间戳偏离`, t, `ms`)
+		c.Danmu_Main_mq.Push_tag(`flash_room`,nil)
+	}
+
+	msglog := msglog.Log_show_control(false)
+
+	{//附加功能 弹幕机 封禁 弹幕合并
+		Danmujif(msg)
+		if Autobanf(msg) {
+			Gui_show(Itos([]interface{}{"风险", auth, ":", msg}))
+			fmt.Println("风险", auth, ":", msg)
+			msglog.Base_add("风险").L(`I: `, auth, ":", msg)
+			return
+		}
+		if i := Autoskipf(msg); i > 0 {
+			msglog.L(`I: `, auth, ":", msg)
+			return
+		}
+	}
+	Msg_showdanmu(auth, msg, uid)
 }
 
 //弹幕发送

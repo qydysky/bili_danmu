@@ -52,7 +52,10 @@ func Demo(roomid ...int) {
 		var groomid = flag.Int("r", 0, "roomid")
 		flag.Parse()
 
-		var change_room_chan = make(chan struct{})
+		var (
+			change_room_chan = make(chan struct{})
+			flash_room_chan = make(chan struct{})
+		)
 
 		go func(){
 			var room = *groomid
@@ -78,6 +81,13 @@ func Demo(roomid ...int) {
 		
 		//使用带tag的消息队列在功能间传递消息
 		c.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
+			`flash_room`:func(data interface{})(bool){//房间重进
+				select {
+				case flash_room_chan <- struct{}{}:;
+				default:;
+				}
+				return false
+			},
 			`change_room`:func(data interface{})(bool){//房间改变
 				c.Rev = 0.0 //营收
 				c.Renqi = 1//人气置1
@@ -167,7 +177,8 @@ func Demo(roomid ...int) {
 
 			//对每个弹幕服务器尝试
 			F.Get(`WSURL`)
-			for _, v := range c.WSURL {
+			for i:=0;i<len(c.WSURL);i+=1 {
+				v := c.WSURL[i]
 				//ws启动
 				u, _ := url.Parse(v)
 				ws_c := ws.New_client(ws.Client{
@@ -222,6 +233,9 @@ func Demo(roomid ...int) {
 							`guard_update`:func(data interface{})(bool){//舰长更新
 								go F.Get(`GuardNum`)
 								return false
+							},
+							`flash_room`:func(data interface{})(bool){//重进房时退出当前房间
+								return true
 							},
 							`change_room`:func(data interface{})(bool){//换房时退出当前房间
 								return true
@@ -280,6 +294,11 @@ func Demo(roomid ...int) {
 						danmulog.L(`I: `,"停止，等待服务器断开连接")
 						break_sign = true
 						exit_sign = false
+					case <- flash_room_chan:
+						ws_c.Close()
+						danmulog.L(`I: `,"停止，等待服务器断开连接")
+						F.Get(`WSURL`)
+						i = 0
 					case <- change_room_chan:
 						ws_c.Close()
 						danmulog.L(`I: `,"停止，等待服务器断开连接")
