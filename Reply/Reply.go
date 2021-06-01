@@ -784,7 +784,7 @@ func (replyF) roominfo(s string){
 }
 
 //Msg-弹幕处理
-var flash_limit = limit.New(1, 10000, -1)//-1 马上超时
+var flash_limit = limit.New(1, 60000, -1)//-1 马上超时
 func (replyF) danmu(s string) {
 	var j struct {
 		Cmd  string        `json:"cmd"`
