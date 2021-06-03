@@ -216,6 +216,7 @@ func dtos(t time.Duration) string {
 
 //直播流保存
 type Savestream struct {
+	base_path string
 	path string
 	hls_stream []byte//发送给客户的m3u8字节
 	flv_front []byte//flv头及首tag
@@ -296,6 +297,8 @@ func Savestreamf(){
 
 	var (
 		no_found_link = errors.New("no_found_link")
+		no_Modified = errors.New("no_Modified")
+		last_hls_Modified time.Time
 		hls_get_link = func(m3u8_url string,last_download *m4s_link_item) (need_download []*m4s_link_item,m3u8_file_addition []byte,expires int,err error) {
 			url_struct,e := url.Parse(m3u8_url)
 			if e != nil {
@@ -305,26 +308,33 @@ func Savestreamf(){
 
 			query := url_struct.Query()
 
-			r := reqf.New()
-			if e := r.Reqf(reqf.Rval{
-				Url:m3u8_url+"&"+time.Now().Format("20060102150405"),
-				Retry:0,
-				ConnectTimeout:3000,
-				ReadTimeout:1000,
-				Proxy:c.Proxy,
-				Header:map[string]string{
-					`Host`: url_struct.Host,
-					`User-Agent`: `Mozilla/5.0 (X11; Linux x86_64; rv:83.0) Gecko/20100101 Firefox/83.0`,
-					`Accept`: `*/*`,
-					`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
-					`Accept-Encoding`: `gzip, deflate, br`,
-					`Origin`: `https://live.bilibili.com`,
-					`Connection`: `keep-alive`,
-					`Pragma`: `no-cache`,
-					`Cache-Control`: `no-cache`,
-					`Referer`:"https://live.bilibili.com/",
-				},
-			});e != nil {
+			var (
+				r = reqf.New()
+				rval = reqf.Rval{
+					Url:m3u8_url,
+					Retry:0,
+					ConnectTimeout:3000,
+					ReadTimeout:1000,
+					Timeout:5000,
+					Proxy:c.Proxy,
+					Header:map[string]string{
+						`Host`: url_struct.Host,
+						`User-Agent`: `Mozilla/5.0 (X11; Linux x86_64; rv:83.0) Gecko/20100101 Firefox/83.0`,
+						`Accept`: `*/*`,
+						`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
+						`Accept-Encoding`: `gzip, deflate, br`,
+						`Origin`: `https://live.bilibili.com`,
+						`Connection`: `keep-alive`,
+						`Pragma`: `no-cache`,
+						`Cache-Control`: `no-cache`,
+						`Referer`:"https://live.bilibili.com/",
+					},
+				}
+			)
+			if !last_hls_Modified.IsZero() {
+				rval.Header[`If-Modified-Since`] = last_hls_Modified.Add(time.Second).Format("Mon, 02 Jan 2006 15:04:05 CST")
+			}
+			if e := r.Reqf(rval);e != nil {
 				err = e
 				return
 			}
@@ -335,6 +345,14 @@ func Savestreamf(){
 				l.L(`T: `, `hls未更改`)
 				err = no_Modified
 				return
+			}
+			//last_hls_Modified
+			if t,ok := r.Response.Header[`Last-Modified`];ok && len(t) > 0 {
+				if lm,e := time.Parse("Mon, 02 Jan 2006 15:04:05 CST", t[0]);e == nil {
+					last_hls_Modified = lm
+				} else {
+					l.L(`T: `, e)
+				}
 			}
 
 			trid := query.Get("trid")
