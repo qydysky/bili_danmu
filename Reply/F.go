@@ -161,7 +161,13 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 func Ass_f(file string, st time.Time){
 	ass.file = file
 	if file == "" {return}
-	c.Log.Base(`Ass`).L(`I: `,"保存至", ass.file + ".ass")
+	
+	if rel, err := filepath.Rel(savestream.base_path, ass.file);err == nil {
+		c.Log.Base(`Ass`).L(`I: `,"保存到", rel + ".ass")
+	} else {
+		c.Log.Base(`Ass`).L(`I: `, "保存到", ass.file + ".ass")
+		c.Log.Base(`Ass`).L(`W: `, err)
+	}
 
 	p.File().FileWR(p.Filel{
 		File:ass.file + ".ass",
@@ -204,6 +210,9 @@ func dtos(t time.Duration) string {
 
 	return fmt.Sprintf("%d:%02d:%02d.%02d", int(math.Floor(t.Hours())), M, S, Ns)
 }
+
+//hls
+//https://datatracker.ietf.org/doc/html/draft-pantos-http-live-streaming
 
 //直播流保存
 type Savestream struct {
@@ -256,6 +265,12 @@ func init(){
 			return false
 		},
 	})
+	//base_path
+	if path,ok := c.K_v.LoadV("直播流保存位置").(string);ok{
+		if path,err := filepath.Abs(path);err == nil{
+			savestream.base_path = path+"/"
+		}
+	}
 }
 
 //已go func形式调用，将会获取直播流
@@ -311,6 +326,14 @@ func Savestreamf(){
 				},
 			});e != nil {
 				err = e
+				return
+			}
+			if usedt := r.UsedTime.Seconds();usedt > 3000 {
+				l.L(`I: `, `hls列表下载慢`, usedt, `ms`)
+			}
+			if r.Response.StatusCode == http.StatusNotModified {
+				l.L(`T: `, `hls未更改`)
+				err = no_Modified
 				return
 			}
 
@@ -415,11 +438,7 @@ func Savestreamf(){
 		F.Get(`Live`)
 		if len(c.Live)==0 {break}
 
-		if path,ok := c.K_v.LoadV("直播流保存位置").(string);ok{
-			if path,err := filepath.Abs(path);err == nil{
-				savestream.path = path+"/"
-			}
-		}
+		savestream.path = savestream.base_path
 
 		savestream.path += strconv.Itoa(c.Roomid) + "_" + time.Now().Format("2006_01_02_15-04-05-000")
 
@@ -467,7 +486,12 @@ func Savestreamf(){
 		}
 
 		if strings.Contains(c.Live[0],"flv") {
-			l.L(`I: `,"保存到", savestream.path + ".flv")
+			if rel, err := filepath.Rel(savestream.base_path, savestream.path);err == nil {
+				l.L(`I: `,"保存到", rel + ".flv")
+			} else {
+				l.L(`I: `,"保存到", savestream.path + ".flv")
+				l.L(`W: `, err)
+			}
 			Ass_f(savestream.path, time.Now())
 			
 			// no expect qn
@@ -822,7 +846,12 @@ func Savestreamf(){
 			p.FileMove(savestream.path+".flv.dtmp", savestream.path+".flv")
 		} else {
 			savestream.path += "/"
-			l.L(`I: `,"保存到", savestream.path)
+			if rel, err := filepath.Rel(savestream.base_path, savestream.path);err == nil {
+				l.L(`I: `,"保存到", rel+`/0.m3u8`)
+			} else {
+				l.L(`I: `,"保存到", savestream.path)
+				l.L(`W: `, err)
+			}
 			Ass_f(savestream.path+"0", time.Now())
 
 			var (
@@ -966,6 +995,9 @@ func Savestreamf(){
 								v.status = s_fail
 							}
 						} else {
+							if usedt := r.UsedTime.Seconds();usedt > 700 {
+								l.L(`I: `, `hls切片下载慢`, usedt, `ms`)
+							}
 							v.status = s_fin
 						}
 					}
@@ -1112,9 +1144,13 @@ func Savestreamf(){
 								miss_download.List = append(miss_download.List, link)
 								miss_download.Unlock()
 							} else {
+								l.L(`W: `, e)
 								link.status = s_fail
 							}
 						} else {
+							if usedt := r.UsedTime.Seconds();usedt > 700 {
+								l.L(`I: `, `hls切片下载慢`, usedt, `ms`)
+							}
 							link.status = s_fin
 							if _,ok := m4s_cache.Load(path + link.Base);!ok{
 								m4s_cache.Store(path + link.Base, r.Respon)
@@ -1798,12 +1834,7 @@ func init() {
 	if port_f,ok := c.K_v.LoadV(`直播保存位置Web服务`).(float64);ok && port_f >= 0 {
 		port := int(port_f)
 
-		base_dir := ""
-		if path,ok := c.K_v.LoadV(`直播流保存位置`).(string);ok && path !="" {
-			if path,err := filepath.Abs(path);err == nil{
-				base_dir = path+"/"
-			}
-		}
+		base_dir := savestream.base_path
 
 		addr := "0.0.0.0:"
 		if port == 0 {
@@ -1943,7 +1974,7 @@ func init() {
 
 				//最新直播流
 				if savestream.path == `` {
-					flog.L(`T: `,`还没有下载直播流`)
+					flog.L(`T: `,`还没有下载直播流-直播流为空`)
 					w.WriteHeader(http.StatusNotFound)
 					return
 				}
@@ -1956,7 +1987,7 @@ func init() {
 				}
 
 				if !p.Checkfile().IsExist(base_dir+path) {
-					flog.L(`T: `,`还没有下载直播流`)
+					flog.L(`T: `,`还没有下载直播流-文件未能找到`)
 					w.WriteHeader(http.StatusNotFound)
 				} else {
 					u, e := url.Parse("../"+path)
