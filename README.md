@@ -127,12 +127,12 @@ golang go version go1.15 linux/amd64
 I: 2021/04/13 20:07:45 命令行操作 [直播Web服务: http://192.168.31.245:38259]
 ```
 
-测试可用项目：
+测试可用项目(测试可连续播放10min+)：
 
 - [xqq/mpegts.js](https://github.com/xqq/mpegts.js)
 - [bilibili/flv.js](https://github.com/bilibili/flv.js)
 - [bytedance/xgplayer](https://github.com/bytedance/xgplayer)
-- [video-dev/hls.js](https://github.com/video-dev/hls.js)
+- [video-dev/hls.js@v1.0.7+](https://hls-js-10780deb-25d8-41d3-b164-bc334c8dd47f.netlify.app/demo/)
 - [mpv](https://mpv.io/)
 
 
