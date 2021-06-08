@@ -2039,8 +2039,8 @@ func init() {
 								return
 							}
 
-							//PROCESS-TIME
-							w.Header().Set("PROCESS-TIME", time.Since(start).String())
+							//Server-Timing
+							w.Header().Set("Server-Timing", fmt.Sprintf("dur=%d", time.Since(start).Microseconds()))
 
 							if _,err := w.Write(res);err != nil {
 								flog.L(`E: `,err)
@@ -2049,11 +2049,14 @@ func init() {
 						}
 					} else if filepath.Ext(path) == `.m4s` {
 						w.Header().Set("Server", "live")
-						w.Header().Set("Cache-Control", "max-age=60")
+						w.Header().Set("Cache-Control", "Cache-Control:public, max-age=3600")
 
 						path = base_dir+path
 
-						var buf []byte
+						var (
+							buf []byte
+							cached bool
+						)
 
 						if b,ok := m4s_cache.Load(path);!ok{
 							f,err := os.OpenFile(path,os.O_RDONLY,0644)
@@ -2083,6 +2086,7 @@ func init() {
 								}()
 							}
 						} else {
+							cached = true
 							buf,_ = b.([]byte)
 						}
 
@@ -2093,8 +2097,8 @@ func init() {
 							return
 						}
 
-						//PROCESS-TIME
-						w.Header().Set("PROCESS-TIME", time.Since(start).String())
+						//Server-Timing
+						w.Header().Add("Server-Timing", fmt.Sprintf("cache=%v;dur=%d", cached, time.Since(start).Microseconds()))
 						w.WriteHeader(http.StatusOK)
 						if _,err := w.Write(buf);err != nil {
 							flog.L(`E: `,err)
