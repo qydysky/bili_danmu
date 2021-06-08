@@ -253,7 +253,7 @@ type Savestream struct {
 	flv_front []byte//flv头及首tag
 	flv_stream *msgq.Msgq//发送给客户的flv流关键帧间隔片
 
-	m4s_hls int
+	hls_banlance_host bool//使用均衡hls服务器
 
 	wait *s.Signal
 	cancel *s.Signal
@@ -303,6 +303,9 @@ func init(){
 		if path,err := filepath.Abs(path);err == nil{
 			savestream.base_path = path+"/"
 		}
+	}
+	if v, ok := c.K_v.LoadV(`直播hls流均衡`).(bool);ok {
+		savestream.hls_banlance_host = v
 	}
 }
 
@@ -1145,6 +1148,23 @@ func Savestreamf(){
 				if len(links) == 0 {
 					time.Sleep(time.Duration(2)*time.Second)
 					continue
+				}
+
+				//random host load balance
+				if savestream.hls_banlance_host {
+					Host_list := []string{}
+					for _,v := range c.Live { 
+						url_struct,e := url.Parse(v)
+						if e != nil {continue}
+						Host_list = append(Host_list, url_struct.Hostname())
+					}
+					random := int(time.Now().Unix())
+					for i:=0;i<len(links);i+=1 {
+						url_struct,e := url.Parse(links[i].Url)
+						if e != nil {continue}
+						url_struct.Host = Host_list[(random+i) % len(Host_list)]
+						links[i].Url = url_struct.String()
+					}
 				}
 
 				//qn in expect , set expires
