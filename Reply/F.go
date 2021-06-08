@@ -1010,6 +1010,10 @@ func Savestreamf(){
 							res = append(res, []byte(fmt.Sprintf("#INFO-BUFFER:%d/%d\n",m4s_num,len(hls_gen.m4s_list)))...)
 							//add m4s
 							res = append(res, m4s_list_b...)
+						} else {
+							//no useable fmp4
+							//no del fmp4 and no flash the list
+							return false
 						}
 
 						//去除最后一个换行
