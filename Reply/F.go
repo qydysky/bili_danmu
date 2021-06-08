@@ -1113,7 +1113,7 @@ func Savestreamf(){
 					if e == no_Modified {
 						time.Sleep(time.Duration(2)*time.Second)
 						continue
-					} else if reqf.IsTimeout(e) || reqf.IsDnsErr(e) {
+					} else if reqf.IsTimeout(e) || strings.Contains(e.Error(), "x509") {
 						l.L(`I: `,e)
 						continue
 					} else {
@@ -1242,6 +1242,7 @@ func Savestreamf(){
 				})
 
 				for i:=0;i<len(links);i+=1 {
+					//fmp4切片下载
 					go func(link *m4s_link_item,path string){
 						download_limit.Block()
 						defer download_limit.UnBlock()
@@ -1256,7 +1257,7 @@ func Savestreamf(){
 							Timeout: 3000,
 							Proxy: c.Proxy,
 						}); e != nil{
-							if reqf.IsTimeout(e) {
+							if reqf.IsTimeout(e) || strings.Contains(e.Error(), "x509") {
 								l.L(`I: `, link.Base, `将重试！`)
 								//避免影响后续猜测
 								link.Offset_line = 0
@@ -1272,6 +1273,7 @@ func Savestreamf(){
 								l.L(`I: `, `hls切片下载慢`, usedt, `ms`)
 							}
 							link.status = s_fin
+							//存入cache
 							if _,ok := m4s_cache.Load(path + link.Base);!ok{
 								m4s_cache.Store(path + link.Base, r.Respon)
 								go func(){//移除
