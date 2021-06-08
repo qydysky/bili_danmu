@@ -19,6 +19,8 @@ import (
 	"encoding/base64"
 	// "runtime"
 
+	"golang.org/x/text/encoding/simplifiedchinese"
+
 	c "github.com/qydysky/bili_danmu/CV"
 	F "github.com/qydysky/bili_danmu/F"
 	send "github.com/qydysky/bili_danmu/Send"
@@ -128,6 +130,7 @@ type Ass struct {
 	file string//弹幕ass文件名
 	startT time.Time//开始记录的基准时间
 	header string//ass开头
+	encoderS func(string)(string,error)//编码
 }
 
 var (
@@ -154,6 +157,24 @@ Style: Default,,`+strconv.Itoa(Ass_font)+`,&H40FFFFFF,&H000017FF,&H80000000,&H40
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 `,
+encoderS:simplifiedchinese.GB18030.NewEncoder().String,
+}
+
+func init(){
+	accept := map[string]bool{
+		`GB18030`:true,
+		`utf-8`:true,
+	}
+	if v,ok := c.K_v.LoadV("Ass编码").(string);ok{
+		if v1,ok := accept[v];ok && v1 {
+			c.Log.Base(`Ass`).L(`T: `,"编码:", v)
+			if v == `utf-8` {
+				ass.encoderS = func(b string)(string,error){
+					return b,nil
+				}
+			}
+		}
+	}
 }
 
 //设定字幕文件名，为""时停止输出
@@ -168,13 +189,17 @@ func Ass_f(file string, st time.Time){
 		c.Log.Base(`Ass`).L(`W: `, err)
 	}
 
-	p.File().FileWR(p.Filel{
-		File:ass.file + ".ass",
-		Write:true,
-		Loc:0,
-		Context:[]interface{}{ass.header},
-	})
-	ass.startT = st
+	if tmp,err := ass.encoderS(ass.header);err != nil {
+		c.Log.Base(`Ass`).L(`W: `, err)
+	} else {
+		p.File().FileWR(p.Filel{
+			File:ass.file + ".ass",
+			Write:true,
+			Loc:0,
+			Context:[]interface{}{tmp},
+		})
+		ass.startT = st
+	}
 }
 
 //传入要显示的单条字幕
@@ -193,12 +218,16 @@ func Assf(s string){
 	b += dtos(st) + `,` + dtos(et)
 	b += `,Default,,0,0,0,,{\fad(200,500)\blur3}` + s + "\n"
 
-	p.File().FileWR(p.Filel{
-		File:ass.file + ".ass",
-		Write:true,
-		Loc:-1,
-		Context:[]interface{}{b},
-	})
+	if tmp,err := ass.encoderS(b);err != nil {
+		c.Log.Base(`Ass`).L(`W: `, err)
+	} else {
+		p.File().FileWR(p.Filel{
+			File:ass.file + ".ass",
+			Write:true,
+			Loc:-1,
+			Context:[]interface{}{tmp},
+		})
+	}
 }
 
 //时间转化为0:00:00.00规格字符串
