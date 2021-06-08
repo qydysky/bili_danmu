@@ -253,6 +253,8 @@ type Savestream struct {
 	flv_front []byte//flv头及首tag
 	flv_stream *msgq.Msgq//发送给客户的flv流关键帧间隔片
 
+	m4s_hls int//hls list 中的m4s数量
+	hlsbuffersize int//hls list缓冲m4s数量
 	hls_banlance_host bool//使用均衡hls服务器
 
 	wait *s.Signal
@@ -282,7 +284,7 @@ const (
 
 var savestream = Savestream {
 	flv_stream:msgq.New(10),//队列最多保留10个关键帧间隔片
-	m4s_hls:5,
+	m4s_hls:8,
 }
 
 func init(){
@@ -303,6 +305,9 @@ func init(){
 		if path,err := filepath.Abs(path);err == nil{
 			savestream.base_path = path+"/"
 		}
+	}
+	if v, ok := c.K_v.LoadV(`直播hls流缓冲`).(float64);ok && v > 0 {
+		savestream.hlsbuffersize = int(v)
 	}
 	if v, ok := c.K_v.LoadV(`直播hls流均衡`).(bool);ok {
 		savestream.hls_banlance_host = v
@@ -911,12 +916,7 @@ func Savestreamf(){
 				hls_gen hls_generate
 				DISCONTINUITY int
 				SEQUENCE int
-				buffersize int
 			)
-
-			if v, ok := c.K_v.LoadV(`直播流缓冲`).(float64);ok && v > 0 {
-				buffersize = int(v)
-			}
 
 			//hls stream gen 用户m3u8生成
 			go func(){
@@ -960,7 +960,7 @@ func Savestreamf(){
 				},
 				`clock`:func(now interface{})(bool){
 					//buffer
-					if len(hls_gen.m4s_list) - buffersize < 0 {
+					if len(hls_gen.m4s_list) - savestream.hlsbuffersize < 0 {
 						return false
 					}
 
@@ -998,7 +998,7 @@ func Savestreamf(){
 								continue
 							}
 
-							if m4s_num >= 8+add {break}
+							if m4s_num >= savestream.m4s_hls+add {break}
 
 							m4s_num += 1
 							// if m4s_num == 1 {SEQUENCE = strings.ReplaceAll(v.Base, ".m4s", "")}
@@ -1291,7 +1291,7 @@ func Savestreamf(){
 							if _,ok := m4s_cache.Load(path + link.Base);!ok{
 								m4s_cache.Store(path + link.Base, r.Respon)
 								go func(){//移除
-									time.Sleep(time.Second*time.Duration(savestream.m4s_hls+1))
+									time.Sleep(time.Second*time.Duration(savestream.hlsbuffersize+savestream.m4s_hls+1))
 									m4s_cache.Delete(path + link.Base)
 								}()
 							}
