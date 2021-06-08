@@ -3,6 +3,7 @@ package reply
 import (
 	"fmt"
 	"os"
+	"io"
 	"strconv"
 	"strings"
 	"sync"
@@ -1096,11 +1097,9 @@ func Savestreamf(){
 							ConnectTimeout:5000,
 							ReadTimeout:1000,
 							Proxy:c.Proxy,
-						}); e != nil{
+						}); e != nil && !errors.Is(e, io.EOF) {
 							l.L(`I: `,e)
-							if !reqf.IsTimeout(e) {
-								v.status = s_fail
-							}
+							v.status = s_fail
 						} else {
 							if usedt := r.UsedTime.Seconds();usedt > 700 {
 								l.L(`I: `, `hls切片下载慢`, usedt, `ms`)
