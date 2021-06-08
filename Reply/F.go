@@ -944,16 +944,7 @@ func Savestreamf(){
 					if len(links) > 0 &&
 						len((*links[0]).Base) > 0 &&
 						(*links[0]).Base[0] == 104 {links = links[1:]}
-					//diff_t
-					diff_t := int(time.Now().Unix() - savestream.hls_stream.t.Unix())
-					if savestream.hls_stream.t.IsZero() {diff_t = 0}
-					//diff_t too large
-					if diff_t > 2 {
-						hls_gen.m4s_list = append(hls_gen.m4s_list, &m4s_link_item{
-							Base:"DICONTINUITY",
-							status:s_fin,
-						})
-					}
+
 					hls_gen.m4s_list = append(hls_gen.m4s_list, links...)
 					
 					return false
@@ -1234,10 +1225,8 @@ func Savestreamf(){
 					if F.Get(`Liveing`);!c.Liveing {break}
 					if F.Get(`Live`);len(c.Live) == 0 {break}
 
-					// no expect qn
-					if c.Live_want_qn < c.Live_qn {
-						expires = time.Now().Add(time.Minute*2).Unix()
-					}
+					// set expect
+					expires = time.Now().Add(time.Minute*2).Unix()
 					continue
 				}
 
@@ -1256,11 +1245,6 @@ func Savestreamf(){
 					go func(link *m4s_link_item,path string){
 						download_limit.Block()
 						defer download_limit.UnBlock()
-
-						//wait num
-						// if wnum := download_limit.WNum();wnum != 0 {
-							// l.L(`T: `, `处理：`, link.Base)
-						// }
 
 						link.status = s_loading
 						r := reqf.New()
@@ -1308,10 +1292,8 @@ func Savestreamf(){
 				if p.Sys().GetSTime()+60 > expires {
 					if F.Get(`Liveing`);!c.Liveing {break}
 					if F.Get(`Live`);len(c.Live) == 0 {break}
-					// no expect qn
-					if c.Live_want_qn < c.Live_qn {
-						expires = time.Now().Add(time.Minute*2).Unix()
-					}
+					// set expect
+					expires = time.Now().Add(time.Minute*2).Unix()
 				} else {
 					time.Sleep(time.Second)
 				}
@@ -1963,10 +1945,10 @@ func AutoSend_silver_gift() {
 
 var m4s_cache sync.Map//使用内存cache避免频繁io
 
-//直播保存位置Web服务
+//直播Web服务口
 func init() {
 	flog := flog.Base_add(`直播Web服务`)
-	if port_f,ok := c.K_v.LoadV(`直播保存位置Web服务`).(float64);ok && port_f >= 0 {
+	if port_f,ok := c.K_v.LoadV(`直播Web服务口`).(float64);ok && port_f >= 0 {
 		port := int(port_f)
 
 		base_dir := savestream.base_path
@@ -1988,7 +1970,7 @@ func init() {
 				w.Header().Set("Access-Control-Allow-Headers", "*")
 				w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
 				w.Header().Set("Access-Control-Allow-Origin", "*")
-				w.Header().Set("Connection", "Keep-Alive")
+				w.Header().Set("Connection", "keep-alive")
 				w.Header().Set("Content-Transfer-Encoding", "binary")
 				start := time.Now()
 				
