@@ -1981,7 +1981,7 @@ func init() {
 					return
 				}
 
-				if strings.Contains(path, filepath.Base(savestream.path)) {
+				if savestream.path != "" && strings.Contains(path, filepath.Base(savestream.path)) {
 					w.Header().Set("Server", "live")
 					if filepath.Ext(path) == `.dtmp` {
 						if strings.Contains(path,".flv") {
