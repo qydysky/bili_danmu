@@ -91,7 +91,8 @@ golang go version go1.15 linux/amd64
 
 - [x] 使用http代理
 - [x] cookie加密
-- [x] 弹幕自动重连（30s）
+- [x] 弹幕自动重连（30s无响应）
+- [x] 命令行重载弹幕
 - [x] 直播流开播自动下载
 - [x] 直播流断流再保存
 - [x] 直播hls流均衡负载

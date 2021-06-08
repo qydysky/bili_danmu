@@ -31,6 +31,7 @@ func Cmd() {
 			} else {
 				fmt.Println("登陆->输入' login'回车")
 			}
+			fmt.Println("重载弹幕->输入' reload'回车")
 			fmt.Println("搜索主播->输入' search关键词'回车")
 			fmt.Println("房间信息->输入' room'回车")
 			fmt.Println("开始结束录制->输入' rec'回车")
@@ -113,6 +114,11 @@ func Cmd() {
 				fmt.Println("回复' live(序号)'进入直播间")
 				fmt.Print("\n")
 
+				continue
+			}
+			//重载弹幕
+			if strings.Contains(inputs, ` reload`) {
+				c.Danmu_Main_mq.Push_tag(`flash_room`,nil)
 				continue
 			}
 			//当前直播间信息

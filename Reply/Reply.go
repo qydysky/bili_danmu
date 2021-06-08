@@ -11,7 +11,6 @@ import (
 
 	p "github.com/qydysky/part"
 	mq "github.com/qydysky/part/msgq"
-	limit "github.com/qydysky/part/limit"
 	F "github.com/qydysky/bili_danmu/F"
 	ws_msg "github.com/qydysky/bili_danmu/Reply/ws_msg"
 	send "github.com/qydysky/bili_danmu/Send"
@@ -784,7 +783,6 @@ func (replyF) roominfo(s string){
 }
 
 //Msg-弹幕处理
-var flash_limit = limit.New(1, 60000, -1)//-1 马上超时
 func (replyF) danmu(s string) {
 	var j struct {
 		Cmd  string        `json:"cmd"`
@@ -799,12 +797,7 @@ func (replyF) danmu(s string) {
 	msg := infob[1].(string)
 	auth := infob[2].([]interface{})[1]
 	uid := strconv.Itoa(int(infob[2].([]interface{})[0].(float64)))
-	timeStramp := int64(infob[0].([]interface{})[4].(float64))
-	if t := p.Sys().GetMTime() - timeStramp; t > 60*1000 {
-		if flash_limit.TO() {return}
-		msglog.L(`W: `, `重进,弹幕时间戳偏离`, t, `ms`)
-		c.Danmu_Main_mq.Push_tag(`flash_room`,nil)
-	}
+	// timeStramp := int64(infob[0].([]interface{})[4].(float64))
 
 	msglog := msglog.Log_show_control(false)
 
