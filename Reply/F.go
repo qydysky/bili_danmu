@@ -1554,6 +1554,7 @@ func Danmuji_auto() {
 }
 
 type Autoskip struct {
+	roomid int
 	buf map[string]Autoskip_item
 	sync.Mutex
 	now uint
@@ -1577,14 +1578,29 @@ func init(){
 			if len(autoskip.buf) == 0 {continue}
 			autoskip.now += 1
 			autoskip.Lock()
+			if autoskip.roomid != c.Roomid {
+				autoskip.buf = make(map[string]Autoskip_item)
+				autoskip.roomid = c.Roomid
+				flog.Base_add(`弹幕合并`).L(`T: `,`房间更新:`,autoskip.roomid)
+				autoskip.Unlock()
+				continue
+			}
 			for k,v := range autoskip.buf{
 				if v.Exprie <= autoskip.now {
 					delete(autoskip.buf,k)
 					{//超时显示
 						if v.Num > 3 {
-							Msg_showdanmu(nil, strconv.Itoa(int(v.Num)) + " x " + k,`0multi`)
+							Msg_showdanmu(Danmu_item{
+								msg:strconv.Itoa(int(v.Num)) + " x " + k,
+								uid:`0multi`,
+								roomid:autoskip.roomid,
+							})
 						} else if v.Num > 1 {
-							Msg_showdanmu(nil, strconv.Itoa(int(v.Num)) + " x " + k,`0default`)
+							Msg_showdanmu(Danmu_item{
+								msg:strconv.Itoa(int(v.Num)) + " x " + k,
+								uid:`0default`,
+								roomid:autoskip.roomid,
+							})
 						}
 					}
 				}
@@ -1603,6 +1619,12 @@ func Autoskipf(s string) uint {
 	if !IsOn("弹幕合并") || s == ""{return 0}
 	autoskip.Lock()
 	defer autoskip.Unlock()
+	if autoskip.roomid != c.Roomid {
+		autoskip.buf = make(map[string]Autoskip_item)
+		autoskip.roomid = c.Roomid
+		flog.Base_add(`弹幕合并`).L(`T: `,`房间更新:`,autoskip.roomid)
+		return 0
+	}
 	{//验证是否已经存在
 		if v,ok := autoskip.buf[s];ok && autoskip.now < v.Exprie{
 			autoskip.buf[s] = Autoskip_item{
@@ -1622,6 +1644,7 @@ func Autoskipf(s string) uint {
 }
 
 type Lessdanmu struct {
+	roomid int
 	buf []string
 	limit *limit.Limit
 	max_num int
@@ -1649,6 +1672,14 @@ func init() {
 				time.Sleep(time.Second*10)
 
 				lessdanmu.Lock()
+				if lessdanmu.roomid != c.Roomid {
+					lessdanmu.buf = nil
+					lessdanmu.roomid = c.Roomid
+					lessdanmu.threshold = 0.7
+					flog.Base_add(`更少弹幕`).L(`T: `,`房间更新:`,lessdanmu.roomid)
+					lessdanmu.Unlock()
+					continue
+				}
 				if ptk := lessdanmu.limit.PTK();ptk == lessdanmu.max_num {
 					if lessdanmu.threshold > 0.03 {
 						lessdanmu.threshold -= 0.03
@@ -1666,6 +1697,15 @@ func init() {
 
 func Lessdanmuf(s string) (show bool) {
 	if !IsOn("相似弹幕忽略") {return true}
+	if lessdanmu.roomid != c.Roomid {
+		lessdanmu.Lock()
+		lessdanmu.buf = nil
+		lessdanmu.roomid = c.Roomid
+		lessdanmu.threshold = 0.7
+		lessdanmu.Unlock()
+		flog.Base_add(`更少弹幕`).L(`T: `,`房间更新:`,lessdanmu.roomid)
+		return true
+	}
 	if len(lessdanmu.buf) < 20 {
 		lessdanmu.buf = append(lessdanmu.buf, s)
 		return true

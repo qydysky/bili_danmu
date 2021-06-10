@@ -783,6 +783,12 @@ func (replyF) roominfo(s string){
 }
 
 //Msg-弹幕处理
+type Danmu_item struct {
+	msg string
+	auth interface{}
+	uid string
+	roomid int//to avoid danmu show when room has changed
+}
 func (replyF) danmu(s string) {
 	var j struct {
 		Cmd  string        `json:"cmd"`
@@ -794,27 +800,40 @@ func (replyF) danmu(s string) {
 	}
 	
 	infob := j.Info
-	msg := infob[1].(string)
-	auth := infob[2].([]interface{})[1]
-	uid := strconv.Itoa(int(infob[2].([]interface{})[0].(float64)))
-	// timeStramp := int64(infob[0].([]interface{})[4].(float64))
+	item := Danmu_item{}
+	{
+		//解析
+		if len(infob) > 0 {
+			item.msg,_ = infob[1].(string)
+		}
+		if len(infob) > 1 {
+			i,_ := infob[2].([]interface{})
+			if len(i) > 0 {
+				item.uid = strconv.Itoa(int(i[0].(float64)))
+			}
+			if len(i) > 1 {
+				item.auth = i[1]
+			}
+		}
+		item.roomid = c.Roomid
+	}
 
 	msglog := msglog.Log_show_control(false)
 
 	{//附加功能 弹幕机 封禁 弹幕合并
-		Danmujif(msg)
-		if Autobanf(msg) {
-			Gui_show(Itos([]interface{}{"风险", auth, ":", msg}))
-			fmt.Println("风险", auth, ":", msg)
-			msglog.Base_add("风险").L(`I: `, auth, ":", msg)
+		go Danmujif(item.msg)
+		if Autobanf(item.msg) {
+			Gui_show(Itos([]interface{}{"风险", item.auth, ":", item.msg}))
+			fmt.Println("风险", item.auth, ":", item.msg)
+			msglog.Base_add("风险").L(`I: `, item.auth, ":", item.msg)
 			return
 		}
-		if i := Autoskipf(msg); i > 0 {
-			msglog.L(`I: `, auth, ":", msg)
+		if i := Autoskipf(item.msg); i > 0 {
+			msglog.L(`I: `, item.auth, ":", item.msg)
 			return
 		}
 	}
-	Msg_showdanmu(auth, msg, uid)
+	Msg_showdanmu(item)
 }
 
 //弹幕发送
@@ -834,32 +853,39 @@ func Msg_senddanmu(msg string){
 
 //弹幕显示
 //由于额外功能有些需要显示，为了统一管理，使用此方法进行处理
-func Msg_showdanmu(auth interface{}, m ...string) {
-	msg := m[0]
+func Msg_showdanmu(item Danmu_item) {
+	msg := item.msg
 	msglog := msglog.Log_show_control(false)
 	{//附加功能 更少弹幕
 		if !Lessdanmuf(msg) {
-			if auth != nil {msglog.L(`I: `, auth, ":", msg)}
+			if item.auth != nil {msglog.L(`I: `, item.auth, ":", msg)}
 			return
 		}
 		if _msg := Shortdanmuf(msg); _msg == "" {
-			if auth != nil {msglog.L(`I: `, auth, ":", msg)}
+			if item.auth != nil {msglog.L(`I: `, item.auth, ":", msg)}
 			return
 		} else {msg = _msg}
+	}
+
+	//room change
+	if item.roomid != 0 && item.roomid != c.Roomid {return}
+	
+	//展示
+	{
 		Assf(msg)//ass
-		if auth != nil {
-			Gui_show(fmt.Sprint(auth) +`: `+ msg, m[1])
+		if item.auth != nil {
+			Gui_show(fmt.Sprint(item.auth) +`: `+ msg, item.uid)
 		} else {
-			Gui_show(m...)
-		}	
+			Gui_show(msg, item.uid)
+		}
 	}
 	{//语言tts 私信
-		if len(m) > 1 {
+		if item.uid != "" {
 			c.Danmu_Main_mq.Push_tag(`tts`,Danmu_mq_t{//传入消息队列
-				uid:m[1],
+				uid:item.uid,
 				msg:msg,
 			})
-			if i,e := strconv.Atoi(m[1]);e == nil {
+			if i,e := strconv.Atoi(item.uid);e == nil {
 				c.Danmu_Main_mq.Push_tag(`pm`,send.Pm_item{
 					Uid:i,
 					Msg:c.K_v.LoadV(`弹幕私信`).(string),
@@ -874,7 +900,7 @@ func Msg_showdanmu(auth interface{}, m ...string) {
 		}
 	}
 	fmt.Println(msg)
-	if auth != nil {msglog.L(`I: `, auth, ":", msg)}
+	if item.auth != nil {msglog.L(`I: `, item.auth, ":", msg)}
 }
 
 type Danmu_mq_t struct {
