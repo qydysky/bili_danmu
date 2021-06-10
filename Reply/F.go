@@ -35,6 +35,7 @@ import (
 	b "github.com/qydysky/part/buf"
 	s "github.com/qydysky/part/signal"
 	limit "github.com/qydysky/part/limit"
+	util "github.com/qydysky/part/util"
 
 	"github.com/christopher-dG/go-obs-websocket"
 )
@@ -956,23 +957,23 @@ func Savestreamf(){
 						return false
 					}
 
-					var (
-						res []byte
-						add = int(savestream.hls_stream.t.Unix() % 3)
-					)
-
 					//add block
+					var (
+						m4s_num int
+						has_DICONTINUITY bool
+						res []byte
+						threshold = savestream.m4s_hls
+					)
+					if threshold < 3 {threshold=3}
 					{
-						var m4s_num int
-
 						//m4s list
 						m4s_list_b := []byte{}
 						for k,v := range hls_gen.m4s_list {
 							if v.status != s_fin {
 								//#EXT-X-DISCONTINUITY-SEQUENCE
 								//reset hls lists
-								if k == m4s_num && m4s_num < 3 {
-									m4s_list := append(hls_gen.m4s_list[:k], &m4s_link_item{
+								if !has_DICONTINUITY && m4s_num < threshold {
+									m4s_list := append(util.SliceCopy(hls_gen.m4s_list[:k]).([]*m4s_link_item), &m4s_link_item{
 										Base:"DICONTINUITY",
 										status:s_fin,
 										isshow:true,
@@ -986,11 +987,12 @@ func Savestreamf(){
 							v.isshow = true
 
 							if v.Base == "DICONTINUITY" {
+								has_DICONTINUITY = true
 								m4s_list_b = append(m4s_list_b, []byte("#EXT-X-DICONTINUITY\n")...)
 								continue
 							}
 
-							if m4s_num >= savestream.m4s_hls+add {break}
+							if m4s_num >= savestream.m4s_hls {break}
 
 							m4s_num += 1
 							// if m4s_num == 1 {SEQUENCE = strings.ReplaceAll(v.Base, ".m4s", "")}
@@ -1011,31 +1013,59 @@ func Savestreamf(){
 							res = append(res, []byte(fmt.Sprintf("#INFO-BUFFER:%d/%d\n",m4s_num,len(hls_gen.m4s_list)))...)
 							//add m4s
 							res = append(res, m4s_list_b...)
-						} else {
-							//no useable fmp4
-							//no del fmp4 and no flash the list
-							return false
+							//去除最后一个换行
+							res = res[:len(res)-1]
 						}
+					}
 
-						//去除最后一个换行
-						if len(res) > 0 {res = res[:len(res)-1]}
-
-						//设置到全局变量，方便流服务器获取
-						savestream.hls_stream.b = res
+					//try to jump the hole
+					var skip_del bool
+					if m4s_num < threshold {
+						var (
+							index int//the first useable fmp4 index of section
+							DICONTINUITY_num int
+							catch bool//catch useable fmp4?
+						)
+						for i:=0;i<len(hls_gen.m4s_list);i+=1 {
+							if hls_gen.m4s_list[i].status != s_fin {
+								catch = false
+								continue
+							}
+							if !catch {
+								index = i
+							} else {
+								if hls_gen.m4s_list[i].Base == "DICONTINUITY" {
+									DICONTINUITY_num += 1
+								} else if i-index-DICONTINUITY_num > threshold {
+									//find a nice index, remove all bad fmp4s
+									skip := 0
+									skip_del = true
+									for ;index>=0;index-=1 {
+										if hls_gen.m4s_list[index].status == s_fin {continue}
+										skip+=1
+										hls_gen.m4s_list = append(hls_gen.m4s_list[:index],hls_gen.m4s_list[index+1:]...)
+									}
+									l.L(`I: `,"卡顿，跳过",skip,"个tag")
+									break
+								}
+							}
+							catch = true
+						}
 					}
 
 					//设置到全局变量，方便流服务器获取
+					if len(res) != 0 {savestream.hls_stream.b = res}
 					savestream.hls_stream.t,_ = now.(time.Time)
 
 					//del
-					if add != 2 {return false}
-					for del_num:=3;del_num > 0;hls_gen.m4s_list = hls_gen.m4s_list[1:] {
+					for del_num:=1;!skip_del&&del_num > 0;hls_gen.m4s_list = hls_gen.m4s_list[1:] {
+						del_num -= 1
+						if !hls_gen.m4s_list[0].isshow {continue}
 						//#EXT-X-DICONTINUITY
 						if hls_gen.m4s_list[0].Base == "DICONTINUITY" {
 							DISCONTINUITY += 1
 							continue
 						}
-						del_num -= 1
 						//#EXTINF
 						if hls_gen.m4s_list[0].isshow {SEQUENCE += 1}
 					}
@@ -1088,7 +1118,7 @@ func Savestreamf(){
 					}
 
 					for k,v :=range links {
-						l.L(`I: `,"正在下载最后片段:",k,"/",len(links))
+						l.L(`I: `,"正在下载最后片段:",k+1,"/",len(links))
 						v.status = s_loading
 						r := reqf.New()
 						if e := r.Reqf(reqf.Rval{
@@ -1096,6 +1126,7 @@ func Savestreamf(){
 							SaveToPath:savestream.path+v.Base,
 							ConnectTimeout:5000,
 							ReadTimeout:1000,
+							Retry: 1,
 							Proxy:c.Proxy,
 						}); e != nil && !errors.Is(e, io.EOF) {
 							l.L(`I: `,e)
@@ -1255,13 +1286,14 @@ func Savestreamf(){
 						if e := r.Reqf(reqf.Rval{
 							Url: link.Url,
 							SaveToPath: path + link.Base,
+							Retry: 1,
 							ConnectTimeout: 3000,
 							ReadTimeout: 1000,
 							Timeout: 3000,
 							Proxy: c.Proxy,
 						}); e != nil{
 							if reqf.IsTimeout(e) || strings.Contains(e.Error(), "x509") {
-								l.L(`I: `, link.Base, `将重试！`)
+								l.L(`T: `, link.Base, `将重试！`)
 								//避免影响后续猜测
 								link.Offset_line = 0
 								miss_download.Lock()
