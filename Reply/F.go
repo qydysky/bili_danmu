@@ -2143,19 +2143,13 @@ func init() {
 							}
 							defer f.Close()
 
-							b := make([]byte,1<<20)
-							if n,e := f.Read(b);e != nil {
+							if b,e := io.ReadAll(f);e != nil {
 								flog.L(`E: `,e)
 								w.Header().Set("Retry-After", "1")
 								w.WriteHeader(http.StatusServiceUnavailable)
 								return
-							} else if n == 1<<20 {
-								flog.L(`W: `,`buf limit`)
-								w.Header().Set("Retry-After", "1")
-								w.WriteHeader(http.StatusServiceUnavailable)
-								return
 							} else {
-								buf = b[:n]
+								buf = b
 								m4s_cache.Store(path,buf)
 								go func(){//移除
 									time.Sleep(time.Second*time.Duration(savestream.m4s_hls+1))

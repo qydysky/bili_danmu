@@ -153,6 +153,7 @@ I: 2021/04/13 20:07:45 命令行操作 [直播Web服务: http://192.168.31.245:3
 - [xqq/mpegts.js](https://github.com/xqq/mpegts.js)
 - [bilibili/flv.js](https://github.com/bilibili/flv.js)
 - [bytedance/xgplayer](https://github.com/bytedance/xgplayer)
+- [videojs/video.js](https://github.com/videojs/video.js)([demo](https://videojs-http-streaming.netlify.app))
 - [video-dev/hls.js@v1.0.7+](https://hls-js-10780deb-25d8-41d3-b164-bc334c8dd47f.netlify.app/demo/)
 - [mpv](https://mpv.io/)
 
