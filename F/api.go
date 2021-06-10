@@ -359,6 +359,7 @@ func Html() (missKey []string) {
 			
 								//当前直播流质量
 								c.Live_qn = v.CurrentQn
+								if c.Live_want_qn == 0 {c.Live_want_qn = v.CurrentQn}
 								//允许的清晰度
 								{
 									var tmp = make(map[int]string)
@@ -611,6 +612,7 @@ func getRoomPlayInfo() (missKey []string) {
 		
 							//当前直播流质量
 							c.Live_qn = v.CurrentQn
+							if c.Live_want_qn == 0 {c.Live_want_qn = v.CurrentQn}
 							//允许的清晰度
 							{
 								var tmp = make(map[int]string)
@@ -775,6 +777,7 @@ func getRoomPlayInfoByQn() (missKey []string) {
 	
 							//当前直播流质量
 							c.Live_qn = v.CurrentQn
+							if c.Live_want_qn == 0 {c.Live_want_qn = v.CurrentQn}
 							//允许的清晰度
 							{
 								var tmp = make(map[int]string)
