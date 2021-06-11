@@ -132,7 +132,7 @@ type Ass struct {
 	file string//弹幕ass文件名
 	startT time.Time//开始记录的基准时间
 	header string//ass开头
-	encoderS func(string)(string,error)//编码
+	wrap func(io.Writer)(io.Writer)//编码
 }
 
 var (
@@ -159,7 +159,7 @@ Style: Default,,`+strconv.Itoa(Ass_font)+`,&H40FFFFFF,&H000017FF,&H80000000,&H40
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 `,
-encoderS:simplifiedchinese.GB18030.NewEncoder().String,
+wrap:simplifiedchinese.GB18030.NewEncoder().Writer,
 }
 
 func init(){
@@ -171,9 +171,7 @@ func init(){
 		if v1,ok := accept[v];ok && v1 {
 			c.Log.Base(`Ass`).L(`T: `,"编码:", v)
 			if v == `utf-8` {
-				ass.encoderS = func(b string)(string,error){
-					return b,nil
-				}
+				ass.wrap = nil
 			}
 		}
 	}
@@ -190,18 +188,13 @@ func Ass_f(file string, st time.Time){
 		c.Log.Base(`Ass`).L(`I: `, "保存到", ass.file + ".ass")
 		c.Log.Base(`Ass`).L(`W: `, err)
 	}
-
-	if tmp,err := ass.encoderS(ass.header);err != nil {
-		c.Log.Base(`Ass`).L(`W: `, err)
-	} else {
-		p.File().FileWR(p.Filel{
-			File:ass.file + ".ass",
-			Write:true,
-			Loc:0,
-			Context:[]interface{}{tmp},
-		})
-		ass.startT = st
-	}
+	p.File().FileWR(p.Filel{
+		File:ass.file + ".ass",
+		Loc:0,
+		Context:[]interface{}{ass.header},
+		WrapWriter:ass.wrap,
+	})
+	ass.startT = st
 }
 
 //传入要显示的单条字幕
@@ -219,17 +212,12 @@ func Assf(s string){
 	b += `Dialogue: 0,`
 	b += dtos(st) + `,` + dtos(et)
 	b += `,Default,,0,0,0,,{\fad(200,500)\blur3}` + s + "\n"
-
-	if tmp,err := ass.encoderS(b);err != nil {
-		c.Log.Base(`Ass`).L(`W: `, err)
-	} else {
-		p.File().FileWR(p.Filel{
-			File:ass.file + ".ass",
-			Write:true,
-			Loc:-1,
-			Context:[]interface{}{tmp},
-		})
-	}
+	p.File().FileWR(p.Filel{
+		File:ass.file + ".ass",
+		Loc:-1,
+		Context:[]interface{}{b},
+		WrapWriter:ass.wrap,
+	})
 }
 
 //时间转化为0:00:00.00规格字符串
@@ -1270,7 +1258,6 @@ func Savestreamf(){
 				f := p.File()
 				f.FileWR(p.Filel{
 					File:savestream.path+"0.m3u8.dtmp",
-					Write:true,
 					Loc:-1,
 					Context:[]interface{}{file_add},
 				})
@@ -1340,7 +1327,6 @@ func Savestreamf(){
 				f := p.File()
 				f.FileWR(p.Filel{
 					File:savestream.path+"0.m3u8.dtmp",
-					Write:true,
 					Loc:-1,
 					Context:[]interface{}{"#EXT-X-ENDLIST"},
 				})
@@ -1906,7 +1892,6 @@ func Save_to_json(Loc int,Context []interface{}) {
 	if path,ok := c.K_v.LoadV(`save_to_json`).(string);ok && path != ``{
 		p.File().FileWR(p.Filel{
 			File:path,
-			Write:true,
 			Loc:int64(Loc),
 			Context:Context,
 		})

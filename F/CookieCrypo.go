@@ -74,7 +74,6 @@ func CookieSet(source []byte) {
 			f := p.File()
 			f.FileWR(p.Filel{
 				File:`cookie.txt`,
-				Write:true,
 				Loc:0,
 				Context:[]interface{}{`nol`,source},
 			})
@@ -88,7 +87,6 @@ func CookieSet(source []byte) {
 		f := p.File()
 		f.FileWR(p.Filel{
 			File:`cookie.txt`,
-			Write:true,
 			Loc:0,
 			Context:[]interface{}{`pem`,source},
 		})
