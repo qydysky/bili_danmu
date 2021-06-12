@@ -19,8 +19,8 @@ require (
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e // indirect
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966 // indirect
 	github.com/tklauser/go-sysconf v0.3.6 // indirect
-	golang.org/x/net v0.0.0-20210525063256-abc453219eb5 // indirect
-	golang.org/x/sys v0.0.0-20210608053332-aa57babbf139 // indirect
+	golang.org/x/net v0.0.0-20210610132358-84b48f89b13b // indirect
+	golang.org/x/sys v0.0.0-20210611083646-a4fc73990273 // indirect
 )
 
 replace (

@@ -547,13 +547,13 @@ func show(s,img_src string,to_grid ...int){
 				sty.AddClass("highlight")
 			}
 		}
-		item.handle,_ = item.text.Connect("size-allocate", func(_,_ interface{},item *danmu_item){
-			if item == nil || (*item).text == nil {return}
-			b,e := (*item).text.GetBuffer()
+		item.handle = item.text.Connect("size-allocate", func(text *gtk.TextView){
+			if text == nil {return}
+			b,e := text.GetBuffer()
 			if e != nil {log.Println(e);return}
 			b.SetText(s)
 			in_smooth_roll = true
-		},&item)
+		})
 	}
 
 	item.img,_ = gtk.ImageNew();
