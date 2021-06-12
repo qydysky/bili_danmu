@@ -57,28 +57,30 @@ func Demo(roomid ...int) {
 			flash_room_chan = make(chan struct{})
 		)
 
-		go func(){
-			var room = *groomid
-			if room == 0 && len(roomid) != 0 {
-				room = roomid[0]
-			}
-			if room == 0 {
-				c.Log.Block(1000)//等待所有日志输出完毕
-				fmt.Printf("输入房间号: ")
-				_, err := fmt.Scanln(&room)
-				if err != nil {
-					danmulog.L(`E: `, "输入错误", err)
-					return
-				}
-			} else {
-				fmt.Print("房间号: ", strconv.Itoa(room), "\n")
-			}
+		//-r 房间初始化
+		var room = *groomid
+		if room == 0 && len(roomid) != 0 {
+			room = roomid[0]
+		}
+		if room == 0 {
+			c.Log.Block(1000)//等待所有日志输出完毕
+			fmt.Println("输入房间号或` live`获取正在直播的主播")
+		} else {
+			fmt.Print("房间号: ", strconv.Itoa(room), "\n")
 			if c.Roomid == 0 {
 				c.Roomid = room
-				change_room_chan <- struct{}{}
+				go func(){change_room_chan <- struct{}{}}()
 			}
-		}()
+		}
 		
+
+		//如果连接中断，则等待
+		F.KeepConnect()
+		//获取cookie
+		F.Get(`Cookie`)
+		//命令行操作 切换房间 发送弹幕
+		go F.Cmd()
+
 		//使用带tag的消息队列在功能间传递消息
 		c.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
 			`flash_room`:func(data interface{})(bool){//房间重进
@@ -129,14 +131,8 @@ func Demo(roomid ...int) {
 
 		//捕获ctrl+c退出
 		signal.Notify(interrupt, os.Interrupt)
-		//如果连接中断，则等待
-		F.KeepConnect()
-		//获取cookie
-		F.Get(`Cookie`)
 		//获取uid
 		F.Get(`Uid`)
-		//命令行操作 切换房间 发送弹幕
-		go F.Cmd()
 		//兑换硬币
 		F.Get(`Silver_2_coin`)
 		//每日签到
