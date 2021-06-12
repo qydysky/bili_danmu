@@ -1933,17 +1933,26 @@ func F_x25Kn() {
 			//新调用，此退出
 			if boot_F_x25Kn.NeedExit(id) {return}
 
-			var rt_obj = RT{
-				R:R{
-					Id:`[`+strconv.Itoa(c.ParentAreaID)+`,`+strconv.Itoa(c.AreaID)+`,`+strconv.Itoa(loop_num)+`,`+strconv.Itoa(c.Roomid)+`]`,
-					Device:`["`+LIVE_BUVID+`","`+new_uuid+`"]`,
-					Ets:res.Data.Timestamp,
-					Benchmark:res.Data.Secret_key,
-					Time:res.Data.Heartbeat_interval,
-					Ts:int(p.Sys().GetMTime()),
-					Ua:`Mozilla/5.0 (X11; Linux x86_64; rv:84.0) Gecko/20100101 Firefox/84.0`,
-				},
-				T:res.Data.Secret_rule,
+			var (
+				rt_obj = RT{
+					R:R{
+						Id:`[`+strconv.Itoa(c.ParentAreaID)+`,`+strconv.Itoa(c.AreaID)+`,`+strconv.Itoa(loop_num)+`,`+strconv.Itoa(c.Roomid)+`]`,
+						Device:`["`+LIVE_BUVID+`","`+new_uuid+`"]`,
+						Ets:res.Data.Timestamp,
+						Benchmark:res.Data.Secret_key,
+						Time:res.Data.Heartbeat_interval,
+						Ts:int(p.Sys().GetMTime()),
+						Ua:`Mozilla/5.0 (X11; Linux x86_64; rv:84.0) Gecko/20100101 Firefox/84.0`,
+					},
+					T:res.Data.Secret_rule,
+				}
+				wasm string
+			)
+
+			
+			if rt_obj,wasm = Wasm(0, rt_obj);wasm == `` {//0全局
+				apilog.L(`E: `,`发生错误`)
+				return
 			}
 
 			PostStr := `id=`+rt_obj.R.Id+`&`
@@ -1957,13 +1966,7 @@ func F_x25Kn() {
 			PostStr += `ua=`+rt_obj.R.Ua+`&`
 			PostStr += `csrf_token=`+csrf+`&csrf=`+csrf+`&`
 			PostStr += `visit_id=`
-			
-			if wasm := Wasm(0, rt_obj);wasm == `` {//0全局
-				apilog.L(`E: `,`发生错误`)
-				return
-			} else {
-				PostStr = `s=`+wasm+`&`+PostStr
-			}
+			PostStr = `s=`+wasm+`&`+PostStr
 
 			Cookie := make(map[string]string)
 			c.Cookie.Range(func(k,v interface{})(bool){

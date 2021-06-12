@@ -138,7 +138,9 @@ func server() {
 	wslog.L(`I: `,`使用WebJs`,webpath,`进行加密`)
 }
 
-func Wasm(uid uintptr,s RT) (o string) {//maxloop 超时重试
+func Wasm(uid uintptr,rt RT) (so RT, o string) {//maxloop 超时重试
+	so = rt
+
 	{//nodejs
 		if nodeJsUrl != "" {
 			req := reqf.New()
@@ -147,12 +149,12 @@ func Wasm(uid uintptr,s RT) (o string) {//maxloop 超时重试
 					`Content-Type`: `application/json`,
 				},
 				Url:nodeJsUrl,
-				PostStr:toNodeJsString(s),
+				PostStr:toNodeJsString(so),
 				Proxy:c.Proxy,
 				Timeout:3*1000,
 			});err != nil {
 				wslog.L(`E: `,err)
-				o = Wasm(uid, s)
+				so,o = Wasm(uid, so)
 				return
 			}
 
@@ -185,10 +187,10 @@ func Wasm(uid uintptr,s RT) (o string) {//maxloop 超时重试
 			return
 		}
 
-		if !strings.Contains(s.R.Ua, `Test`) {
-			s.R.Ts = int(p.Sys().GetMTime())
+		if !strings.Contains(so.R.Ua, `Test`) {
+			so.R.Ts = int(p.Sys().GetMTime())
 		}
-		b, e := json.Marshal(s)
+		b, e := json.Marshal(so)
 		if e != nil {
 			wslog.L(`E: `,e)
 		}
@@ -202,8 +204,8 @@ func Wasm(uid uintptr,s RT) (o string) {//maxloop 超时重试
 		for {
 			select {
 			case r :=<- rec_chan:
-				if r.Id != s.R.Id {break}//或许接收到之前的请求，校验Id字段
-				return r.S
+				if r.Id != so.R.Id {break}//或许接收到之前的请求，校验Id字段
+				return so, r.S
 			case <- time.After(time.Second*time.Duration(1)):
 				wslog.L(`E: `,`超时！响应>1s，确认保持`,webpath,`开启`)
 				return
@@ -226,7 +228,7 @@ func Close(uid uintptr){
 
 func test(uid uintptr) bool {
 	time.Sleep(time.Second*time.Duration(3))
-	if s := Wasm(uid, RT{
+	if _,s := Wasm(uid, RT{
 		R:R{
 		Id: "[9,371,1,22613059]",
 		Device: "[\"AUTO8216117272375373\",\"77bee604-b591-4664-845b-b69603f8c71c\"]",
