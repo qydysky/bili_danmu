@@ -62,6 +62,11 @@ func Demo(roomid ...int) {
 		if room == 0 && len(roomid) != 0 {
 			room = roomid[0]
 		}
+
+		//如果连接中断，则等待
+		F.KeepConnect()
+		//获取cookie
+		F.Get(`Cookie`)
 		if room == 0 {
 			c.Log.Block(1000)//等待所有日志输出完毕
 			fmt.Println("输入房间号或` live`获取正在直播的主播")
@@ -72,12 +77,6 @@ func Demo(roomid ...int) {
 				go func(){change_room_chan <- struct{}{}}()
 			}
 		}
-		
-
-		//如果连接中断，则等待
-		F.KeepConnect()
-		//获取cookie
-		F.Get(`Cookie`)
 		//命令行操作 切换房间 发送弹幕
 		go F.Cmd()
 

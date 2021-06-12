@@ -1657,8 +1657,6 @@ type Lessdanmu struct {
 	limit *limit.Limit
 	max_num int
 	threshold float32
-
-	sync.RWMutex
 }
 
 var lessdanmu = Lessdanmu{
@@ -1666,51 +1664,19 @@ var lessdanmu = Lessdanmu{
 }
 
 func init() {
-	if max_num,ok := c.K_v.LoadV(`每10秒显示弹幕数`).(float64);ok && int(max_num) >= 1 {
-		flog.Base_add(`更少弹幕`).L(`T: `,`每10秒弹幕数:`,int(max_num))
+	if max_num,ok := c.K_v.LoadV(`每秒显示弹幕数`).(float64);ok && int(max_num) >= 1 {
+		flog.Base_add(`更少弹幕`).L(`T: `,`每秒弹幕数:`,int(max_num))
 		lessdanmu.max_num = int(max_num)
-		lessdanmu.limit = limit.New(int(max_num),10000,0)
-		go func(){
-			//等待启动
-			for lessdanmu.limit.PTK() == lessdanmu.max_num {
-				time.Sleep(time.Second*3)
-			}
-
-			for {
-				time.Sleep(time.Second*10)
-
-				lessdanmu.Lock()
-				if lessdanmu.roomid != c.Roomid {
-					lessdanmu.buf = nil
-					lessdanmu.roomid = c.Roomid
-					lessdanmu.threshold = 0.7
-					flog.Base_add(`更少弹幕`).L(`T: `,`房间更新:`,lessdanmu.roomid)
-					lessdanmu.Unlock()
-					continue
-				}
-				if ptk := lessdanmu.limit.PTK();ptk == lessdanmu.max_num {
-					if lessdanmu.threshold > 0.03 {
-						lessdanmu.threshold -= 0.03
-					}
-				} else if ptk == 0 {
-					if lessdanmu.threshold < 0.97 {
-						lessdanmu.threshold += 0.03
-					}
-				}
-				lessdanmu.Unlock()
-			}
-		}()
+		lessdanmu.limit = limit.New(int(max_num),1000,0)//timeout right now
 	}
 }
 
 func Lessdanmuf(s string) (show bool) {
 	if !IsOn("相似弹幕忽略") {return true}
 	if lessdanmu.roomid != c.Roomid {
-		lessdanmu.Lock()
 		lessdanmu.buf = nil
 		lessdanmu.roomid = c.Roomid
 		lessdanmu.threshold = 0.7
-		lessdanmu.Unlock()
 		flog.Base_add(`更少弹幕`).L(`T: `,`房间更新:`,lessdanmu.roomid)
 		return true
 	}
@@ -1725,12 +1691,10 @@ func Lessdanmuf(s string) (show bool) {
 	Jiezouf(lessdanmu.buf)
 	lessdanmu.buf = append(lessdanmu.buf[1:], s)
 
-	lessdanmu.RLock()
 	show = o < lessdanmu.threshold
-	lessdanmu.RUnlock()
 
 	if show && lessdanmu.max_num > 0 {
-		lessdanmu.limit.TO()
+		return !lessdanmu.limit.TO()
 	}
 	return
 }
