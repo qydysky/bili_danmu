@@ -325,30 +325,42 @@ func Savestreamf(){
 
 	if savestream.cancel.Islive() {return}
 
+	//random host load balance
+	Host_list := []string{}
+	if savestream.hls_banlance_host {
+		for _,v := range c.Live { 
+			url_struct,e := url.Parse(v)
+			if e != nil {continue}
+			Host_list = append(Host_list, url_struct.Hostname())
+		}
+	}
+
 	var (
 		no_found_link = errors.New("no_found_link")
 		no_Modified = errors.New("no_Modified")
 		last_hls_Modified time.Time
-		hls_get_link = func(m3u8_url string,last_download *m4s_link_item) (need_download []*m4s_link_item,m3u8_file_addition []byte,expires int,err error) {
-			url_struct,e := url.Parse(m3u8_url)
-			if e != nil {
-				err = e
-				return
-			}
-
-			query := url_struct.Query()
-
+		hls_get_link = func(m3u8_urls []string,last_download *m4s_link_item) (need_download []*m4s_link_item,m3u8_file_addition []byte,expires int,err error) {
 			var (
+				r *reqf.Req
+				m3u8_url *url.URL
+			)
+			for index:=0;index<len(m3u8_urls);index+=1 {
 				r = reqf.New()
-				rval = reqf.Rval{
-					Url:m3u8_url,
-					Retry:0,
-					ConnectTimeout:3000,
+				if tmp,e := url.Parse(m3u8_urls[index]);e != nil {
+					err = e
+					return
+				} else {
+					m3u8_url = tmp
+				}
+				
+				rval := reqf.Rval{
+					Url:m3u8_url.String(),
+					ConnectTimeout:2000,
 					ReadTimeout:1000,
-					Timeout:5000,
+					Timeout:2000,
 					Proxy:c.Proxy,
 					Header:map[string]string{
-						`Host`: url_struct.Host,
+						`Host`: m3u8_url.Host,
 						`User-Agent`: `Mozilla/5.0 (X11; Linux x86_64; rv:83.0) Gecko/20100101 Firefox/83.0`,
 						`Accept`: `*/*`,
 						`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
@@ -360,14 +372,17 @@ func Savestreamf(){
 						`Referer`:"https://live.bilibili.com/",
 					},
 				}
-			)
-			if !last_hls_Modified.IsZero() {
-				rval.Header[`If-Modified-Since`] = last_hls_Modified.Add(time.Second).Format("Mon, 02 Jan 2006 15:04:05 CST")
+				if !last_hls_Modified.IsZero() {
+					rval.Header[`If-Modified-Since`] = last_hls_Modified.Add(time.Second).Format("Mon, 02 Jan 2006 15:04:05 CST")
+				}
+				if e := r.Reqf(rval);e != nil {
+					if index+1<len(m3u8_urls) {continue}
+					err = e
+					return
+				}
+				break
 			}
-			if e := r.Reqf(rval);e != nil {
-				err = e
-				return
-			}
+
 			if usedt := r.UsedTime.Seconds();usedt > 3000 {
 				l.L(`I: `, `hls列表下载慢`, usedt, `ms`)
 			}
@@ -385,6 +400,7 @@ func Savestreamf(){
 				}
 			}
 
+			query := m3u8_url.Query()
 			trid := query.Get("trid")
 			expires,_ = strconv.Atoi(query.Get("expires"))
 			buf := r.Respon
@@ -393,9 +409,9 @@ func Savestreamf(){
 			if len(buf) != 0 && !bytes.Contains(buf, []byte("#")) {
 				buf,err = base64.StdEncoding.DecodeString(string(buf))
 				if err != nil {
+					l.L(`W: `, err, string(buf))
 					return
 				}
-				// fmt.Println(`base64`)
 			}
 
 			var m4s_links []*m4s_link_item
@@ -420,7 +436,7 @@ func Savestreamf(){
 					return
 				}
 				m4s_links = append(m4s_links, &m4s_link_item{
-					Url:url_struct.ResolveReference(u).String(),
+					Url:m3u8_url.ResolveReference(u).String(),
 					Base:m4s_link,
 					Offset_line:i,
 				})
@@ -1130,7 +1146,7 @@ func Savestreamf(){
 					break
 				}
 
-				links,file_add,exp,e := hls_get_link(c.Live[0],last_download)
+				links,file_add,exp,e := hls_get_link(c.Live,last_download)
 				if e != nil {
 					if e == no_Modified {
 						time.Sleep(time.Duration(2)*time.Second)
@@ -1161,23 +1177,6 @@ func Savestreamf(){
 				if len(links) == 0 {
 					time.Sleep(time.Duration(2)*time.Second)
 					continue
-				}
-
-				//random host load balance
-				if savestream.hls_banlance_host {
-					Host_list := []string{}
-					for _,v := range c.Live { 
-						url_struct,e := url.Parse(v)
-						if e != nil {continue}
-						Host_list = append(Host_list, url_struct.Hostname())
-					}
-					random := int(time.Now().Unix())
-					for i:=0;i<len(links);i+=1 {
-						url_struct,e := url.Parse(links[i].Url)
-						if e != nil {continue}
-						url_struct.Host = Host_list[(random+i) % len(Host_list)]
-						links[i].Url = url_struct.String()
-					}
 				}
 
 				//qn in expect , set expires
@@ -1268,40 +1267,54 @@ func Savestreamf(){
 						download_limit.Block()
 						defer download_limit.UnBlock()
 
+						//use url struct
+						var link_url *url.URL
+						{
+							if tmp,e := url.Parse(link.Url);e != nil {
+								l.L(`E: `, e)
+								return
+							} else {link_url = tmp}
+						}
+
 						link.status = s_loading
-						r := reqf.New()
-						if e := r.Reqf(reqf.Rval{
-							Url: link.Url,
-							SaveToPath: path + link.Base,
-							Retry: 1,
-							ConnectTimeout: 3000,
-							ReadTimeout: 1000,
-							Timeout: 3000,
-							Proxy: c.Proxy,
-						}); e != nil{
-							if reqf.IsTimeout(e) || strings.Contains(e.Error(), "x509") {
-								l.L(`T: `, link.Base, `将重试！`)
-								//避免影响后续猜测
-								link.Offset_line = 0
-								miss_download.Lock()
-								miss_download.List = append(miss_download.List, link)
-								miss_download.Unlock()
+						for index:=0;index<len(Host_list);index+=1 {
+							link_url.Host = Host_list[index]
+
+							r := reqf.New()
+							if e := r.Reqf(reqf.Rval{
+								Url: link_url.String(),
+								SaveToPath: path + link.Base,
+								ConnectTimeout: 2000,
+								ReadTimeout: 1000,
+								Timeout: 2000,
+								Proxy: c.Proxy,
+							});e != nil{
+								//try other host
+								if index+1<len(Host_list) {continue}
+
+								if reqf.IsTimeout(e) || strings.Contains(e.Error(), "x509") {
+									l.L(`T: `, link.Base, `将重试！`)
+									//避免影响后续猜测
+									link.Offset_line = 0
+									miss_download <- link
+								} else {
+									l.L(`W: `, e)
+									link.status = s_fail
+								}
 							} else {
-								l.L(`W: `, e)
-								link.status = s_fail
-							}
-						} else {
-							if usedt := r.UsedTime.Seconds();usedt > 700 {
-								l.L(`I: `, `hls切片下载慢`, usedt, `ms`)
-							}
-							link.status = s_fin
-							//存入cache
-							if _,ok := m4s_cache.Load(path + link.Base);!ok{
-								m4s_cache.Store(path + link.Base, r.Respon)
-								go func(){//移除
-									time.Sleep(time.Second*time.Duration(savestream.hlsbuffersize+savestream.m4s_hls+1))
-									m4s_cache.Delete(path + link.Base)
-								}()
+								if usedt := r.UsedTime.Seconds();usedt > 700 {
+									l.L(`I: `, `hls切片下载慢`, usedt, `ms`)
+								}
+								link.status = s_fin
+								//存入cache
+								if _,ok := m4s_cache.Load(path + link.Base);!ok{
+									m4s_cache.Store(path + link.Base, r.Respon)
+									go func(){//移除
+										time.Sleep(time.Second*time.Duration(savestream.hlsbuffersize+savestream.m4s_hls+1))
+										m4s_cache.Delete(path + link.Base)
+									}()
+								}
+								break
 							}
 						}
 					}(links[i],savestream.path)
