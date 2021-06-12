@@ -1083,13 +1083,9 @@ func Savestreamf(){
 				},
 			})
 
-			type miss_download_T struct{
-				List []*m4s_link_item
-				sync.RWMutex
-			}
 			var (
 				last_download *m4s_link_item
-				miss_download miss_download_T
+				miss_download = make(chan *m4s_link_item,100)
 				download_limit = funcCtrl.BlockFuncN{
 					Max:2,
 				}//limit
@@ -1110,15 +1106,8 @@ func Savestreamf(){
 
 					links := []*m4s_link_item{}
 					//下载出错的
-					miss_download.RLock()
-					if len(miss_download.List) != 0 {
-						miss_download.RUnlock()
-						miss_download.Lock()
-						links = append(miss_download.List, links...)
-						miss_download.List = []*m4s_link_item{}
-						miss_download.Unlock()
-					} else {
-						miss_download.RUnlock()
+					for len(miss_download) != 0 {
+						links = append(links, <-miss_download)
 					}
 
 					for k,v :=range links {
@@ -1212,18 +1201,6 @@ func Savestreamf(){
 								path_behind = "?"+u.RawQuery
 							}
 
-							//下载出错的
-							miss_download.RLock()
-							if len(miss_download.List) != 0 {
-								miss_download.RUnlock()
-								miss_download.Lock()
-								links = append(miss_download.List, links...)
-								miss_download.List = []*m4s_link_item{}
-								miss_download.Unlock()
-							} else {
-								miss_download.RUnlock()
-							}
-
 							//出错期间没能获取到的
 							for i:=now-1;i>previou;i-=1 {
 								base := strconv.Itoa(i)+".m4s"
@@ -1264,9 +1241,6 @@ func Savestreamf(){
 				for i:=0;i<len(links);i+=1 {
 					//fmp4切片下载
 					go func(link *m4s_link_item,path string){
-						download_limit.Block()
-						defer download_limit.UnBlock()
-
 						//use url struct
 						var link_url *url.URL
 						{
@@ -1275,6 +1249,9 @@ func Savestreamf(){
 								return
 							} else {link_url = tmp}
 						}
+
+						download_limit.Block()
+						defer download_limit.UnBlock()
 
 						link.status = s_loading
 						for index:=0;index<len(Host_list);index+=1 {
@@ -1296,7 +1273,7 @@ func Savestreamf(){
 									l.L(`T: `, link.Base, `将重试！`)
 									//避免影响后续猜测
 									link.Offset_line = 0
-									miss_download <- link
+									go func(link *m4s_link_item){miss_download <- link}(link)
 								} else {
 									l.L(`W: `, e)
 									link.status = s_fail
