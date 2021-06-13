@@ -123,7 +123,7 @@ ass编码GB18030支持中文
 - `utf-8`
 
 #### 直播流Web服务
-启动Web流服务，为下载的直播流提供局域网内的流服务。
+启动Web流服务，为下载的直播流提供局域网内的流服务，提供flv、hls/mp4格式流。
 
 在`demo/config/config_K_v.json`中可找到配置项，0:随机可用端口 >0:固定可用端口 <0:禁用服务。
 
@@ -133,6 +133,12 @@ ass编码GB18030支持中文
 
 开启之后，启动会显示服务地址，在局域网内打开网址可以取得所有直播流的串流地址
 
+服务地址也可通过命令行` room`查看。
+
+```
+I: 2021/04/13 20:07:45 命令行操作 [直播Web服务: http://192.168.31.245:38259]
+```
+
 支持跨域，注意：在https网站默认无法加载非本机http服务
 
 - dtmp结尾：当前正在获取的流，播放此链接时进度将保持当前流进度
@@ -140,22 +146,30 @@ ass编码GB18030支持中文
 - ass结尾：保存完毕的直播流字幕，有些播放器会在串流时获取此文件
 - m4s结尾：hls切片
 
-**特殊的：路径为`/now`(例：当服务地址为下方的38259口时，此对应的路径为`http://192.168.31.245:38259/now`)，会重定向到当前正在获取的流，播放此链接时进度将保持当前流进度**
+**特殊**
+- 路径为`/now`
 
-服务地址也可通过命令行` room`查看。
+  例：当服务地址为下方的38259口时，此对应的路径为`http://192.168.31.245:38259/now`)，会重定向到当前正在获取的流，播放此链接时进度将保持当前流进度。流格式为hls或flv
 
-```
-I: 2021/04/13 20:07:45 命令行操作 [直播Web服务: http://192.168.31.245:38259]
-```
+- 当在hls流时，(已/正在)下载的流链接后加上`?type=mp4`将会得到拼合好的mp4流。
+  
+  例：直播流：`http://192.168.31.245:38259/now?type=mp4`的流格式为mp4。hls录播目录：`http://192.168.31.36:23333/1016_2021_06_12_01-18-59-000/?type=mp4`的流格式为mp4）
 
 测试可用项目(测试可连续播放10min+)：
 
-- [xqq/mpegts.js](https://github.com/xqq/mpegts.js)
-- [bilibili/flv.js](https://github.com/bilibili/flv.js)
-- [bytedance/xgplayer](https://github.com/bytedance/xgplayer)
-- [videojs/video.js](https://github.com/videojs/video.js)([demo](https://videojs-http-streaming.netlify.app))
-- [video-dev/hls.js@v1.0.7+](https://hls-js-10780deb-25d8-41d3-b164-bc334c8dd47f.netlify.app/demo/)
-- [mpv](https://mpv.io/)
+- flv-html播放器
+  - [xqq/mpegts.js](https://github.com/xqq/mpegts.js)
+  - [bilibili/flv.js](https://github.com/bilibili/flv.js)
+- hls-html播放器
+  - [bytedance/xgplayer](https://github.com/bytedance/xgplayer)
+  - [videojs/video.js](https://github.com/videojs/video.js)([demo](https://videojs-http-streaming.netlify.app))
+  - [video-dev/hls.js@v1.0.7+](https://hls-js-10780deb-25d8-41d3-b164-bc334c8dd47f.netlify.app/demo/)
+- mp4-html播放器
+  - [bytedance/xgplayer](https://github.com/bytedance/xgplayer)
+  - [videojs/video.js](https://github.com/videojs/video.js)([demo](https://videojs-http-streaming.netlify.app))
+- 客户端播放器
+  - [mpv](https://mpv.io/)
+  - [MXPlayer](https://sites.google.com/site/mxvpen/home)
 
 
 #### 命令行操作
@@ -167,7 +181,6 @@ I: 2021/04/01 11:36:46 命令行操作 [房间信息->输入' room'回车]
 I: 2021/04/01 11:36:46 命令行操作 [开始结束录制->输入' rec'回车]
 I: 2021/04/01 11:36:46 命令行操作 [查看直播中主播->输入' live'回车]
 I: 2021/04/01 11:36:46 命令行操作 [其他输出隔断不影响]
-
 ```
 用例：
 - 直播间切换
