@@ -285,16 +285,17 @@ config_K_v.json
 ```
 release默认编译tts
 
-总开关,自定义响应的事件可在`demo/config/config_tts.json`中编辑
+总开关,自定义响应的事件可在`demo/config/config_tts.json`中编辑。{}为传递过来的变量，将会按设定替换。最后未使用的{}会全部删除。下例：`ABC购买 1个月舰长`。
 ```
-{D}:为tts内容
-key为demo/face下的文件名
-"onoff":{
-    "help":"空字符串将不触发，{D}会被替换",
-    "0buyguide": "感谢{D}"
-}
+...
+"0buyguide-help": "大航海 {username}:用户 {op_name}:购买方式 {role_name}:大航海类型 {num}:个数 {unit}:时间单位",
+"0buyguide": "{username}{op_name} {num}个{unit}{role_name}",
+...
+```
 
-有些无法被tts引擎阅读的符号可以在此项中替换
+特别说明的，下面结构为全局替换。
+
+```
 "replace":{
     "?":"问号",
     "？":"问号"

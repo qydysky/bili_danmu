@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	tts_setting_onoff = map[string]string{
+	tts_setting_string = map[string]string{
 		"0buyguide":"感谢{D}",
 		"0gift":"感谢{D}",
 		"0superchat":"感谢{D}",
@@ -23,7 +23,7 @@ var (
 		"\n":" ",
 	}
 )
-var tts_List = make(chan interface{},20)
+var tts_List = make(chan string,20)
 
 var tts_limit = limit.New(1,5000,15000)//频率限制1次/5s，最大等待时间15s
 
@@ -68,7 +68,7 @@ func init(){
 		buf.Load("config/config_tts.json")
 		if onoff,ok := buf.Get(`onoff`);ok {
 			for k,v := range onoff.(map[string]interface{}) {
-				tts_setting_onoff[k] = v.(string)
+				tts_setting_string[k] = v.(string)
 			}
 		}
 		if replace,ok := buf.Get(`replace`);ok {
@@ -82,8 +82,11 @@ func init(){
 
 	go func(){
 		for{
-			e := <- tts_List
-			TTS(e.(Danmu_mq_t).uid, e.(Danmu_mq_t).msg)
+			s := <- tts_List
+			for len(tts_List) > 0 && len(s) < 100 {
+				s += " " + <- tts_List
+			}
+			TTS(<- tts_List)
 		}
 	}()
 	
@@ -91,8 +94,28 @@ func init(){
 	//使用带tag的消息队列在功能间传递消息
 	c.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
 		`tts`:func(data interface{})(bool){//tts
-			if _,ok := tts_setting_onoff[data.(Danmu_mq_t).uid];ok {
-				tts_List <- data
+			d,_ := data.(Danmu_mq_t)
+			if s,ok := tts_setting_string[d.uid];ok && len(d.m) != 0 && s != "" {
+				
+				for k,v := range d.m {
+					s = strings.ReplaceAll(s, k, v)
+				}
+				for k,v := range tts_setting_replace {
+					s = strings.ReplaceAll(s, k, v)
+				}
+				var (
+					skip bool
+					runel []rune
+				)
+				for _,v := range s {
+					if v == []rune("{")[0] {skip = true}
+					if v == []rune("}")[0] {skip = false;continue}
+					if skip {continue}
+					runel = append(runel,v)
+				}
+
+				tts_log.L(`I: `, d.uid, string(runel))
+				tts_List <- string(runel)
 			}
 			return false
 		},
@@ -109,19 +132,8 @@ func init(){
 }
 
 
-func TTS(uid,msg string) {
+func TTS(msg string) {
 	if tts_limit.TO() {return}
-
-	v,ok := tts_setting_onoff[uid]
-	if !ok || v == ``{return}
-
-	tts_log.L(`I: `,uid, strings.ReplaceAll(msg, "\n", " "))
-
-	msg = strings.ReplaceAll(v, "{D}", msg)
-
-	for k,v := range tts_setting_replace {
-		msg = strings.ReplaceAll(msg, k, v)
-	}
 
 	var (
 		req = reqf.New()
@@ -185,10 +197,11 @@ func youdao(msg string) reqf.Rval {
 		return baidu(msg)
 	}
 
+	//https://ai.youdao.com/gw.s#/
 	var (
 		api = map[string]string{
 			`q`:msg,
-			`langType`:"auto",
+			`langType`:"zh-CHS",
 			`appKey`:appId,
 			`salt`:p.Stringf().Rand(1, 8),
 		}

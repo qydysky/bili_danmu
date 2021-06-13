@@ -1625,6 +1625,13 @@ func init(){
 					delete(autoskip.buf,k)
 					{//超时显示
 						if v.Num > 3 {
+							c.Danmu_Main_mq.Push_tag(`tts`,Danmu_mq_t{//传入消息队列
+								uid:`0multi`,
+								m:map[string]string{
+									`{num}`:strconv.Itoa(int(v.Num)),
+									`{msg}`:k,
+								},
+							})
 							Msg_showdanmu(Danmu_item{
 								msg:strconv.Itoa(int(v.Num)) + " x " + k,
 								uid:`0multi`,
