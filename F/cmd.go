@@ -163,11 +163,11 @@ func Cmd() {
 				continue
 			}
 			{//弹幕发送
+				if c.Roomid == 0 {continue}
 				if _,ok := c.Cookie.LoadV(`bili_jct`).(string);!ok {
 					cmdlog.L(`W: `, "尚未登陆，不能发送弹幕")
 					continue
 				}
-				if c.Roomid != 0 {continue}
 				if len(inputs) < 2 {
 					cmdlog.L(`W: `, "输入长度过短", inputs)
 					continue
@@ -179,7 +179,7 @@ func Cmd() {
 			cmdlog.L(`I: `, "进入房间",room)
 			c.Danmu_Main_mq.Push_tag(`change_room`,nil)
 		} else {//其余字符串
-			if c.Roomid != 0 {continue}
+			if c.Roomid == 0 {continue}
 			send.Danmu_s(inputs, c.Roomid)
 		}
 	}
