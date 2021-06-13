@@ -19,7 +19,9 @@ var (
 		"0gift":"感谢{D}",
 		"0superchat":"感谢{D}",
 	}
-	tts_setting_replace = map[string]string{}
+	tts_setting_replace = map[string]string{
+		"\n":" ",
+	}
 )
 var tts_List = make(chan interface{},20)
 
@@ -28,29 +30,41 @@ var tts_limit = limit.New(1,5000,15000)//频率限制1次/5s，最大等待时�
 var tts_log = c.Log.Base_add(`TTS`)
 
 var (
+	tts_ser = "baidu"
+	tts_ser_map = map[string]func(string)reqf.Rval{
+		`baidu`:baidu,
+		`youdao`:youdao,
+	}
 	tts_prog = "ffplay"
 	tts_prog_set = "-autoexit -nodisp"
 )
 
 func init(){
 	{//tts配置
-		buf := s.New()
-		buf.Load("config/config_K_v.json")
-		for k,v := range buf.B {
-			if k == `TTS_使用程序路径` {
-				if tmp,ok := v.(string);ok && tmp != ``{
-					tts_prog = tmp
-				} else{tts_log.L(`E: `,`TTS_使用程序路径不是字符串或为空`)}
-			}else if k == `TTS_使用程序参数` {
-				if tmp,ok := v.(string);ok{
-					tts_prog_set = tmp
-				} else{tts_log.L(`E: `,`TTS_使用程序参数不是字符串`)}
-			}else if k == `TTS_总开关` {
-				if tmp,ok := v.(bool);ok && !tmp{
-					return
-				}
+
+		if v, ok := c.K_v.LoadV(`TTS_总开关`).(bool);ok && !v {
+			return
+		}
+		if v, ok := c.K_v.LoadV(`TTS_使用程序路径`).(string);ok && v != ``{
+			tts_prog = v
+		} else {
+			tts_log.L(`E: `,`TTS_使用程序路径不是字符串或为空`)
+		}
+		if v, ok := c.K_v.LoadV(`TTS_使用程序参数`).(string);ok && v != ``{
+			tts_prog_set = v
+		} else {
+			tts_log.L(`E: `,`TTS_使用程序参数不是字符串`)
+		}
+		if v, ok := c.K_v.LoadV(`TTS_服务器`).(string);ok && v != "" {
+			if _,ok := tts_ser_map[v];ok{
+				tts_ser = v
+			} else {
+				tts_log.L(`I: `,`未支持设定服务提供商，使用baidu`)
+				tts_ser = `baidu`
 			}
 		}
+		
+		buf := s.New()
 		buf.Load("config/config_tts.json")
 		if onoff,ok := buf.Get(`onoff`);ok {
 			for k,v := range onoff.(map[string]interface{}) {
@@ -109,21 +123,89 @@ func TTS(uid,msg string) {
 		msg = strings.ReplaceAll(msg, k, v)
 	}
 
-	req := reqf.New()
-	if err := req.Reqf(reqf.Rval{
-		Url:`https://fanyi.baidu.com/gettts?lan=zh&text=`+ url.QueryEscape(msg) +`&spd=5&source=web`,
-		SaveToPath:p.Sys().Cdir()+`/tts.mp3`,
-		Timeout:3*1000,
-		Retry:1,
-		SleepTime:5000,
-		Proxy:c.Proxy,
-	});err != nil {
+	var (
+		req = reqf.New()
+		rval reqf.Rval
+	)
+	if f,ok := tts_ser_map[tts_ser];ok{
+		rval = f(msg)
+	} else {
+		rval = baidu(msg)
+	}
+	if rval.Url == `` {
+		tts_log.L(`E: `, `rval.Url`)
+		return
+	}
+
+	if err := req.Reqf(rval);err != nil {
 		tts_log.L(`E: `,err)
 		return
 	}
+	if req.Response.Header.Get(`Content-type`) == `application/json` {
+		tts_log.L(`W: `, `错误`, req.Response.StatusCode, string(req.Respon))
+		return
+	}
+	
 	var prog = []string{}
 	prog = append(prog, p.Sys().Cdir()+"/tts.mp3")
 	prog = append(prog, strings.Split(tts_prog_set," ")...)
 	p.Exec().Run(false, tts_prog, prog...)
 	return
+}
+
+func baidu(msg string) reqf.Rval {
+	return reqf.Rval{
+		Url:`https://fanyi.baidu.com/gettts?lan=zh&text=`+ url.PathEscape(msg) +`&spd=5&source=web`,
+		SaveToPath:p.Sys().Cdir()+`/tts.mp3`,
+		Timeout:3*1000,
+		Retry:1,
+		SleepTime:5000,
+		Proxy:c.Proxy,
+	}
+}
+
+var (
+	appId string
+	appKey string
+)
+func init(){
+	if v, ok := c.K_v.LoadV(`TTS_服务器_youdaoId`).(string);ok && v != ``{
+		appId = v
+	}
+	if v, ok := c.K_v.LoadV(`TTS_服务器_youdaoKey`).(string);ok && v != ``{
+		appKey = v
+	}
+	if tts_ser == `youdao` && (appId == `` || appKey == ``) {
+		tts_log.L(`W: `, `未提供youdaoId、Key，使用baidu`)
+		tts_ser = `baidu`
+	}
+}
+func youdao(msg string) reqf.Rval {
+	if appId == "" || appKey == "" {
+		return baidu(msg)
+	}
+
+	var (
+		api = map[string]string{
+			`q`:msg,
+			`langType`:"auto",
+			`appKey`:appId,
+			`salt`:p.Stringf().Rand(1, 8),
+		}
+		postS string
+	)
+	api[`sign`] = strings.ToUpper(p.Md5().Md5String(api[`appKey`]+api[`q`]+api[`salt`]+appKey))
+	for k,v := range api {
+		if postS != "" {postS += "&"}
+		postS += k+`=`+v
+	}
+	return reqf.Rval{
+		Url:`https://openapi.youdao.com/ttsapi`,
+		PostStr:url.PathEscape(postS),
+		SaveToPath:p.Sys().Cdir()+`/tts.mp3`,
+		Timeout:3*1000,
+		Retry:1,
+		SleepTime:5000,
+		Proxy:c.Proxy,
+	}
 }

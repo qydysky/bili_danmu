@@ -92,11 +92,10 @@ golang go version go1.15 linux/amd64
 - [x] 使用http代理
 - [x] cookie加密
 - [x] 弹幕自动重连（30s无响应）
-- [x] 命令行重载弹幕
 - [x] 直播流开播自动下载
 - [x] 直播流断流再保存
 - [x] 直播hls流均衡负载
-- [x] 命令行支持房间切换、弹幕发送、启停录制
+- [x] 命令行支持房间切换、弹幕发送、启停录制、重载弹幕
 - [x] GTK信息窗支持房间切换、弹幕格式化发送、时长统计
 - [x] GTK弹幕窗支持自定义人/事件消息停留
 
@@ -301,6 +300,16 @@ key为demo/face下的文件名
     "？":"问号"
 }
 ```
+
+在`demo/config/config_K_v.json`中可选使用的服务api
+```
+    "TTS_服务器-help": "baidu:百度翻译合成 youdao:有道TTS",
+    "TTS_服务器": "youdao",
+    "TTS_服务器_youdaoId": "",
+    "TTS_服务器_youdaoKey": "",
+```
+支持baidu和[有道](https://ai.youdao.com/gw.s#/)，如使用有道则需要Id和Key。
+
 #### 弹幕窗
 构建gtk需要gtk3,先行安装[gtk](https://www.gtk.org/)
 release Linux默认编译gtk界面 Windows默认不编译

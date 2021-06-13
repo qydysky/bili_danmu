@@ -795,7 +795,7 @@ func Savestreamf(){
 					} else if r.Response.StatusCode != 200 {
 						l.L(`W: `,`请求退出`,r.Id(),e,r.Response.Status,string(r.Respon))
 					} else {
-						l.L(`W: `,`请求退出`,r.Id(),e,r.Response.Status)
+						l.L(`W: `,`请求退出`,r.Id())
 					}
 				}(req,reqf.Rval{
 					Url:link,
