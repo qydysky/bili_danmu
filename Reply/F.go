@@ -905,9 +905,6 @@ func Savestreamf(){
 			reqs.Push_tag(`close`,nil)
 			out.Close()
 
-			l.L(`I: `,"结束")
-			Ass_f("", time.Now())//ass
-			savestream.front = []byte{}//flv头及首tag置空
 			p.FileMove(savestream.path+".flv.dtmp", savestream.path+".flv")
 		} else {
 			savestream.path += "/"
@@ -1352,12 +1349,13 @@ func Savestreamf(){
 			}
 
 			hls_msg.Push_tag(`close`, nil)
-			savestream.front = []byte{}//头置空
-			l.L(`I: `,"结束")
-			Ass_f("", time.Now())//ass
 		}
 		//set ro ``
 		savestream.path = ``
+		savestream.front = []byte{}//flv头及首tag置空
+		savestream.stream.Push_tag("close", nil)
+		Ass_f("", time.Now())//ass
+		l.L(`I: `,"结束")
 
 		if !savestream.cancel.Islive() {
 			// l.L(`I: `,"退出")
