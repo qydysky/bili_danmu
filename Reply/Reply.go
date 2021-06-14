@@ -256,7 +256,7 @@ func (replyF) user_toast_msg(s string){
 	}
 	if price != 0 {
 		sh_log = append(sh, "￥", price / 1000)//不在界面显示价格
-		c.Danmu_Main_mq.Push_tag(`c.Rev_add`,price / 1000)
+		c.Danmu_Main_mq.Push_tag(`c.Rev_add`,float64(price) / 1000)
 	}
 	{//语言tts
 		c.Danmu_Main_mq.Push_tag(`tts`,Danmu_mq_t{//传入消息队列
@@ -760,16 +760,27 @@ func (replyF) entry_effect(s string){
 	if e := json.Unmarshal([]byte(s), &res);e != nil {
 		msglog.L(`E: `, e)
 	}
+	
+	var username string
+	op := strings.Index(res.Data.Copy_writing, ` <%`)
+	ed := strings.Index(res.Data.Copy_writing, `%> `)
+	if op != -1 && ed != -1 {
+		username = res.Data.Copy_writing[op+3:ed]
+	}
 	//处理特殊字符
 	copy_writing := strings.ReplaceAll(res.Data.Copy_writing, `<%`, ``)
 	copy_writing = strings.ReplaceAll(copy_writing, `%>`, ``)
 
+	guard_name := ""
 	img := "0default"
 	if strings.Contains(copy_writing, `总督`) {
+		guard_name = `总督`
 		img = "0level1"
 	} else if strings.Contains(copy_writing, `提督`) {
+		guard_name = `提督`
 		img = "0level2"
 	} else if strings.Contains(copy_writing, `舰长`) {
+		guard_name = `舰长`
 		img = "0level3"
 	}
 
@@ -777,6 +788,8 @@ func (replyF) entry_effect(s string){
 		c.Danmu_Main_mq.Push_tag(`tts`,Danmu_mq_t{//传入消息队列
 			uid:img,
 			m:map[string]string{
+				`{guard_name}`:guard_name,
+				`{username}`:username,
 				`{msg}`:copy_writing,
 			},
 		})

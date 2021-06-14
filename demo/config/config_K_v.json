@@ -15,7 +15,7 @@
     "TTS_服务器_xfKey": "",
     "TTS_服务器_xfSecret": "",
     "TTS_服务器_xfVoice-help": "讯飞发音人 xiaoyan:小燕甜美女声 aisjiuxu:许久亲切男声 aisxping:小萍知性女声 aisjinger:小婧亲切女声 aisbabyxu:许小宝可爱童声 random:随机",
-    "TTS_服务器_xfVoice": "aisjinger",
+    "TTS_服务器_xfVoice": "random",
     "TTS_使用程序路径": "ffplay",
     "TTS_使用程序参数": "-autoexit -nodisp -volume 60",
     "弹幕-help": "弹幕相关",
