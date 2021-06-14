@@ -14,6 +14,9 @@ var msglog = c.Log.Base(`Msg`)
 
 //Msg类型数据处理方法map
 var Msg_map = map[string]func(replyF, string) {
+	`VOICE_JOIN_ROOM_COUNT_INFO`:replyF.voice_join_room_count_info,//连麦等待
+	`VOICE_JOIN_LIST`:nil,
+	`VOICE_JOIN_STATUS`:replyF.voice_join_status,//连麦人状态
 	`STOP_LIVE_ROOM_LIST`:nil,//停止直播的直播间
 	`PK_LOTTERY_START`:replyF.pk_lottery_start,//大乱斗pk
 	`PK_BATTLE_PRE_NEW`:nil,//pk准备
@@ -68,6 +71,7 @@ var Msg_map = map[string]func(replyF, string) {
 	"GUARD_BUY":nil,//replyF.guard_buy,//大航海购买
 	"WELCOME_GUARD":nil,//replyF.welcome_guard,//大航海进入 ？已废弃？
 	"DANMU_MSG":replyF.danmu,//弹幕
+	"DANMU_MSG:4:0:2:2:2:0":replyF.danmu,//弹幕
 	"ROOM_CHANGE":replyF.room_change,//房间信息分区改变
 	"ROOM_SILENT_OFF":replyF.roomsilent,//禁言结束
 	"ROOM_SILENT_ON":replyF.roomsilent,//禁言开始

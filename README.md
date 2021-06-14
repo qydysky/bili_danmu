@@ -91,26 +91,52 @@ golang go version go1.15 linux/amd64
 
 - [x] 使用http代理
 - [x] cookie加密
-- [x] 弹幕自动重连（30s）
+- [x] 弹幕自动重连（30s无响应）
 - [x] 直播流开播自动下载
 - [x] 直播流断流再保存
-- [x] 命令行支持房间切换、弹幕发送、启停录制
+- [x] 直播hls流均衡负载
+- [x] 命令行支持房间切换、弹幕发送、启停录制、重载弹幕
 - [x] GTK信息窗支持房间切换、弹幕格式化发送、时长统计
 - [x] GTK弹幕窗支持自定义人/事件消息停留
 
 ### 说明
 本项目使用github action自动构建，构建过程详见[yml](https://github.com/qydysky/bili_danmu/blob/master/.github/workflows/go.yml)
 
+#### 流保存以及弹幕ass
+在`demo/config/config_K_v.json`中可找到配置项
+
+```json
+"直播流清晰度-help": "清晰度可选-1:不保存 0:默认 10000:原画 800:4K 401:蓝光(杜比) 400:蓝光 250:超清 150:高清 80:流畅,无提供所选清晰度时，使用低一档清晰度",
+"直播流清晰度": 150,
+"直播流类型-help": "flv or hls",
+"直播流类型": "hls",
+"直播流保存位置": "./live",
+"ass-help": "只有保存直播流时才考虑生成ass，ass编码默认GB18030(可选utf-8)",
+"生成Ass弹幕": true,
+"Ass编码": "GB18030",
+```
+
+ass编码GB18030支持中文
+
+- `GB18030`(默认)
+- `utf-8`
+
 #### 直播流Web服务
-启动Web流服务，为下载的直播流提供局域网内的流服务。
+启动Web流服务，为下载的直播流提供局域网内的流服务，提供flv、hls/mp4格式流。
 
 在`demo/config/config_K_v.json`中可找到配置项，0:随机可用端口 >0:固定可用端口 <0:禁用服务。
 
 ```
-    "直播保存位置Web服务":0,
+    "直播Web服务口":0,
 ```
 
 开启之后，启动会显示服务地址，在局域网内打开网址可以取得所有直播流的串流地址
+
+服务地址也可通过命令行` room`查看。
+
+```
+I: 2021/04/13 20:07:45 命令行操作 [直播Web服务: http://192.168.31.245:38259]
+```
 
 支持跨域，注意：在https网站默认无法加载非本机http服务
 
@@ -119,21 +145,34 @@ golang go version go1.15 linux/amd64
 - ass结尾：保存完毕的直播流字幕，有些播放器会在串流时获取此文件
 - m4s结尾：hls切片
 
-**特殊的：路径为`/now`(例：当服务地址为下方的38259口时，此对应的路径为`http://192.168.31.245:38259/now`)，会重定向到当前正在获取的流，播放此链接时进度将保持当前流进度**
+**特殊**
+- 路径为`/now`
 
-服务地址也可通过命令行` room`查看。
+  例：当服务地址为下方的38259口时，此对应的路径为`http://192.168.31.245:38259/now`)，会重定向到当前正在获取的流，播放此链接时进度将保持当前流进度。流格式为hls或flv
 
-```
-I: 2021/04/13 20:07:45 命令行操作 [直播Web服务: http://192.168.31.245:38259]
-```
+- 当在hls流时，(已/正在)下载的流链接后加上`?type=mp4`将会得到拼合好的mp4流。
+  
+  例：直播流：`http://192.168.31.245:38259/now?type=mp4`的流格式为mp4。hls录播目录：`http://192.168.31.36:23333/1016_2021_06_12_01-18-59-000/?type=mp4`的流格式为mp4）
 
-测试可用项目：
+测试可用项目(测试可连续播放10min+)：
 
-- [xqq/mpegts.js](https://github.com/xqq/mpegts.js)
-- [bilibili/flv.js](https://github.com/bilibili/flv.js)
-- [bytedance/xgplayer](https://github.com/bytedance/xgplayer)
-- [video-dev/hls.js](https://github.com/video-dev/hls.js)
-- [mpv](https://mpv.io/)
+- flv-html播放器
+  - [xqq/mpegts.js](https://github.com/xqq/mpegts.js)
+  - [bilibili/flv.js](https://github.com/bilibili/flv.js)
+- hls-html播放器
+  - [bytedance/xgplayer](https://github.com/bytedance/xgplayer)
+  - [videojs/video.js](https://github.com/videojs/video.js)([demo](https://videojs-http-streaming.netlify.app))
+  - [video-dev/hls.js@v1.0.7+](https://hls-js-10780deb-25d8-41d3-b164-bc334c8dd47f.netlify.app/demo/)
+- mp4-html播放器
+  - [bytedance/xgplayer](https://github.com/bytedance/xgplayer)
+  - [videojs/video.js](https://github.com/videojs/video.js)([demo](https://videojs-http-streaming.netlify.app))
+- 客户端播放器
+  - [mpv](https://mpv.io/)
+  - [MXPlayer](https://sites.google.com/site/mxvpen/home)
+
+**特殊的**
+
+由于hls流使用浏览器支持的编码格式，故可以使用浏览器直接打开mp4直播流链接，即上述带`?type=mp4`的链接。
 
 
 #### 命令行操作
@@ -145,7 +184,6 @@ I: 2021/04/01 11:36:46 命令行操作 [房间信息->输入' room'回车]
 I: 2021/04/01 11:36:46 命令行操作 [开始结束录制->输入' rec'回车]
 I: 2021/04/01 11:36:46 命令行操作 [查看直播中主播->输入' live'回车]
 I: 2021/04/01 11:36:46 命令行操作 [其他输出隔断不影响]
-
 ```
 用例：
 - 直播间切换
@@ -182,7 +220,7 @@ I: 2021/04/13 20:04:56 命令行操作 [分区排行: 50+ 人气： 41802746]
 I: 2021/04/13 20:04:56 命令行操作 [直播Web服务: http://192.168.31.245:38259]
 ```
 
-还支持登录、唤起获取小心心等功能
+还支持登录、唤起获取小心心、搜索主播直播间等功能
 
 #### cookie加密
 保护cookie.txt
@@ -251,15 +289,49 @@ config_K_v.json
 ```
 release默认编译tts
 
-总开关,自定义响应的事件可在`demo/config/config_tts.json`中编辑
+总开关,自定义响应的事件可在`demo/config/config_tts.json`中编辑。{}为传递过来的变量，将会按设定替换。最后未使用的{}会全部删除。下例：`ABC购买 1个月舰长`。
 ```
-{D}:为tts内容
-key为demo/face下的文件名
-{
-    "0multi": "观众：{D}",
-    "29183321":"{D}"
+...
+"0buyguide-help": "大航海 {username}:用户 {op_name}:购买方式 {role_name}:大航海类型 {num}:个数 {unit}:时间单位",
+"0buyguide": "{username}{op_name} {num}个{unit}{role_name}",
+...
+```
+
+特别说明的，下面结构为全局替换。
+
+```
+"replace":{
+    "?":"问号",
+    "？":"问号"
 }
 ```
+
+在`demo/config/config_K_v.json`中可选使用的服务api
+```
+    "TTS_服务器-help": "baidu:百度翻译合成 youdao:有道TTS",
+    "TTS_服务器": "youdao",
+    "TTS_服务器_youdaoId": "",
+    "TTS_服务器_youdaoKey": "",
+```
+支持baidu、[有道](https://ai.youdao.com/gw.s#/)、[讯飞](https://www.xfyun.cn/)。
+
+使用有道则需要Id和Key。
+```
+    "TTS_服务器_youdaoId": "7xxxxxxxxxxxxxxa",
+    "TTS_服务器_youdaoKey": "yxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxP",
+
+```
+
+使用讯飞则需要应用Id、Key、Secret。可设置发音人。
+```
+    "TTS_服务器_xfId": "6xxxxxxb",
+    "TTS_服务器_xfKey": "4xxxxxxxx9",
+    "TTS_服务器_xfSecret": "YxxxxxxxBh",
+    "TTS_服务器_xfVoice-help": "讯飞发音人 xiaoyan:小燕甜美女声 aisjiuxu:许久亲切男声 aisxping:小萍知性女声 aisjinger:小婧亲切女声 aisbabyxu:许小宝可爱童声 random:随机",
+    "TTS_服务器_xfVoice": "random",
+
+```
+
 #### 弹幕窗
 构建gtk需要gtk3,先行安装[gtk](https://www.gtk.org/)
 release Linux默认编译gtk界面 Windows默认不编译
@@ -414,13 +486,6 @@ I: 2021/02/18 14:52:31 Msg 礼 [三千千千千千千 投喂 1 个 爱之魔力 
 //sc
 I: 2021/02/18 14:40:54 Msg 礼 [SC:  加拉入我心 ￥ 30 关注了乙女音，我才能够得到快乐 乙女音符に注目してこそ、私は幸せになれるのです。]
 I: 2021/02/18 21:48:49 Msg 房 [欢迎舰长 Mana_单推... 进入直播间]
-```
-
-#### 流保存以及弹幕ass
-```
-结束后会保存为
-房间号_时间.mkv
-房间号_时间.ass
 ```
 
 #### 结束后的文件播放效果(显于左上)

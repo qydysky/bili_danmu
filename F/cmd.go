@@ -24,6 +24,17 @@ func Cmd() {
 		if inputs := scanner.Text();inputs == `` {//帮助
 			fmt.Print("\n")
 			fmt.Println("切换房间->输入数字回车")
+			if c.Roomid == 0 {
+				if _,ok := c.Cookie.LoadV(`bili_jct`).(string);ok {
+					fmt.Println("查看直播中主播->输入' live'回车")
+				} else {
+					fmt.Println("登陆->输入' login'回车")
+				}
+				fmt.Println("搜索主播->输入' search关键词'回车")
+				fmt.Println("其他输出隔断不影响")
+				fmt.Print("\n")
+				continue
+			}
 			if _,ok := c.Cookie.LoadV(`bili_jct`).(string);ok {
 				fmt.Println("发送弹幕->输入' 字符串'回车")
 				fmt.Println("查看直播中主播->输入' live'回车")
@@ -31,6 +42,8 @@ func Cmd() {
 			} else {
 				fmt.Println("登陆->输入' login'回车")
 			}
+			fmt.Println("重载弹幕->输入' reload'回车")
+			fmt.Println("搜索主播->输入' search关键词'回车")
 			fmt.Println("房间信息->输入' room'回车")
 			fmt.Println("开始结束录制->输入' rec'回车")
 			fmt.Println("其他输出隔断不影响")
@@ -39,7 +52,7 @@ func Cmd() {
 			cmdlog.L(`W: `, "不支持功能键")
 		} else if inputs[0] == 32 {// 开头
 			//录制切换
-			if strings.Contains(inputs, ` rec`) {
+			if strings.Contains(inputs, ` rec`) && c.Roomid != 0 {
 				if !c.Liveing {
 					cmdlog.L(`W: `, "不能切换录制状态，未在直播")
 					continue
@@ -65,7 +78,7 @@ func Cmd() {
 				}
 				for k,v := range Feed_list() {
 					liveList[` live`+strconv.Itoa(k)] = v.Roomid
-					fmt.Println(k, v.Uname, v.Title)
+					fmt.Printf("%d\t%s\n\t\t\t%s\n", k, v.Uname, v.Title)
 				}
 				fmt.Println("回复' live(序号)'进入直播间")
 				fmt.Print("\n")
@@ -83,7 +96,7 @@ func Cmd() {
 				continue
 			}
 			//获取小心心
-			if strings.Contains(inputs, ` getheart`) {
+			if strings.Contains(inputs, ` getheart`) && c.Roomid != 0 {
 				if _,ok := c.Cookie.LoadV(`bili_jct`).(string);!ok {
 					cmdlog.L(`W: `, "尚未登陆，不能获取小心心")
 					continue
@@ -93,8 +106,34 @@ func Cmd() {
 
 				continue
 			}
+			//搜索主播
+			if strings.Contains(inputs, ` search`) {
+				if len(inputs) == 7 {
+					cmdlog.L(`W: `, "未输入搜索内容")
+					continue
+				}
+
+				fmt.Print("\n")
+				for k,v := range SearchUP(inputs[7:]) {
+					liveList[` live`+strconv.Itoa(k)] = v.Roomid
+					if v.Is_live {
+						fmt.Printf("%d\t%s\t%s\n", k, `☁`, v.Uname)
+					} else {
+						fmt.Printf("%d\t%s\t%s\n", k, ` `, v.Uname)
+					}
+				}
+				fmt.Println("回复' live(序号)'进入直播间")
+				fmt.Print("\n")
+
+				continue
+			}
+			//重载弹幕
+			if strings.Contains(inputs, ` reload`) && c.Roomid != 0 {
+				c.Danmu_Main_mq.Push_tag(`flash_room`,nil)
+				continue
+			}
 			//当前直播间信息
-			if strings.Contains(inputs, ` room`) {
+			if strings.Contains(inputs, ` room`) && c.Roomid != 0 {
 				fmt.Print("\n")
 				fmt.Println("当前直播间信息")
 				{
@@ -124,6 +163,7 @@ func Cmd() {
 				continue
 			}
 			{//弹幕发送
+				if c.Roomid == 0 {continue}
 				if _,ok := c.Cookie.LoadV(`bili_jct`).(string);!ok {
 					cmdlog.L(`W: `, "尚未登陆，不能发送弹幕")
 					continue
@@ -139,6 +179,7 @@ func Cmd() {
 			cmdlog.L(`I: `, "进入房间",room)
 			c.Danmu_Main_mq.Push_tag(`change_room`,nil)
 		} else {//其余字符串
+			if c.Roomid == 0 {continue}
 			send.Danmu_s(inputs, c.Roomid)
 		}
 	}

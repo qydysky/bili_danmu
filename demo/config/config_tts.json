@@ -1,11 +1,37 @@
 {
-    "help":"空字符串将不触发，{D}会被替换",
-    "0buyguide": "感谢{D}",
-    "0gift": "感谢{D}",
-    "0superchat": "感谢{D}",
-    "0multi": "观众：{D}",
-    "0rank":"{D}",
-    "0level1":"{D}",
-    "0level2":"",
-    "0level3":""
+    "onoff":{
+        "help":"空字符串将不触发。{}将被替换 未使用的{}将被移除",
+
+        "0default-help":"系统消息 {msg}:内容",
+        "0default":"{msg}",
+
+        "0buyguide-help": "大航海 {username}:用户 {op_name}:购买方式 {role_name}:大航海类型 {num}:个数 {unit}:时间单位",
+        "0buyguide": "{username}{op_name} {num}个{unit}{role_name}",
+
+        "0gift-help": "投喂礼物 {num}:个数 {uname}:用户 {action}:动作 {giftName}:礼物名称",
+        "0gift": "{uname}{action} {num}个{giftName}",
+
+        "0superchat-help":"超级留言 {uname}:用户 {message}:内容 {message_jpn}:日语内容",
+        "0superchat": "{uname}说 {message}",
+
+        "0room-help":"房间消息 {msg}消息",
+        "0room":"{msg}",
+
+        "0rank-help":"小时榜排行 {Area_name}:分区名 {Rank}:排位",
+        "0rank":"获得 {Area_name}第{Rank}",
+
+        "0level-help":"大航海进入 {username}:用户 {guard_name}:大航海类型",
+        "0level1":"欢迎 {guard_name}{username}进入直播间",
+        "0level2":"",
+        "0level3":"",
+
+        "user-help":"用户弹幕 111是用户uid可添加 0multi是合并弹幕功能的多用户弹幕 {num}:多用户个数 {auth}:用户 {msg}:弹幕内容",
+        "0multi": "{num}个观众说 {msg}",
+        "111":""
+    },
+    "replace":{
+        "?":"问号",
+        "？":"问号",
+        "hso":"好色哦"
+    }
 }

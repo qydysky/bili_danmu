@@ -52,32 +52,43 @@ func Demo(roomid ...int) {
 		var groomid = flag.Int("r", 0, "roomid")
 		flag.Parse()
 
-		var change_room_chan = make(chan struct{})
+		var (
+			change_room_chan = make(chan struct{})
+			flash_room_chan = make(chan struct{})
+		)
 
-		go func(){
-			var room = *groomid
-			if room == 0 && len(roomid) != 0 {
-				room = roomid[0]
-			}
-			if room == 0 {
-				c.Log.Block(1000)//等待所有日志输出完毕
-				fmt.Printf("输入房间号: ")
-				_, err := fmt.Scanln(&room)
-				if err != nil {
-					danmulog.L(`E: `, "输入错误", err)
-					return
-				}
-			} else {
-				fmt.Print("房间号: ", strconv.Itoa(room), "\n")
-			}
+		//-r 房间初始化
+		var room = *groomid
+		if room == 0 && len(roomid) != 0 {
+			room = roomid[0]
+		}
+
+		//如果连接中断，则等待
+		F.KeepConnect()
+		//获取cookie
+		F.Get(`Cookie`)
+		if room == 0 {
+			c.Log.Block(1000)//等待所有日志输出完毕
+			fmt.Println("输入房间号或` live`获取正在直播的主播")
+		} else {
+			fmt.Print("房间号: ", strconv.Itoa(room), "\n")
 			if c.Roomid == 0 {
 				c.Roomid = room
-				change_room_chan <- struct{}{}
+				go func(){change_room_chan <- struct{}{}}()
 			}
-		}()
-		
+		}
+		//命令行操作 切换房间 发送弹幕
+		go F.Cmd()
+
 		//使用带tag的消息队列在功能间传递消息
 		c.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
+			`flash_room`:func(data interface{})(bool){//房间重进
+				select {
+				case flash_room_chan <- struct{}{}:;
+				default:;
+				}
+				return false
+			},
 			`change_room`:func(data interface{})(bool){//房间改变
 				c.Rev = 0.0 //营收
 				c.Renqi = 1//人气置1
@@ -119,14 +130,8 @@ func Demo(roomid ...int) {
 
 		//捕获ctrl+c退出
 		signal.Notify(interrupt, os.Interrupt)
-		//如果连接中断，则等待
-		F.KeepConnect()
-		//获取cookie
-		F.Get(`Cookie`)
 		//获取uid
 		F.Get(`Uid`)
-		//命令行操作 切换房间 发送弹幕
-		go F.Cmd()
 		//兑换硬币
 		F.Get(`Silver_2_coin`)
 		//每日签到
@@ -138,16 +143,11 @@ func Demo(roomid ...int) {
 		//附加功能 自动发送即将过期礼物
 		go reply.AutoSend_silver_gift()
 
-		var exit_sign = 2
-		for exit_sign > 0 {
-			exit_sign -= 1
+		for exit_sign:=true;exit_sign; {
 
 			danmulog.L(`T: `,"准备")
 			//如果连接中断，则等待
-			if F.KeepConnect() {
-				//成功保持连接
-				exit_sign = 2
-			}
+			F.KeepConnect()
 			//获取热门榜
 			F.Get(`Note`)
 
@@ -172,7 +172,8 @@ func Demo(roomid ...int) {
 
 			//对每个弹幕服务器尝试
 			F.Get(`WSURL`)
-			for _, v := range c.WSURL {
+			for i:=0;i<len(c.WSURL);i+=1 {
+				v := c.WSURL[i]
 				//ws启动
 				u, _ := url.Parse(v)
 				ws_c := ws.New_client(ws.Client{
@@ -227,6 +228,9 @@ func Demo(roomid ...int) {
 							`guard_update`:func(data interface{})(bool){//舰长更新
 								go F.Get(`GuardNum`)
 								return false
+							},
+							`flash_room`:func(data interface{})(bool){//重进房时退出当前房间
+								return true
 							},
 							`change_room`:func(data interface{})(bool){//换房时退出当前房间
 								return true
@@ -284,14 +288,17 @@ func Demo(roomid ...int) {
 						ws_c.Close()
 						danmulog.L(`I: `,"停止，等待服务器断开连接")
 						break_sign = true
-						exit_sign = 0
+						exit_sign = false
+					case <- flash_room_chan:
+						ws_c.Close()
+						danmulog.L(`I: `,"停止，等待服务器断开连接")
+						F.Get(`WSURL`)
+						i = 0
 					case <- change_room_chan:
 						ws_c.Close()
 						danmulog.L(`I: `,"停止，等待服务器断开连接")
 						break_sign = true
-						exit_sign = 2
 					}
-
 				}
 
 				if break_sign {break}

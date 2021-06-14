@@ -4,7 +4,7 @@ import (
 	"time"
 	"os"
 	"strconv"
-	// "strings"
+	"strings"
     "context"
 	"encoding/json"
 	"net/http"
@@ -30,7 +30,7 @@ var apilog = c.Log.Base(`api`)
 var api_limit = limit.New(1,2000,30000)//频率限制1次/2s，最大等待时间30s
 
 func Get(key string) {
-	apilog := apilog.Base_add(`Get`).L(`T: `,key)
+	apilog := apilog.Base_add(`Get`)
 
 	if api_limit.TO() {return}//超额请求阻塞，超时将取消
 
@@ -181,7 +181,6 @@ func Get(key string) {
 		`LIVE_BUVID`:func()(bool){//LIVE_BUVID
 			return c.LIVE_BUVID
 		},
-
 		`Silver_2_coin`:func()(bool){//银瓜子2硬币
 			return true
 		},
@@ -195,6 +194,7 @@ func Get(key string) {
 
 	if fList,ok := api_can_get[key];ok{
 		for _,fItem := range fList{
+			apilog.L(`T: `, `Get`, key)
 			missKey := fItem()
 			if len(missKey) > 0 {
 				apilog.L(`T: `,`missKey when get`,key,missKey)
@@ -270,7 +270,6 @@ func Html() (missKey []string) {
 		missKey = append(missKey, `Roomid`)
 		return
 	}
-	
 
 	Roomid := strconv.Itoa(c.Roomid)
 	
@@ -360,6 +359,7 @@ func Html() (missKey []string) {
 			
 								//当前直播流质量
 								c.Live_qn = v.CurrentQn
+								if c.Live_want_qn == 0 {c.Live_want_qn = v.CurrentQn}
 								//允许的清晰度
 								{
 									var tmp = make(map[int]string)
@@ -436,7 +436,6 @@ func getInfoByRoom() (missKey []string) {
 		missKey = append(missKey, `Roomid`)
 		return
 	}
-	
 
 	Roomid := strconv.Itoa(c.Roomid)
 
@@ -613,6 +612,7 @@ func getRoomPlayInfo() (missKey []string) {
 		
 							//当前直播流质量
 							c.Live_qn = v.CurrentQn
+							if c.Live_want_qn == 0 {c.Live_want_qn = v.CurrentQn}
 							//允许的清晰度
 							{
 								var tmp = make(map[int]string)
@@ -777,6 +777,7 @@ func getRoomPlayInfoByQn() (missKey []string) {
 	
 							//当前直播流质量
 							c.Live_qn = v.CurrentQn
+							if c.Live_want_qn == 0 {c.Live_want_qn = v.CurrentQn}
 							//允许的清晰度
 							{
 								var tmp = make(map[int]string)
@@ -1932,17 +1933,26 @@ func F_x25Kn() {
 			//新调用，此退出
 			if boot_F_x25Kn.NeedExit(id) {return}
 
-			var rt_obj = RT{
-				R:R{
-					Id:`[`+strconv.Itoa(c.ParentAreaID)+`,`+strconv.Itoa(c.AreaID)+`,`+strconv.Itoa(loop_num)+`,`+strconv.Itoa(c.Roomid)+`]`,
-					Device:`["`+LIVE_BUVID+`","`+new_uuid+`"]`,
-					Ets:res.Data.Timestamp,
-					Benchmark:res.Data.Secret_key,
-					Time:res.Data.Heartbeat_interval,
-					Ts:int(p.Sys().GetMTime()),
-					Ua:`Mozilla/5.0 (X11; Linux x86_64; rv:84.0) Gecko/20100101 Firefox/84.0`,
-				},
-				T:res.Data.Secret_rule,
+			var (
+				rt_obj = RT{
+					R:R{
+						Id:`[`+strconv.Itoa(c.ParentAreaID)+`,`+strconv.Itoa(c.AreaID)+`,`+strconv.Itoa(loop_num)+`,`+strconv.Itoa(c.Roomid)+`]`,
+						Device:`["`+LIVE_BUVID+`","`+new_uuid+`"]`,
+						Ets:res.Data.Timestamp,
+						Benchmark:res.Data.Secret_key,
+						Time:res.Data.Heartbeat_interval,
+						Ts:int(p.Sys().GetMTime()),
+						Ua:`Mozilla/5.0 (X11; Linux x86_64; rv:84.0) Gecko/20100101 Firefox/84.0`,
+					},
+					T:res.Data.Secret_rule,
+				}
+				wasm string
+			)
+
+			
+			if rt_obj,wasm = Wasm(0, rt_obj);wasm == `` {//0全局
+				apilog.L(`E: `,`发生错误`)
+				return
 			}
 
 			PostStr := `id=`+rt_obj.R.Id+`&`
@@ -1956,13 +1966,7 @@ func F_x25Kn() {
 			PostStr += `ua=`+rt_obj.R.Ua+`&`
 			PostStr += `csrf_token=`+csrf+`&csrf=`+csrf+`&`
 			PostStr += `visit_id=`
-			
-			if wasm := Wasm(0, rt_obj);wasm == `` {//0全局
-				apilog.L(`E: `,`发生错误`)
-				return
-			} else {
-				PostStr = `s=`+wasm+`&`+PostStr
-			}
+			PostStr = `s=`+wasm+`&`+PostStr
 
 			Cookie := make(map[string]string)
 			c.Cookie.Range(func(k,v interface{})(bool){
@@ -2417,9 +2421,62 @@ func GetHistory(Roomid_int int) (j J.GetHistory) {
 	return
 }
 
-func KeepConnect() (o bool) {
+type searchresult struct{
+	Roomid int
+	Uname string
+	Is_live bool
+}
+
+func SearchUP(s string) (list []searchresult) {
+	apilog := apilog.Base_add(`搜索主播`)
+	if api_limit.TO() {apilog.L(`E: `,`超时！`);return}//超额请求阻塞，超时将取消
+	
+	{//使用其他api
+		req := reqf.New()
+		if err := req.Reqf(reqf.Rval{
+			Url:"https://api.bilibili.com/x/web-interface/search/type?context=&search_type=live_user&cover_type=user_cover&page=1&order=&category_id=&__refresh__=true&_extra=&highlight=1&single_column=0&keyword=" + url.PathEscape(s),
+			Proxy:c.Proxy,
+			Timeout:10*1000,
+			Retry:2,
+		});err != nil {
+			apilog.L(`E: `,err)
+			return
+		}
+
+		var j J.Search
+
+		//Search
+		{
+			if e := json.Unmarshal(req.Respon,&j);e != nil{
+				apilog.L(`E: `, e)
+				return
+			} else if j.Code != 0 {
+				apilog.L(`E: `, j.Message)
+				return
+			}
+		}
+
+		if j.Data.Numresults == 0 {
+			apilog.L(`I: `,`没有匹配`);return
+		}
+
+		for i:=0;i<len(j.Data.Result);i+=1 {
+			uname := strings.ReplaceAll(j.Data.Result[i].Uname, `<em class="keyword">`,``)
+			uname = strings.ReplaceAll(uname, `</em>`,``)
+			list = append(list, searchresult{
+				Roomid: j.Data.Result[i].Roomid,
+				Uname: uname,
+				Is_live: j.Data.Result[i].IsLive,
+			})
+		}
+
+	}
+
+	return
+}
+
+func KeepConnect() {
 	for !IsConnected() {
-		o = true
 		time.Sleep(time.Duration(30)*time.Second)
 	}
 	return

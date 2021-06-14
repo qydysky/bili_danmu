@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"encoding/json"
     "time"
+	"strings"
 
 	c "github.com/qydysky/bili_danmu/CV"
 
@@ -137,7 +138,9 @@ func server() {
 	wslog.L(`I: `,`使用WebJs`,webpath,`进行加密`)
 }
 
-func Wasm(uid uintptr,s RT) (o string) {//maxloop 超时重试
+func Wasm(uid uintptr,rt RT) (so RT, o string) {//maxloop 超时重试
+	so = rt
+
 	{//nodejs
 		if nodeJsUrl != "" {
 			req := reqf.New()
@@ -146,12 +149,12 @@ func Wasm(uid uintptr,s RT) (o string) {//maxloop 超时重试
 					`Content-Type`: `application/json`,
 				},
 				Url:nodeJsUrl,
-				PostStr:toNodeJsString(s),
+				PostStr:toNodeJsString(so),
 				Proxy:c.Proxy,
 				Timeout:3*1000,
 			});err != nil {
 				wslog.L(`E: `,err)
-				o = Wasm(uid, s)
+				so,o = Wasm(uid, so)
 				return
 			}
 
@@ -173,20 +176,23 @@ func Wasm(uid uintptr,s RT) (o string) {//maxloop 超时重试
 	}
 
 	{//web
-		b, e := json.Marshal(s)
-		if e != nil {
-			wslog.L(`E: `,e)
-		}
-
 		for try:=5;try > 0 && ws.Len() == 0;try-=1 {//没有从池中取出
 			open.Run(webpath)
 			wslog.L(`I: `,`浏览器打开`,webpath)
-			time.Sleep(time.Second*time.Duration(3))
+			time.Sleep(time.Second*time.Duration(10))
 		}
 
 		if ws.Len() == 0 {
 			wslog.L(`W: `,`浏览器打开`,webpath,`失败，请手动打开`)
 			return
+		}
+
+		if !strings.Contains(so.R.Ua, `Test`) {
+			so.R.Ts = int(p.Sys().GetMTime())
+		}
+		b, e := json.Marshal(so)
+		if e != nil {
+			wslog.L(`E: `,e)
 		}
 
 		//获取websocket操作对象 发送
@@ -198,8 +204,8 @@ func Wasm(uid uintptr,s RT) (o string) {//maxloop 超时重试
 		for {
 			select {
 			case r :=<- rec_chan:
-				if r.Id != s.R.Id {break}//或许接收到之前的请求，校验Id字段
-				return r.S
+				if r.Id != so.R.Id {break}//或许接收到之前的请求，校验Id字段
+				return so, r.S
 			case <- time.After(time.Second*time.Duration(1)):
 				wslog.L(`E: `,`超时！响应>1s，确认保持`,webpath,`开启`)
 				return
@@ -222,7 +228,7 @@ func Close(uid uintptr){
 
 func test(uid uintptr) bool {
 	time.Sleep(time.Second*time.Duration(3))
-	if s := Wasm(uid, RT{
+	if _,s := Wasm(uid, RT{
 		R:R{
 		Id: "[9,371,1,22613059]",
 		Device: "[\"AUTO8216117272375373\",\"77bee604-b591-4664-845b-b69603f8c71c\"]",
@@ -230,7 +236,7 @@ func test(uid uintptr) bool {
 		Benchmark: "seacasdgyijfhofiuxoannn",
 		Time: 60,
 		Ts: 1611836642190,
-		Ua:`Mozilla/5.0 (X11; Linux x86_64; rv:84.0) Gecko/20100101 Firefox/84.0`,
+		Ua:`Mozilla/5.0 (X11; Linux x86_64; rv:84.0) Gecko/20100101 Firefox/84.0 Test`,
 		},
 		T: []int{2, 5, 1, 4},
 	});s != `e4249b7657c2d4a44955548eb814797d41ddd99bfdfa5974462b8c387d701b8c83898f6d7dde1772c67fad6a113d20c20e454be1d1627e7ea99617a8a1f99bd0` {

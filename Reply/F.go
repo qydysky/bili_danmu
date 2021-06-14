@@ -3,6 +3,8 @@ package reply
 import (
 	"fmt"
 	"os"
+	"io"
+	"io/fs"
 	"strconv"
 	"strings"
 	"sync"
@@ -18,11 +20,13 @@ import (
 	"bytes"
 	"encoding/base64"
 	// "runtime"
-	
+
+	"golang.org/x/text/encoding/simplifiedchinese"
+
 	c "github.com/qydysky/bili_danmu/CV"
 	F "github.com/qydysky/bili_danmu/F"
 	send "github.com/qydysky/bili_danmu/Send"
-	
+
 	p "github.com/qydysky/part"
 	funcCtrl "github.com/qydysky/part/funcCtrl"
 	idpool "github.com/qydysky/part/idpool"
@@ -32,6 +36,7 @@ import (
 	b "github.com/qydysky/part/buf"
 	s "github.com/qydysky/part/signal"
 	limit "github.com/qydysky/part/limit"
+	util "github.com/qydysky/part/util"
 
 	"github.com/christopher-dG/go-obs-websocket"
 )
@@ -125,10 +130,10 @@ func ShowRevf(){
 
 //Ass 弹幕转字幕
 type Ass struct {
-	
 	file string//弹幕ass文件名
 	startT time.Time//开始记录的基准时间
 	header string//ass开头
+	wrap func(io.Writer)(io.Writer)//编码
 }
 
 var (
@@ -155,19 +160,40 @@ Style: Default,,`+strconv.Itoa(Ass_font)+`,&H40FFFFFF,&H000017FF,&H80000000,&H40
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 `,
+wrap:simplifiedchinese.GB18030.NewEncoder().Writer,
+}
+
+func init(){
+	accept := map[string]bool{
+		`GB18030`:true,
+		`utf-8`:true,
+	}
+	if v,ok := c.K_v.LoadV("Ass编码").(string);ok{
+		if v1,ok := accept[v];ok && v1 {
+			c.Log.Base(`Ass`).L(`T: `,"编码:", v)
+			if v == `utf-8` {
+				ass.wrap = nil
+			}
+		}
+	}
 }
 
 //设定字幕文件名，为""时停止输出
 func Ass_f(file string, st time.Time){
 	ass.file = file
 	if file == "" {return}
-	c.Log.Base(`Ass`).L(`I: `,"保存至", ass.file + ".ass")
 
+	if rel, err := filepath.Rel(savestream.base_path, ass.file);err == nil {
+		c.Log.Base(`Ass`).L(`I: `,"保存到", rel + ".ass")
+	} else {
+		c.Log.Base(`Ass`).L(`I: `, "保存到", ass.file + ".ass")
+		c.Log.Base(`Ass`).L(`W: `, err)
+	}
 	p.File().FileWR(p.Filel{
 		File:ass.file + ".ass",
-		Write:true,
 		Loc:0,
 		Context:[]interface{}{ass.header},
+		WrapWriter:ass.wrap,
 	})
 	ass.startT = st
 }
@@ -187,12 +213,11 @@ func Assf(s string){
 	b += `Dialogue: 0,`
 	b += dtos(st) + `,` + dtos(et)
 	b += `,Default,,0,0,0,,{\fad(200,500)\blur3}` + s + "\n"
-
 	p.File().FileWR(p.Filel{
 		File:ass.file + ".ass",
-		Write:true,
 		Loc:-1,
 		Context:[]interface{}{b},
+		WrapWriter:ass.wrap,
 	})
 }
 
@@ -205,15 +230,23 @@ func dtos(t time.Duration) string {
 	return fmt.Sprintf("%d:%02d:%02d.%02d", int(math.Floor(t.Hours())), M, S, Ns)
 }
 
+//hls
+//https://datatracker.ietf.org/doc/html/draft-pantos-http-live-streaming
+
 //直播流保存
 type Savestream struct {
+	base_path string
 	path string
-	hls_stream []byte//发送给客户的m3u8字节
-	flv_front []byte//flv头及首tag
-	flv_stream *msgq.Msgq//发送给客户的flv流关键帧间隔片
+	hls_stream struct {
+		b []byte//发送给客户的m3u8字节
+		t time.Time
+	}
+	front []byte//flv头及首tag or hls的初始化m4s
+	stream *msgq.Msgq//发送给客户的flv流关键帧间隔片 or hls的fmp4片
 
-	max_m4s_hls int//m3u8最多有几个m4s
-	min_m4s_hls int
+	m4s_hls int//hls list 中的m4s数量
+	hlsbuffersize int//hls list缓冲m4s数量
+	hls_banlance_host bool//使用均衡hls服务器
 
 	wait *s.Signal
 	cancel *s.Signal
@@ -221,22 +254,29 @@ type Savestream struct {
 }
 
 type hls_generate struct {
+	hls_first_fmp4_name string 
 	hls_file_header []byte//发送给客户的m3u8不变头
-	m4s_list []*m4s_link_item//m4s列表
-	sync.RWMutex
+	m4s_list []*m4s_link_item//m4s列表 缓冲
 }
 
 type m4s_link_item struct {//使用指针以设置是否已下载
 	Url string// m4s链接
 	Base string//m4s文件名
 	Offset_line int//m3u8中的行下标
-	downloaded bool//该m4s是否已下载
+	status int//该m4s下载状态 s_noload:未下载 s_loading正在下载 s_fin下载完成 s_fail下载失败
+	isshow bool
 }
+//m4s状态
+const (
+	s_noload = iota
+	s_loading
+	s_fin
+	s_fail
+)
 
 var savestream = Savestream {
-	flv_stream:msgq.New(10),//队列最多保留10个关键帧间隔片
-	max_m4s_hls:15,
-	min_m4s_hls:5,
+	stream:msgq.New(10),//队列最多保留10个关键帧间隔片
+	m4s_hls:8,
 }
 
 func init(){
@@ -252,6 +292,18 @@ func init(){
 			return false
 		},
 	})
+	//base_path
+	if path,ok := c.K_v.LoadV("直播流保存位置").(string);ok{
+		if path,err := filepath.Abs(path);err == nil{
+			savestream.base_path = path+"/"
+		}
+	}
+	if v, ok := c.K_v.LoadV(`直播hls流缓冲`).(float64);ok && v > 0 {
+		savestream.hlsbuffersize = int(v)
+	}
+	if v, ok := c.K_v.LoadV(`直播hls流均衡`).(bool);ok {
+		savestream.hls_banlance_host = v
+	}
 }
 
 //已go func形式调用，将会获取直播流
@@ -275,41 +327,82 @@ func Savestreamf(){
 
 	if savestream.cancel.Islive() {return}
 
+	//random host load balance
+	Host_list := []string{}
+	if savestream.hls_banlance_host {
+		for _,v := range c.Live { 
+			url_struct,e := url.Parse(v)
+			if e != nil {continue}
+			Host_list = append(Host_list, url_struct.Hostname())
+		}
+	}
+
 	var (
 		no_found_link = errors.New("no_found_link")
-		hls_get_link = func(m3u8_url string,last_download *m4s_link_item) (need_download []*m4s_link_item,m3u8_file_addition []byte,expires int,err error) {
-			url_struct,e := url.Parse(m3u8_url)
-			if e != nil {
-				err = e
-				return
+		no_Modified = errors.New("no_Modified")
+		last_hls_Modified time.Time
+		hls_get_link = func(m3u8_urls []string,last_download *m4s_link_item) (need_download []*m4s_link_item,m3u8_file_addition []byte,expires int,err error) {
+			var (
+				r *reqf.Req
+				m3u8_url *url.URL
+			)
+			for index:=0;index<len(m3u8_urls);index+=1 {
+				r = reqf.New()
+				if tmp,e := url.Parse(m3u8_urls[index]);e != nil {
+					err = e
+					return
+				} else {
+					m3u8_url = tmp
+				}
+				
+				rval := reqf.Rval{
+					Url:m3u8_url.String(),
+					ConnectTimeout:2000,
+					ReadTimeout:1000,
+					Timeout:2000,
+					Proxy:c.Proxy,
+					Header:map[string]string{
+						`Host`: m3u8_url.Host,
+						`User-Agent`: `Mozilla/5.0 (X11; Linux x86_64; rv:83.0) Gecko/20100101 Firefox/83.0`,
+						`Accept`: `*/*`,
+						`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
+						`Accept-Encoding`: `gzip, deflate, br`,
+						`Origin`: `https://live.bilibili.com`,
+						`Connection`: `keep-alive`,
+						`Pragma`: `no-cache`,
+						`Cache-Control`: `no-cache`,
+						`Referer`:"https://live.bilibili.com/",
+					},
+				}
+				if !last_hls_Modified.IsZero() {
+					rval.Header[`If-Modified-Since`] = last_hls_Modified.Add(time.Second).Format("Mon, 02 Jan 2006 15:04:05 CST")
+				}
+				if e := r.Reqf(rval);e != nil {
+					if index+1<len(m3u8_urls) {continue}
+					err = e
+					return
+				}
+				break
 			}
 
-			query := url_struct.Query()
-
-			r := reqf.New()
-			if e := r.Reqf(reqf.Rval{
-				Url:m3u8_url,
-				Retry:4,
-				SleepTime:1000,
-				Proxy:c.Proxy,
-				Timeout:3*1000,
-				Header:map[string]string{
-					`Host`: url_struct.Host,
-					`User-Agent`: `Mozilla/5.0 (X11; Linux x86_64; rv:83.0) Gecko/20100101 Firefox/83.0`,
-					`Accept`: `*/*`,
-					`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
-					`Accept-Encoding`: `gzip, deflate, br`,
-					`Origin`: `https://live.bilibili.com`,
-					`Connection`: `keep-alive`,
-					`Pragma`: `no-cache`,
-					`Cache-Control`: `no-cache`,
-					`Referer`:"https://live.bilibili.com/",
-				},
-			});e != nil {
-				err = e
+			if usedt := r.UsedTime.Seconds();usedt > 3000 {
+				l.L(`I: `, `hls列表下载慢`, usedt, `ms`)
+			}
+			if r.Response.StatusCode == http.StatusNotModified {
+				l.L(`T: `, `hls未更改`)
+				err = no_Modified
 				return
 			}
+			//last_hls_Modified
+			if t,ok := r.Response.Header[`Last-Modified`];ok && len(t) > 0 {
+				if lm,e := time.Parse("Mon, 02 Jan 2006 15:04:05 CST", t[0]);e == nil {
+					last_hls_Modified = lm
+				} else {
+					l.L(`T: `, e)
+				}
+			}
 
+			query := m3u8_url.Query()
 			trid := query.Get("trid")
 			expires,_ = strconv.Atoi(query.Get("expires"))
 			buf := r.Respon
@@ -318,9 +411,9 @@ func Savestreamf(){
 			if len(buf) != 0 && !bytes.Contains(buf, []byte("#")) {
 				buf,err = base64.StdEncoding.DecodeString(string(buf))
 				if err != nil {
+					l.L(`W: `, err, string(buf))
 					return
 				}
-				// fmt.Println(`base64`)
 			}
 
 			var m4s_links []*m4s_link_item
@@ -345,7 +438,7 @@ func Savestreamf(){
 					return
 				}
 				m4s_links = append(m4s_links, &m4s_link_item{
-					Url:url_struct.ResolveReference(u).String(),
+					Url:m3u8_url.ResolveReference(u).String(),
 					Base:m4s_link,
 					Offset_line:i,
 				})
@@ -411,11 +504,7 @@ func Savestreamf(){
 		F.Get(`Live`)
 		if len(c.Live)==0 {break}
 
-		if path,ok := c.K_v.LoadV("直播流保存位置").(string);ok{
-			if path,err := filepath.Abs(path);err == nil{
-				savestream.path = path+"/"
-			}
-		}
+		savestream.path = savestream.base_path
 
 		savestream.path += strconv.Itoa(c.Roomid) + "_" + time.Now().Format("2006_01_02_15-04-05-000")
 
@@ -463,9 +552,14 @@ func Savestreamf(){
 		}
 
 		if strings.Contains(c.Live[0],"flv") {
-			l.L(`I: `,"保存到", savestream.path + ".flv")
+			if rel, err := filepath.Rel(savestream.base_path, savestream.path);err == nil {
+				l.L(`I: `,"保存到", rel + ".flv")
+			} else {
+				l.L(`I: `,"保存到", savestream.path + ".flv")
+				l.L(`W: `, err)
+			}
 			Ass_f(savestream.path, time.Now())
-			
+
 			// no expect qn
 			exit_chan := s.Init()
 			go func(){
@@ -480,7 +574,7 @@ func Savestreamf(){
 				// sync_buf []byte
 				close func()
 			}
-			
+
 			//chans
 			var (
 				reqs = msgq.New(10)
@@ -504,7 +598,7 @@ func Savestreamf(){
 				var (
 					reqs_used_id []id_close
 					reqs_remove_id []id_close
-					
+
 					reqs_keyframe [][][]byte
 
 					reqs_func_block funcCtrl.BlockFunc
@@ -513,26 +607,26 @@ func Savestreamf(){
 				reqs.Pull_tag(map[string]func(interface{})(bool){
 					`req`:func(data interface{})(bool){
 						req,ok := data.(link_stream)
-	
+
 						if !ok {return false}
-	
+
 						if len(req.keyframe) == 0 {
 							// fmt.Println(`没有keyframe，退出`)
 							req.close()
 							return false
 						}
 						// fmt.Println(`处理req_id`,req.id.Id,`keyframe_len`,len(req.keyframe))
-	
+
 						if offset,_ := out.Seek(0,1);offset == 0 {
 							// fmt.Println(`添加头`,len(req.front))
 							//stream
-							savestream.flv_front = req.front
+							savestream.front = req.front
 							out.Write(req.front)
 						}
-	
+
 						reqs_func_block.Block()
 						defer reqs_func_block.UnBlock()
-	
+
 						for i:=0;i<len(reqs_remove_id);i+=1 {
 							if reqs_remove_id[i].id == req.id.Id {
 								req.close()
@@ -565,7 +659,7 @@ func Savestreamf(){
 
 							for i:=0;i<len(req.keyframe);i+=1 {
 								//stream
-								savestream.flv_stream.Push_tag("stream",req.keyframe[i])
+								savestream.stream.Push_tag("stream",req.keyframe[i])
 								out.Write(req.keyframe[i])
 							}
 							return false
@@ -575,7 +669,7 @@ func Savestreamf(){
 							reqs_keyframe = append(reqs_keyframe, [][]byte{})
 						}
 						reqs_keyframe[reqs_keyframe_index] = append(reqs_keyframe[reqs_keyframe_index], req.keyframe...)
-	
+
 						// fmt.Println(`merge,添加reqs_keyframe数据`,reqs_keyframe_index,len(reqs_keyframe[reqs_keyframe_index]))
 
 						for _,v := range reqs_keyframe {
@@ -584,7 +678,7 @@ func Savestreamf(){
 								return false
 							}
 						}
-	
+
 						if success_last_keyframe_timestamp,b,merged := Merge_stream(reqs_keyframe,last_keyframe_timestamp);merged == 0 {
 							// fmt.Println(`merge失败，reqs_keyframe[1]`,reqs_keyframe[1][0][:11],reqs_keyframe[1][len(reqs_keyframe[1])-1][:11])
 							size := 0
@@ -598,29 +692,28 @@ func Savestreamf(){
 
 								for i:=0;i<len(req.keyframe);i+=1 {
 									//stream
-									savestream.flv_stream.Push_tag("stream",req.keyframe[i])
+									savestream.stream.Push_tag("stream",req.keyframe[i])
 									out.Write(req.keyframe[i])
 								}
-								// reqs_keyframe[0] = [][]byte{reqs_keyframe[0][len(reqs_keyframe[0])-1]} 
+								// reqs_keyframe[0] = [][]byte{reqs_keyframe[0][len(reqs_keyframe[0])-1]}
 							} else if size > 4 {
 								if reqs_keyframe_index == len(reqs_used_id)-1 {
 									l.L(`T: `,"flv强行拼合")
-								
+
 									for i:=0;i<reqs_keyframe_index;i+=1 {
 										reqs_remove_id = append(reqs_remove_id, reqs_used_id[i])
 										reqs_used_id[i].close()
 									}
 									reqs_used_id = reqs_used_id[reqs_keyframe_index:]
-	
+
 									last_keyframe_timestamp,_ = Keyframe_timebase(req.keyframe,last_keyframe_timestamp)
-	
-	
+
 									for i:=0;i<len(req.keyframe);i+=1 {
 										//stream
-										savestream.flv_stream.Push_tag("stream",req.keyframe[i])
+										savestream.stream.Push_tag("stream",req.keyframe[i])
 										out.Write(req.keyframe[i])
 									}
-	
+
 									reqs_keyframe = [][][]byte{}
 								} else {
 									req.close()
@@ -632,20 +725,20 @@ func Savestreamf(){
 							l.L(`T: `,"flv拼合成功")
 
 							last_keyframe_timestamp = success_last_keyframe_timestamp
-	
+
 							for i:=0;i<merged;i+=1 {
 								reqs_remove_id = append(reqs_remove_id, reqs_used_id[i])
 								reqs_used_id[i].close()
 							}
 							reqs_keyframe = [][][]byte{}
-							
+
 							reqs_used_id = reqs_used_id[merged:]
 
 							//stream
-							savestream.flv_stream.Push_tag("stream",b)
+							savestream.stream.Push_tag("stream",b)
 							out.Write(b)
 						}
-	
+
 						return false
 					},
 					// 11区	1
@@ -702,7 +795,7 @@ func Savestreamf(){
 					} else if r.Response.StatusCode != 200 {
 						l.L(`W: `,`请求退出`,r.Id(),e,r.Response.Status,string(r.Respon))
 					} else {
-						l.L(`W: `,`请求退出`,r.Id(),e,r.Response.Status)
+						l.L(`W: `,`请求退出`,r.Id())
 					}
 				}(req,reqf.Rval{
 					Url:link,
@@ -716,7 +809,7 @@ func Savestreamf(){
 					ReadTimeout:5*1000,
 					ConnectTimeout:10*1000,
 				})
-				
+
 				//返回通道
 				var item = link_stream{
 						close:req.Close,
@@ -743,34 +836,34 @@ func Savestreamf(){
 								// reqs.Push_tag(`closereq`,*item)
 								return
 							}
-	
+
 							buf = append(buf, b...)
-	
+
 							if len(buf) < skip_buf_size {break}
-	
+
 							front,list,_ := Seach_stream_tag(buf)
-	
+
 							if len(front) != 0 && len(item.front) == 0 {
 								// fmt.Println(item.id.Id,`获取到header`,len(front))
 								item.front = make([]byte,len(front))
 								copy(item.front, front)
 							}
-	
+
 							if len(list) == 0 || len(item.front) == 0 {
 								// fmt.Println(`再次查询bufsize`,skip_buf_size)
 								skip_buf_size = 2*len(buf)
 								break
 							}
-	
+
 							item.keyframe = list
-	
+
 							{
 								last_keyframe := list[len(list)-1]
 								cut_offset := bytes.LastIndex(buf, last_keyframe)+len(last_keyframe)
 								// fmt.Printf("buf截断 当前%d=>%d 下一header %b\n",len(buf),len(buf)-cut_offset,buf[:11])
 								buf = buf[cut_offset:]
 							}
-	
+
 							skip_buf_size = len(buf)+len(list[0])
 							reqs.Push_tag(`req`,*item)
 						}
@@ -798,92 +891,225 @@ func Savestreamf(){
 						break
 					}
 				}
-				
+
 				l.L(`I: `,"flv关闭，开始新连接")
-	
+
 				//即将过期，刷新c.Live
 				F.Get(`Liveing`)
 				if !c.Liveing {break}
 				F.Get(`Live`)
 				if len(c.Live)==0 {break}
 			}
-			
+
 			exit_chan.Done()
 			reqs.Push_tag(`close`,nil)
 			out.Close()
-			
-			l.L(`I: `,"结束")
-			Ass_f("", time.Now())//ass
-			savestream.flv_front = []byte{}//flv头及首tag置空
+
 			p.FileMove(savestream.path+".flv.dtmp", savestream.path+".flv")
 		} else {
 			savestream.path += "/"
-			l.L(`I: `,"保存到", savestream.path)
+			if rel, err := filepath.Rel(savestream.base_path, savestream.path);err == nil {
+				l.L(`I: `,"保存到", rel+`/0.m3u8`)
+			} else {
+				l.L(`I: `,"保存到", savestream.path)
+				l.L(`W: `, err)
+			}
 			Ass_f(savestream.path+"0", time.Now())
 
 			var (
+				hls_msg = msgq.New(20)
 				hls_gen hls_generate
-				exit_chan = make(chan struct{})//退出监听
+				DISCONTINUITY int
+				SEQUENCE int
 			)
-			{//hls stream gen 用户m3u8生成
-				go func(){
-					for {
-						select {
-						case <- time.After(time.Second):;
-						case <- exit_chan:
-							savestream.hls_stream = []byte{}//退出置空
-							return
+
+			//hls stream gen 用户m3u8生成
+			go func(){
+				per_second := time.Tick(time.Second)
+				for {
+					select {
+					case <- savestream.cancel.WaitC():return;//exit
+					case now :=<- per_second:hls_msg.Push_tag(`clock`, now);
+					}
+				}
+			}()
+
+			//hls stream gen 用户m3u8生成
+			hls_msg.Pull_tag(map[string]func(interface{})(bool){
+				`header`:func(d interface{})(bool){
+					if b,ok := d.([]byte);ok {
+						hls_gen.hls_file_header = b
+					}
+					return false
+				},
+				`body`:func(d interface{})(bool){
+					links,ok := d.([]*m4s_link_item)
+					if !ok {return false}
+					//remove hls first m4s
+					if len(links) > 0 &&
+						len((*links[0]).Base) > 0 &&
+						(*links[0]).Base[0] == 104 {links = links[1:]}
+
+					hls_gen.m4s_list = append(hls_gen.m4s_list, links...)
+					
+					return false
+				},
+				`clock`:func(now interface{})(bool){
+					//buffer
+					if len(hls_gen.m4s_list) - savestream.hlsbuffersize < 0 {
+						return false
+					}
+
+					//add block
+					var (
+						m4s_num int
+						has_DICONTINUITY bool
+						res []byte
+						threshold = savestream.m4s_hls
+					)
+					if threshold < 3 {threshold=3}
+					{
+						//m4s list
+						m4s_list_b := []byte{}
+						for k,v := range hls_gen.m4s_list {
+							if v.status != s_fin {
+								//#EXT-X-DISCONTINUITY-SEQUENCE
+								//reset hls lists
+								if !has_DICONTINUITY && m4s_num < threshold {
+									m4s_list := append(util.SliceCopy(hls_gen.m4s_list[:k]).([]*m4s_link_item), &m4s_link_item{
+										Base:"DICONTINUITY",
+										status:s_fin,
+										isshow:true,
+									})
+									hls_gen.m4s_list = append(m4s_list, hls_gen.m4s_list[k:]...)
+									m4s_list_b = append(m4s_list_b, []byte("#EXT-X-DICONTINUITY\n")...)
+								}
+								break
+							}
+
+							v.isshow = true
+
+							if v.Base == "DICONTINUITY" {
+								has_DICONTINUITY = true
+								m4s_list_b = append(m4s_list_b, []byte("#EXT-X-DICONTINUITY\n")...)
+								continue
+							}
+
+							if m4s_num >= savestream.m4s_hls {break}
+
+							m4s_num += 1
+							// if m4s_num == 1 {SEQUENCE = strings.ReplaceAll(v.Base, ".m4s", "")}
+							m4s_list_b = append(m4s_list_b, []byte("#EXTINF:1,"+v.Base+"\n")...)
+							m4s_list_b = append(m4s_list_b, v.Base...)
+							m4s_list_b = append(m4s_list_b, []byte("\n")...)
 						}
-						//在设置下载标志时，需要进行操作，故加锁
-						hls_gen.Lock()
-						var res []byte
-						//add header
-						res = hls_gen.hls_file_header
-		
-						//add EXT-X-MEDIA-SEQUENCE
-						m4s_list := hls_gen.m4s_list
-						if (*m4s_list[0]).Base[0] == 104 {
-							m4s_list = m4s_list[1:]
+
+						//have useable m4s
+						if m4s_num != 0 {
+							//add header
+							res = hls_gen.hls_file_header
+							//add #EXT-X-DISCONTINUITY-SEQUENCE
+							res = append(res, []byte("#EXT-X-DISCONTINUITY-SEQUENCE:"+strconv.Itoa(DISCONTINUITY)+"\n")...)
+							//add #EXT-X-MEDIA-SEQUENCE
+							res = append(res, []byte("#EXT-X-MEDIA-SEQUENCE:"+strconv.Itoa(SEQUENCE)+"\n")...)
+							//add #INFO
+							res = append(res, []byte(fmt.Sprintf("#INFO-BUFFER:%d/%d\n",m4s_num,len(hls_gen.m4s_list)))...)
+							//add m4s
+							res = append(res, m4s_list_b...)
+							//去除最后一个换行
+							res = res[:len(res)-1]
 						}
-						if len(m4s_list) > savestream.max_m4s_hls {//too much
-							cut_offset := 0
-							for i:=0;i<len(m4s_list);i+=1 {
-								if !(*m4s_list[i]).downloaded {break}
-								if i > savestream.min_m4s_hls {
-									cut_offset = i-savestream.min_m4s_hls
+					}
+
+					//try to jump the hole
+					var skip_del bool
+					if m4s_num < threshold {
+						var (
+							index int//the first useable fmp4 index of section
+							DICONTINUITY_num int
+							catch bool//catch useable fmp4?
+						)
+						for i:=0;i<len(hls_gen.m4s_list);i+=1 {
+							if hls_gen.m4s_list[i].status != s_fin {
+								catch = false
+								continue
+							}
+							if !catch {
+								index = i
+							} else {
+								if hls_gen.m4s_list[i].Base == "DICONTINUITY" {
+									DICONTINUITY_num += 1
+								} else if i-index-DICONTINUITY_num > threshold {
+									//find a nice index, remove all bad fmp4s
+									skip := 0
+									skip_del = true
+									for ;index>=0;index-=1 {
+										if hls_gen.m4s_list[index].status == s_fin {continue}
+										skip+=1
+										hls_gen.m4s_list = append(hls_gen.m4s_list[:index],hls_gen.m4s_list[index+1:]...)
+									}
+									l.L(`I: `,"卡顿，跳过",skip,"个tag")
+									break
 								}
 							}
-							hls_gen.m4s_list = hls_gen.m4s_list[cut_offset:]
+							catch = true
 						}
-						res = append(res, []byte((*m4s_list[0]).Base[:len((*m4s_list[0]).Base)-4])...)
-						res = append(res, []byte("\n")...)
-		
-						//add m4s block
-						for i:=0;i<len(m4s_list);i+=1 {
-							if !(*m4s_list[i]).downloaded {break}
-							res = append(res, []byte("#EXTINF:1\n")...)
-							res = append(res, (*m4s_list[i]).Base...)
-							res = append(res, []byte("\n")...)
-						}
-						hls_gen.Unlock()
-		
-						//去除最后一个换行
-						if len(res) > 0 {res = res[:len(res)-1]}
-
-						//设置到全局变量，方便流服务器获取
-						savestream.hls_stream = res
 					}
-				}()
-			}
 
-			type miss_download_T struct{
-				List []*m4s_link_item
-				sync.RWMutex
-			}
+					//设置到全局变量，方便流服务器获取
+					if len(res) != 0 {savestream.hls_stream.b = res}
+					savestream.hls_stream.t,_ = now.(time.Time)
+
+					//del
+					for del_num:=1;!skip_del&&del_num > 0;hls_gen.m4s_list = hls_gen.m4s_list[1:] {
+						del_num -= 1
+						if !hls_gen.m4s_list[0].isshow {continue}
+						//#EXT-X-DICONTINUITY
+						if hls_gen.m4s_list[0].Base == "DICONTINUITY" {
+							DISCONTINUITY += 1
+							continue
+						}
+						//#EXTINF
+						if hls_gen.m4s_list[0].isshow {
+							SEQUENCE += 1
+
+							{//stream hls2mp4
+								var buf []byte
+								//stream front
+								if len(savestream.front) == 0 {
+									buf,_,e := get_m4s_cache(savestream.path+hls_gen.hls_first_fmp4_name)
+									if e == nil {
+										savestream.front = buf
+									} else {
+										l.L(`W: `,`推送mp4流错误，无法读取文件` ,e)
+									}
+								}
+								//stream body
+								buf,_,e := get_m4s_cache(savestream.path+hls_gen.m4s_list[0].Base)
+								if e == nil {
+									savestream.stream.Push_tag(`stream`, buf)
+								} else {
+									l.L(`W: `,`推送mp4流错误，无法读取文件` ,e)
+								}
+							}
+						}
+					}
+
+					return false
+				},
+				`close`:func(d interface{})(bool){
+					savestream.hls_stream.b = []byte{}//退出置空
+					savestream.hls_stream.t = time.Now()
+					return true
+				},
+			})
+
 			var (
 				last_download *m4s_link_item
-				miss_download miss_download_T
-				download_limit = limit.New(1,200,0)//download m4s per 200ms
+				miss_download = make(chan *m4s_link_item,100)
+				download_limit = funcCtrl.BlockFuncN{
+					Max:2,
+				}//limit
 			)
 			expires := time.Now().Add(time.Minute*2).Unix()
 
@@ -891,29 +1117,79 @@ func Savestreamf(){
 				path_front string
 				path_behind string
 			)
-			
-			for savestream.cancel.Islive() {
-				links,file_add,exp,e := hls_get_link(c.Live[0],last_download)
 
-				if e != nil && !reqf.IsTimeout(e) {
-					l.L(`W: `,e)
+			for {
+				//退出，等待下载完成
+				if !savestream.cancel.Islive() {
+					l.L(`I: `,"退出，等待片段下载")
+					download_limit.None()
+					download_limit.UnNone()
+
+					links := []*m4s_link_item{}
+					//下载出错的
+					for len(miss_download) != 0 {
+						links = append(links, <-miss_download)
+					}
+
+					for k,v :=range links {
+						l.L(`I: `,"正在下载最后片段:",k+1,"/",len(links))
+						v.status = s_loading
+						r := reqf.New()
+						if e := r.Reqf(reqf.Rval{
+							Url:v.Url,
+							SaveToPath:savestream.path+v.Base,
+							ConnectTimeout:5000,
+							ReadTimeout:1000,
+							Retry: 1,
+							Proxy:c.Proxy,
+						}); e != nil && !errors.Is(e, io.EOF) {
+							l.L(`I: `,e)
+							v.status = s_fail
+						} else {
+							if usedt := r.UsedTime.Seconds();usedt > 700 {
+								l.L(`I: `, `hls切片下载慢`, usedt, `ms`)
+							}
+							v.status = s_fin
+						}
+					}
+					//退出
 					break
+				}
+
+				links,file_add,exp,e := hls_get_link(c.Live,last_download)
+				if e != nil {
+					if e == no_Modified {
+						time.Sleep(time.Duration(2)*time.Second)
+						continue
+					} else if reqf.IsTimeout(e) || strings.Contains(e.Error(), "x509") {
+						l.L(`I: `,e)
+						continue
+					} else {
+						l.L(`W: `,e)
+						break
+					}
 				}
 
 				//first block 获取并设置不变头
 				if last_download == nil {
 					var res []byte
 					{
-						fin_offset := bytes.LastIndex(file_add, []byte("EXT-X-MEDIA-SEQUENCE:"))+21
-						res = file_add[:fin_offset]
+						for row,i:=bytes.SplitAfter(file_add, []byte("\n")),0;i<len(row);i+=1 {
+							if bytes.Contains(row[i], []byte("#EXT")) {
+								//set stream front
+								if op := bytes.Index(row[i], []byte(`#EXT-X-MAP:URI="`));op != -1 {
+									hls_gen.hls_first_fmp4_name = string(row[i][op+16:len(row[i])-2])
+								}
+								if bytes.Contains(row[i], []byte("#EXT-X-MEDIA-SEQUENCE")) || bytes.Contains(row[i], []byte("#EXTINF")){continue}
+								res = append(res, row[i]...)
+							}
+						}
 					}
-					hls_gen.Lock()
-					hls_gen.hls_file_header = res
-					hls_gen.Unlock()
+					hls_msg.Push_tag(`header`, res)
 				}
 
 				if len(links) == 0 {
-					time.Sleep(time.Second)
+					time.Sleep(time.Duration(2)*time.Second)
 					continue
 				}
 
@@ -933,7 +1209,7 @@ func Savestreamf(){
 						} else {
 							l.L(`I: `,`猜测hls`,previou,`-`,now,`(`,diff,`)`)
 						}
-	
+
 						{//file_add
 							for i:=now-1;i>previou;i-=1 {
 								file_add = append([]byte(strconv.Itoa(i)+".m4s"),file_add...)
@@ -948,19 +1224,6 @@ func Savestreamf(){
 								}
 								path_front = u.Scheme+"://"+path.Dir(u.Host+u.Path)+"/"
 								path_behind = "?"+u.RawQuery
-							}
-							
-							//优先下载出错的，以尽快恢复客户流播放
-							//下载出错的
-							miss_download.RLock()
-							if len(miss_download.List) != 0 {
-								miss_download.RUnlock()
-								miss_download.Lock()
-								links = append(miss_download.List, links...)
-								miss_download.List = []*m4s_link_item{}
-								miss_download.Unlock()
-							} else {
-								miss_download.RUnlock()
 							}
 
 							//出错期间没能获取到的
@@ -977,34 +1240,84 @@ func Savestreamf(){
 					}
 				}
 
+				if len(links) > 10 {
+					l.L(`T: `,`等待下载切片：`,len(links))
+				} else if len(links) > 100 {
+					l.L(`W: `,`重试,等待下载切片：`,len(links))
+
+					if F.Get(`Liveing`);!c.Liveing {break}
+					if F.Get(`Live`);len(c.Live) == 0 {break}
+
+					// set expect
+					expires = time.Now().Add(time.Minute*2).Unix()
+					continue
+				}
+
+				//将links传送给hls生成器
+				hls_msg.Push_tag(`body`, links)
+
 				f := p.File()
 				f.FileWR(p.Filel{
 					File:savestream.path+"0.m3u8.dtmp",
-					Write:true,
 					Loc:-1,
 					Context:[]interface{}{file_add},
 				})
 
 				for i:=0;i<len(links);i+=1 {
+					//fmp4切片下载
 					go func(link *m4s_link_item,path string){
-						download_limit.TO()
-						r := reqf.New()
-						if e := r.Reqf(reqf.Rval{
-							Url:(*link).Url,
-							Retry:3,
-							SleepTime:1000,
-							SaveToPath:path+(*link).Base,
-							Timeout:3*1000,
-							Proxy:c.Proxy,
-						}); e != nil{
-							l.L(`I: `,e,`将重试！`)
-							//避免影响后续猜测
-							(*link).Offset_line = 0
-							miss_download.Lock()
-							miss_download.List = append(miss_download.List, link)
-							miss_download.Unlock()
-						} else {
-							(*link).downloaded = true
+						//use url struct
+						var link_url *url.URL
+						{
+							if tmp,e := url.Parse(link.Url);e != nil {
+								l.L(`E: `, e)
+								return
+							} else {link_url = tmp}
+						}
+
+						download_limit.Block()
+						defer download_limit.UnBlock()
+
+						link.status = s_loading
+						for index:=0;index<len(Host_list);index+=1 {
+							link_url.Host = Host_list[index]
+
+							r := reqf.New()
+							if e := r.Reqf(reqf.Rval{
+								Url: link_url.String(),
+								SaveToPath: path + link.Base,
+								ConnectTimeout: 2000,
+								ReadTimeout: 1000,
+								Timeout: 2000,
+								Proxy: c.Proxy,
+							});e != nil{
+								//try other host
+								if index+1<len(Host_list) {continue}
+
+								if reqf.IsTimeout(e) || strings.Contains(e.Error(), "x509") {
+									l.L(`T: `, link.Base, `将重试！`)
+									//避免影响后续猜测
+									link.Offset_line = 0
+									go func(link *m4s_link_item){miss_download <- link}(link)
+								} else {
+									l.L(`W: `, e)
+									link.status = s_fail
+								}
+							} else {
+								if usedt := r.UsedTime.Seconds();usedt > 700 {
+									l.L(`I: `, `hls切片下载慢`, usedt, `ms`)
+								}
+								link.status = s_fin
+								//存入cache
+								if _,ok := m4s_cache.Load(path + link.Base);!ok{
+									m4s_cache.Store(path + link.Base, r.Respon)
+									go func(){//移除
+										time.Sleep(time.Second*time.Duration(savestream.hlsbuffersize+savestream.m4s_hls+2))
+										m4s_cache.Delete(path + link.Base)
+									}()
+								}
+								break
+							}
 						}
 					}(links[i],savestream.path)
 
@@ -1012,26 +1325,14 @@ func Savestreamf(){
 					if links[i].Offset_line > 0 {
 						last_download = links[i]
 					}
-
-					{//store m4s to hls_gen
-						hls_gen.Lock()
-						hls_gen.m4s_list = append(hls_gen.m4s_list, links[i])
-						hls_gen.Unlock()
-					}
 				}
 
 				//m3u8_url 将过期
 				if p.Sys().GetSTime()+60 > expires {
-					F.Get(`Liveing`)
-					if !c.Liveing {break}
-	
-					F.Get(`Live`)
-					if len(c.Live)==0 {break}
-
-					// no expect qn
-					if c.Live_want_qn < c.Live_qn {
-						expires = time.Now().Add(time.Minute*2).Unix()
-					}
+					if F.Get(`Liveing`);!c.Liveing {break}
+					if F.Get(`Live`);len(c.Live) == 0 {break}
+					// set expect
+					expires = time.Now().Add(time.Minute*2).Unix()
 				} else {
 					time.Sleep(time.Second)
 				}
@@ -1041,18 +1342,20 @@ func Savestreamf(){
 				f := p.File()
 				f.FileWR(p.Filel{
 					File:savestream.path+"0.m3u8.dtmp",
-					Write:true,
 					Loc:-1,
 					Context:[]interface{}{"#EXT-X-ENDLIST"},
 				})
 				p.FileMove(savestream.path+"0.m3u8.dtmp", savestream.path+"0.m3u8")
 			}
-			l.L(`I: `,"结束")
-			close(exit_chan)//hls_stream
-			Ass_f("", time.Now())//ass
+
+			hls_msg.Push_tag(`close`, nil)
 		}
 		//set ro ``
 		savestream.path = ``
+		savestream.front = []byte{}//flv头及首tag置空
+		savestream.stream.Push_tag("close", nil)
+		Ass_f("", time.Now())//ass
+		l.L(`I: `,"结束")
 
 		if !savestream.cancel.Islive() {
 			// l.L(`I: `,"退出")
@@ -1110,7 +1413,7 @@ func Obsf(on bool){
 			p.Exec().Start(exec.Command(obs.Prog))
 			p.Sys().Timeoutf(3)
 		}
-		
+
 		// Connect a client.
 		if err := obs.c.Connect(); err != nil {
 			l.L(`E: `,err)
@@ -1204,7 +1507,7 @@ func Autobanf(s string) bool {
 		if pt <= 5 {return false}//字数过少去除
 		res = append(res, pt)
 	}
-	{	
+	{
 		pt := selfcross(s);
 		// if pt > 0.5 {return false}//自身重复高去除
 		// res = append(res, pt)
@@ -1226,6 +1529,7 @@ func Autobanf(s string) bool {
 type Danmuji struct {
 	Buf map[string]string
 	Inuse_auto bool
+	reflect_limit *limit.Limit
 
 	mute bool
 }
@@ -1235,20 +1539,28 @@ var danmuji = Danmuji{
 	Buf:map[string]string{
 		"弹幕机在么":"在",
 	},
+	reflect_limit:limit.New(1,4000,8000),
 }
 
 func init(){//初始化反射型弹幕机
 	buf := b.New()
 	buf.Load("config/config_auto_reply.json")
 	for k,v := range buf.B {
+		if k == v {continue}
 		danmuji.Buf[k] = v.(string)
 	}
 }
 
 func Danmujif(s string) {
 	if !IsOn("反射弹幕机") {return}
-	if v, ok := danmuji.Buf[s]; ok {
-		Msg_senddanmu(v)
+
+	if danmuji.reflect_limit.TO() {return}
+
+	for k,v := range danmuji.Buf {
+		if strings.Contains(s, k) {
+			Msg_senddanmu(v)
+			break
+		}
 	}
 }
 
@@ -1277,6 +1589,7 @@ func Danmuji_auto() {
 }
 
 type Autoskip struct {
+	roomid int
 	buf map[string]Autoskip_item
 	sync.Mutex
 	now uint
@@ -1300,14 +1613,36 @@ func init(){
 			if len(autoskip.buf) == 0 {continue}
 			autoskip.now += 1
 			autoskip.Lock()
+			if autoskip.roomid != c.Roomid {
+				autoskip.buf = make(map[string]Autoskip_item)
+				autoskip.roomid = c.Roomid
+				flog.Base_add(`弹幕合并`).L(`T: `,`房间更新:`,autoskip.roomid)
+				autoskip.Unlock()
+				continue
+			}
 			for k,v := range autoskip.buf{
 				if v.Exprie <= autoskip.now {
 					delete(autoskip.buf,k)
 					{//超时显示
 						if v.Num > 3 {
-							Msg_showdanmu(nil, strconv.Itoa(int(v.Num)) + " x " + k,`0multi`)
+							c.Danmu_Main_mq.Push_tag(`tts`,Danmu_mq_t{//传入消息队列
+								uid:`0multi`,
+								m:map[string]string{
+									`{num}`:strconv.Itoa(int(v.Num)),
+									`{msg}`:k,
+								},
+							})
+							Msg_showdanmu(Danmu_item{
+								msg:strconv.Itoa(int(v.Num)) + " x " + k,
+								uid:`0multi`,
+								roomid:autoskip.roomid,
+							})
 						} else if v.Num > 1 {
-							Msg_showdanmu(nil, strconv.Itoa(int(v.Num)) + " x " + k,`0default`)
+							Msg_showdanmu(Danmu_item{
+								msg:strconv.Itoa(int(v.Num)) + " x " + k,
+								uid:`0default`,
+								roomid:autoskip.roomid,
+							})
 						}
 					}
 				}
@@ -1317,7 +1652,7 @@ func init(){
 				for k,v := range autoskip.buf {tmp[k] = v}
 				autoskip.buf = tmp
 			}
-			autoskip.Unlock()			
+			autoskip.Unlock()
 		}
 	}()
 }
@@ -1326,6 +1661,12 @@ func Autoskipf(s string) uint {
 	if !IsOn("弹幕合并") || s == ""{return 0}
 	autoskip.Lock()
 	defer autoskip.Unlock()
+	if autoskip.roomid != c.Roomid {
+		autoskip.buf = make(map[string]Autoskip_item)
+		autoskip.roomid = c.Roomid
+		flog.Base_add(`弹幕合并`).L(`T: `,`房间更新:`,autoskip.roomid)
+		return 0
+	}
 	{//验证是否已经存在
 		if v,ok := autoskip.buf[s];ok && autoskip.now < v.Exprie{
 			autoskip.buf[s] = Autoskip_item{
@@ -1345,12 +1686,11 @@ func Autoskipf(s string) uint {
 }
 
 type Lessdanmu struct {
+	roomid int
 	buf []string
 	limit *limit.Limit
 	max_num int
 	threshold float32
-
-	sync.RWMutex
 }
 
 var lessdanmu = Lessdanmu{
@@ -1358,37 +1698,22 @@ var lessdanmu = Lessdanmu{
 }
 
 func init() {
-	if max_num,ok := c.K_v.LoadV(`每10秒显示弹幕数`).(float64);ok && int(max_num) >= 1 {
-		flog.Base_add(`更少弹幕`).L(`T: `,`每10秒弹幕数:`,int(max_num))
+	if max_num,ok := c.K_v.LoadV(`每秒显示弹幕数`).(float64);ok && int(max_num) >= 1 {
+		flog.Base_add(`更少弹幕`).L(`T: `,`每秒弹幕数:`,int(max_num))
 		lessdanmu.max_num = int(max_num)
-		lessdanmu.limit = limit.New(int(max_num),10000,0)
-		go func(){
-			//等待启动
-			for lessdanmu.limit.PTK() == lessdanmu.max_num {
-				time.Sleep(time.Second*3)
-			}
-	
-			for {
-				time.Sleep(time.Second*10)
-	
-				lessdanmu.Lock()
-				if ptk := lessdanmu.limit.PTK();ptk == lessdanmu.max_num {
-					if lessdanmu.threshold > 0.03 {
-						lessdanmu.threshold -= 0.03
-					}
-				} else if ptk == 0 {
-					if lessdanmu.threshold < 0.97 {
-						lessdanmu.threshold += 0.03
-					}
-				}
-				lessdanmu.Unlock()
-			}
-		}()
+		lessdanmu.limit = limit.New(int(max_num),1000,0)//timeout right now
 	}
 }
 
 func Lessdanmuf(s string) (show bool) {
 	if !IsOn("相似弹幕忽略") {return true}
+	if lessdanmu.roomid != c.Roomid {
+		lessdanmu.buf = nil
+		lessdanmu.roomid = c.Roomid
+		lessdanmu.threshold = 0.7
+		flog.Base_add(`更少弹幕`).L(`T: `,`房间更新:`,lessdanmu.roomid)
+		return true
+	}
 	if len(lessdanmu.buf) < 20 {
 		lessdanmu.buf = append(lessdanmu.buf, s)
 		return true
@@ -1396,18 +1721,16 @@ func Lessdanmuf(s string) (show bool) {
 
 	o := cross(s, lessdanmu.buf)
 	if o == 1 {return false}//完全无用
-	
+
 	Jiezouf(lessdanmu.buf)
 	lessdanmu.buf = append(lessdanmu.buf[1:], s)
 
-	lessdanmu.RLock()
 	show = o < lessdanmu.threshold
-	lessdanmu.RUnlock()
 
 	if show && lessdanmu.max_num > 0 {
-		lessdanmu.limit.TO()
+		return !lessdanmu.limit.TO()
 	}
-	return 
+	return
 }
 
 /*
@@ -1521,7 +1844,7 @@ func Jiezouf(s []string) bool {
 	now,S := selfcross2(s)
 	jiezou.avg = (8 * jiezou.avg + 2 * now)/10
 	if jiezou.turn < len(s) {jiezou.turn += 1;return false}
-	
+
 	if _,ok := jiezou.skipS[S]; ok {return false}
 
 	jiezou.Lock()
@@ -1546,6 +1869,10 @@ func init(){
 			Save_to_json(0, []interface{}{`[`})
 			return false
 		},
+		`flash_room`:func(data interface{})(bool){//房间改变
+			Save_to_json(0, []interface{}{`[`})
+			return false
+		},
 	})
 }
 
@@ -1553,7 +1880,6 @@ func Save_to_json(Loc int,Context []interface{}) {
 	if path,ok := c.K_v.LoadV(`save_to_json`).(string);ok && path != ``{
 		p.File().FileWR(p.Filel{
 			File:path,
-			Write:true,
 			Loc:int64(Loc),
 			Context:Context,
 		})
@@ -1566,7 +1892,7 @@ func Entry_danmu(){
 
 	//检查与切换粉丝牌，只在cookie存在时启用
 	F.Get(`CheckSwitch_FansMedal`)
-	
+
 	if v,_ := c.K_v.LoadV(`进房弹幕_有粉丝牌时才发`).(bool);v && c.Wearing_FansMedal == 0{
 		flog.L(`T: `,`无粉丝牌`)
 		return
@@ -1667,18 +1993,42 @@ func AutoSend_silver_gift() {
 	}
 }
 
-//直播保存位置Web服务
+var m4s_cache sync.Map//使用内存cache避免频繁io
+
+func get_m4s_cache(path string)(buf []byte, cached bool, err error){
+	if b,ok := m4s_cache.Load(path);!ok{
+		f,e := os.OpenFile(path,os.O_RDONLY,0644)
+		if e != nil {
+			err = e
+			return
+		}
+		defer f.Close()
+
+		if b,e := io.ReadAll(f);e != nil {
+			err = e
+			return
+		} else {
+			buf = b
+			m4s_cache.Store(path,buf)
+			go func(){//移除
+				time.Sleep(time.Second*time.Duration(savestream.m4s_hls+2))
+				m4s_cache.Delete(path)
+			}()
+		}
+	} else {
+		cached = true
+		buf,_ = b.([]byte)
+	}
+	return
+}
+
+//直播Web服务口
 func init() {
 	flog := flog.Base_add(`直播Web服务`)
-	if port_f,ok := c.K_v.LoadV(`直播保存位置Web服务`).(float64);ok && port_f >= 0 {
+	if port_f,ok := c.K_v.LoadV(`直播Web服务口`).(float64);ok && port_f >= 0 {
 		port := int(port_f)
 
-		base_dir := ""
-		if path,ok := c.K_v.LoadV(`直播流保存位置`).(string);ok && path !="" {
-			if path,err := filepath.Abs(path);err == nil{
-				base_dir = path+"/"
-			}
-		}
+		base_dir := savestream.base_path
 
 		addr := "0.0.0.0:"
 		if port == 0 {
@@ -1687,16 +2037,20 @@ func init() {
 			addr += strconv.Itoa(port)
 		}
 
-		var cache sync.Map//使用内存cache避免频繁io
-
 		s := web.New(&http.Server{
 			Addr: addr,
 		})
-		s.Handle(map[string]func(http.ResponseWriter,*http.Request){
-			`/`:func(w http.ResponseWriter,r *http.Request){
+		var (
+			root = func(w http.ResponseWriter,r *http.Request){
 				//header
+				w.Header().Set("Access-Control-Allow-Credentials", "true")
+				w.Header().Set("Access-Control-Allow-Headers", "*")
+				w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
 				w.Header().Set("Access-Control-Allow-Origin", "*")
-
+				w.Header().Set("Connection", "keep-alive")
+				w.Header().Set("Content-Transfer-Encoding", "binary")
+				start := time.Now()
+				
 				var path string = r.URL.Path[1:]
 
 				if !p.Checkfile().IsExist(base_dir+path) {
@@ -1704,123 +2058,199 @@ func init() {
 					return
 				}
 
-				if filepath.Ext(path) == `.dtmp` {
-					if strings.Contains(path,"flv") {
-						// path = base_dir+path
+				if savestream.path != "" && strings.Contains(path, filepath.Base(savestream.path)) {
+					w.Header().Set("Server", "live")
+					if filepath.Ext(path) == `.dtmp` {
+						if strings.Contains(path,".flv") {
+							if len(savestream.front) == 0 {
+								w.Header().Set("Retry-After", "1")
+								w.WriteHeader(http.StatusServiceUnavailable)
+								return
+							}
 
-						w.Header().Set("Connection", "Keep-Alive")
-						w.Header().Set("Content-Type", "video/x-flv")
-						w.Header().Set("X-Content-Type-Options", "nosniff")
-						w.WriteHeader(http.StatusOK)
+							// path = base_dir+path
+							w.Header().Set("Content-Type", "video/x-flv")
+							w.WriteHeader(http.StatusOK)
 
-						flusher, flushSupport := w.(http.Flusher)
-						if flushSupport {flusher.Flush()}
+							flusher, flushSupport := w.(http.Flusher)
+							if flushSupport {flusher.Flush()}
 
-						//写入flv头，首tag
-						if _,err := w.Write(savestream.flv_front);err != nil {
-							return
-						} else if flushSupport {
-							flusher.Flush()
-						}
+							//写入flv头，首tag
+							if _,err := w.Write(savestream.front);err != nil {
+								return
+							} else if flushSupport {
+								flusher.Flush()
+							}
 
-						cancel := make(chan struct{})
+							cancel := make(chan struct{})
 
-						//flv流关键帧间隔切片
-						savestream.flv_stream.Pull_tag(map[string]func(interface{})(bool){
-							`stream`:func(data interface{})(bool){
-								if b,ok := data.([]byte);ok{
-									if _,err := w.Write(b);err != nil {
+							//flv流关键帧间隔切片
+							savestream.stream.Pull_tag(map[string]func(interface{})(bool){
+								`stream`:func(data interface{})(bool){
+									if b,ok := data.([]byte);ok{
+										if _,err := w.Write(b);err != nil {
+											close(cancel)
+											return true
+										} else if flushSupport {
+											flusher.Flush()
+										}
+									}
+									return false
+								},
+								`close`:func(data interface{})(bool){
+									close(cancel)
+									return true
+								},
+							})
+
+							<- cancel
+						} else if strings.Contains(path,".m3u8") {
+							if r.URL.Query().Get("type") == "mp4" {
+								if len(savestream.front) == 0 {
+									w.Header().Set("Retry-After", "1")
+									w.WriteHeader(http.StatusServiceUnavailable)
+									return
+								}
+
+								// path = base_dir+path
+								w.Header().Set("Content-Type", "video/mp4")
+								w.WriteHeader(http.StatusOK)
+
+								flusher, flushSupport := w.(http.Flusher)
+								if flushSupport {flusher.Flush()}
+
+								//写入hls头
+								if _,err := w.Write(savestream.front);err != nil {
+									return
+								} else if flushSupport {
+									flusher.Flush()
+								}
+
+								cancel := make(chan struct{})
+
+								//hls切片
+								savestream.stream.Pull_tag(map[string]func(interface{})(bool){
+									`stream`:func(data interface{})(bool){
+										if b,ok := data.([]byte);ok{
+											if _,err := w.Write(b);err != nil {
+												close(cancel)
+												return true
+											} else if flushSupport {
+												flusher.Flush()
+											}
+										}
+										return false
+									},
+									`close`:func(data interface{})(bool){
 										close(cancel)
 										return true
-									} else if flushSupport {
-										flusher.Flush()
-									}
-								}
-								return false
-							},
-							`close`:func(data interface{})(bool){
-								close(cancel)
-								return true
-							},
-						})
+									},
+								})
 
-						<- cancel
-					} else if strings.Contains(path,"m3u8")  {
-					
-						w.Header().Set("Cache-Control", "max-age=1")
-						w.Header().Set("Last-Modified", time.Now().Add(time.Second).Format(time.RFC1123))
-						w.Header().Set("Content-Type", "application/vnd.apple.mpegurl")
-						w.Header().Set("Connection", "Keep-Alive")
-						
-						res := savestream.hls_stream
-						if len(res) == 0 {
-							w.WriteHeader(http.StatusNotFound)
+								<- cancel
+							} else {
+								w.Header().Set("Cache-Control", "max-age=1")
+								w.Header().Set("Content-Type", "application/vnd.apple.mpegurl")
+								w.Header().Set("Last-Modified", savestream.hls_stream.t.Format(http.TimeFormat))
+	
+								// //经常m4s下载速度赶不上，使用阻塞避免频繁获取列表带来的卡顿
+								// if time.Now().Sub(savestream.hls_stream.t).Seconds() > 1 {
+								// 	time.Sleep(time.Duration(3)*time.Second)
+								// }
+	
+								res := savestream.hls_stream.b
+	
+								if len(res) == 0 {
+									w.Header().Set("Retry-After", "1")
+									w.WriteHeader(http.StatusServiceUnavailable)
+									return
+								}
+	
+								//Server-Timing
+								w.Header().Set("Server-Timing", fmt.Sprintf("dur=%d", time.Since(start).Microseconds()))
+	
+								if _,err := w.Write(res);err != nil {
+									flog.L(`E: `,err)
+									return
+								}
+							}
+						}
+					} else if filepath.Ext(path) == `.m4s` {
+						w.Header().Set("Server", "live")
+						w.Header().Set("Cache-Control", "Cache-Control:public, max-age=3600")
+
+						path = base_dir+path
+
+						buf,cached,e := get_m4s_cache(path)
+
+						if e != nil {
+							w.Header().Set("Retry-After", "1")
+							w.WriteHeader(http.StatusServiceUnavailable)
 							return
 						}
 
-						if _,err := w.Write(res);err != nil {
+						if len(buf) == 0 {
+							flog.L(`W: `,`buf size 0`)
+							w.Header().Set("Retry-After", "1")
+							w.WriteHeader(http.StatusServiceUnavailable)
+							return
+						}
+
+						//Server-Timing
+						w.Header().Add("Server-Timing", fmt.Sprintf("cache=%v;dur=%d", cached, time.Since(start).Microseconds()))
+						w.WriteHeader(http.StatusOK)
+						if _,err := w.Write(buf);err != nil {
 							flog.L(`E: `,err)
 							return
 						}
 					}
-				} else if filepath.Ext(path) == `.m4s` {
-					path = base_dir+path
-
-					var buf []byte
-
-					if b,ok := cache.Load(path);!ok{
-						f,err := os.OpenFile(path,os.O_RDONLY,0644)
-						if err != nil {
-							flog.L(`E: `,err);
-							return
-						}
-						defer f.Close()
-					
-						b := make([]byte,1024*1024)
-						if n,e := f.Read(b);e != nil {
-							flog.L(`E: `,e)
-							w.WriteHeader(http.StatusServiceUnavailable)
-							return
-						} else if n == 1024*1024 {
-							flog.L(`W: `,`buf limit`)
-							w.WriteHeader(http.StatusServiceUnavailable)
-							return
-						} else {
-							buf = b[:n]
-							cache.Store(path,buf)
-							go func(){//移除
-								time.Sleep(time.Second*time.Duration(savestream.max_m4s_hls+1))
-								cache.Delete(path)
-							}()
-						}
-					} else {
-						buf,_ = b.([]byte)
-					}
-
-					if len(buf) == 0 {
-						flog.L(`W: `,`buf size 0`)
-						w.WriteHeader(http.StatusServiceUnavailable)
-						return
-					}
-
-					w.Header().Set("Content-Type", "application/octet-stream")
-					w.Header().Set("Connection", "Keep-Alive")
-					if _,err := w.Write(buf);err != nil {
-						flog.L(`E: `,err)
-						return
-					}
 				} else {
+					w.Header().Set("Server", "file")
+					if r.URL.Query().Get("type") == "mp4" {//hls拼合
+						dir := base_dir+filepath.Dir(path)+"/"
+						if !p.Checkfile().IsExist(dir+`0.m3u8`) {
+							w.WriteHeader(http.StatusNotFound)
+							return
+						}
+						var m4slist []string
+						if e := filepath.WalkDir(dir, func(path string, info fs.DirEntry, err error) error {
+							if err != nil {return err}
+							if filepath.Ext(info.Name()) == ".m4s" {
+								m4slist = append(m4slist, path)
+							}
+							return nil
+						});e != nil {
+							flog.L(`E: `,e);
+							w.WriteHeader(http.StatusServiceUnavailable)
+							return
+						}
+						m4slist = append(m4slist[len(m4slist)-1:], m4slist[:len(m4slist)-1]...)
+						for _,v := range m4slist {
+							f,err := os.OpenFile(v,os.O_RDONLY,0644)
+							if err != nil {
+								w.WriteHeader(http.StatusServiceUnavailable)
+								flog.L(`E: `,err)
+								return
+							}
+							io.Copy(w, f)
+							f.Close()
+						}
+						return
+					}
 					http.FileServer(http.Dir(base_dir)).ServeHTTP(w,r)
 				}
-			},
-			`/now`:func(w http.ResponseWriter,r *http.Request){
+			}
+			now = func(w http.ResponseWriter,r *http.Request){
 				//header
+				w.Header().Set("Access-Control-Allow-Credentials", "true")
+				w.Header().Set("Access-Control-Allow-Headers", "*")
+				w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
 				w.Header().Set("Access-Control-Allow-Origin", "*")
 				w.Header().Set("Cache-Control", "max-age=3")
 
 				//最新直播流
 				if savestream.path == `` {
-					flog.L(`T: `,`还没有下载直播流`)
+					flog.L(`T: `,`还没有下载直播流-直播流为空`)
 					w.WriteHeader(http.StatusNotFound)
 					return
 				}
@@ -1833,20 +2263,30 @@ func init() {
 				}
 
 				if !p.Checkfile().IsExist(base_dir+path) {
-					flog.L(`T: `,`还没有下载直播流`)
+					flog.L(`T: `,`还没有下载直播流-文件未能找到`)
 					w.WriteHeader(http.StatusNotFound)
 				} else {
 					u, e := url.Parse("../"+path)
 					if e != nil {
 						flog.L(`E: `,e)
+						w.Header().Set("Retry-After", "1")
 						w.WriteHeader(http.StatusServiceUnavailable)
 						return
 					}
+					if r.URL.RawQuery != "" {
+						u.RawQuery = r.URL.RawQuery
+					}
+					// r.URL =
+					// root(w, r)
 					w.Header().Set("Location", r.URL.ResolveReference(u).String())
 					w.WriteHeader(http.StatusTemporaryRedirect)
 				}
 				return
-			},
+			}
+		)
+		s.Handle(map[string]func(http.ResponseWriter,*http.Request){
+			`/`:root,
+			`/now`:now,
 			`/exit`:func(w http.ResponseWriter,r *http.Request){
 				s.Server.Shutdown(context.Background())
 			},
