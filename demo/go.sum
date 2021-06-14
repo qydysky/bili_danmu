@@ -113,6 +113,8 @@ github.com/klauspost/compress v1.12.3 h1:G5AfA94pHPysR56qqrkO2pxEexdDzrpFJ6yt/Vq
 github.com/klauspost/compress v1.12.3/go.mod h1:8dP1Hq4DHOhN9w426knH3Rhby4rFm6D8eO+e+Dq5Gzg=
 github.com/klauspost/compress v1.13.0 h1:2T7tUoQrQT+fQWdaY5rjWztFGAFwbGD04iPJg90ZiOs=
 github.com/klauspost/compress v1.13.0/go.mod h1:8dP1Hq4DHOhN9w426knH3Rhby4rFm6D8eO+e+Dq5Gzg=
+github.com/klauspost/compress v1.13.1 h1:wXr2uRxZTJXHLly6qhJabee5JqIhTRoLBhDOA74hDEQ=
+github.com/klauspost/compress v1.13.1/go.mod h1:8dP1Hq4DHOhN9w426knH3Rhby4rFm6D8eO+e+Dq5Gzg=
 github.com/klauspost/pgzip v1.2.5 h1:qnWYvvKqedOF2ulHpMG72XQol4ILEJ8k2wwRl/Km8oE=
 github.com/klauspost/pgzip v1.2.5/go.mod h1:Ch1tH69qFZu15pkjo5kYi6mth2Zzwzt50oCQKQE9RUs=
 github.com/konsorten/go-windows-terminal-sequences v1.0.1/go.mod h1:T0+1ngSBFLxvqU3pZ+m/2kptfBszLMUkC4ZK/EgS/cQ=
@@ -312,6 +314,8 @@ github.com/qydysky/part v0.5.24 h1:hnHI5SPpm6I61/q7s83D3NlHgIMHjsvukw6xAbZeanc=
 github.com/qydysky/part v0.5.24/go.mod h1:43opuciW71sZvOR67kye50jgMDSDrn/t6+LefNdlXPg=
 github.com/qydysky/part v0.5.25 h1:jDxxwml175gc9pcyuMGdlAX1ErLk5CWKv58Jr1UWdy4=
 github.com/qydysky/part v0.5.25/go.mod h1:43opuciW71sZvOR67kye50jgMDSDrn/t6+LefNdlXPg=
+github.com/qydysky/part v0.5.26 h1:h2rwwgE4o0CgkPKNHxWVFqFIzDcv+tj4vp3o97YmjLs=
+github.com/qydysky/part v0.5.26/go.mod h1:43opuciW71sZvOR67kye50jgMDSDrn/t6+LefNdlXPg=
 github.com/qydysky/part/msgq v0.0.0-20201213031129-ca3253dc72ad h1:Jtzf509lQrkUMGTV0Sc6IDCAiR1VrBcHrIban7hpye4=
 github.com/qydysky/part/msgq v0.0.0-20201213031129-ca3253dc72ad/go.mod h1:w32TkJNVtTJd4LOS09cq+4uYG6itcN2vsqw+slp44Rg=
 github.com/qydysky/part/msgq v0.0.0-20201213120821-f36e49c32bba h1:1ew9dRpc0Rux0WkWeT/4AE15ynYWmL2D7onJEJIFOB8=
@@ -428,6 +432,8 @@ golang.org/x/net v0.0.0-20210525063256-abc453219eb5 h1:wjuX4b5yYQnEQHzd+CBcrcC6O
 golang.org/x/net v0.0.0-20210525063256-abc453219eb5/go.mod h1:9nx3DQGgdP8bBQD5qxJ1jj9UTztislL4KSBs9R2vV5Y=
 golang.org/x/net v0.0.0-20210610132358-84b48f89b13b h1:k+E048sYJHyVnsr1GDrRZWQ32D2C7lWs9JRc0bel53A=
 golang.org/x/net v0.0.0-20210610132358-84b48f89b13b/go.mod h1:9nx3DQGgdP8bBQD5qxJ1jj9UTztislL4KSBs9R2vV5Y=
+golang.org/x/net v0.0.0-20210614182718-04defd469f4e h1:XpT3nA5TvE525Ne3hInMh6+GETgn27Zfm9dxsThnX2Q=
+golang.org/x/net v0.0.0-20210614182718-04defd469f4e/go.mod h1:9nx3DQGgdP8bBQD5qxJ1jj9UTztislL4KSBs9R2vV5Y=
 golang.org/x/oauth2 v0.0.0-20180821212333-d2e6202438be/go.mod h1:N/0e6XlmueqKjAGxoOufVs8QHGRruUQn6yWY3a++T0U=
 golang.org/x/sync v0.0.0-20180314180146-1d60e4601c6f/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
 golang.org/x/sync v0.0.0-20181108010431-42b317875d0f/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=

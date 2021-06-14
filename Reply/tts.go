@@ -1,16 +1,25 @@
 package reply
 
 import (
+	"fmt"
+	"time"
+	"errors"
+	"crypto/sha256"
 	"os/exec"
 	"net/url"
 	"strings"
+	"encoding/base64"
+	"encoding/json"
+	"crypto/hmac"
 	c "github.com/qydysky/bili_danmu/CV"
 
 	p "github.com/qydysky/part"
 	msgq "github.com/qydysky/part/msgq"
+	ws "github.com/qydysky/part/websocket"
 	s "github.com/qydysky/part/buf"
 	reqf "github.com/qydysky/part/reqf"
 	limit "github.com/qydysky/part/limit"
+	funcCtrl "github.com/qydysky/part/funcCtrl"
 )
 
 var (
@@ -31,9 +40,10 @@ var tts_log = c.Log.Base_add(`TTS`)
 
 var (
 	tts_ser = "baidu"
-	tts_ser_map = map[string]func(string)reqf.Rval{
+	tts_ser_map = map[string]func(string)error{
 		`baidu`:baidu,
 		`youdao`:youdao,
+		`xf`:xf,
 	}
 	tts_prog = "ffplay"
 	tts_prog_set = "-autoexit -nodisp"
@@ -86,7 +96,7 @@ func init(){
 			for len(tts_List) > 0 && len(s) < 100 {
 				s += " " + <- tts_List
 			}
-			TTS(<- tts_List)
+			TTS(s)
 		}
 	}()
 	
@@ -135,65 +145,63 @@ func init(){
 func TTS(msg string) {
 	if tts_limit.TO() {return}
 
-	var (
-		req = reqf.New()
-		rval reqf.Rval
-	)
+	var err error
 	if f,ok := tts_ser_map[tts_ser];ok{
-		rval = f(msg)
+		err = f(msg)
 	} else {
-		rval = baidu(msg)
+		err = baidu(msg)
 	}
-	if rval.Url == `` {
-		tts_log.L(`E: `, `rval.Url`)
-		return
-	}
-
-	if err := req.Reqf(rval);err != nil {
-		tts_log.L(`E: `,err)
-		return
-	}
-	if req.Response.Header.Get(`Content-type`) == `application/json` {
-		tts_log.L(`W: `, `错误`, req.Response.StatusCode, string(req.Respon))
+	
+	if err != nil {
+		tts_log.L(`E: `, err)
 		return
 	}
 	
+	return
+}
+
+func play(){
 	var prog = []string{}
 	prog = append(prog, p.Sys().Cdir()+"/tts.mp3")
 	prog = append(prog, strings.Split(tts_prog_set," ")...)
 	p.Exec().Run(false, tts_prog, prog...)
-	return
+
 }
 
-func baidu(msg string) reqf.Rval {
-	return reqf.Rval{
+func baidu(msg string) error {
+	req := reqf.New()
+	if err := req.Reqf(reqf.Rval{
 		Url:`https://fanyi.baidu.com/gettts?lan=zh&text=`+ url.PathEscape(msg) +`&spd=5&source=web`,
 		SaveToPath:p.Sys().Cdir()+`/tts.mp3`,
 		Timeout:3*1000,
 		Retry:1,
 		SleepTime:5000,
 		Proxy:c.Proxy,
+	});err != nil {
+		return err
 	}
+	play()
+	return nil
 }
 
 var (
-	appId string
-	appKey string
+	youdaoId string
+	youdaoappKey string
 )
 func init(){
 	if v, ok := c.K_v.LoadV(`TTS_服务器_youdaoId`).(string);ok && v != ``{
-		appId = v
+		youdaoId = v
 	}
 	if v, ok := c.K_v.LoadV(`TTS_服务器_youdaoKey`).(string);ok && v != ``{
-		appKey = v
+		youdaoappKey = v
 	}
-	if tts_ser == `youdao` && (appId == `` || appKey == ``) {
+	if tts_ser == `youdao` && (youdaoId == `` || youdaoappKey == ``) {
 		tts_log.L(`W: `, `未提供youdaoId、Key，使用baidu`)
 		tts_ser = `baidu`
 	}
 }
-func youdao(msg string) reqf.Rval {
-	if appId == "" || appKey == "" {
+func youdao(msg string) error {
+	if youdaoId == "" || youdaoappKey == "" {
 		return baidu(msg)
 	}
 
@@ -202,17 +210,19 @@ func youdao(msg string) reqf.Rval {
 		api = map[string]string{
 			`q`:msg,
 			`langType`:"zh-CHS",
-			`appKey`:appId,
+			`youdaoappKey`:youdaoId,
 			`salt`:p.Stringf().Rand(1, 8),
 		}
 		postS string
 	)
-	api[`sign`] = strings.ToUpper(p.Md5().Md5String(api[`appKey`]+api[`q`]+api[`salt`]+appKey))
+	api[`sign`] = strings.ToUpper(p.Md5().Md5String(api[`youdaoappKey`]+api[`q`]+api[`salt`]+youdaoappKey))
 	for k,v := range api {
 		if postS != "" {postS += "&"}
 		postS += k+`=`+v
 	}
-	return reqf.Rval{
+
+	req := reqf.New()
+	if err := req.Reqf(reqf.Rval{
 		Url:`https://openapi.youdao.com/ttsapi`,
 		PostStr:url.PathEscape(postS),
 		SaveToPath:p.Sys().Cdir()+`/tts.mp3`,
@@ -220,5 +230,212 @@ func youdao(msg string) reqf.Rval {
 		Retry:1,
 		SleepTime:5000,
 		Proxy:c.Proxy,
+	});err != nil {
+		return err
 	}
+	if req.Response.Header.Get(`Content-type`) == `application/json` {
+		return errors.New(`错误 ` + req.Response.Status + string(req.Respon))
+	}
+	play()
+	return nil
+}
+
+var (
+	xfId string
+	xfKey string
+	xfSecret string
+	xfVoice = "random"
+	xfVmap = map[string]bool{
+		`xiaoyan`:true,
+		`aisjiuxu`:true,
+		`aisxping`:true,
+		`aisjinger`:true,
+		`aisbabyxu`:true,
+	}
+	xfwsClient *ws.Client
+	xf_req func()
+	xf_req_block funcCtrl.BlockFunc
+)
+func init(){
+	if v, ok := c.K_v.LoadV(`TTS_服务器_xfId`).(string);ok && v != ``{
+		xfId = v
+	}
+	if v, ok := c.K_v.LoadV(`TTS_服务器_xfKey`).(string);ok && v != ``{
+		xfKey = v
+	}
+	if v, ok := c.K_v.LoadV(`TTS_服务器_xfSecret`).(string);ok && v != ``{
+		xfSecret = v
+	}
+	if v, ok := c.K_v.LoadV(`TTS_服务器_xfVoice`).(string);ok && v != ``{
+		if _,ok := xfVmap[v];ok || v == `random` {
+			xfVoice = v
+		} else {
+			tts_log.L(`I: `,`未支持设定发音，使用随机`)
+		}
+	}
+	if tts_ser == `xf` && (xfId == `` || xfKey == `` || xfSecret == ``) {
+		tts_log.L(`W: `, `未提供讯飞Id、Key、Secret，使用baidu`)
+		tts_ser = `baidu`
+	}
+
+	//@hosturl :  like  wss://tts-api.xfyun.cn/v2/tts
+    //@apikey : apiKey
+    //@apiSecret : apiSecret
+	assembleAuthUrl := func (hosturl string, apiKey, apiSecret string) (string,error) {
+        ul, err := url.Parse(hosturl)
+        if err != nil {
+            return "",err
+        }
+        //签名时间
+        date := time.Now().UTC().Format(time.RFC1123)
+        //参与签名的字段 host ,date, request-line
+        signString := []string{"host: " + ul.Host, "date: " + date, "GET " + ul.Path + " HTTP/1.1"}
+        //拼接签名字符串
+        sgin := strings.Join(signString, "\n")
+        //签名
+		mac := hmac.New(sha256.New, []byte(apiSecret))
+		mac.Write([]byte(sgin))
+        sha := base64.StdEncoding.EncodeToString(mac.Sum(nil))
+        //构建请求参数 此时不需要urlencoding
+        authUrl := fmt.Sprintf("api_key=\"%s\",algorithm=\"%s\",headers=\"%s\",signature=\"%s\"", apiKey, "hmac-sha256", "host date request-line", sha)
+        //将请求参数使用base64编码
+        authorization:= base64.StdEncoding.EncodeToString([]byte(authUrl))
+        v := url.Values{}
+        v.Add("host", ul.Host)
+        v.Add("date", date)
+        v.Add("authorization", authorization)
+        //将编码后的字符串url encode后添加到url后面
+        callurl := hosturl + "?" + v.Encode()
+        return callurl,nil
+    }
+
+	wsUrl,err := assembleAuthUrl("wss://tts-api.xfyun.cn/v2/tts", xfKey, xfSecret)
+
+	if err != nil {
+		tts_log.L(`E: `, `错误,使用百度`, err)
+		tts_ser = `baidu`
+		return
+	}
+
+	xf_req = func(){
+		xf_req_block.Block()//cant call in same time
+		defer xf_req_block.UnBlock()
+
+		xfwsClient = ws.New_client(ws.Client{
+			Url:wsUrl,
+			Proxy:c.Proxy,
+			Header: map[string]string{
+				`User-Agent`: `Mozilla/5.0 (X11; Linux x86_64; rv:84.0) Gecko/20100101 Firefox/84.0`,
+				`Accept`: `*/*`,
+				`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
+				`Pragma`: `no-cache`,
+				`Cache-Control`: `no-cache`,
+			},
+		}).Handle()
+		if xfwsClient.Isclose() {
+			tts_log.L(`E: `,"连接错误,使用百度", xfwsClient.Error())
+			tts_ser = `baidu`
+		} else {
+			go func(){
+				var buf []byte
+				for !xfwsClient.Isclose() {
+					data := <- xfwsClient.RecvChan
+					if len(data) == 0 {break}
+
+					var partS struct {
+						Code    int    `json:"code"`
+						Message string `json:"message"`
+						Sid     string `json:"sid"`
+						Data    struct {
+							Audio  string `json:"audio"`
+							Ced    string `json:"ced"`
+							Status int    `json:"status"`
+						} `json:"data"`
+					}
+					if e := json.Unmarshal(data, &partS);e != nil {
+						tts_log.L(`E: `,"错误", e, data)
+						xfwsClient.Close()
+						return
+					} else {
+						if partS.Code != 0 {
+							tts_log.L(`W: `,fmt.Sprintf("code:%d msg:%s", partS.Code, partS.Message))
+							break
+						}
+						if partS.Data.Audio != "" {
+							if part,e := base64.StdEncoding.DecodeString(partS.Data.Audio);e != nil {
+								tts_log.L(`E: `,"错误", e)
+								break
+							} else {
+								buf = append(buf, part...)
+							}
+						}
+						if partS.Data.Status == 2 {
+							break
+						}
+					}
+				}
+				if len(buf) != 0 {
+					p.File().FileWR(p.Filel{
+						File:p.Sys().Cdir()+`/tts.mp3`,
+						Context:[]interface{}{buf},
+					})
+					play()
+				}
+				xfwsClient.Close()
+			}()
+		}
+		
+	}
+	xf_req()
+}
+func xf(msg string) error {
+	if xfId == `` || xfKey == `` || xfSecret == `` {
+		tts_log.L(`T: `,"参数不足,使用百度")
+		return baidu(msg)
+	}
+
+	voice := xfVoice
+	if voice == `random` {
+		for k,_ := range xfVmap {
+			voice = k
+			break
+		}
+	}
+
+	type rec struct {
+		Common struct {
+			AppID string `json:"app_id"`
+		} `json:"common"`
+		Business struct {
+			Aue   string `json:"aue"`
+			Vcn   string `json:"vcn"`
+			Tte   string `json:"tte"`
+			Sfl   int `json:"sfl"`
+		} `json:"business"`
+		Data struct {
+			Status int    `json:"status"`
+			Text   string `json:"text"`
+		} `json:"data"`
+	}
+
+	{//msg
+		var postS = rec{}
+		postS.Common.AppID = xfId
+		postS.Business.Aue = "lame"
+		postS.Business.Sfl = 1
+		postS.Business.Tte = "UTF8"
+		postS.Business.Vcn = voice
+		postS.Data.Status = 2
+		postS.Data.Text = base64.StdEncoding.EncodeToString([]byte(msg))
+	
+		if b,e := json.Marshal(postS);e != nil {
+			return e
+		} else {
+			if xfwsClient.Isclose() {
+				xf_req()
+			}
+			xfwsClient.SendChan <- b
+		}
+	}
+	return nil
 }

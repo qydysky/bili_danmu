@@ -170,6 +170,10 @@ I: 2021/04/13 20:07:45 命令行操作 [直播Web服务: http://192.168.31.245:3
   - [mpv](https://mpv.io/)
   - [MXPlayer](https://sites.google.com/site/mxvpen/home)
 
+**特殊的**
+
+由于hls流使用浏览器支持的编码格式，故可以使用浏览器直接打开mp4直播流链接，即上述带`?type=mp4`的链接。
+
 
 #### 命令行操作
 在准备动作完成(`T: 2021/03/06 16:22:39 命令行操作 [回车查看帮助]`)后，输入回车将显示帮助
@@ -309,7 +313,24 @@ release默认编译tts
     "TTS_服务器_youdaoId": "",
     "TTS_服务器_youdaoKey": "",
 ```
-支持baidu和[有道](https://ai.youdao.com/gw.s#/)，如使用有道则需要Id和Key。
+支持baidu、[有道](https://ai.youdao.com/gw.s#/)、[讯飞](https://www.xfyun.cn/)。
+
+使用有道则需要Id和Key。
+```
+    "TTS_服务器_youdaoId": "7xxxxxxxxxxxxxxa",
+    "TTS_服务器_youdaoKey": "yxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxP",
+
+```
+
+使用讯飞则需要应用Id、Key、Secret。可设置发音人。
+```
+    "TTS_服务器_xfId": "6xxxxxxb",
+    "TTS_服务器_xfKey": "4xxxxxxxx9",
+    "TTS_服务器_xfSecret": "YxxxxxxxBh",
+    "TTS_服务器_xfVoice-help": "讯飞发音人 xiaoyan:小燕甜美女声 aisjiuxu:许久亲切男声 aisxping:小萍知性女声 aisjinger:小婧亲切女声 aisbabyxu:许小宝可爱童声 random:随机",
+    "TTS_服务器_xfVoice": "random",
+
+```
 
 #### 弹幕窗
 构建gtk需要gtk3,先行安装[gtk](https://www.gtk.org/)
