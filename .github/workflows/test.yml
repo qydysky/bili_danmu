@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go: [ '1.16' ]
+        go: [ '1.15', '1.16', '1.17' ]
     steps:
     - name: Set up Go${{ matrix.go }}
       uses: actions/setup-go@v2
@@ -24,6 +24,7 @@ jobs:
     
     - name: Build
       run: |
+        sudo apt-get update
         sudo apt-get install libgtk-3-dev libcairo2-dev libglib2.0-dev
         cd demo
         go build -v -buildmode=exe -tags 'gtk gtk_3_24' -o demo.run -i main.go
