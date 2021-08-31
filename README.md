@@ -1,5 +1,5 @@
 ## bilibili 直播弹幕机
-golang go version go1.15 linux/amd64
+golang go version go1.16 linux/amd64
 
 ---
 ### 目录释义
