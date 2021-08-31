@@ -67,6 +67,8 @@ func Demo(roomid ...int) {
 		F.KeepConnect()
 		//获取cookie
 		F.Get(`Cookie`)
+		//获取LIVE_BUVID
+		F.Get(`LIVE_BUVID`)
 		if room == 0 {
 			c.Log.Block(1000)//等待所有日志输出完毕
 			fmt.Println("输入房间号或` live`获取正在直播的主播")
