@@ -2127,7 +2127,7 @@ func Silver_2_coin() (missKey []string) {
 
 		req := reqf.New()
 		if err := req.Reqf(reqf.Rval{
-			Url:`https://api.live.bilibili.com/pay/v1/Exchange/getStatus`,
+			Url:`https://api.live.bilibili.com/xlive/revenue/v1/wallet/getStatus`,
 			Header:map[string]string{
 				`Host`: `api.live.bilibili.com`,
 				`User-Agent`: `Mozilla/5.0 (X11; Linux x86_64; rv:83.0) Gecko/20100101 Firefox/83.0`,
@@ -2149,33 +2149,23 @@ func Silver_2_coin() (missKey []string) {
 			return
 		}
 	
-		var res struct{
-			Code int `json:"code"`
-			Msg string `json:"msg"`
-			Message string `json:"message"`
-			Data struct{
-				Silver int `json:"silver"`
-				Silver_2_coin_left int `json:"silver_2_coin_left"`
-			} `json:"data"`
-		}
-	
-		if e := json.Unmarshal(req.Respon, &res);e != nil{
+		var j J.ApiXliveRevenueV1WalletGetStatus
+
+		if e := json.Unmarshal([]byte(req.Respon),&j);e != nil{
 			apilog.L(`E: `, e)
 			return
-		}
-	
-		if res.Code != 0{
-			apilog.L(`E: `, res.Message)
+		} else if j.Code != 0 {
+			apilog.L(`E: `, j.Message)
 			return
 		}
 
-		if res.Data.Silver_2_coin_left == 0{
+		if j.Data.Silver2CoinLeft == 0 {
 			apilog.L(`I: `, `今天次数已用完`)
 			return
 		}
 
-		apilog.L(`T: `, `现在有银瓜子`, res.Data.Silver, `个`)
-		Silver = res.Data.Silver
+		apilog.L(`T: `, `现在有银瓜子`, j.Data.Silver, `个`)
+		Silver = j.Data.Silver
 	}
 
 	{//获取交换规则，验证数量足够
@@ -2187,7 +2177,7 @@ func Silver_2_coin() (missKey []string) {
 
 		req := reqf.New()
 		if err := req.Reqf(reqf.Rval{
-			Url:`https://api.live.bilibili.com/pay/v1/Exchange/getRule`,
+			Url:`https://api.live.bilibili.com/xlive/revenue/v1/wallet/getRule`,
 			Header:map[string]string{
 				`Host`: `api.live.bilibili.com`,
 				`User-Agent`: `Mozilla/5.0 (X11; Linux x86_64; rv:83.0) Gecko/20100101 Firefox/83.0`,
@@ -2209,26 +2199,17 @@ func Silver_2_coin() (missKey []string) {
 			return
 		}
 	
-		var res struct{
-			Code int `json:"code"`
-			Msg string `json:"msg"`
-			Message string `json:"message"`
-			Data struct{
-				Silver_2_coin_price int `json:"silver_2_coin_price"`
-			} `json:"data"`
-		}
+		var j J.ApixliveRevenueV1WalletGetRule
 	
-		if e := json.Unmarshal(req.Respon, &res);e != nil{
+		if e := json.Unmarshal([]byte(req.Respon),&j);e != nil{
 			apilog.L(`E: `, e)
 			return
-		}
-	
-		if res.Code != 0{
-			apilog.L(`E: `, res.Message)
+		} else if j.Code != 0 {
+			apilog.L(`E: `, j.Message)
 			return
 		}
 
-		if Silver < res.Data.Silver_2_coin_price{
+		if Silver < j.Data.Silver2CoinPrice {
 			apilog.L(`W: `, `当前银瓜子数量不足`)
 			return
 		}
@@ -2248,7 +2229,7 @@ func Silver_2_coin() (missKey []string) {
 
 		req := reqf.New()
 		if err := req.Reqf(reqf.Rval{
-			Url:`https://api.live.bilibili.com/pay/v1/Exchange/silver2coin`,
+			Url:`https://api.live.bilibili.com/xlive/revenue/v1/wallet/silver2coin`,
 			PostStr:url.PathEscape(post_str),
 			Header:map[string]string{
 				`Host`: `api.live.bilibili.com`,

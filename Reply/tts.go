@@ -273,9 +273,14 @@ func init(){
 			tts_log.L(`I: `,`未支持设定发音，使用随机`)
 		}
 	}
-	if tts_ser == `xf` && (xfId == `` || xfKey == `` || xfSecret == ``) {
+
+	//	设置了非讯飞tts
+	if tts_ser != `xf` {return}
+
+	if xfId == `` || xfKey == `` || xfSecret == `` {
 		tts_log.L(`W: `, `未提供讯飞Id、Key、Secret，使用baidu`)
 		tts_ser = `baidu`
+		return
 	}
 
 	//@hosturl :  like  wss://tts-api.xfyun.cn/v2/tts
