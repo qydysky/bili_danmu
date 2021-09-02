@@ -50,7 +50,7 @@ type SEND_GIFT struct {
 		GuardLevel     int    `json:"guard_level"`
 		IsFirst        bool   `json:"is_first"`
 		IsSpecialBatch int    `json:"is_special_batch"`
-		Magnification  int    `json:"magnification"`
+		Magnification  float64    `json:"magnification"`
 		MedalInfo      struct {
 			AnchorRoomid     int    `json:"anchor_roomid"`
 			AnchorUname      string `json:"anchor_uname"`
