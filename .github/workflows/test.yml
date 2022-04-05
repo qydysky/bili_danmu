@@ -12,10 +12,10 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go: [ '1.16', '1.17' ]
+        go: [ '1.17', '1.18.0' ]
     steps:
     - name: Set up Go${{ matrix.go }}
-      uses: actions/setup-go@v2
+      uses: actions/setup-go@v3
       with:
         go-version: ${{ matrix.go }}
 
@@ -42,10 +42,10 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        go: [ '1.16', '1.17' ]
+        go: [ '1.17', '1.18.0' ]
     steps:
     - name: Set up Go${{ matrix.go }}
-      uses: actions/setup-go@v2
+      uses: actions/setup-go@v3
       with:
         go-version: ${{ matrix.go }}
 
