@@ -1394,28 +1394,11 @@ func Get_cookie() (missKey []string) {
 
 //短信登录
 func Get_cookie_by_msg() {
-	/*
-
-		https://passport.bilibili.com/x/passport-login/web/sms/send
-
-
-	*/
-}
-
-//牌子
-type TGet_list_in_room struct {
-	Medal_id       int    `json:"medal_id"`       //牌子id
-	Medal_name     string `json:"medal_name"`     //牌子名
-	Target_id      int    `json:"target_id"`      //牌子up主uid
-	Target_name    string `json:"target_name"`    //牌子up主名
-	Room_id        int    `json:"roomid"`         //牌子直播间
-	Last_wear_time int    `json:"last_wear_time"` //佩戴有效截止时间（佩戴本身不会刷新，发弹幕，送小心心，送金瓜子礼物才会刷新）
-	Today_intimacy int    `json:"today_intimacy"` //今日亲密(0:未发送弹幕 100:已发送弹幕)
-	Is_lighted     int    `json:"is_lighted"`     //牌子是否熄灭(0:熄灭 1:亮)
+	/*https://passport.bilibili.com/x/passport-login/web/sms/send*/
 }
 
 //获取牌子信息
-func Get_list_in_room() (array []TGet_list_in_room) {
+func Get_list_in_room() (array []J.GetMyMedals_Items) {
 
 	apilog := apilog.Base_add(`获取牌子`)
 	//验证cookie
@@ -1434,11 +1417,11 @@ func Get_list_in_room() (array []TGet_list_in_room) {
 	})
 
 	{ //获取牌子列表
-		var medalList []TGet_list_in_room
+		var medalList []J.GetMyMedals_Items
 		for pageNum := 1; true; pageNum += 1 {
 			r := reqf.New()
 			if e := r.Reqf(reqf.Rval{
-				Url: `https://api.live.bilibili.com/fans_medal/v5/live_fans_medal/iApiMedal?page=` + strconv.Itoa(pageNum) + `&pageSize=10`,
+				Url: `https://api.live.bilibili.com/xlive/app-ucenter/v1/user/GetMyMedals?page=` + strconv.Itoa(pageNum) + `&pageSize=10`,
 				Header: map[string]string{
 					`Cookie`: reqf.Map_2_Cookies_String(Cookie),
 				},
@@ -1450,31 +1433,20 @@ func Get_list_in_room() (array []TGet_list_in_room) {
 				return
 			}
 
-			var res struct {
-				Code    int    `json:"code"`
-				Msg     string `json:"msg"`
-				Message string `json:"message"`
-				Data    struct {
-					FansMedalList []TGet_list_in_room `json:"fansMedalList"`
-					Pageinfo      struct {
-						Totalpages int `json:"totalpages"`
-						CurPage    int `json:"curPage"`
-					} `json:"pageinfo"`
-				} `json:"data"`
-			}
+			var res J.GetMyMedals
 
 			if e := json.Unmarshal(r.Respon, &res); e != nil {
 				apilog.L(`E: `, e)
 			}
 
 			if res.Code != 0 {
-				apilog.L(`E: `, `返回code`, res.Code, res.Msg)
+				apilog.L(`E: `, `返回code`, res.Code, res.Message)
 				return
 			}
 
-			medalList = append(medalList, res.Data.FansMedalList...)
+			medalList = append(medalList, res.Data.Items...)
 
-			if res.Data.Pageinfo.CurPage == res.Data.Pageinfo.Totalpages {
+			if res.Data.PageInfo.CurPage == res.Data.PageInfo.TotalPage {
 				break
 			}
 
@@ -1595,10 +1567,10 @@ func CheckSwitch_FansMedal() (missKey []string) {
 	{
 		medal_list := Get_list_in_room()
 		for _, v := range medal_list {
-			if v.Target_id != c.UpUid {
+			if v.TargetID != c.UpUid {
 				continue
 			}
-			medal_id = v.Medal_id
+			medal_id = v.MedalID
 		}
 		if medal_id == 0 { //无牌
 			apilog.L(`I: `, `无主播粉丝牌`)
