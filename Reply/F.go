@@ -462,7 +462,7 @@ func Savestreamf() {
 					o := bytes.Index(line, []byte(`EXT-X-MAP:URI="`)) + 15
 					e := bytes.Index(line[o:], []byte(`"`)) + o
 					m4s_link = string(line[o:e])
-				} else if bytes.Contains(line, []byte("EXT-X-BILI-PREFETCH")) {
+				} else if bytes.Contains(lines[i], []byte("#EXT-X")) { //忽略扩展标签
 					continue
 				} else if bytes.Contains(line, []byte(".m4s")) {
 					m4s_link = string(line)
@@ -499,7 +499,7 @@ func Savestreamf() {
 				if found {
 					offset := m4s_links[i].Offset_line - 1
 					for i := offset; i < len(lines); i += 1 {
-						if bytes.Contains(lines[i], []byte("EXT-X-BILI-PREFETCH")) {
+						if bytes.Contains(lines[i], []byte("#EXT-X")) { //忽略扩展标签
 							continue
 						}
 						m3u8_file_addition = append(m3u8_file_addition, lines[i]...)
@@ -515,7 +515,7 @@ func Savestreamf() {
 			if !found {
 				offset := m4s_links[1].Offset_line - 1
 				for i := offset; i < len(lines); i += 1 {
-					if bytes.Contains(lines[i], []byte("EXT-X-BILI-PREFETCH")) {
+					if bytes.Contains(lines[i], []byte("#EXT-X")) { //忽略扩展标签
 						continue
 					}
 					m3u8_file_addition = append(m3u8_file_addition, lines[i]...)
