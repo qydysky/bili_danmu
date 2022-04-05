@@ -371,12 +371,20 @@ func (replyF) win_activity(s string) {
 	msglog.Base_add("房").Log_show_control(false).L(`I: `, "活动", title, "已开启")
 }
 
+var (
+	watched int //观看人数
+)
+
 //Msg-观看人数
 func (replyF) watched_change(s string) {
 	var data ws_msg.WATCHED_CHANGE
 	json.Unmarshal([]byte(s), &data)
-	fmt.Printf("\t观看人数:%d\n", data.Data.Num)
-	msglog.Base_add("房").Log_show_control(false).L(`I: `, "观看人数", data.Data.Num)
+	if float64(data.Data.Num) < float64(watched)*1.1 && data.Data.Num >= watched {
+		return
+	}
+	watched = data.Data.Num
+	fmt.Printf("\t观看人数:%d\n", watched)
+	msglog.Base_add("房").Log_show_control(false).L(`I: `, "观看人数", watched)
 }
 
 //Msg-特殊礼物，当前仅观察到节奏风暴
@@ -744,6 +752,26 @@ func (replyF) hot_rank_changed(s string) {
 	}
 }
 
+//Msg-热门榜变动V2
+func (replyF) hot_rank_changed_v2(s string) {
+	msglog := msglog.Base_add("房").Log_show_control(false)
+
+	var type_item ws_msg.HOT_RANK_CHANGED_V2
+	if e := json.Unmarshal([]byte(s), &type_item); e != nil {
+		msglog.L(`E: `, e)
+	}
+	if type_item.Data.AreaName != `` {
+		c.Note = type_item.Data.AreaName + " "
+		if type_item.Data.Rank == 0 {
+			c.Note += "50+"
+		} else {
+			c.Note += strconv.Itoa(type_item.Data.Rank)
+		}
+		fmt.Printf("%s\t%s\n", "热门榜", c.Note)
+		msglog.L(`I: `, "热门榜", c.Note)
+	}
+}
+
 //Msg-热门榜获得
 func (replyF) hot_rank_settlement(s string) {
 	msglog := msglog.Base_add("房")
@@ -764,6 +792,32 @@ func (replyF) hot_rank_settlement(s string) {
 		uid: "0rank",
 		m: map[string]string{
 			`{Area_name}`: type_item.Data.Area_name,
+			`{Rank}`:      strconv.Itoa(type_item.Data.Rank),
+		},
+	})
+	msglog.L(`I: `, "热门榜", tmp)
+}
+
+//Msg-热门榜获得v2
+func (replyF) hot_rank_settlement_v2(s string) {
+	msglog := msglog.Base_add("房")
+
+	var type_item ws_msg.HOT_RANK_SETTLEMENT_V2
+	if e := json.Unmarshal([]byte(s), &type_item); e != nil {
+		msglog.L(`E: `, e)
+	}
+	var tmp = `获得:`
+	if type_item.Data.AreaName != `` {
+		tmp += type_item.Data.AreaName + " 第"
+	}
+	if type_item.Data.Rank != 0 {
+		tmp += strconv.Itoa(type_item.Data.Rank)
+	}
+	Gui_show(tmp, "0rank")
+	c.Danmu_Main_mq.Push_tag(`tts`, Danmu_mq_t{ //传入消息队列
+		uid: "0rank",
+		m: map[string]string{
+			`{Area_name}`: type_item.Data.AreaName,
 			`{Rank}`:      strconv.Itoa(type_item.Data.Rank),
 		},
 	})

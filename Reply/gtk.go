@@ -18,7 +18,6 @@ import (
 	F "github.com/qydysky/bili_danmu/F"
 
 	p "github.com/qydysky/part"
-	s "github.com/qydysky/part/buf"
 	msgq "github.com/qydysky/part/msgq"
 	reqf "github.com/qydysky/part/reqf"
 
@@ -510,12 +509,16 @@ func Gtk_danmu() {
 			o = contrl_win_running
 			//y("sssss",load_face(""))
 			{ //加载特定信息驻留时长
-				buf := s.New()
-				buf.Load("config/config_gtk_keep_key.json")
+				bb, err := ioutil.ReadFile("config/config_gtk_keep_key.json")
+				if err != nil {
+					return
+				}
+				var buf map[string]interface{}
+				json.Unmarshal(bb, &buf)
 				for k, _ := range keep_key {
 					delete(keep_key, k)
 				}
-				for k, v := range buf.B {
+				for k, v := range buf {
 					keep_key[k] = int(v.(float64))
 				}
 			}
