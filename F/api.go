@@ -1421,7 +1421,7 @@ func Get_list_in_room() (array []J.GetMyMedals_Items) {
 		for pageNum := 1; true; pageNum += 1 {
 			r := reqf.New()
 			if e := r.Reqf(reqf.Rval{
-				Url: `https://api.live.bilibili.com/xlive/app-ucenter/v1/user/GetMyMedals?page=` + strconv.Itoa(pageNum) + `&pageSize=10`,
+				Url: `https://api.live.bilibili.com/xlive/app-ucenter/v1/user/GetMyMedals?page=` + strconv.Itoa(pageNum) + `&page_size=10`,
 				Header: map[string]string{
 					`Cookie`: reqf.Map_2_Cookies_String(Cookie),
 				},
@@ -1457,21 +1457,8 @@ func Get_list_in_room() (array []J.GetMyMedals_Items) {
 	}
 }
 
-type TGet_weared_medal struct {
-	Medal_id       int      `json:"medal_id"`       //牌子id
-	Medal_name     string   `json:"medal_name"`     //牌子名
-	Target_id      int      `json:"target_id"`      //牌子up主uid
-	Target_name    string   `json:"target_name"`    //牌子up主名
-	Roominfo       Roominfo `json:"roominfo"`       //牌子直播间
-	Today_intimacy int      `json:"today_intimacy"` //今日亲密(0:未发送弹幕 100:已发送弹幕)
-	Is_lighted     int      `json:"is_lighted"`     //牌子是否熄灭(0:熄灭 1:亮)
-}
-type Roominfo struct {
-	Room_id int `json:"room_id"`
-}
-
 //获取当前佩戴的牌子
-func Get_weared_medal() (item TGet_weared_medal) {
+func Get_weared_medal() (item J.GetWearedMedal_Data) {
 
 	apilog := apilog.Base_add(`获取牌子`)
 	//验证cookie
@@ -1504,13 +1491,8 @@ func Get_weared_medal() (item TGet_weared_medal) {
 			return
 		}
 
-		var res struct {
-			Code    int               `json:"code"`
-			Msg     string            `json:"msg"`
-			Message string            `json:"message"`
-			Data    TGet_weared_medal `json:"data"`
-		}
-		if e := json.Unmarshal(r.Respon, &res); e != nil && res.Msg == `` { //未佩戴时的data是array型会导致错误
+		var res J.GetWearedMedal
+		if e := json.Unmarshal(r.Respon, &res); e != nil {
 			apilog.L(`E: `, e)
 			return
 		}
@@ -1520,7 +1502,12 @@ func Get_weared_medal() (item TGet_weared_medal) {
 			return
 		}
 
-		return res.Data
+		switch res.Data.(type) {
+		case J.GetWearedMedal_Data:
+			return res.Data.(J.GetWearedMedal_Data)
+		default:
+		}
+		return
 	}
 
 }
@@ -1556,8 +1543,8 @@ func CheckSwitch_FansMedal() (missKey []string) {
 	{ //获取当前牌子，验证是否本直播间牌子
 		res := Get_weared_medal()
 
-		c.Wearing_FansMedal = res.Roominfo.Room_id //更新佩戴信息
-		if res.Target_id == c.UpUid {
+		c.Wearing_FansMedal = res.Roominfo.RoomID //更新佩戴信息
+		if res.TargetID == c.UpUid {
 			return
 		}
 	}
