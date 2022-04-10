@@ -492,7 +492,7 @@ func Gtk_danmu() {
 				} else {
 					in_smooth_roll = false
 					tmp.SetValue(max)
-					if v, ok := c.C.C.K_v.LoadV(`gtk_保留弹幕数量`).(float64); ok {
+					if v, ok := c.C.K_v.LoadV(`gtk_保留弹幕数量`).(float64); ok {
 						loc -= int(v)
 					} else {
 						loc -= 25
