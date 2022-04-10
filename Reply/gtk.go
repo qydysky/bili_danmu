@@ -342,8 +342,8 @@ func Gtk_danmu() {
 						if i, e := strconv.Atoi(t); e != nil {
 							show(`输入错误`, load_face("0room"))
 						} else {
-							c.Roomid = i
-							c.Danmu_Main_mq.Push_tag(`change_room`, nil)
+							c.C.Roomid = i
+							c.C.Danmu_Main_mq.Push_tag(`change_room`, nil)
 						}
 					} else {
 						show(`房间号输入为空`, load_face("0room"))
@@ -492,7 +492,7 @@ func Gtk_danmu() {
 				} else {
 					in_smooth_roll = false
 					tmp.SetValue(max)
-					if v, ok := c.C.K_v.LoadV(`gtk_保留弹幕数量`).(float64); ok {
+					if v, ok := c.C.C.K_v.LoadV(`gtk_保留弹幕数量`).(float64); ok {
 						loc -= int(v)
 					} else {
 						loc -= 25
@@ -548,7 +548,7 @@ func Gtk_danmu() {
 					log.Println(e)
 					return
 				}
-				b.SetText(c.Note)
+				b.SetText(c.C.Note)
 			}
 			{ //时长
 				b, e := w2_textView1.GetBuffer()
@@ -557,7 +557,7 @@ func Gtk_danmu() {
 					return
 				}
 				if c.C.Liveing {
-					d := time.Since(c.Live_Start_Time).Round(time.Second)
+					d := time.Since(c.C.Live_Start_Time).Round(time.Second)
 					h := d / time.Hour
 					d -= h * time.Hour
 					m := d / time.Minute
@@ -576,7 +576,7 @@ func Gtk_danmu() {
 				}
 				if c.C.Liveing {
 					if c.C.Renqi != renqi_old {
-						var Renqi string = strconv.Itoa(c.Renqi)
+						var Renqi string = strconv.Itoa(c.C.Renqi)
 						L := len([]rune(Renqi))
 
 						var tmp string
@@ -584,7 +584,7 @@ func Gtk_danmu() {
 							if c.C.Renqi > renqi_old {
 								tmp += `+`
 							}
-							tmp += fmt.Sprintf("%.1f", 100*float64(c.Renqi-renqi_old)/float64(renqi_old)) + `% | `
+							tmp += fmt.Sprintf("%.1f", 100*float64(c.C.Renqi-renqi_old)/float64(renqi_old)) + `% | `
 						}
 						if c.C.Renqi != 0 {
 							renqi_old = c.C.Renqi
@@ -609,7 +609,7 @@ func Gtk_danmu() {
 				select {
 				case tmp := <-w2_Entry0_editting:
 					if !tmp {
-						w2_Entry0.SetText(strconv.Itoa(c.Roomid))
+						w2_Entry0.SetText(strconv.Itoa(c.C.Roomid))
 					}
 				default:
 				}
@@ -643,7 +643,7 @@ func Gtk_danmu() {
 	application.Connect("shutdown", func() {
 		log.Println("application shutdown")
 		Gtk_on = false
-		c.Danmu_Main_mq.Push_tag(`gtk_close`, nil)
+		c.C.Danmu_Main_mq.Push_tag(`gtk_close`, nil)
 	})
 
 	application.Run(nil)
