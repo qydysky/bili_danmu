@@ -492,7 +492,7 @@ func Gtk_danmu() {
 				} else {
 					in_smooth_roll = false
 					tmp.SetValue(max)
-					if v, ok := c.K_v.LoadV(`gtk_保留弹幕数量`).(float64); ok {
+					if v, ok := c.C.K_v.LoadV(`gtk_保留弹幕数量`).(float64); ok {
 						loc -= int(v)
 					} else {
 						loc -= 25
@@ -531,7 +531,7 @@ func Gtk_danmu() {
 						log.Println(e)
 						return
 					}
-					b.SetText(fmt.Sprintf("￥%.2f", c.Rev))
+					b.SetText(fmt.Sprintf("￥%.2f", c.C.Rev))
 				}
 			}
 			{ //舰长
@@ -540,7 +540,7 @@ func Gtk_danmu() {
 					log.Println(e)
 					return
 				}
-				b.SetText(fmt.Sprintf("%d", c.GuardNum))
+				b.SetText(fmt.Sprintf("%d", c.C.GuardNum))
 			}
 			{ //分区排行
 				b, e := w2_textView4.GetBuffer()
@@ -556,7 +556,7 @@ func Gtk_danmu() {
 					log.Println(e)
 					return
 				}
-				if c.Liveing {
+				if c.C.Liveing {
 					d := time.Since(c.Live_Start_Time).Round(time.Second)
 					h := d / time.Hour
 					d -= h * time.Hour
@@ -574,20 +574,20 @@ func Gtk_danmu() {
 					log.Println(e)
 					return
 				}
-				if c.Liveing {
-					if c.Renqi != renqi_old {
+				if c.C.Liveing {
+					if c.C.Renqi != renqi_old {
 						var Renqi string = strconv.Itoa(c.Renqi)
 						L := len([]rune(Renqi))
 
 						var tmp string
 						if renqi_old != 1 {
-							if c.Renqi > renqi_old {
+							if c.C.Renqi > renqi_old {
 								tmp += `+`
 							}
 							tmp += fmt.Sprintf("%.1f", 100*float64(c.Renqi-renqi_old)/float64(renqi_old)) + `% | `
 						}
-						if c.Renqi != 0 {
-							renqi_old = c.Renqi
+						if c.C.Renqi != 0 {
+							renqi_old = c.C.Renqi
 						}
 
 						for k, v := range []rune(Renqi) {
@@ -629,7 +629,7 @@ func Gtk_danmu() {
 						Url:        src,
 						SaveToPath: Gtk_img_path + `/` + uid,
 						Timeout:    3 * 1000,
-						Proxy:      c.Proxy,
+						Proxy:      c.C.Proxy,
 					}); e != nil {
 						log.Println(e)
 					}
@@ -673,7 +673,7 @@ func load_face(uid string) (loc string) {
 		loc = Gtk_img_path + `/` + uid
 		return
 	}
-	if v, ok := c.K_v.LoadV(`gtk_头像获取等待最大数量`).(float64); ok && len(gtkGetList) > int(v) {
+	if v, ok := c.C.K_v.LoadV(`gtk_头像获取等待最大数量`).(float64); ok && len(gtkGetList) > int(v) {
 		return
 	}
 	select {
@@ -735,7 +735,7 @@ func show(s, img_src string, to_grid ...int) {
 				pixbuf, e = gdk.PixbufNewFromFileAtSize(img_src, 40, 40)
 				if e == nil {
 					imgbuf.Lock()
-					if v, ok := c.K_v.LoadV(`gtk_内存头像数量`).(float64); ok && len(imgbuf.b) > int(v)+10 {
+					if v, ok := c.C.K_v.LoadV(`gtk_内存头像数量`).(float64); ok && len(imgbuf.b) > int(v)+10 {
 						for k, _ := range imgbuf.b {
 							delete(imgbuf.b, k)
 							if len(imgbuf.b) <= int(v) {
