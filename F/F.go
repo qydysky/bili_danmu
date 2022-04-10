@@ -7,7 +7,7 @@ import (
 	c "github.com/qydysky/bili_danmu/CV"
 )
 
-var flog = c.Log.Base(`F/F.go`)
+var flog = c.C.Log.Base(`F/F.go`)
 
 //base on source/player-loader-2.0.7.min.js L3313
 //base on source/player-loader-2.0.7.min.js L3455
@@ -20,7 +20,7 @@ type header struct {
 }
 
 //头部生成与检查
-func HeadGen(datalenght,Opeation,Sequence int) []byte {
+func HeadGen(datalenght, Opeation, Sequence int) []byte {
 	var buffer bytes.Buffer //Buffer是一个实现了读写方法的可变大小的字节缓冲
 
 	buffer.Write(Itob32(int32(datalenght + c.WS_PACKAGE_HEADER_TOTAL_LENGTH)))
@@ -32,9 +32,12 @@ func HeadGen(datalenght,Opeation,Sequence int) []byte {
 	return buffer.Bytes()
 }
 
-func HeadChe(head []byte) (header) {
+func HeadChe(head []byte) header {
 
-	if len(head) != c.WS_PACKAGE_HEADER_TOTAL_LENGTH {flog.Base_add("头部检查").L(`E: `,"输入头长度错误");return header{}}
+	if len(head) != c.WS_PACKAGE_HEADER_TOTAL_LENGTH {
+		flog.Base_add("头部检查").L(`E: `, "输入头长度错误")
+		return header{}
+	}
 
 	PackL := Btoi32(head, c.WS_PACKAGE_OFFSET)
 	HeadL := Btoi16(head, c.WS_HEADER_OFFSET)
@@ -43,11 +46,11 @@ func HeadChe(head []byte) (header) {
 	Seque := Btoi32(head, c.WS_SEQUENCE_OFFSET)
 
 	return header{
-		PackL :PackL,
-		HeadL :HeadL,
-		BodyV :BodyV,
-		OpeaT :OpeaT,
-		Seque :Seque,
+		PackL: PackL,
+		HeadL: HeadL,
+		BodyV: BodyV,
+		OpeaT: OpeaT,
+		Seque: Seque,
 	}
 }
 
@@ -56,20 +59,20 @@ func HelloGen(roomid int, key string) []byte {
 	flog := flog.Base_add("认证生成")
 
 	if roomid == 0 || key == "" {
-		flog.L(`E: `,"roomid == 0 || key == \"\"")
+		flog.L(`E: `, "roomid == 0 || key == \"\"")
 		return []byte("")
 	}
 
-	var obj = `{"uid":` + strconv.Itoa(c.Uid) + 
-	`,"roomid":` + strconv.Itoa(roomid) + 
-	`,"protover":` + strconv.Itoa(c.Protover) + 
-	`,"platform":"`+ c.Platform + 
-	// `","clientver":"` + c.VERSION + //delete at 2021 4 14
-	`","type":` + strconv.Itoa(c.Type) + 
-	`,"key":"` + key + `"}`
+	var obj = `{"uid":` + strconv.Itoa(c.C.Uid) +
+		`,"roomid":` + strconv.Itoa(roomid) +
+		`,"protover":` + strconv.Itoa(c.Protover) +
+		`,"platform":"` + c.Platform +
+		// `","clientver":"` + c.VERSION + //delete at 2021 4 14
+		`","type":` + strconv.Itoa(c.Type) +
+		`,"key":"` + key + `"}`
 
 	var buffer bytes.Buffer //Buffer是一个实现了读写方法的可变大小的字节缓冲
-	
+
 	buffer.Write(HeadGen(len(obj), c.WS_OP_USER_AUTHENTICATION, c.WS_HEADER_DEFAULT_SEQUENCE))
 
 	buffer.Write([]byte(obj))
@@ -78,7 +81,9 @@ func HelloGen(roomid int, key string) []byte {
 }
 
 func HelloChe(r []byte) bool {
-	if len(r) == 0 {return false}
+	if len(r) == 0 {
+		return false
+	}
 
 	var obj = `{"code":0}`
 
@@ -90,10 +95,14 @@ func HelloChe(r []byte) bool {
 
 	h := buffer.Bytes()
 
-	if len(h) != len(r) {return false}
+	if len(h) != len(r) {
+		return false
+	}
 
 	for k, v := range r {
-		if v != h[k] {return false}
+		if v != h[k] {
+			return false
+		}
 	}
 	return true
 }
@@ -106,7 +115,7 @@ func Heartbeat() ([]byte, int) {
 	var obj = `[object Object]`
 
 	var buffer bytes.Buffer //Buffer是一个实现了读写方法的可变大小的字节缓冲
-	
+
 	buffer.Write(HeadGen(len(obj), c.WS_OP_HEARTBEAT, c.WS_HEADER_DEFAULT_SEQUENCE))
 
 	buffer.Write([]byte(obj))
@@ -117,9 +126,11 @@ func Heartbeat() ([]byte, int) {
 
 //cookie检查
 func CookieCheck(key []string) (missKey []string) {
-	for _,tk := range key{
-		if tk == `` {continue}
-		if _,ok := c.Cookie.Load(tk);!ok{
+	for _, tk := range key {
+		if tk == `` {
+			continue
+		}
+		if _, ok := c.C.Cookie.Load(tk); !ok {
 			missKey = append(missKey, tk)
 		}
 	}
