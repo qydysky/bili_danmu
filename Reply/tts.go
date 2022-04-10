@@ -37,7 +37,7 @@ var tts_List = make(chan string, 20)
 
 var tts_limit = limit.New(1, 5000, 15000) //频率限制1次/5s，最大等待时间15s
 
-var tts_log = c.Log.Base_add(`TTS`)
+var tts_log = c.C.Log.Base_add(`TTS`)
 
 var (
 	tts_ser     = "baidu"
@@ -53,20 +53,20 @@ var (
 func init() {
 	{ //tts配置
 
-		if v, ok := c.K_v.LoadV(`TTS_总开关`).(bool); ok && !v {
+		if v, ok := c.C.K_v.LoadV(`TTS_总开关`).(bool); ok && !v {
 			return
 		}
-		if v, ok := c.K_v.LoadV(`TTS_使用程序路径`).(string); ok && v != `` {
+		if v, ok := c.C.K_v.LoadV(`TTS_使用程序路径`).(string); ok && v != `` {
 			tts_prog = v
 		} else {
 			tts_log.L(`E: `, `TTS_使用程序路径不是字符串或为空`)
 		}
-		if v, ok := c.K_v.LoadV(`TTS_使用程序参数`).(string); ok && v != `` {
+		if v, ok := c.C.K_v.LoadV(`TTS_使用程序参数`).(string); ok && v != `` {
 			tts_prog_set = v
 		} else {
 			tts_log.L(`E: `, `TTS_使用程序参数不是字符串`)
 		}
-		if v, ok := c.K_v.LoadV(`TTS_服务器`).(string); ok && v != "" {
+		if v, ok := c.C.K_v.LoadV(`TTS_服务器`).(string); ok && v != "" {
 			if _, ok := tts_ser_map[v]; ok {
 				tts_ser = v
 			} else {
@@ -107,7 +107,7 @@ func init() {
 
 	//消息队列接收tts类消息，并传送到TTS朗读
 	//使用带tag的消息队列在功能间传递消息
-	c.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
+	c.C.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
 		`tts`: func(data interface{}) bool { //tts
 			d, _ := data.(Danmu_mq_t)
 			if s, ok := tts_setting_string[d.uid]; ok && len(d.m) != 0 && s != "" {
@@ -190,7 +190,7 @@ func baidu(msg string) error {
 		Timeout:    3 * 1000,
 		Retry:      1,
 		SleepTime:  5000,
-		Proxy:      c.Proxy,
+		Proxy:      c.C.Proxy,
 	}); err != nil {
 		return err
 	}
@@ -204,10 +204,10 @@ var (
 )
 
 func init() {
-	if v, ok := c.K_v.LoadV(`TTS_服务器_youdaoId`).(string); ok && v != `` {
+	if v, ok := c.C.K_v.LoadV(`TTS_服务器_youdaoId`).(string); ok && v != `` {
 		youdaoId = v
 	}
-	if v, ok := c.K_v.LoadV(`TTS_服务器_youdaoKey`).(string); ok && v != `` {
+	if v, ok := c.C.K_v.LoadV(`TTS_服务器_youdaoKey`).(string); ok && v != `` {
 		youdaoappKey = v
 	}
 	if tts_ser == `youdao` && (youdaoId == `` || youdaoappKey == ``) {
@@ -246,7 +246,7 @@ func youdao(msg string) error {
 		Timeout:    3 * 1000,
 		Retry:      1,
 		SleepTime:  5000,
-		Proxy:      c.Proxy,
+		Proxy:      c.C.Proxy,
 	}); err != nil {
 		return err
 	}
@@ -275,16 +275,16 @@ var (
 )
 
 func init() {
-	if v, ok := c.K_v.LoadV(`TTS_服务器_xfId`).(string); ok && v != `` {
+	if v, ok := c.C.K_v.LoadV(`TTS_服务器_xfId`).(string); ok && v != `` {
 		xfId = v
 	}
-	if v, ok := c.K_v.LoadV(`TTS_服务器_xfKey`).(string); ok && v != `` {
+	if v, ok := c.C.K_v.LoadV(`TTS_服务器_xfKey`).(string); ok && v != `` {
 		xfKey = v
 	}
-	if v, ok := c.K_v.LoadV(`TTS_服务器_xfSecret`).(string); ok && v != `` {
+	if v, ok := c.C.K_v.LoadV(`TTS_服务器_xfSecret`).(string); ok && v != `` {
 		xfSecret = v
 	}
-	if v, ok := c.K_v.LoadV(`TTS_服务器_xfVoice`).(string); ok && v != `` {
+	if v, ok := c.C.K_v.LoadV(`TTS_服务器_xfVoice`).(string); ok && v != `` {
 		if _, ok := xfVmap[v]; ok || v == `random` {
 			xfVoice = v
 		} else {
@@ -348,7 +348,7 @@ func init() {
 
 		xfwsClient = ws.New_client(ws.Client{
 			Url:   wsUrl,
-			Proxy: c.Proxy,
+			Proxy: c.C.Proxy,
 			Header: map[string]string{
 				`User-Agent`:      `Mozilla/5.0 (X11; Linux x86_64; rv:84.0) Gecko/20100101 Firefox/84.0`,
 				`Accept`:          `*/*`,

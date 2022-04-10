@@ -26,11 +26,15 @@ import (
 	qr "github.com/skip2/go-qrcode"
 )
 
-var apilog = c.Log.Base(`api`)
+var apilog = c.C.Log.Base(`api`)
 var api_limit = limit.New(1, 2000, 30000) //频率限制1次/2s，最大等待时间30s
 
 type GetFunc struct {
-	c.Common
+	*c.Common
+}
+
+func Get(c *c.Common) *GetFunc {
+	return &GetFunc{c}
 }
 
 func (c *GetFunc) Get(key string) {
@@ -893,7 +897,7 @@ func Get_face_src(uid string) string {
 	apilog := apilog.Base_add(`获取头像`)
 
 	Cookie := make(map[string]string)
-	c.Cookie.Range(func(k, v interface{}) bool {
+	c.C.Cookie.Range(func(k, v interface{}) bool {
 		Cookie[k.(string)] = v.(string)
 		return true
 	})
@@ -902,10 +906,10 @@ func Get_face_src(uid string) string {
 	if err := req.Reqf(reqf.Rval{
 		Url: "https://api.live.bilibili.com/xlive/web-room/v1/index/getDanmuMedalAnchorInfo?ruid=" + uid,
 		Header: map[string]string{
-			`Referer`: "https://live.bilibili.com/" + strconv.Itoa(c.Roomid),
+			`Referer`: "https://live.bilibili.com/" + strconv.Itoa(c.C.Roomid),
 			`Cookie`:  reqf.Map_2_Cookies_String(Cookie),
 		},
-		Proxy:   c.Proxy,
+		Proxy:   c.C.Proxy,
 		Timeout: 10 * 1000,
 		Retry:   2,
 	}); err != nil {
@@ -1142,7 +1146,7 @@ func Info(UpUid int) (info J.Info) {
 		req := reqf.New()
 		if err := req.Reqf(reqf.Rval{
 			Url:     `https://api.bilibili.com/x/space/acc/info?mid=` + strconv.Itoa(UpUid) + `&jsonp=jsonp`,
-			Proxy:   c.Proxy,
+			Proxy:   c.C.Proxy,
 			Timeout: 10 * 1000,
 			Retry:   2,
 		}); err != nil {
@@ -1417,7 +1421,7 @@ func Get_list_in_room() (array []J.GetMyMedals_Items) {
 		return
 	}
 	Cookie := make(map[string]string)
-	c.Cookie.Range(func(k, v interface{}) bool {
+	c.C.Cookie.Range(func(k, v interface{}) bool {
 		Cookie[k.(string)] = v.(string)
 		return true
 	})
@@ -1431,7 +1435,7 @@ func Get_list_in_room() (array []J.GetMyMedals_Items) {
 				Header: map[string]string{
 					`Cookie`: reqf.Map_2_Cookies_String(Cookie),
 				},
-				Proxy:   c.Proxy,
+				Proxy:   c.C.Proxy,
 				Timeout: 10 * 1000,
 				Retry:   2,
 			}); e != nil {
@@ -1477,7 +1481,7 @@ func Get_weared_medal() (item J.GetWearedMedal_Data) {
 		return
 	}
 	Cookie := make(map[string]string)
-	c.Cookie.Range(func(k, v interface{}) bool {
+	c.C.Cookie.Range(func(k, v interface{}) bool {
 		Cookie[k.(string)] = v.(string)
 		return true
 	})
@@ -1489,7 +1493,7 @@ func Get_weared_medal() (item J.GetWearedMedal_Data) {
 			Header: map[string]string{
 				`Cookie`: reqf.Map_2_Cookies_String(Cookie),
 			},
-			Proxy:   c.Proxy,
+			Proxy:   c.C.Proxy,
 			Timeout: 10 * 1000,
 			Retry:   2,
 		}); e != nil {
@@ -1640,7 +1644,7 @@ func Dosign() {
 
 	{ //检查是否签到
 		Cookie := make(map[string]string)
-		c.Cookie.Range(func(k, v interface{}) bool {
+		c.C.Cookie.Range(func(k, v interface{}) bool {
 			Cookie[k.(string)] = v.(string)
 			return true
 		})
@@ -1661,7 +1665,7 @@ func Dosign() {
 				`Referer`:         "https://live.bilibili.com/all",
 				`Cookie`:          reqf.Map_2_Cookies_String(Cookie),
 			},
-			Proxy:   c.Proxy,
+			Proxy:   c.C.Proxy,
 			Timeout: 3 * 1000,
 			Retry:   2,
 		}); err != nil {
@@ -1690,7 +1694,7 @@ func Dosign() {
 
 	{ //签到
 		Cookie := make(map[string]string)
-		c.Cookie.Range(func(k, v interface{}) bool {
+		c.C.Cookie.Range(func(k, v interface{}) bool {
 			Cookie[k.(string)] = v.(string)
 			return true
 		})
@@ -1711,7 +1715,7 @@ func Dosign() {
 				`Referer`:         "https://live.bilibili.com/all",
 				`Cookie`:          reqf.Map_2_Cookies_String(Cookie),
 			},
-			Proxy:   c.Proxy,
+			Proxy:   c.C.Proxy,
 			Timeout: 3 * 1000,
 			Retry:   2,
 		}); err != nil {
@@ -1833,7 +1837,7 @@ func F_x25Kn_cancel() {
 
 func F_x25Kn() {
 	apilog := apilog.Base_add(`小心心`)
-	if c.Wearing_FansMedal == 0 {
+	if c.C.Wearing_FansMedal == 0 {
 		apilog.L(`I: `, `无粉丝牌，不获取`)
 		return
 	}
@@ -1846,11 +1850,11 @@ func F_x25Kn() {
 		apilog.L(`T: `, `Cookie无Key:`, missKey)
 		return
 	}
-	if c.ParentAreaID == -1 {
+	if c.C.ParentAreaID == -1 {
 		apilog.L(`E: `, `失败！未获取Parent_area_id`)
 		return
 	}
-	if c.AreaID == -1 {
+	if c.C.AreaID == -1 {
 		apilog.L(`E: `, `失败！未获取Area_id`)
 		return
 	}
@@ -1884,13 +1888,13 @@ func F_x25Kn() {
 		loop_num = 0
 	)
 
-	csrf, _ := c.Cookie.LoadV(`bili_jct`).(string)
+	csrf, _ := c.C.Cookie.LoadV(`bili_jct`).(string)
 	if csrf == `` {
 		apilog.L(`E: `, "Cookie错误,无bili_jct")
 		return
 	}
 
-	LIVE_BUVID := c.Cookie.LoadV(`LIVE_BUVID`).(string)
+	LIVE_BUVID := c.C.Cookie.LoadV(`LIVE_BUVID`).(string)
 	if LIVE_BUVID == `` {
 		apilog.L(`E: `, "Cookie错误,无LIVE_BUVID")
 		return
@@ -1908,7 +1912,7 @@ func F_x25Kn() {
 
 	{ //初始化
 
-		PostStr := `id=[` + strconv.Itoa(c.ParentAreaID) + `,` + strconv.Itoa(c.AreaID) + `,` + strconv.Itoa(loop_num) + `,` + strconv.Itoa(c.Roomid) + `]&`
+		PostStr := `id=[` + strconv.Itoa(c.C.ParentAreaID) + `,` + strconv.Itoa(c.C.AreaID) + `,` + strconv.Itoa(loop_num) + `,` + strconv.Itoa(c.C.Roomid) + `]&`
 		PostStr += `device=["` + LIVE_BUVID + `","` + new_uuid + `"]&`
 		PostStr += `ts=` + strconv.Itoa(int(p.Sys().GetMTime()))
 		PostStr += `&is_patch=0&`
@@ -1918,7 +1922,7 @@ func F_x25Kn() {
 		PostStr += `visit_id=`
 
 		Cookie := make(map[string]string)
-		c.Cookie.Range(func(k, v interface{}) bool {
+		c.C.Cookie.Range(func(k, v interface{}) bool {
 			Cookie[k.(string)] = v.(string)
 			return true
 		})
@@ -1943,11 +1947,11 @@ func F_x25Kn() {
 					`Connection`:      `keep-alive`,
 					`Pragma`:          `no-cache`,
 					`Cache-Control`:   `no-cache`,
-					`Referer`:         "https://live.bilibili.com/" + strconv.Itoa(c.Roomid),
+					`Referer`:         "https://live.bilibili.com/" + strconv.Itoa(c.C.Roomid),
 					`Cookie`:          reqf.Map_2_Cookies_String(Cookie),
 				},
 				PostStr: url.PathEscape(PostStr),
-				Proxy:   c.Proxy,
+				Proxy:   c.C.Proxy,
 				Timeout: 5 * 1000,
 				Retry:   2,
 			}); err != nil {
@@ -2005,7 +2009,7 @@ func F_x25Kn() {
 			var (
 				rt_obj = RT{
 					R: R{
-						Id:        `[` + strconv.Itoa(c.ParentAreaID) + `,` + strconv.Itoa(c.AreaID) + `,` + strconv.Itoa(loop_num) + `,` + strconv.Itoa(c.Roomid) + `]`,
+						Id:        `[` + strconv.Itoa(c.C.ParentAreaID) + `,` + strconv.Itoa(c.C.AreaID) + `,` + strconv.Itoa(loop_num) + `,` + strconv.Itoa(c.C.Roomid) + `]`,
 						Device:    `["` + LIVE_BUVID + `","` + new_uuid + `"]`,
 						Ets:       res.Data.Timestamp,
 						Benchmark: res.Data.Secret_key,
@@ -2037,7 +2041,7 @@ func F_x25Kn() {
 			PostStr = `s=` + wasm + `&` + PostStr
 
 			Cookie := make(map[string]string)
-			c.Cookie.Range(func(k, v interface{}) bool {
+			c.C.Cookie.Range(func(k, v interface{}) bool {
 				Cookie[k.(string)] = v.(string)
 				return true
 			})
@@ -2056,11 +2060,11 @@ func F_x25Kn() {
 					`Connection`:      `keep-alive`,
 					`Pragma`:          `no-cache`,
 					`Cache-Control`:   `no-cache`,
-					`Referer`:         "https://live.bilibili.com/" + strconv.Itoa(c.Roomid),
+					`Referer`:         "https://live.bilibili.com/" + strconv.Itoa(c.C.Roomid),
 					`Cookie`:          reqf.Map_2_Cookies_String(Cookie),
 				},
 				PostStr: url.PathEscape(PostStr),
-				Proxy:   c.Proxy,
+				Proxy:   c.C.Proxy,
 				Timeout: 5 * 1000,
 				Retry:   2,
 			}); err != nil {
@@ -2116,7 +2120,7 @@ func Gift_list() (list []Gift_list_type_Data_List) {
 		apilog.L(`T: `, `Cookie无Key:`, missKey)
 		return
 	}
-	if c.Roomid == 0 {
+	if c.C.Roomid == 0 {
 		apilog.L(`E: `, `失败！无Roomid`)
 		return
 	}
@@ -2126,14 +2130,14 @@ func Gift_list() (list []Gift_list_type_Data_List) {
 	} //超额请求阻塞，超时将取消
 
 	Cookie := make(map[string]string)
-	c.Cookie.Range(func(k, v interface{}) bool {
+	c.C.Cookie.Range(func(k, v interface{}) bool {
 		Cookie[k.(string)] = v.(string)
 		return true
 	})
 
 	req := reqf.New()
 	if err := req.Reqf(reqf.Rval{
-		Url: `https://api.live.bilibili.com/xlive/web-room/v1/gift/bag_list?t=` + strconv.Itoa(int(p.Sys().GetMTime())) + `&room_id=` + strconv.Itoa(c.Roomid),
+		Url: `https://api.live.bilibili.com/xlive/web-room/v1/gift/bag_list?t=` + strconv.Itoa(int(p.Sys().GetMTime())) + `&room_id=` + strconv.Itoa(c.C.Roomid),
 		Header: map[string]string{
 			`Host`:            `api.live.bilibili.com`,
 			`User-Agent`:      `Mozilla/5.0 (X11; Linux x86_64; rv:83.0) Gecko/20100101 Firefox/83.0`,
@@ -2144,10 +2148,10 @@ func Gift_list() (list []Gift_list_type_Data_List) {
 			`Connection`:      `keep-alive`,
 			`Pragma`:          `no-cache`,
 			`Cache-Control`:   `no-cache`,
-			`Referer`:         "https://live.bilibili.com/" + strconv.Itoa(c.Roomid),
+			`Referer`:         "https://live.bilibili.com/" + strconv.Itoa(c.C.Roomid),
 			`Cookie`:          reqf.Map_2_Cookies_String(Cookie),
 		},
-		Proxy:   c.Proxy,
+		Proxy:   c.C.Proxy,
 		Timeout: 3 * 1000,
 		Retry:   2,
 	}); err != nil {
@@ -2355,11 +2359,11 @@ func (c *GetFunc) Silver_2_coin() (missKey []string) {
 
 func save_cookie(Cookies []*http.Cookie) {
 	for k, v := range reqf.Cookies_List_2_Map(Cookies) {
-		c.Cookie.Store(k, v)
+		c.C.Cookie.Store(k, v)
 	}
 
 	Cookie := make(map[string]string)
-	c.Cookie.Range(func(k, v interface{}) bool {
+	c.C.Cookie.Range(func(k, v interface{}) bool {
 		Cookie[k.(string)] = v.(string)
 		return true
 	})
@@ -2390,7 +2394,7 @@ func Feed_list() (Uplist []UpItem) {
 	} //超额请求阻塞，超时将取消
 
 	Cookie := make(map[string]string)
-	c.Cookie.Range(func(k, v interface{}) bool {
+	c.C.Cookie.Range(func(k, v interface{}) bool {
 		Cookie[k.(string)] = v.(string)
 		return true
 	})
@@ -2412,7 +2416,7 @@ func Feed_list() (Uplist []UpItem) {
 				`Referer`:         `https://t.bilibili.com/pages/nav/index_new`,
 				`Cookie`:          reqf.Map_2_Cookies_String(Cookie),
 			},
-			Proxy:   c.Proxy,
+			Proxy:   c.C.Proxy,
 			Timeout: 3 * 1000,
 			Retry:   2,
 		}); err != nil {
@@ -2464,7 +2468,7 @@ func GetHistory(Roomid_int int) (j J.GetHistory) {
 			Header: map[string]string{
 				`Referer`: "https://live.bilibili.com/" + Roomid,
 			},
-			Proxy:   c.Proxy,
+			Proxy:   c.C.Proxy,
 			Timeout: 10 * 1000,
 			Retry:   2,
 		}); err != nil {
@@ -2503,7 +2507,7 @@ func SearchUP(s string) (list []searchresult) {
 		req := reqf.New()
 		if err := req.Reqf(reqf.Rval{
 			Url:     "https://api.bilibili.com/x/web-interface/search/type?context=&search_type=live_user&cover_type=user_cover&page=1&order=&category_id=&__refresh__=true&_extra=&highlight=1&single_column=0&keyword=" + url.PathEscape(s),
-			Proxy:   c.Proxy,
+			Proxy:   c.C.Proxy,
 			Timeout: 10 * 1000,
 			Retry:   2,
 		}); err != nil {
@@ -2553,7 +2557,7 @@ func KeepConnect() {
 func IsConnected() bool {
 	apilog := apilog.Base_add(`IsConnected`)
 
-	v, ok := c.K_v.LoadV(`网络中断不退出`).(bool)
+	v, ok := c.C.K_v.LoadV(`网络中断不退出`).(bool)
 	if !ok || !v {
 		return true
 	}
@@ -2561,7 +2565,7 @@ func IsConnected() bool {
 	req := reqf.New()
 	if err := req.Reqf(reqf.Rval{
 		Url:              "https://www.bilibili.com",
-		Proxy:            c.Proxy,
+		Proxy:            c.C.Proxy,
 		Timeout:          10 * 1000,
 		JustResponseCode: true,
 	}); err != nil {

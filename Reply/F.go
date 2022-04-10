@@ -47,11 +47,11 @@ import (
 /*
 	F额外功能区
 */
-var flog = c.Log.Base(`功能`)
+var flog = c.C.Log.Base(`功能`)
 
 //功能开关选取函数
 func IsOn(s string) bool {
-	v, ok := c.K_v.LoadV(s).(bool)
+	v, ok := c.C.K_v.LoadV(s).(bool)
 	return ok && v
 }
 
@@ -134,16 +134,16 @@ func ShowRevf() {
 		return
 	}
 	if ShowRev_start {
-		c.Log.Base(`功能`).L(`I: `, fmt.Sprintf("营收 ￥%.2f", c.Rev))
+		c.C.Log.Base(`功能`).L(`I: `, fmt.Sprintf("营收 ￥%.2f", c.C.Rev))
 		return
 	}
 	ShowRev_start = true
 	for {
-		c.Log.Base(`功能`).L(`I: `, fmt.Sprintf("营收 ￥%.2f", c.Rev))
-		for c.Rev == ShowRev_old {
+		c.C.Log.Base(`功能`).L(`I: `, fmt.Sprintf("营收 ￥%.2f", c.C.Rev))
+		for c.C.Rev == ShowRev_old {
 			p.Sys().Timeoutf(60)
 		}
-		ShowRev_old = c.Rev
+		ShowRev_old = c.C.Rev
 	}
 }
 
@@ -187,9 +187,9 @@ func init() {
 		`GB18030`: true,
 		`utf-8`:   true,
 	}
-	if v, ok := c.K_v.LoadV("Ass编码").(string); ok {
+	if v, ok := c.C.K_v.LoadV("Ass编码").(string); ok {
 		if v1, ok := accept[v]; ok && v1 {
-			c.Log.Base(`Ass`).L(`T: `, "编码:", v)
+			c.C.Log.Base(`Ass`).L(`T: `, "编码:", v)
 			if v == `utf-8` {
 				ass.wrap = nil
 			}
@@ -205,10 +205,10 @@ func Ass_f(file string, st time.Time) {
 	}
 
 	if rel, err := filepath.Rel(savestream.base_path, ass.file); err == nil {
-		c.Log.Base(`Ass`).L(`I: `, "保存到", rel+".ass")
+		c.C.Log.Base(`Ass`).L(`I: `, "保存到", rel+".ass")
 	} else {
-		c.Log.Base(`Ass`).L(`I: `, "保存到", ass.file+".ass")
-		c.Log.Base(`Ass`).L(`W: `, err)
+		c.C.Log.Base(`Ass`).L(`I: `, "保存到", ass.file+".ass")
+		c.C.Log.Base(`Ass`).L(`W: `, err)
 	}
 	p.File().FileWR(p.Filel{
 		File:       ass.file + ".ass",
@@ -309,7 +309,7 @@ var savestream = Savestream{
 
 func init() {
 	//使用带tag的消息队列在功能间传递消息
-	c.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
+	c.C.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
 		`savestream`: func(data interface{}) bool {
 			if savestream.cancel.Islive() {
 				Savestream_wait()
@@ -321,22 +321,22 @@ func init() {
 		},
 	})
 	//base_path
-	if path, ok := c.K_v.LoadV("直播流保存位置").(string); ok {
+	if path, ok := c.C.K_v.LoadV("直播流保存位置").(string); ok {
 		if path, err := filepath.Abs(path); err == nil {
 			savestream.base_path = path + "/"
 		}
 	}
-	if v, ok := c.K_v.LoadV(`直播hls流缓冲`).(float64); ok && v > 0 {
+	if v, ok := c.C.K_v.LoadV(`直播hls流缓冲`).(float64); ok && v > 0 {
 		savestream.hlsbuffersize = int(v)
 	}
-	if v, ok := c.K_v.LoadV(`直播hls流均衡`).(bool); ok {
+	if v, ok := c.C.K_v.LoadV(`直播hls流均衡`).(bool); ok {
 		savestream.hls_banlance_host = v
 	}
 }
 
 //已go func形式调用，将会获取直播流
 func Savestreamf() {
-	l := c.Log.Base(`savestream`)
+	l := c.C.Log.Base(`savestream`)
 
 	//避免多次开播导致的多次触发
 	{
@@ -347,13 +347,13 @@ func Savestreamf() {
 		defer savestream.skipFunc.UnSet()
 	}
 
-	want_qn, ok := c.K_v.LoadV("直播流清晰度").(float64)
+	want_qn, ok := c.C.K_v.LoadV("直播流清晰度").(float64)
 	if !ok || want_qn < 0 {
 		return
 	}
-	c.Live_want_qn = int(want_qn)
+	c.C.Live_want_qn = int(want_qn)
 
-	F.Get(`Live`)
+	F.Get(&c.C).Get(`Live`)
 
 	if savestream.cancel.Islive() {
 		return
@@ -362,7 +362,7 @@ func Savestreamf() {
 	//random host load balance
 	Host_list := []string{}
 	if savestream.hls_banlance_host {
-		for _, v := range c.Live {
+		for _, v := range c.C.Live {
 			url_struct, e := url.Parse(v)
 			if e != nil {
 				continue
@@ -394,7 +394,7 @@ func Savestreamf() {
 					ConnectTimeout: 2000,
 					ReadTimeout:    1000,
 					Timeout:        2000,
-					Proxy:          c.Proxy,
+					Proxy:          c.C.Proxy,
 					Header: map[string]string{
 						`Host`:            m3u8_url.Host,
 						`User-Agent`:      `Mozilla/5.0 (X11; Linux x86_64; rv:83.0) Gecko/20100101 Firefox/83.0`,
@@ -544,25 +544,25 @@ func Savestreamf() {
 	)
 
 	for {
-		F.Get(`Liveing`)
-		if !c.Liveing {
+		F.Get(&c.C).Get(`Liveing`)
+		if !c.C.Liveing {
 			break
 		}
 
-		F.Get(`Live`)
-		if len(c.Live) == 0 {
+		F.Get(&c.C).Get(`Live`)
+		if len(c.C.Live) == 0 {
 			break
 		}
 
 		savestream.path = savestream.base_path
 
-		savestream.path += strconv.Itoa(c.Roomid) + "_" + time.Now().Format("2006_01_02_15-04-05-000")
+		savestream.path += strconv.Itoa(c.C.Roomid) + "_" + time.Now().Format("2006_01_02_15-04-05-000")
 
 		savestream.wait = s.Init()
 		savestream.cancel = s.Init()
 
 		CookieM := make(map[string]string)
-		c.Cookie.Range(func(k, v interface{}) bool {
+		c.C.Cookie.Range(func(k, v interface{}) bool {
 			CookieM[k.(string)] = v.(string)
 			return true
 		})
@@ -575,10 +575,10 @@ func Savestreamf() {
 			}()
 			l.L(`I: `, "尝试连接live")
 			if e := r.Reqf(reqf.Rval{
-				Url:       c.Live[0],
+				Url:       c.C.Live[0],
 				Retry:     10,
 				SleepTime: 1000,
-				Proxy:     c.Proxy,
+				Proxy:     c.C.Proxy,
 				Header: map[string]string{
 					`Cookie`: reqf.Map_2_Cookies_String(CookieM),
 				},
@@ -603,7 +603,7 @@ func Savestreamf() {
 			}
 		}
 
-		if strings.Contains(c.Live[0], "flv") {
+		if strings.Contains(c.C.Live[0], "flv") {
 			if rel, err := filepath.Rel(savestream.base_path, savestream.path); err == nil {
 				l.L(`I: `, "保存到", rel+".flv")
 			} else {
@@ -817,10 +817,10 @@ func Savestreamf() {
 				//随机选取服务器，获取超时时间
 
 				live_index := 0
-				if len(c.Live) > 0 {
-					live_index = int(p.Rand().MixRandom(0, int64(len(c.Live)-1)))
+				if len(c.C.Live) > 0 {
+					live_index = int(p.Rand().MixRandom(0, int64(len(c.C.Live)-1)))
 				}
-				link, exp, e := flv_get_link(c.Live[live_index])
+				link, exp, e := flv_get_link(c.C.Live[live_index])
 				if e != nil {
 					l.L(`W: `, `流链接获取错误`, e)
 					break
@@ -855,7 +855,7 @@ func Savestreamf() {
 					}
 				}(req, reqf.Rval{
 					Url:   link,
-					Proxy: c.Proxy,
+					Proxy: c.C.Proxy,
 					Header: map[string]string{
 						`Cookie`: reqf.Map_2_Cookies_String(CookieM),
 					},
@@ -932,7 +932,7 @@ func Savestreamf() {
 
 				expires := int64(exp) - p.Sys().GetSTime() - 120
 				// no expect qn
-				if c.Live_want_qn < c.Live_qn {
+				if c.C.Live_want_qn < c.C.Live_qn {
 					expires = time.Now().Add(time.Minute * 2).Unix()
 				}
 
@@ -954,13 +954,13 @@ func Savestreamf() {
 
 				l.L(`I: `, "flv关闭，开始新连接")
 
-				//即将过期，刷新c.Live
-				F.Get(`Liveing`)
-				if !c.Liveing {
+				//即将过期，刷新c.C.Live
+				F.Get(&c.C).Get(`Liveing`)
+				if !c.C.Liveing {
 					break
 				}
-				F.Get(`Live`)
-				if len(c.Live) == 0 {
+				F.Get(&c.C).Get(`Live`)
+				if len(c.C.Live) == 0 {
 					break
 				}
 			}
@@ -1221,7 +1221,7 @@ func Savestreamf() {
 							ConnectTimeout: 5000,
 							ReadTimeout:    1000,
 							Retry:          1,
-							Proxy:          c.Proxy,
+							Proxy:          c.C.Proxy,
 						}); e != nil && !errors.Is(e, io.EOF) {
 							l.L(`I: `, e)
 							v.status = s_fail
@@ -1236,7 +1236,7 @@ func Savestreamf() {
 					break
 				}
 
-				links, file_add, exp, e := hls_get_link(c.Live, last_download)
+				links, file_add, exp, e := hls_get_link(c.C.Live, last_download)
 				if e != nil {
 					if e == no_Modified {
 						time.Sleep(time.Duration(2) * time.Second)
@@ -1276,7 +1276,7 @@ func Savestreamf() {
 				}
 
 				//qn in expect , set expires
-				if c.Live_want_qn >= c.Live_qn {
+				if c.C.Live_want_qn >= c.C.Live_qn {
 					expires = int64(exp)
 				}
 
@@ -1327,10 +1327,10 @@ func Savestreamf() {
 				} else if len(links) > 100 {
 					l.L(`W: `, `重试,等待下载切片：`, len(links))
 
-					if F.Get(`Liveing`); !c.Liveing {
+					if F.Get(&c.C).Get(`Liveing`); !c.C.Liveing {
 						break
 					}
-					if F.Get(`Live`); len(c.Live) == 0 {
+					if F.Get(&c.C).Get(`Live`); len(c.C.Live) == 0 {
 						break
 					}
 
@@ -1377,7 +1377,7 @@ func Savestreamf() {
 								ConnectTimeout: 2000,
 								ReadTimeout:    1000,
 								Timeout:        2000,
-								Proxy:          c.Proxy,
+								Proxy:          c.C.Proxy,
 							}); e != nil {
 								//try other host
 								if index+1 < len(Host_list) {
@@ -1419,10 +1419,10 @@ func Savestreamf() {
 
 				//m3u8_url 将过期
 				if p.Sys().GetSTime()+60 > expires {
-					if F.Get(`Liveing`); !c.Liveing {
+					if F.Get(&c.C).Get(`Liveing`); !c.C.Liveing {
 						break
 					}
-					if F.Get(`Live`); len(c.Live) == 0 {
+					if F.Get(&c.C).Get(`Live`); len(c.C.Live) == 0 {
 						break
 					}
 					// set expect
@@ -1480,7 +1480,7 @@ func Savestream_wait() {
 	}
 
 	savestream.cancel.Done()
-	c.Log.Base(`savestream`).L(`I: `, "等待停止")
+	c.C.Log.Base(`savestream`).L(`I: `, "等待停止")
 	savestream.wait.Wait()
 }
 
@@ -1498,7 +1498,7 @@ func Obsf(on bool) {
 	if !IsOn("调用obs") {
 		return
 	}
-	l := c.Log.Base(`obs`)
+	l := c.C.Log.Base(`obs`)
 
 	if on {
 		if p.Sys().CheckProgram("obs")[0] != 0 {
@@ -1534,7 +1534,7 @@ func Obs_R(on bool) {
 		return
 	}
 
-	l := c.Log.Base("obs_R")
+	l := c.C.Log.Base("obs_R")
 
 	if p.Sys().CheckProgram("obs")[0] == 0 {
 		l.L(`W: `, "obs未启动")
@@ -1634,7 +1634,7 @@ func Autobanf(s string) bool {
 		} //ban字符重复低去除
 		res = append(res, pt)
 	}
-	l := c.Log.Base("autoban")
+	l := c.C.Log.Base("autoban")
 	l.L(`W: `, res)
 	return true
 }
@@ -1698,10 +1698,10 @@ func Danmuji_auto() {
 		list    []string
 		timeout int
 	)
-	for _, v := range c.K_v.LoadV(`自动弹幕机_内容`).([]interface{}) {
+	for _, v := range c.C.K_v.LoadV(`自动弹幕机_内容`).([]interface{}) {
 		list = append(list, v.(string))
 	}
-	timeout = int(c.K_v.LoadV(`自动弹幕机_发送间隔s`).(float64))
+	timeout = int(c.C.K_v.LoadV(`自动弹幕机_发送间隔s`).(float64))
 	if timeout < 5 {
 		timeout = 5
 	}
@@ -1746,9 +1746,9 @@ func init() {
 			}
 			autoskip.now += 1
 			autoskip.Lock()
-			if autoskip.roomid != c.Roomid {
+			if autoskip.roomid != c.C.Roomid {
 				autoskip.buf = make(map[string]Autoskip_item)
-				autoskip.roomid = c.Roomid
+				autoskip.roomid = c.C.Roomid
 				flog.Base_add(`弹幕合并`).L(`T: `, `房间更新:`, autoskip.roomid)
 				autoskip.Unlock()
 				continue
@@ -1758,7 +1758,7 @@ func init() {
 					delete(autoskip.buf, k)
 					{ //超时显示
 						if v.Num > 3 {
-							c.Danmu_Main_mq.Push_tag(`tts`, Danmu_mq_t{ //传入消息队列
+							c.C.Danmu_Main_mq.Push_tag(`tts`, Danmu_mq_t{ //传入消息队列
 								uid: `0multi`,
 								m: map[string]string{
 									`{num}`: strconv.Itoa(int(v.Num)),
@@ -1798,9 +1798,9 @@ func Autoskipf(s string) uint {
 	}
 	autoskip.Lock()
 	defer autoskip.Unlock()
-	if autoskip.roomid != c.Roomid {
+	if autoskip.roomid != c.C.Roomid {
 		autoskip.buf = make(map[string]Autoskip_item)
-		autoskip.roomid = c.Roomid
+		autoskip.roomid = c.C.Roomid
 		flog.Base_add(`弹幕合并`).L(`T: `, `房间更新:`, autoskip.roomid)
 		return 0
 	}
@@ -1835,7 +1835,7 @@ var lessdanmu = Lessdanmu{
 }
 
 func init() {
-	if max_num, ok := c.K_v.LoadV(`每秒显示弹幕数`).(float64); ok && int(max_num) >= 1 {
+	if max_num, ok := c.C.K_v.LoadV(`每秒显示弹幕数`).(float64); ok && int(max_num) >= 1 {
 		flog.Base_add(`更少弹幕`).L(`T: `, `每秒弹幕数:`, int(max_num))
 		lessdanmu.max_num = int(max_num)
 		lessdanmu.limit = limit.New(int(max_num), 1000, 0) //timeout right now
@@ -1846,9 +1846,9 @@ func Lessdanmuf(s string) (show bool) {
 	if !IsOn("相似弹幕忽略") {
 		return true
 	}
-	if lessdanmu.roomid != c.Roomid {
+	if lessdanmu.roomid != c.C.Roomid {
 		lessdanmu.buf = nil
-		lessdanmu.roomid = c.Roomid
+		lessdanmu.roomid = c.C.Roomid
 		lessdanmu.threshold = 0.7
 		flog.Base_add(`更少弹幕`).L(`T: `, `房间更新:`, lessdanmu.roomid)
 		return true
@@ -2003,7 +2003,7 @@ func Jiezouf(s []string) bool {
 
 	jiezou.Lock()
 	if now > 1.3*jiezou.avg { //触发
-		c.Log.Base("jiezou").L(`W: `, "节奏注意", now, jiezou.avg, S)
+		c.C.Log.Base("jiezou").L(`W: `, "节奏注意", now, jiezou.avg, S)
 		jiezou.avg = now //沉默
 		jiezou.Unlock()
 
@@ -2020,7 +2020,7 @@ func Jiezouf(s []string) bool {
 //保存所有消息到json
 func init() {
 	Save_to_json(0, []interface{}{`[`})
-	c.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
+	c.C.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
 		`change_room`: func(data interface{}) bool { //房间改变
 			Save_to_json(0, []interface{}{`[`})
 			return false
@@ -2033,7 +2033,7 @@ func init() {
 }
 
 func Save_to_json(Loc int, Context []interface{}) {
-	if path, ok := c.K_v.LoadV(`save_to_json`).(string); ok && path != `` {
+	if path, ok := c.C.K_v.LoadV(`save_to_json`).(string); ok && path != `` {
 		p.File().FileWR(p.Filel{
 			File:    path,
 			Loc:     int64(Loc),
@@ -2047,33 +2047,33 @@ func Entry_danmu() {
 	flog := flog.Base_add(`进房弹幕`)
 
 	//检查与切换粉丝牌，只在cookie存在时启用
-	F.Get(`CheckSwitch_FansMedal`)
+	F.Get(&c.C).Get(`CheckSwitch_FansMedal`)
 
-	if v, _ := c.K_v.LoadV(`进房弹幕_有粉丝牌时才发`).(bool); v && c.Wearing_FansMedal == 0 {
+	if v, _ := c.C.K_v.LoadV(`进房弹幕_有粉丝牌时才发`).(bool); v && c.C.Wearing_FansMedal == 0 {
 		flog.L(`T: `, `无粉丝牌`)
 		return
 	}
-	if v, _ := c.K_v.LoadV(`进房弹幕_仅发首日弹幕`).(bool); v {
+	if v, _ := c.C.K_v.LoadV(`进房弹幕_仅发首日弹幕`).(bool); v {
 		res := F.Get_weared_medal()
 		if res.TodayIntimacy > 0 {
 			flog.L(`T: `, `今日已发弹幕`)
 			return
 		}
 	}
-	if array, ok := c.K_v.LoadV(`进房弹幕_内容`).([]interface{}); ok && len(array) != 0 {
+	if array, ok := c.C.K_v.LoadV(`进房弹幕_内容`).([]interface{}); ok && len(array) != 0 {
 		rand := p.Rand().MixRandom(0, int64(len(array)-1))
-		send.Danmu_s(array[rand].(string), c.Roomid)
+		send.Danmu_s(array[rand].(string), c.C.Roomid)
 	}
 }
 
 //保持所有牌子点亮
 func Keep_medal_light() {
-	if v, _ := c.K_v.LoadV(`保持牌子亮着`).(bool); !v {
+	if v, _ := c.C.K_v.LoadV(`保持牌子亮着`).(bool); !v {
 		return
 	}
 	flog := flog.Base_add(`保持亮牌`)
 
-	array, ok := c.K_v.LoadV(`进房弹幕_内容`).([]interface{})
+	array, ok := c.C.K_v.LoadV(`进房弹幕_内容`).([]interface{})
 	if !ok || len(array) == 0 {
 		flog.L(`I: `, `进房弹幕_内容 为 空，退出`)
 		return
@@ -2128,15 +2128,15 @@ func Keep_medal_light() {
 
 //自动发送即将过期的银瓜子礼物
 func AutoSend_silver_gift() {
-	day, _ := c.K_v.LoadV(`发送还有几天过期的礼物`).(float64)
+	day, _ := c.C.K_v.LoadV(`发送还有几天过期的礼物`).(float64)
 	if day <= 0 {
 		return
 	}
 
 	flog := flog.Base_add(`自动送礼`).L(`T: `, `开始`)
 
-	if c.UpUid == 0 {
-		F.Get(`UpUid`)
+	if c.C.UpUid == 0 {
+		F.Get(&c.C).Get(`UpUid`)
 	}
 
 	var hasSend bool
@@ -2187,7 +2187,7 @@ func get_m4s_cache(path string) (buf []byte, cached bool, err error) {
 //直播Web服务口
 func init() {
 	flog := flog.Base_add(`直播Web服务`)
-	if port_f, ok := c.K_v.LoadV(`直播Web服务口`).(float64); ok && port_f >= 0 {
+	if port_f, ok := c.C.K_v.LoadV(`直播Web服务口`).(float64); ok && port_f >= 0 {
 		port := int(port_f)
 
 		base_dir := savestream.base_path
@@ -2424,7 +2424,7 @@ func init() {
 				}
 
 				path := filepath.Base(savestream.path)
-				if strings.Contains(c.Live[0], "flv") {
+				if strings.Contains(c.C.Live[0], "flv") {
 					path += ".flv.dtmp"
 				} else {
 					path += "/0.m3u8.dtmp"
@@ -2460,8 +2460,8 @@ func init() {
 			},
 		})
 		host := p.Sys().GetIntranetIp()
-		c.Stream_url = strings.Replace(`http://`+s.Server.Addr, `0.0.0.0`, host, -1)
-		flog.L(`I: `, `启动于`, c.Stream_url)
+		c.C.Stream_url = strings.Replace(`http://`+s.Server.Addr, `0.0.0.0`, host, -1)
+		flog.L(`I: `, `启动于`, c.C.Stream_url)
 	}
 }
 
@@ -2474,7 +2474,7 @@ type Communicate struct {
 
 func init() {
 	communicate.Buf = new(psync.Map)
-	c.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
+	c.C.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
 		`change_room`: func(data interface{}) bool { //房间改变
 			communicate.Reset()
 			return false

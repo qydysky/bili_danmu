@@ -11,7 +11,7 @@ import (
 	数据为WS_OP_MESSAGE类型的数据分派
 */
 
-var msglog = c.Log.Base(`Msg`)
+var msglog = c.C.Log.Base(`Msg`)
 
 //Msg类型数据处理方法map
 var Msg_map = map[string]func(replyF, string){

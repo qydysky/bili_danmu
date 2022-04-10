@@ -1,48 +1,48 @@
 package bili_danmu
 
 import (
-	"fmt"
 	"flag"
-	"time"
+	"fmt"
 	"net/url"
-	"strconv"
 	"os"
 	"os/signal"
-		
-	reply "github.com/qydysky/bili_danmu/Reply"
-	send "github.com/qydysky/bili_danmu/Send"
+	"strconv"
+	"time"
+
 	c "github.com/qydysky/bili_danmu/CV"
 	F "github.com/qydysky/bili_danmu/F"
+	reply "github.com/qydysky/bili_danmu/Reply"
+	send "github.com/qydysky/bili_danmu/Send"
 
 	p "github.com/qydysky/part"
-	ws "github.com/qydysky/part/websocket"
 	msgq "github.com/qydysky/part/msgq"
 	reqf "github.com/qydysky/part/reqf"
+	ws "github.com/qydysky/part/websocket"
 )
 
 func init() {
-	go func(){//日期变化
+	go func() { //日期变化
 		var old = time.Now().Hour()
 		for {
-			if now := time.Now().Hour();now == 0 && old != now {
-				c.Danmu_Main_mq.Push_tag(`new day`,nil)
+			if now := time.Now().Hour(); now == 0 && old != now {
+				c.C.Danmu_Main_mq.Push_tag(`new day`, nil)
 				old = now
 			}
-			time.Sleep(time.Second*time.Duration(100))
+			time.Sleep(time.Second * time.Duration(100))
 		}
 	}()
 }
 
 func Demo(roomid ...int) {
-	var danmulog = c.Log.Base(`bilidanmu Demo`)
+	var danmulog = c.C.Log.Base(`bilidanmu Demo`)
 	defer danmulog.Block(1000)
 
 	//ctrl+c退出
-	interrupt := make(chan os.Signal,2)
-	go func(){
+	interrupt := make(chan os.Signal, 2)
+	go func() {
 		danmulog.L(`T: `, "两次ctrl+c强制退出")
 		for len(interrupt) < 2 {
-			time.Sleep(time.Second*3)
+			time.Sleep(time.Second * 3)
 		}
 		danmulog.L(`I: `, "强制退出!").Block(1000)
 		os.Exit(1)
@@ -54,7 +54,7 @@ func Demo(roomid ...int) {
 
 		var (
 			change_room_chan = make(chan struct{})
-			flash_room_chan = make(chan struct{})
+			flash_room_chan  = make(chan struct{})
 		)
 
 		//-r 房间初始化
@@ -66,63 +66,65 @@ func Demo(roomid ...int) {
 		//如果连接中断，则等待
 		F.KeepConnect()
 		//获取cookie
-		F.Get(`Cookie`)
+		F.Get(&c.C).Get(`Cookie`)
 		//获取LIVE_BUVID
-		F.Get(`LIVE_BUVID`)
+		F.Get(&c.C).Get(`LIVE_BUVID`)
 		if room == 0 {
-			c.Log.Block(1000)//等待所有日志输出完毕
+			c.C.Log.Block(1000) //等待所有日志输出完毕
 			fmt.Println("输入房间号或` live`获取正在直播的主播")
 		} else {
 			fmt.Print("房间号: ", strconv.Itoa(room), "\n")
-			if c.Roomid == 0 {
-				c.Roomid = room
-				go func(){change_room_chan <- struct{}{}}()
+			if c.C.Roomid == 0 {
+				c.C.Roomid = room
+				go func() { change_room_chan <- struct{}{} }()
 			}
 		}
 		//命令行操作 切换房间 发送弹幕
 		go F.Cmd()
 
 		//使用带tag的消息队列在功能间传递消息
-		c.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
-			`flash_room`:func(data interface{})(bool){//房间重进
+		c.C.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
+			`flash_room`: func(data interface{}) bool { //房间重进
 				select {
-				case flash_room_chan <- struct{}{}:;
-				default:;
+				case flash_room_chan <- struct{}{}:
+				default:
 				}
 				return false
 			},
-			`change_room`:func(data interface{})(bool){//房间改变
-				c.Rev = 0.0 //营收
-				c.Renqi = 1//人气置1
-				c.GuardNum = 0//舰长数
-				c.Note = ``//分区排行
-				c.Uname = ``//主播id
-				c.Title = ``
-				c.Wearing_FansMedal = 0
-				for len(change_room_chan) != 0 {<-change_room_chan}
+			`change_room`: func(data interface{}) bool { //房间改变
+				c.C.Rev = 0.0    //营收
+				c.C.Renqi = 1    //人气置1
+				c.C.GuardNum = 0 //舰长数
+				c.C.Note = ``    //分区排行
+				c.C.Uname = ``   //主播id
+				c.C.Title = ``
+				c.C.Wearing_FansMedal = 0
+				for len(change_room_chan) != 0 {
+					<-change_room_chan
+				}
 				change_room_chan <- struct{}{}
 				return false
 			},
-			`c.Rev_add`:func(data interface{})(bool){//收入
-				c.Rev += data.(float64)
+			`c.Rev_add`: func(data interface{}) bool { //收入
+				c.C.Rev += data.(float64)
 				return false
 			},
-			`c.Renqi`:func(data interface{})(bool){//人气更新
-				if tmp,ok := data.(int);ok{
-					c.Renqi = tmp
+			`c.Renqi`: func(data interface{}) bool { //人气更新
+				if tmp, ok := data.(int); ok {
+					c.C.Renqi = tmp
 				}
 				return false
 			},
-			`gtk_close`:func(data interface{})(bool){//gtk关闭信号
+			`gtk_close`: func(data interface{}) bool { //gtk关闭信号
 				interrupt <- os.Interrupt
 				return false
 			},
 		})
 		//单独，避免队列执行耗时block从而无法接收更多消息
-		c.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
-			`pm`:func(data interface{})(bool){//私信
-				if tmp,ok := data.(send.Pm_item);ok{
-					send.Send_pm(tmp.Uid,tmp.Msg)
+		c.C.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
+			`pm`: func(data interface{}) bool { //私信
+				if tmp, ok := data.(send.Pm_item); ok {
+					send.Send_pm(tmp.Uid, tmp.Msg)
 				}
 				return false
 			},
@@ -133,9 +135,9 @@ func Demo(roomid ...int) {
 		//捕获ctrl+c退出
 		signal.Notify(interrupt, os.Interrupt)
 		//获取uid
-		F.Get(`Uid`)
+		F.Get(&c.C).Get(`Uid`)
 		//兑换硬币
-		F.Get(`Silver_2_coin`)
+		F.Get(&c.C).Get(`Silver_2_coin`)
 		//每日签到
 		F.Dosign()
 		// //客户版本 不再需要
@@ -145,105 +147,105 @@ func Demo(roomid ...int) {
 		//附加功能 自动发送即将过期礼物
 		go reply.AutoSend_silver_gift()
 
-		for exit_sign:=true;exit_sign; {
+		for exit_sign := true; exit_sign; {
 
-			danmulog.L(`T: `,"准备")
+			danmulog.L(`T: `, "准备")
 			//如果连接中断，则等待
 			F.KeepConnect()
 			//获取热门榜
-			F.Get(`Note`)
+			F.Get(&c.C).Get(`Note`)
 
-			danmulog.L(`I: `,"连接到房间", c.Roomid)
+			danmulog.L(`I: `, "连接到房间", c.C.Roomid)
 
 			Cookie := make(map[string]string)
-			c.Cookie.Range(func(k,v interface{})(bool){
+			c.C.Cookie.Range(func(k, v interface{}) bool {
 				Cookie[k.(string)] = v.(string)
 				return true
 			})
 
-			F.Get(`Liveing`)
+			F.Get(&c.C).Get(`Liveing`)
 			//检查与切换粉丝牌，只在cookie存在时启用
-			F.Get(`CheckSwitch_FansMedal`)
+			F.Get(&c.C).Get(`CheckSwitch_FansMedal`)
 
 			//直播状态
-			if c.Liveing {
-				danmulog.L(`I: `,"直播中")
+			if c.C.Liveing {
+				danmulog.L(`I: `, "直播中")
 			} else {
-				danmulog.L(`I: `,"未直播")
+				danmulog.L(`I: `, "未直播")
 			}
 
 			//对每个弹幕服务器尝试
-			F.Get(`WSURL`)
-			for i:=0;i<len(c.WSURL);i+=1 {
-				v := c.WSURL[i]
+			F.Get(&c.C).Get(`WSURL`)
+			for i := 0; i < len(c.C.WSURL); i += 1 {
+				v := c.C.WSURL[i]
 				//ws启动
 				u, _ := url.Parse(v)
 				ws_c := ws.New_client(ws.Client{
-					Url:v,
-					TO:35 * 1000,
-					Proxy:c.Proxy,
-					Func_abort_close:func(){danmulog.L(`I: `,`服务器连接中断`)},
-					Func_normal_close:func(){danmulog.L(`I: `,`服务器连接关闭`)},
+					Url:               v,
+					TO:                35 * 1000,
+					Proxy:             c.C.Proxy,
+					Func_abort_close:  func() { danmulog.L(`I: `, `服务器连接中断`) },
+					Func_normal_close: func() { danmulog.L(`I: `, `服务器连接关闭`) },
 					Header: map[string]string{
-						`Cookie`:reqf.Map_2_Cookies_String(Cookie),
-						`Host`: u.Hostname(),
-						`User-Agent`: `Mozilla/5.0 (X11; Linux x86_64; rv:84.0) Gecko/20100101 Firefox/84.0`,
-						`Accept`: `*/*`,
+						`Cookie`:          reqf.Map_2_Cookies_String(Cookie),
+						`Host`:            u.Hostname(),
+						`User-Agent`:      `Mozilla/5.0 (X11; Linux x86_64; rv:84.0) Gecko/20100101 Firefox/84.0`,
+						`Accept`:          `*/*`,
 						`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
-						`Origin`: `https://live.bilibili.com`,
-						`Pragma`: `no-cache`,
-						`Cache-Control`: `no-cache`,
+						`Origin`:          `https://live.bilibili.com`,
+						`Pragma`:          `no-cache`,
+						`Cache-Control`:   `no-cache`,
 					},
 				}).Handle()
 				if ws_c.Isclose() {
-					danmulog.L(`E: `,"连接错误", ws_c.Error())
+					danmulog.L(`E: `, "连接错误", ws_c.Error())
 					continue
 				}
 
 				//SendChan 传入发送[]byte
 				//RecvChan 接收[]byte
-				danmulog.L(`T: `,"连接", v)
-				ws_c.SendChan <- F.HelloGen(c.Roomid, c.Token)
-				if F.HelloChe(<- ws_c.RecvChan) {
-					danmulog.L(`I: `,"已连接到房间", c.Uname, `(`, c.Roomid, `)`)
-					reply.Gui_show(`进入直播间: `+c.Uname+` (`+strconv.Itoa(c.Roomid)+`)`, `0room`)
-					if c.Title != `` {
-						danmulog.L(`I: `,c.Title)
-						reply.Gui_show(`房间标题: `+c.Title, `0room`)
+				danmulog.L(`T: `, "连接", v)
+				ws_c.SendChan <- F.HelloGen(c.C.Roomid, c.C.Token)
+				if F.HelloChe(<-ws_c.RecvChan) {
+					danmulog.L(`I: `, "已连接到房间", c.C.Uname, `(`, c.C.Roomid, `)`)
+					reply.Gui_show(`进入直播间: `+c.C.Uname+` (`+strconv.Itoa(c.C.Roomid)+`)`, `0room`)
+					if c.C.Title != `` {
+						danmulog.L(`I: `, c.C.Title)
+						reply.Gui_show(`房间标题: `+c.C.Title, `0room`)
 					}
 					//30s获取一次人气
-					go func(){
-						p.Sys().MTimeoutf(500)//500ms
-						danmulog.L(`T: `,"获取人气")
-						go func(){
+					go func() {
+						p.Sys().MTimeoutf(500) //500ms
+						danmulog.L(`T: `, "获取人气")
+						go func() {
 							heartbeatmsg, heartinterval := F.Heartbeat()
 							for !ws_c.Isclose() {
 								ws_c.SendChan <- heartbeatmsg
-								time.Sleep(time.Millisecond*time.Duration(heartinterval*1000))
+								time.Sleep(time.Millisecond * time.Duration(heartinterval*1000))
 							}
 						}()
 
 						//订阅消息，以便刷新舰长数
-						F.Get(`GuardNum`)
+						F.Get(&c.C).Get(`GuardNum`)
 						//使用带tag的消息队列在功能间传递消息
-						c.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
-							`guard_update`:func(data interface{})(bool){//舰长更新
-								go F.Get(`GuardNum`)
+						c.C.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
+							`guard_update`: func(data interface{}) bool { //舰长更新
+								go F.Get(&c.C).Get(`GuardNum`)
 								return false
 							},
-							`flash_room`:func(data interface{})(bool){//重进房时退出当前房间
+							`flash_room`: func(data interface{}) bool { //重进房时退出当前房间
 								return true
 							},
-							`change_room`:func(data interface{})(bool){//换房时退出当前房间
+							`change_room`: func(data interface{}) bool { //换房时退出当前房间
 								return true
 							},
-							`new day`:func(data interface{})(bool){//日期更换
+							`new day`: func(data interface{}) bool { //日期更换
 								//每日签到
 								F.Dosign()
 								// //获取用户版本  不再需要
 								// go F.Get(`VERSION`)
 								//每日兑换硬币
-								go F.Silver_2_coin()
+								go F.Get(&c.C).Silver_2_coin()
 								//小心心
 								go F.F_x25Kn()
 								//附加功能 每日发送弹幕
@@ -261,12 +263,12 @@ func Demo(roomid ...int) {
 							`bili_jct`,
 							`DedeUserID`,
 							`LIVE_BUVID`,
-						});len(missKey) == 0 {
+						}); len(missKey) == 0 {
 							//附加功能 弹幕机 无cookie无法发送弹幕
 							reply.Danmuji_auto()
 						}
 
-						{//附加功能 进房间发送弹幕 直播流保存 营收
+						{ //附加功能 进房间发送弹幕 直播流保存 营收
 							go reply.Entry_danmu()
 							go reply.Savestreamf()
 							go reply.ShowRevf()
@@ -280,32 +282,34 @@ func Demo(roomid ...int) {
 				var break_sign bool
 				for !isclose {
 					select {
-					case i := <- ws_c.RecvChan:
+					case i := <-ws_c.RecvChan:
 						if len(i) == 0 && ws_c.Isclose() {
 							isclose = true
 						} else {
 							go reply.Reply(i)
 						}
-					case <- interrupt:
+					case <-interrupt:
 						ws_c.Close()
-						danmulog.L(`I: `,"停止，等待服务器断开连接")
+						danmulog.L(`I: `, "停止，等待服务器断开连接")
 						break_sign = true
 						exit_sign = false
-					case <- flash_room_chan:
+					case <-flash_room_chan:
 						ws_c.Close()
-						danmulog.L(`I: `,"停止，等待服务器断开连接")
-						F.Get(`WSURL`)
+						danmulog.L(`I: `, "停止，等待服务器断开连接")
+						F.Get(&c.C).Get(`WSURL`)
 						i = 0
-					case <- change_room_chan:
+					case <-change_room_chan:
 						ws_c.Close()
-						danmulog.L(`I: `,"停止，等待服务器断开连接")
+						danmulog.L(`I: `, "停止，等待服务器断开连接")
 						break_sign = true
 					}
 				}
 
-				if break_sign {break}
+				if break_sign {
+					break
+				}
 			}
-			{//附加功能 直播流停止
+			{ //附加功能 直播流停止
 				reply.Savestream_wait()
 				reply.Save_to_json(-1, []interface{}{`{}]`})
 			}
@@ -313,7 +317,6 @@ func Demo(roomid ...int) {
 		}
 
 		close(interrupt)
-		danmulog.L(`I: `,"结束退出")
+		danmulog.L(`I: `, "结束退出")
 	}
 }
-

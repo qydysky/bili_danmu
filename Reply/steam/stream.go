@@ -25,25 +25,25 @@ type Stream_Config struct {
 
 func (t *Stream) LoadConfig() {
 	//读取配置
-	if path, ok := c.K_v.LoadV("直播流保存位置").(string); ok {
+	if path, ok := c.C.K_v.LoadV("直播流保存位置").(string); ok {
 		if path, err := filepath.Abs(path); err == nil {
 			t.config.save_path = path + "/"
 		}
 	}
-	if v, ok := c.K_v.LoadV(`直播hls流缓冲`).(float64); ok && v > 0 {
+	if v, ok := c.C.K_v.LoadV(`直播hls流缓冲`).(float64); ok && v > 0 {
 		t.config.bufsize = int(v)
 	}
-	if v, ok := c.K_v.LoadV(`直播hls流均衡`).(bool); ok {
+	if v, ok := c.C.K_v.LoadV(`直播hls流均衡`).(bool); ok {
 		t.config.banlance_host = v
 	}
-	if v, ok := c.K_v.LoadV(`直播流清晰度`).(int); ok {
+	if v, ok := c.C.K_v.LoadV(`直播流清晰度`).(int); ok {
 		t.config.want_qn = v
 	}
-	if v, ok := c.K_v.LoadV(`直播流类型`).(string); ok {
+	if v, ok := c.C.K_v.LoadV(`直播流类型`).(string); ok {
 		t.config.want_type = v
 	}
 }
 
 func (t *Stream) Start() {
-	t.log = c.Log.Base(`直播流保存`)
+	t.log = c.C.Log.Base(`直播流保存`)
 }
