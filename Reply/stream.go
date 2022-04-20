@@ -25,16 +25,17 @@ import (
 )
 
 type M4SStream struct {
-	Status               *signal.Signal //IsLive()是否运行中
-	exitSign             *signal.Signal //IsLive()是否等待退出中
-	log                  *log.Log_interface
-	config               M4SStream_Config //配置
-	stream_last_modified time.Time        //流地址更新时间
-	stream_expires       int64            //流到期时间
-	last_m4s             *m4s_link_item   //最后一个切片
-	stream_hosts         sync.Map         //使用的流服务器
-	Newst_m4s            *msgq.Msgq       //m4s消息 tag:m4s
-	first_m4s            []byte           //m4s起始块
+	Status               *signal.Signal     //IsLive()是否运行中
+	exitSign             *signal.Signal     //IsLive()是否等待退出中
+	log                  *log.Log_interface //日志
+	config               M4SStream_Config   //配置
+	stream_last_modified time.Time          //流地址更新时间
+	stream_expires       int64              //流到期时间
+	last_m4s             *m4s_link_item     //最后一个切片
+	stream_hosts         sync.Map           //使用的流服务器
+	Newst_m4s            *msgq.Msgq         //m4s消息 tag:m4s
+	first_m4s            []byte             //m4s起始块
+	common               c.Common           //通用配置副本
 }
 
 type M4SStream_Config struct {
@@ -64,25 +65,31 @@ func (t *m4s_link_item) getNo() (int, error) {
 	return strconv.Atoi(base[:len(base)-4])
 }
 
-func (t *M4SStream) LoadConfig(kv *sync.Map, l *log.Log_interface) {
+func (t *M4SStream) Common() c.Common {
+	return t.common
+}
+
+func (t *M4SStream) LoadConfig(common c.Common, l *log.Log_interface) {
 	//读取配置
-	if path, ok := kv.LoadV("直播流保存位置").(string); ok {
+	if path, ok := common.K_v.LoadV("直播流保存位置").(string); ok {
 		if path, err := filepath.Abs(path); err == nil {
 			t.config.save_path = path + "/"
 		}
 	}
-	if v, ok := kv.LoadV(`直播hls流缓冲`).(float64); ok && v > 0 {
+	if v, ok := common.K_v.LoadV(`直播hls流缓冲`).(float64); ok && v > 0 {
 		t.config.bufsize = int(v)
 	}
-	if v, ok := kv.LoadV(`直播hls流均衡`).(bool); ok {
+	if v, ok := common.K_v.LoadV(`直播hls流均衡`).(bool); ok {
 		t.config.banlance_host = v
 	}
-	if v, ok := kv.LoadV(`直播流清晰度`).(float64); ok {
+	if v, ok := common.K_v.LoadV(`直播流清晰度`).(float64); ok {
 		t.config.want_qn = int(v)
 	}
-	if v, ok := kv.LoadV(`直播流类型`).(string); ok {
+	if v, ok := common.K_v.LoadV(`直播流类型`).(string); ok {
 		t.config.want_type = v
 	}
+
+	t.common = common
 	t.log = l.Base(`直播流保存`)
 }
 
@@ -90,15 +97,15 @@ func (t *M4SStream) getFirstM4S() []byte {
 	return t.first_m4s
 }
 
-func (t *M4SStream) fetchCheckStream(tmpc *c.Common) bool {
+func (t *M4SStream) fetchCheckStream() bool {
 	// 获取流地址
-	tmpc.Live_want_qn = t.config.want_qn
-	if F.Get(tmpc).Get(`Live`); len(tmpc.Live) == 0 {
+	t.common.Live_want_qn = t.config.want_qn
+	if F.Get(&t.common).Get(`Live`); len(t.common.Live) == 0 {
 		return false
 	}
 
 	// 保存流地址过期时间
-	if m3u8_url, err := url.Parse(tmpc.Live[0]); err != nil {
+	if m3u8_url, err := url.Parse(t.common.Live[0]); err != nil {
 		t.log.L(`E: `, err.Error())
 		return false
 	} else {
@@ -108,17 +115,17 @@ func (t *M4SStream) fetchCheckStream(tmpc *c.Common) bool {
 
 	// 检查是否可以获取
 	CookieM := make(map[string]string)
-	tmpc.Cookie.Range(func(k, v interface{}) bool {
+	t.common.Cookie.Range(func(k, v interface{}) bool {
 		CookieM[k.(string)] = v.(string)
 		return true
 	})
 
 	var req = reqf.New()
 	if e := req.Reqf(reqf.Rval{
-		Url:       tmpc.Live[0],
+		Url:       t.common.Live[0],
 		Retry:     10,
 		SleepTime: 1000,
-		Proxy:     tmpc.Proxy,
+		Proxy:     t.common.Proxy,
 		Header: map[string]string{
 			`Cookie`: reqf.Map_2_Cookies_String(CookieM),
 		},
@@ -138,9 +145,9 @@ func (t *M4SStream) fetchCheckStream(tmpc *c.Common) bool {
 	return true
 }
 
-func (t *M4SStream) fetchParseM3U8(tmpc *c.Common) (m4s_links []*m4s_link_item, m3u8_addon []byte) {
+func (t *M4SStream) fetchParseM3U8() (m4s_links []*m4s_link_item, m3u8_addon []byte) {
 	// 请求解析m3u8内容
-	for _, v := range tmpc.Live {
+	for _, v := range t.common.Live {
 		m3u8_url, err := url.Parse(v)
 		if err != nil {
 			t.log.L(`E: `, err.Error())
@@ -307,9 +314,9 @@ func (t *M4SStream) fetchParseM3U8(tmpc *c.Common) (m4s_links []*m4s_link_item, 
 	return
 }
 
-func (t *M4SStream) saveStream(tmpc *c.Common) {
+func (t *M4SStream) saveStream() {
 	// 设置保存路径
-	var save_path = t.config.save_path + strconv.Itoa(tmpc.Roomid) + "_" + time.Now().Format("2006_01_02_15-04-05-000") + `/`
+	var save_path = t.config.save_path + strconv.Itoa(t.common.Roomid) + "_" + time.Now().Format("2006_01_02_15-04-05-000") + `/`
 
 	// 显示保存位置
 	if rel, err := filepath.Rel(t.config.save_path, save_path); err == nil {
@@ -319,7 +326,7 @@ func (t *M4SStream) saveStream(tmpc *c.Common) {
 	}
 
 	// 获取流
-	if strings.Contains(tmpc.Live[0], `m3u8`) {
+	if strings.Contains(t.common.Live[0], `m3u8`) {
 		t.stream_expires = time.Now().Add(time.Minute * 2).Unix() // 流链接过期时间
 
 		// 同时下载数限制
@@ -360,7 +367,7 @@ func (t *M4SStream) saveStream(tmpc *c.Common) {
 						ConnectTimeout: 2000,
 						ReadTimeout:    1000,
 						Timeout:        2000,
-						Proxy:          tmpc.Proxy,
+						Proxy:          t.common.Proxy,
 					}); e != nil && !errors.Is(e, io.EOF) {
 						link.status = 3 // 设置切片状态为下载失败
 					} else {
@@ -405,11 +412,11 @@ func (t *M4SStream) saveStream(tmpc *c.Common) {
 
 			// 刷新流地址
 			if time.Now().Unix()+60 > t.stream_expires {
-				t.fetchCheckStream(tmpc)
+				t.fetchCheckStream()
 			}
 
 			// 获取解析m3u8
-			var m4s_links, m3u8_addon = t.fetchParseM3U8(tmpc)
+			var m4s_links, m3u8_addon = t.fetchParseM3U8()
 			if len(m4s_links) == 0 {
 				time.Sleep(time.Second)
 				continue
@@ -457,25 +464,24 @@ func (t *M4SStream) Start() {
 	// 初始化切片消息
 	t.Newst_m4s = msgq.New(10)
 
-	var tmpc = c.C
-
 	// 主循环
 	for t.Status.Islive() {
 		// 是否在直播
-		F.Get(&tmpc).Get(`Liveing`)
-		if !tmpc.Liveing {
+		t.log.L(`I: `, t.common.Roomid)
+		F.Get(&t.common).Get(`Liveing`)
+		if !t.common.Liveing {
 			t.log.L(`T: `, `未直播`)
 			break
 		}
 
 		// 获取 and 检查流地址状态
-		if !t.fetchCheckStream(&tmpc) {
+		if !t.fetchCheckStream() {
 			time.Sleep(time.Second * 5)
 			continue
 		}
 
 		// 设置均衡负载
-		for _, v := range tmpc.Live {
+		for _, v := range t.common.Live {
 			if url_struct, e := url.Parse(v); e == nil {
 				t.stream_hosts.Store(url_struct.Hostname(), nil)
 			}
@@ -485,15 +491,16 @@ func (t *M4SStream) Start() {
 		}
 
 		// 保存流
-		t.saveStream(&tmpc)
+		t.saveStream()
 	}
 
-	t.log.L(`T: `, `结束`)
+	t.log.L(`T: `, `结束`+strconv.Itoa(t.common.Roomid))
 	t.exitSign.Done()
 }
 
 func (t *M4SStream) Stop() {
 	t.exitSign = signal.Init()
 	t.Status.Done()
+	t.log.L(`I: `, `正在等待切片下载...`)
 	t.exitSign.Wait()
 }

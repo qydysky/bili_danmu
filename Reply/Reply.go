@@ -593,11 +593,13 @@ func (replyF) preparing(s string) {
 		{ //附加功能 obs结束 `savestream`结束
 			Obs_R(false)
 			Obsf(false)
-			streamO.Stop()
 			go ShowRevf()
 			c.C.Liveing = false
 		}
 		if p.Sys().Type(roomid) == "float64" {
+			// 停止此房间录制
+			StreamOStop(int(roomid.(float64)))
+
 			Gui_show(Itos([]interface{}{"房间", roomid, "下播了"}), "0room")
 			msglog.L(`I: `, "房间", int(roomid.(float64)), "下播了")
 			return
@@ -618,7 +620,6 @@ func (replyF) live(s string) {
 		{ //附加功能 obs录播
 			Obsf(true)
 			Obs_R(true)
-			go streamO.Start()
 		}
 		{
 			c.C.Rev = 0.0                    //营收
@@ -626,6 +627,14 @@ func (replyF) live(s string) {
 			c.C.Live_Start_Time = time.Now() //开播h时间
 		}
 		if p.Sys().Type(roomid) == "float64" {
+			//开始录制
+			go func() {
+				if v, ok := c.C.K_v.LoadV(`直播流当前房间开播时停止其他流`).(bool); ok && v {
+					StreamOStop(-1) //停止其他房间录制
+				}
+				c.C.Danmu_Main_mq.Push_tag(`savestream`, roomid)
+			}()
+
 			Gui_show(Itos([]interface{}{"房间", roomid, "开播了"}), "0room")
 			msglog.L(`I: `, "房间", int(roomid.(float64)), "开播了")
 			return

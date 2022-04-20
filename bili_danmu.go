@@ -11,6 +11,7 @@ import (
 
 	c "github.com/qydysky/bili_danmu/CV"
 	F "github.com/qydysky/bili_danmu/F"
+	Cmd "github.com/qydysky/bili_danmu/F/Cmd"
 	reply "github.com/qydysky/bili_danmu/Reply"
 	send "github.com/qydysky/bili_danmu/Send"
 
@@ -80,7 +81,7 @@ func Demo(roomid ...int) {
 			}
 		}
 		//命令行操作 切换房间 发送弹幕
-		go F.Cmd()
+		go Cmd.Cmd()
 
 		//使用带tag的消息队列在功能间传递消息
 		c.C.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
@@ -270,7 +271,7 @@ func Demo(roomid ...int) {
 
 						{ //附加功能 进房间发送弹幕 直播流保存 营收
 							go reply.Entry_danmu()
-							c.C.Danmu_Main_mq.Push_tag(`savestream`, nil)
+							c.C.Danmu_Main_mq.Push_tag(`savestream`, c.C.Roomid)
 							go reply.ShowRevf()
 							//小心心
 							go F.F_x25Kn()
@@ -310,7 +311,7 @@ func Demo(roomid ...int) {
 				}
 			}
 			{ //附加功能 直播流停止
-				reply.StreamOStop()
+				reply.StreamOStop(-1)
 				reply.Save_to_json(-1, []interface{}{`{}]`})
 			}
 			p.Sys().Timeoutf(1)

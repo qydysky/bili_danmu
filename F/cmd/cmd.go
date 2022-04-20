@@ -1,4 +1,4 @@
-package F
+package Cmd
 
 import (
 	"bufio"
@@ -9,6 +9,8 @@ import (
 	"time"
 
 	c "github.com/qydysky/bili_danmu/CV"
+	F "github.com/qydysky/bili_danmu/F"
+	reply "github.com/qydysky/bili_danmu/Reply"
 	send "github.com/qydysky/bili_danmu/Send"
 )
 
@@ -52,12 +54,16 @@ func Cmd() {
 			cmdlog.L(`W: `, "不支持功能键")
 		} else if inputs[0] == 32 { // 开头
 			//录制切换
-			if strings.Contains(inputs, ` rec`) && c.C.Roomid != 0 {
-				if !c.C.Liveing {
-					cmdlog.L(`W: `, "不能切换录制状态，未在直播")
-					continue
+			if strings.Contains(inputs, ` rec`) {
+				if len(inputs) > 4 {
+					if room, err := strconv.Atoi(inputs[4:]); err == nil {
+						c.C.Danmu_Main_mq.Push_tag(`savestream`, room)
+						continue
+					}
+					cmdlog.L(`W: `, "输入错误", inputs)
+				} else {
+					c.C.Danmu_Main_mq.Push_tag(`savestream`, c.C.Roomid)
 				}
-				c.C.Danmu_Main_mq.Push_tag(`savestream`, nil)
 				continue
 			}
 			//直播间切换
@@ -76,9 +82,9 @@ func Cmd() {
 					cmdlog.L(`W: `, "输入错误", inputs)
 					continue
 				}
-				for k, v := range Feed_list() {
+				for k, v := range F.Feed_list() {
 					liveList[` live`+strconv.Itoa(k)] = v.Roomid
-					fmt.Printf("%d\t%s\n\t\t\t%s\n", k, v.Uname, v.Title)
+					fmt.Printf("%d\t%s(%d)\n\t\t\t%s\n", k, v.Uname, v.Roomid, v.Title)
 				}
 				fmt.Println("回复' live(序号)'进入直播间")
 				fmt.Print("\n")
@@ -91,7 +97,7 @@ func Cmd() {
 					continue
 				}
 				//获取cookie
-				Get(&c.C).Get(`Cookie`)
+				F.Get(&c.C).Get(`Cookie`)
 
 				continue
 			}
@@ -102,7 +108,7 @@ func Cmd() {
 					continue
 				}
 				//获取小心心
-				go F_x25Kn()
+				go F.F_x25Kn()
 
 				continue
 			}
@@ -114,7 +120,7 @@ func Cmd() {
 				}
 
 				fmt.Print("\n")
-				for k, v := range SearchUP(inputs[7:]) {
+				for k, v := range F.SearchUP(inputs[7:]) {
 					liveList[` live`+strconv.Itoa(k)] = v.Roomid
 					if v.Is_live {
 						fmt.Printf("%d\t%s\t%s\n", k, `☁`, v.Uname)
@@ -135,7 +141,7 @@ func Cmd() {
 			//当前直播间信息
 			if strings.Contains(inputs, ` room`) && c.C.Roomid != 0 {
 				fmt.Print("\n")
-				fmt.Println("当前直播间信息")
+				fmt.Println("当前直播间(" + strconv.Itoa(c.C.Roomid) + ")信息")
 				{
 					living := `未在直播`
 					if c.C.Liveing {
@@ -162,6 +168,21 @@ func Cmd() {
 				if c.C.Stream_url != "" {
 					fmt.Println(`直播Web服务:`, c.C.Stream_url)
 				}
+				if reply.StreamOStatus(c.C.Roomid) {
+					fmt.Println(`正在录制当前房间`)
+				} else {
+					fmt.Println(`未在录制当前房间`)
+				}
+
+				var array = reply.StreamOCommon(-1)
+				if len(array) > 1 {
+					fmt.Println(`正在录制的其他房间：`)
+					for _, v := range array {
+						fmt.Println("\t" + v.Uname + "(" + strconv.Itoa(v.Roomid) + ") " + v.Title)
+					}
+				}
+				fmt.Println("输入` rec` 来启停当前房间录制, 输入` rec房间号` 来启停其他录制")
+
 				fmt.Print("\n")
 
 				continue

@@ -61,6 +61,7 @@
     "直播hls流缓冲": 20,
     "直播hls流均衡-help":"true:使用所有hls服务器",
     "直播hls流均衡": true,
+    "直播流当前房间开播时停止其他流": true,
     "直播Web服务口":0,
     "ass-help": "只有保存直播流时才考虑生成ass，ass编码默认GB18030(可选utf-8)",
     "生成Ass弹幕": true,

@@ -186,13 +186,13 @@ func init() {
 }
 
 //设定字幕文件名，为""时停止输出
-func Ass_f(file string, st time.Time) {
+func Ass_f(save_path string, file string, st time.Time) {
 	ass.file = file
 	if file == "" {
 		return
 	}
 
-	if rel, err := filepath.Rel(streamO.config.save_path, ass.file); err == nil {
+	if rel, err := filepath.Rel(save_path, ass.file); err == nil {
 		c.C.Log.Base(`Ass`).L(`I: `, "保存到", rel+".ass")
 	} else {
 		c.C.Log.Base(`Ass`).L(`I: `, "保存到", ass.file+".ass")
@@ -247,26 +247,69 @@ func dtos(t time.Duration) string {
 
 //hls
 //https://datatracker.ietf.org/doc/html/draft-pantos-http-live-streaming
-var streamO = new(M4SStream)
+var streamO psync.Map
+
+func StreamOCommon(roomid int) (array []c.Common) {
+	if roomid != -1 { //返回特定房间
+		if v, ok := streamO.Load(roomid); ok {
+			return []c.Common{v.(*M4SStream).Common()}
+		}
+	} else { //返回所有
+		streamO.Range(func(k, v interface{}) bool {
+			array = append(array, v.(*M4SStream).Common())
+			return true
+		})
+	}
+	return
+}
 
 func init() {
 	//使用带tag的消息队列在功能间传递消息
 	c.C.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
 		`savestream`: func(data interface{}) bool {
-			if streamO.Status.Islive() {
-				streamO.Stop()
+			if roomid, ok := data.(int); ok {
+				if v, ok := streamO.Load(roomid); ok {
+					if v.(*M4SStream).Status.Islive() {
+						v.(*M4SStream).Stop()
+						streamO.Delete(roomid)
+					}
+				} else {
+					var (
+						tmp    = new(M4SStream)
+						common = c.C
+					)
+					common.Roomid = roomid
+					tmp.LoadConfig(common, c.C.Log)
+					streamO.Store(roomid, tmp)
+					go tmp.Start()
+				}
 			} else {
-				streamO.LoadConfig(&c.C.K_v, c.C.Log)
-				go streamO.Start()
+				flog.L(`E: `, `savestream必须为数字房间号`)
 			}
 			return false
 		},
 	})
 }
 
-func StreamOStop() {
-	if streamO.Status.Islive() {
-		streamO.Stop()
+func StreamOStatus(roomid int) bool {
+	v, ok := streamO.Load(roomid)
+	return ok && (v.(*M4SStream).Status.Islive() || v.(*M4SStream).exitSign.Islive())
+}
+
+func StreamOStop(roomid int) {
+	if roomid != -1 { // 针对某房间
+		if v, ok := streamO.Load(roomid); ok {
+			if v.(*M4SStream).Status.Islive() {
+				v.(*M4SStream).Stop()
+			}
+		}
+	} else { //所有房间
+		streamO.Range(func(_, v interface{}) bool {
+			if v.(*M4SStream).Status.Islive() {
+				v.(*M4SStream).Stop()
+			}
+			return true
+		})
 	}
 }
 
@@ -967,7 +1010,13 @@ func init() {
 				w.Header().Set("Connection", "keep-alive")
 				w.Header().Set("Content-Transfer-Encoding", "binary")
 
-				if len(streamO.getFirstM4S()) == 0 {
+				// 获取当前房间的
+				var currentStreamO *M4SStream
+				if v, ok := streamO.Load(c.C.Roomid); ok {
+					currentStreamO = v.(*M4SStream)
+				}
+
+				if len(currentStreamO.getFirstM4S()) == 0 {
 					w.Header().Set("Retry-After", "1")
 					w.WriteHeader(http.StatusServiceUnavailable)
 					return
@@ -983,7 +1032,7 @@ func init() {
 				}
 
 				//写入hls头
-				if _, err := w.Write(streamO.getFirstM4S()); err != nil {
+				if _, err := w.Write(currentStreamO.getFirstM4S()); err != nil {
 					return
 				} else if flushSupport {
 					flusher.Flush()
@@ -992,7 +1041,7 @@ func init() {
 				cancel := make(chan struct{})
 
 				//hls切片
-				streamO.Newst_m4s.Pull_tag(map[string]func(interface{}) bool{
+				currentStreamO.Newst_m4s.Pull_tag(map[string]func(interface{}) bool{
 					`m4s`: func(data interface{}) bool {
 						if b, ok := data.([]byte); ok {
 							if _, err := w.Write(b); err != nil {
