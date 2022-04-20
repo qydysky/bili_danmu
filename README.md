@@ -103,6 +103,8 @@ golang go version go1.16 linux/amd64
 本项目使用github action自动构建，构建过程详见[yml](https://github.com/qydysky/bili_danmu/blob/master/.github/workflows/go.yml)
 
 #### 流保存以及弹幕ass
+注意：在 [6ecff5b](6ecff5b82c16145bc7c459f086b9bf13574c2c76) 后的若干版本中，对流保存进行了重写，暂时只支持hls类型
+
 在`demo/config/config_K_v.json`中可找到配置项
 
 ```json
@@ -122,6 +124,8 @@ ass编码GB18030支持中文
 - `utf-8`
 
 #### 直播流Web服务
+注意：在 [6ecff5b](6ecff5b82c16145bc7c459f086b9bf13574c2c76) 后的若干版本中，对流保存进行了重写，暂时只支持MP4格式流，直接进入串流地址即为MP4格式流
+
 启动Web流服务，为下载的直播流提供局域网内的流服务，提供flv、hls/mp4格式流。
 
 在`demo/config/config_K_v.json`中可找到配置项，0:随机可用端口 >0:固定可用端口 <0:禁用服务。
