@@ -160,7 +160,7 @@ func Cmd() {
 				fmt.Println(`舰长数:`, c.C.GuardNum)
 				fmt.Println(`分区排行:`, c.C.Note, `人气：`, c.C.Renqi)
 				if c.C.Stream_url != "" {
-					fmt.Println(`直播Web服务:`, c.C.Stream_url+`/now`)
+					fmt.Println(`直播Web服务:`, c.C.Stream_url)
 				}
 				fmt.Print("\n")
 
