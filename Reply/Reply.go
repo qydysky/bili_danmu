@@ -593,7 +593,7 @@ func (replyF) preparing(s string) {
 		{ //附加功能 obs结束 `savestream`结束
 			Obs_R(false)
 			Obsf(false)
-			Savestream_wait()
+			streamO.Stop()
 			go ShowRevf()
 			c.C.Liveing = false
 		}
@@ -618,7 +618,7 @@ func (replyF) live(s string) {
 		{ //附加功能 obs录播
 			Obsf(true)
 			Obs_R(true)
-			go Savestreamf()
+			go streamO.Start()
 		}
 		{
 			c.C.Rev = 0.0                    //营收
