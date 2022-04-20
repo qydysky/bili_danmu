@@ -11,9 +11,9 @@ import (
 
 	c "github.com/qydysky/bili_danmu/CV"
 	F "github.com/qydysky/bili_danmu/F"
-	Cmd "github.com/qydysky/bili_danmu/F/Cmd"
 	reply "github.com/qydysky/bili_danmu/Reply"
 	send "github.com/qydysky/bili_danmu/Send"
+	Cmd "github.com/qydysky/bili_danmu/cmd"
 
 	p "github.com/qydysky/part"
 	msgq "github.com/qydysky/part/msgq"
