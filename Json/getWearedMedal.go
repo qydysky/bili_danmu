@@ -1,10 +1,10 @@
 package part
 
 type GetWearedMedal struct {
-	Code    int                 `json:"code"`
-	Msg     string              `json:"msg"`
-	Message string              `json:"message"`
-	Data    GetWearedMedal_Data `json:"data"`
+	Code    int         `json:"code"`
+	Msg     string      `json:"msg"`
+	Message string      `json:"message"`
+	Data    interface{} `json:"data"`
 }
 type GetWearedMedal_Roominfo struct {
 	Title            string `json:"title"`

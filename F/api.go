@@ -1512,7 +1512,10 @@ func Get_weared_medal() (item J.GetWearedMedal_Data) {
 			return
 		}
 
-		return res.Data
+		if data, ok := res.Data.(J.GetWearedMedal_Data); ok {
+			return data
+		}
+		return J.GetWearedMedal_Data{}
 	}
 
 }
