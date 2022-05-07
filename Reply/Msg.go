@@ -90,6 +90,7 @@ var Msg_map = map[string]func(replyF, string){
 	"ENTRY_EFFECT":                  replyF.entry_effect,       //进入特效
 	"ROOM_REAL_TIME_MESSAGE_UPDATE": nil,                       //replyF.roominfo,//粉丝数
 	"WATCHED_CHANGE":                replyF.watched_change,     //Msg-观看人数
+	"FULL_SCREEN_SPECIAL_EFFECT":    nil,
 }
 
 //屏蔽不需要的消息
