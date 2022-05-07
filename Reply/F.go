@@ -249,6 +249,7 @@ func dtos(t time.Duration) string {
 //https://datatracker.ietf.org/doc/html/draft-pantos-http-live-streaming
 var streamO psync.Map
 
+// 获取实例的Common
 func StreamOCommon(roomid int) (array []c.Common) {
 	if roomid != -1 { //返回特定房间
 		if v, ok := streamO.Load(roomid); ok {
@@ -263,6 +264,7 @@ func StreamOCommon(roomid int) (array []c.Common) {
 	return
 }
 
+// 实例操作
 func init() {
 	//使用带tag的消息队列在功能间传递消息
 	c.C.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
@@ -270,6 +272,7 @@ func init() {
 			if roomid, ok := data.(int); ok {
 				if v, ok := streamO.Load(roomid); ok {
 					if v.(*M4SStream).Status.Islive() {
+						Ass_f("", "", time.Now()) //停止ass
 						v.(*M4SStream).Stop()
 						streamO.Delete(roomid)
 					}
@@ -281,6 +284,7 @@ func init() {
 					common.Roomid = roomid
 					tmp.LoadConfig(common, c.C.Log)
 					streamO.Store(roomid, tmp)
+					Ass_f(tmp.Current_save_path, tmp.Current_save_path+"0", time.Now()) //开始ass
 					go tmp.Start()
 				}
 			} else {
@@ -291,11 +295,13 @@ func init() {
 	})
 }
 
+// 获取实例的录制状态
 func StreamOStatus(roomid int) bool {
 	v, ok := streamO.Load(roomid)
 	return ok && (v.(*M4SStream).Status.Islive() || v.(*M4SStream).exitSign.Islive())
 }
 
+// 停止实例
 func StreamOStop(roomid int) {
 	if roomid != -1 { // 针对某房间
 		if v, ok := streamO.Load(roomid); ok {
