@@ -1503,7 +1503,7 @@ func Get_weared_medal() (item J.GetWearedMedal_Data) {
 
 		var res J.GetWearedMedal
 		if e := json.Unmarshal(r.Respon, &res); e != nil {
-			apilog.L(`E: `, e)
+			apilog.L(`W: `, e)
 			return
 		}
 
@@ -1512,10 +1512,15 @@ func Get_weared_medal() (item J.GetWearedMedal_Data) {
 			return
 		}
 
-		if data, ok := res.Data.(J.GetWearedMedal_Data); ok {
-			return data
+		switch res.Data.(type) {
+		case []interface{}:
+		default:
+			if data, err := json.Marshal(res.Data); err == nil {
+				json.Unmarshal(data, &item)
+			}
 		}
-		return J.GetWearedMedal_Data{}
+
+		return
 	}
 
 }
