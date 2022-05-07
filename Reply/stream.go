@@ -177,6 +177,7 @@ func (t *M4SStream) fetchParseM3U8() (m4s_links []*m4s_link_item, m3u8_addon []b
 		// 设置请求参数
 		rval := reqf.Rval{
 			Url:            m3u8_url.String(),
+			Retry:          2,
 			ConnectTimeout: 2000,
 			ReadTimeout:    1000,
 			Timeout:        2000,
@@ -454,10 +455,11 @@ func (t *M4SStream) saveStream() {
 			if err != nil {
 				t.log.L(`E: `, `获取解析m3u8发生错误`, err)
 				if len(download_seq) != 0 {
-					t.log.L(`I: `, `下载最后切片:`, len(download_seq))
 					continue
 				}
-				break
+				if !reqf.IsTimeout(err) {
+					break
+				}
 			}
 			if len(m4s_links) == 0 {
 				time.Sleep(time.Second)
@@ -511,7 +513,7 @@ func (t *M4SStream) Start() {
 		// 是否在直播
 		F.Get(&t.common).Get(`Liveing`)
 		if !t.common.Liveing {
-			t.log.L(`T: `, `未直播`)
+			t.log.L(`W: `, `未直播`)
 			break
 		}
 
@@ -540,6 +542,9 @@ func (t *M4SStream) Start() {
 }
 
 func (t *M4SStream) Stop() {
+	if !t.Status.Islive() {
+		return
+	}
 	t.exitSign = signal.Init()
 	t.Status.Done()
 	t.log.L(`I: `, `正在等待切片下载...`)
