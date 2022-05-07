@@ -1512,12 +1512,7 @@ func Get_weared_medal() (item J.GetWearedMedal_Data) {
 			return
 		}
 
-		switch res.Data.(type) {
-		case J.GetWearedMedal_Data:
-			return res.Data.(J.GetWearedMedal_Data)
-		default:
-		}
-		return
+		return res.Data
 	}
 
 }
