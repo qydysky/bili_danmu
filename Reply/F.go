@@ -272,7 +272,6 @@ func init() {
 			if roomid, ok := data.(int); ok {
 				if v, ok := streamO.Load(roomid); ok {
 					if v.(*M4SStream).Status.Islive() {
-						Ass_f("", "", time.Now()) //停止ass
 						v.(*M4SStream).Stop()
 						streamO.Delete(roomid)
 					}
@@ -283,8 +282,14 @@ func init() {
 					)
 					common.Roomid = roomid
 					tmp.LoadConfig(common, c.C.Log)
+					//关于ass的回调
+					tmp.Callback_start = func(ms *M4SStream) {
+						Ass_f(ms.Current_save_path, ms.Current_save_path+"0", time.Now()) //开始ass
+					}
+					tmp.Callback_stop = func(ms *M4SStream) {
+						Ass_f("", "", time.Now()) //停止ass
+					}
 					streamO.Store(roomid, tmp)
-					Ass_f(tmp.Current_save_path, tmp.Current_save_path+"0", time.Now()) //开始ass
 					go tmp.Start()
 				}
 			} else {

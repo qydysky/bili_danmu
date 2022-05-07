@@ -38,6 +38,8 @@ type M4SStream struct {
 	first_m4s            []byte             //m4s起始块
 	common               c.Common           //通用配置副本
 	Current_save_path    string             //明确的直播流保存目录
+	Callback_start       func(*M4SStream)   //开始的回调
+	Callback_stop        func(*M4SStream)   //结束的回调
 }
 
 type M4SStream_Config struct {
@@ -90,7 +92,6 @@ func (t *M4SStream) LoadConfig(common c.Common, l *log.Log_interface) {
 				}
 			}
 			t.config.save_path = path + "/"
-			t.Current_save_path = path + "/" + strconv.Itoa(common.Roomid) + "_" + time.Now().Format("2006_01_02_15-04-05-000") + `/`
 		} else {
 			t.log.L(`E: `, `直播流保存位置错误`, err)
 			return
@@ -339,6 +340,7 @@ func (t *M4SStream) fetchParseM3U8() (m4s_links []*m4s_link_item, m3u8_addon []b
 
 func (t *M4SStream) saveStream() {
 	// 设置保存路径
+	t.Current_save_path = t.config.save_path + "/" + strconv.Itoa(t.common.Roomid) + "_" + time.Now().Format("2006_01_02_15-04-05-000") + `/`
 	var save_path = t.Current_save_path
 
 	// 显示保存位置
@@ -347,6 +349,10 @@ func (t *M4SStream) saveStream() {
 	} else {
 		t.log.L(`W: `, err)
 	}
+
+	//开始,结束回调
+	t.Callback_start(t)
+	defer t.Callback_stop(t)
 
 	// 获取流
 	if strings.Contains(t.common.Live[0], `m3u8`) {
@@ -487,7 +493,6 @@ func (t *M4SStream) saveStream() {
 			})
 			p.FileMove(save_path+"0.m3u8.dtmp", save_path+"0.m3u8")
 		}
-
 	}
 }
 
