@@ -384,7 +384,9 @@ func (t *M4SStream) saveStream() {
 						Timeout:        2000,
 						Proxy:          t.common.Proxy,
 					}); e != nil && !errors.Is(e, io.EOF) {
-						t.log.L(`E: `, `hls切片下载失败:`, e)
+						if !reqf.IsTimeout(e) {
+							t.log.L(`E: `, `hls切片下载失败:`, e)
+						}
 						link.status = 3 // 设置切片状态为下载失败
 					} else {
 						if usedt := r.UsedTime.Seconds(); usedt > 700 {
@@ -483,7 +485,6 @@ func (t *M4SStream) Start() {
 	// 主循环
 	for t.Status.Islive() {
 		// 是否在直播
-		t.log.L(`I: `, t.common.Roomid)
 		F.Get(&t.common).Get(`Liveing`)
 		if !t.common.Liveing {
 			t.log.L(`T: `, `未直播`)
@@ -510,7 +511,7 @@ func (t *M4SStream) Start() {
 		t.saveStream()
 	}
 
-	t.log.L(`T: `, `结束`+strconv.Itoa(t.common.Roomid))
+	t.log.L(`I: `, `结束录制(`+strconv.Itoa(t.common.Roomid)+`)`)
 	t.exitSign.Done()
 }
 
