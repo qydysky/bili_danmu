@@ -20,3 +20,5 @@ demo/cpu.pprof
 demo/qr.png
 demo/live
 demo/main.exe
+*.m4s
+*.m3u8

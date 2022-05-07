@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -70,10 +71,27 @@ func (t *M4SStream) Common() c.Common {
 }
 
 func (t *M4SStream) LoadConfig(common c.Common, l *log.Log_interface) {
+	t.common = common
+	t.log = l.Base(`直播流保存`)
+
 	//读取配置
 	if path, ok := common.K_v.LoadV("直播流保存位置").(string); ok {
 		if path, err := filepath.Abs(path); err == nil {
+			if _, err := os.Stat(path); err != nil {
+				if errors.Is(err, os.ErrNotExist) {
+					if err := p.File().NewPath(path); err != nil {
+						t.log.L(`E: `, `直播流保存位置错误`, err)
+						return
+					}
+				} else {
+					t.log.L(`E: `, `直播流保存位置错误`, err)
+					return
+				}
+			}
 			t.config.save_path = path + "/"
+		} else {
+			t.log.L(`E: `, `直播流保存位置错误`, err)
+			return
 		}
 	}
 	if v, ok := common.K_v.LoadV(`直播hls流缓冲`).(float64); ok && v > 0 {
@@ -88,9 +106,6 @@ func (t *M4SStream) LoadConfig(common c.Common, l *log.Log_interface) {
 	if v, ok := common.K_v.LoadV(`直播流类型`).(string); ok {
 		t.config.want_type = v
 	}
-
-	t.common = common
-	t.log = l.Base(`直播流保存`)
 }
 
 func (t *M4SStream) getFirstM4S() []byte {
@@ -331,7 +346,7 @@ func (t *M4SStream) saveStream() {
 
 		// 同时下载数限制
 		var download_limit = funcCtrl.BlockFuncN{
-			Max: 2,
+			Max: 3,
 		}
 
 		// 下载循环
@@ -369,6 +384,7 @@ func (t *M4SStream) saveStream() {
 						Timeout:        2000,
 						Proxy:          t.common.Proxy,
 					}); e != nil && !errors.Is(e, io.EOF) {
+						t.log.L(`E: `, `hls切片下载失败:`, e)
 						link.status = 3 // 设置切片状态为下载失败
 					} else {
 						if usedt := r.UsedTime.Seconds(); usedt > 700 {
@@ -448,8 +464,8 @@ func (t *M4SStream) saveStream() {
 }
 
 func (t *M4SStream) Start() {
-	// 清晰度-1 不保存
-	if t.config.want_qn == -1 {
+	// 清晰度-1 or 路径存在问题 不保存
+	if t.config.want_qn == -1 || t.config.save_path == "" {
 		return
 	}
 
