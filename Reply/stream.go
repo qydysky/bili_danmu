@@ -111,6 +111,9 @@ func (t *M4SStream) LoadConfig(common c.Common, l *log.Log_interface) {
 }
 
 func (t *M4SStream) getFirstM4S() []byte {
+	if t == nil {
+		return []byte{}
+	}
 	return t.first_m4s
 }
 
