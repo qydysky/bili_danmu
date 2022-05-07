@@ -165,12 +165,12 @@ func (t *M4SStream) fetchCheckStream() bool {
 	return true
 }
 
-func (t *M4SStream) fetchParseM3U8() (m4s_links []*m4s_link_item, m3u8_addon []byte) {
+func (t *M4SStream) fetchParseM3U8() (m4s_links []*m4s_link_item, m3u8_addon []byte, e error) {
 	// 请求解析m3u8内容
 	for _, v := range t.common.Live {
 		m3u8_url, err := url.Parse(v)
 		if err != nil {
-			t.log.L(`E: `, err.Error())
+			e = err
 			return
 		}
 
@@ -200,7 +200,8 @@ func (t *M4SStream) fetchParseM3U8() (m4s_links []*m4s_link_item, m3u8_addon []b
 
 		// 开始请求
 		var r = reqf.New()
-		if e := r.Reqf(rval); e != nil {
+		if err := r.Reqf(rval); err != nil {
+			e = err
 			continue
 		}
 
@@ -223,7 +224,7 @@ func (t *M4SStream) fetchParseM3U8() (m4s_links []*m4s_link_item, m3u8_addon []b
 		if len(m3u8_respon) != 0 && !bytes.Contains(m3u8_respon, []byte("#")) {
 			m3u8_respon, err = base64.StdEncoding.DecodeString(string(m3u8_respon))
 			if err != nil {
-				t.log.L(`W: `, err, string(m3u8_respon))
+				e = err
 				return
 			}
 		}
@@ -264,9 +265,9 @@ func (t *M4SStream) fetchParseM3U8() (m4s_links []*m4s_link_item, m3u8_addon []b
 			}
 
 			//获取切片地址
-			u, e := url.Parse("./" + m4s_link + "?trid=" + m3u8_url.Query().Get("trid"))
-			if e != nil {
-				t.log.L(`E: `, e)
+			u, err := url.Parse("./" + m4s_link + "?trid=" + m3u8_url.Query().Get("trid"))
+			if err != nil {
+				e = err
 				return
 			}
 
@@ -312,9 +313,9 @@ func (t *M4SStream) fetchParseM3U8() (m4s_links []*m4s_link_item, m3u8_addon []b
 			m3u8_addon = append([]byte(`#EXTINF:1.00\n`+strconv.Itoa(no)+`.m4s\n`), m3u8_addon...)
 
 			//获取切片地址
-			u, e := url.Parse("./" + strconv.Itoa(no) + `.m4s`)
-			if e != nil {
-				t.log.L(`E: `, e)
+			u, err := url.Parse("./" + strconv.Itoa(no) + `.m4s`)
+			if err != nil {
+				e = err
 				return
 			}
 
@@ -331,6 +332,7 @@ func (t *M4SStream) fetchParseM3U8() (m4s_links []*m4s_link_item, m3u8_addon []b
 		break
 	}
 
+	e = nil
 	return
 }
 
@@ -439,7 +441,15 @@ func (t *M4SStream) saveStream() {
 			}
 
 			// 获取解析m3u8
-			var m4s_links, m3u8_addon = t.fetchParseM3U8()
+			var m4s_links, m3u8_addon, err = t.fetchParseM3U8()
+			if err != nil {
+				t.log.L(`E: `, `获取解析m3u8发生错误`, err)
+				if len(download_seq) != 0 {
+					t.log.L(`I: `, `下载最后切片:`, len(download_seq))
+					continue
+				}
+				break
+			}
 			if len(m4s_links) == 0 {
 				time.Sleep(time.Second)
 				continue
