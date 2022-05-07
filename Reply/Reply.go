@@ -358,7 +358,9 @@ func (replyF) heartbeat(s int) {
 		tmp = `(` + tmp + `)`
 	}
 	if watched_old != 0 {
-		tmp2 += `(+` + strconv.Itoa(c.C.Watched-watched_old) + `)`
+		tmp2 += `(+` + strconv.Itoa(c.C.Watched-watched_old) + " avg:"
+		tmp2 += strconv.Itoa(c.C.Watched / int(time.Since(c.C.Live_Start_Time)/time.Minute))
+		tmp2 += `人/分)`
 	}
 	if renqi_old != s {
 		fmt.Printf("\t人气:%d %s\t观看人数:%d %s\n", s, tmp, c.C.Watched, tmp2)
