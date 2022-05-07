@@ -321,9 +321,9 @@ func (replyF) user_toast_msg(s string) {
 
 //HeartBeat-心跳用来传递人气值
 var (
-	renqi_old   int
-	watched_old int
-	continuity  int
+	renqi_old  int
+	pperm_old  float64
+	continuity int
 )
 
 func (replyF) heartbeat(s int) {
@@ -358,17 +358,20 @@ func (replyF) heartbeat(s int) {
 		tmp = `(` + tmp + `)`
 	}
 
-	var pperm = c.C.Watched / int(time.Since(c.C.Live_Start_Time)/time.Minute)
-	if watched_old != 0 {
-		tmp2 += `(avg: ` + strconv.Itoa(pperm) + `人/分 `
-		tmp2 += strconv.Itoa(pperm-watched_old) + `)`
+	var pperm = float64(c.C.Watched) / float64(time.Since(c.C.Live_Start_Time)/time.Minute)
+	if pperm_old != 0 {
+		tmp2 += `(avg: ` + fmt.Sprintf("%.1f", pperm) + `人/分 `
+		if pperm-pperm_old > 0 {
+			tmp2 += `+`
+		}
+		tmp2 += fmt.Sprintf("%.1f", pperm-pperm_old) + `)`
 	}
 	if renqi_old != s {
 		fmt.Printf("\t人气:%d %s\t观看人数:%d %s\n", s, tmp, c.C.Watched, tmp2)
 	}
 	reply_log.Base_add(`人气`).Log_show_control(false).L(`I: `, "当前人气", s)
 	renqi_old = s
-	watched_old = pperm
+	pperm_old = pperm
 }
 
 //Msg-房间特殊活动
