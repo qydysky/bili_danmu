@@ -358,8 +358,18 @@ func (t *M4SStream) saveStream() {
 
 		// 下载循环
 		for download_seq := []*m4s_link_item{}; ; {
+			// 过多需下载切片提示
+			if len(download_seq) > 15 {
+				t.log.L(`W: `, `待下载切片过多:`, len(download_seq))
+			}
+
 			// 下载切片
 			for _, v := range download_seq {
+				// 已下载但还未移除的切片
+				if v.status == 2 {
+					continue
+				}
+
 				v.status = 1 // 设置切片状态为正在下载
 
 				// 均衡负载
@@ -409,21 +419,20 @@ func (t *M4SStream) saveStream() {
 			download_limit.None()
 			download_limit.UnNone()
 
-			//添加失败切片 传递切片
+			// 传递已下载切片
 			{
-				var tmp_seq []*m4s_link_item
 				for _, v := range download_seq {
 					if strings.Contains(v.Base, `h`) {
 						t.first_m4s = v.data
 					}
 
-					if v.status == 3 {
-						tmp_seq = append(tmp_seq, v)
-					} else {
+					if v.status != 3 {
+						download_seq = download_seq[1:]
 						t.Newst_m4s.Push_tag(`m4s`, v.data)
+					} else {
+						break
 					}
 				}
-				download_seq = tmp_seq
 			}
 
 			// 停止录制
@@ -495,7 +504,7 @@ func (t *M4SStream) Start() {
 	defer t.Status.Done()
 
 	// 初始化切片消息
-	t.Newst_m4s = msgq.New(10)
+	t.Newst_m4s = msgq.New(15)
 
 	// 主循环
 	for t.Status.Islive() {
