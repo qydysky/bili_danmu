@@ -357,7 +357,7 @@ func (replyF) heartbeat(s int) {
 	}
 
 	if renqi_old != s {
-		fmt.Printf("\t人气:%d %s\n", s, tmp)
+		fmt.Printf("\t人气:%d %s\t观看人数:%d\n", s, tmp, c.C.Watched)
 	}
 	reply_log.Base_add(`人气`).Log_show_control(false).L(`I: `, "当前人气", s)
 	renqi_old = s
@@ -371,20 +371,13 @@ func (replyF) win_activity(s string) {
 	msglog.Base_add("房").Log_show_control(false).L(`I: `, "活动", title, "已开启")
 }
 
-var (
-	watched int //观看人数
-)
-
 //Msg-观看人数
 func (replyF) watched_change(s string) {
 	var data ws_msg.WATCHED_CHANGE
 	json.Unmarshal([]byte(s), &data)
-	if float64(data.Data.Num) < float64(watched)*1.1 && data.Data.Num >= watched {
-		return
-	}
-	watched = data.Data.Num
-	fmt.Printf("\t观看人数:%d\n", watched)
-	msglog.Base_add("房").Log_show_control(false).L(`I: `, "观看人数", watched)
+	c.C.Watched = data.Data.Num
+	// fmt.Printf("\t观看人数:%d\n", watched)
+	msglog.Base_add("房").Log_show_control(false).L(`I: `, "观看人数", data.Data.Num)
 }
 
 //Msg-特殊礼物，当前仅观察到节奏风暴

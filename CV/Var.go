@@ -22,6 +22,7 @@ type Common struct {
 	UpUid             int                //主播uid
 	Rev               float64            //营收
 	Renqi             int                //人气
+	Watched           int                //观看人数
 	GuardNum          int                //舰长数
 	ParentAreaID      int                //父分区
 	AreaID            int                //子分区
