@@ -388,7 +388,8 @@ func (replyF) watched_change(s string) {
 	json.Unmarshal([]byte(s), &data)
 	c.C.Watched = data.Data.Num
 	// fmt.Printf("\t观看人数:%d\n", watched)
-	msglog.Base_add("房").Log_show_control(false).L(`I: `, "观看人数", data.Data.Num)
+	var pperm = float64(c.C.Watched) / float64(time.Since(c.C.Live_Start_Time)/time.Minute)
+	msglog.Base_add("房").Log_show_control(false).L(`I: `, "观看人数", data.Data.Num, fmt.Sprintf(" avg:%.1f人/分", pperm))
 }
 
 //Msg-特殊礼物，当前仅观察到节奏风暴
