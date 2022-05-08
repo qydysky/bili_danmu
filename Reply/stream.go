@@ -445,8 +445,12 @@ func (t *M4SStream) saveStream() {
 			// 停止录制
 			if !t.Status.Islive() {
 				if len(download_seq) != 0 {
-					t.log.L(`I: `, `下载最后切片:`, len(download_seq))
-					continue
+					if time.Now().Unix() > t.stream_expires {
+						t.log.L(`E: `, `切片下载超时`)
+					} else {
+						t.log.L(`I: `, `下载最后切片:`, len(download_seq))
+						continue
+					}
 				}
 				break
 			}
