@@ -41,7 +41,7 @@ golang go version go1.16 linux/amd64
 ### 当前支持显示/功能
 
 #### 当前支持显示
-以下内容可能过时，点击查看[当前支持显示](https://github.com/qydysky/bili_danmu/blob/master/Reply/Msg.go#L13)
+以下内容可能过时，点击查看[当前支持显示](https://github.com/qydysky/bili_danmu/blob/maintenance/Reply/Msg.go#L13)
 - [x] 人气
 - [x] 天选之人开始
 - [x] 天选之人获奖
