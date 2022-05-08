@@ -636,7 +636,7 @@ func (replyF) live(s string) {
 				if v, ok := c.C.K_v.LoadV(`直播流当前房间开播时停止其他流`).(bool); ok && v {
 					StreamOStop(-1) //停止其他房间录制
 				}
-				c.C.Danmu_Main_mq.Push_tag(`savestream`, roomid)
+				c.C.Danmu_Main_mq.Push_tag(`savestream`, int(roomid.(float64)))
 			}()
 
 			Gui_show(Itos([]interface{}{"房间", roomid, "开播了"}), "0room")
