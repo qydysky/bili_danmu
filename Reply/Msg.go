@@ -15,84 +15,88 @@ var msglog = c.C.Log.Base(`Msg`)
 
 //Msg类型数据处理方法map
 var Msg_map = map[string]func(replyF, string){
-	`VOICE_JOIN_ROOM_COUNT_INFO`:    replyF.voice_join_room_count_info, //连麦等待
-	`VOICE_JOIN_LIST`:               nil,
-	`VOICE_JOIN_STATUS`:             replyF.voice_join_status,     //连麦人状态
-	`STOP_LIVE_ROOM_LIST`:           nil,                          //停止直播的直播间
-	`PK_LOTTERY_START`:              replyF.pk_lottery_start,      //大乱斗pk
-	`PK_BATTLE_PRE_NEW`:             nil,                          //pk准备
-	`PK_BATTLE_START_NEW`:           nil,                          //pk开始
-	`PK_BATTLE_PROCESS_NEW`:         replyF.pk_battle_process_new, //pk进行中
-	`VTR_GIFT_LOTTERY`:              replyF.vtr_gift_lottery,      //特别礼物
-	`ENTRY_EFFECT_MUST_RECEIVE`:     nil,                          //高能榜前三进入
-	`GIFT_BAG_DOT`:                  nil,
-	`LITTLE_MESSAGE_BOX`:            replyF.little_message_box,           //小消息
-	`MESSAGEBOX_USER_MEDAL_CHANGE`:  replyF.messagebox_user_medal_change, //粉丝牌切换
-	`HOT_RANK_SETTLEMENT`:           replyF.hot_rank_settlement,          //热门榜获得
-	`HOT_RANK_SETTLEMENT_V2`:        replyF.hot_rank_settlement_v2,       //热门榜获得v2
-	`HOT_RANK_CHANGED`:              replyF.hot_rank_changed,             //热门榜变动
-	`HOT_RANK_CHANGED_V2`:           replyF.hot_rank_changed_v2,          //热门榜变动v2
-	`CARD_MSG`:                      nil,                                 //提示关注
-	`WIDGET_BANNER`:                 nil,                                 //每日任务
-	`ROOM_ADMINS`:                   nil,                                 //房管列表
-	`ONLINE_RANK_TOP3`:              nil,
-	`ONLINE_RANK_COUNT`:             nil,
-	`ONLINE_RANK_V2`:                nil,
-	"TRADING_SCORE":                 nil, //每日任务
-	"MATCH_ROOM_CONF":               nil, //赛事房间配置
-	"HOT_ROOM_NOTIFY":               nil, //热点房间
-	"MATCH_TEAM_GIFT_RANK":          nil, //赛事人气比拼
-	"ACTIVITY_MATCH_GIFT":           nil, //赛事礼物
-	"PK_BATTLE_PRE":                 nil, //人气pk
-	"PK_BATTLE_START":               nil, //人气pk
-	"PK_BATTLE_PROCESS":             nil, //人气pk
-	"PK_BATTLE_END":                 nil, //人气pk
-	"PK_BATTLE_RANK_CHANGE":         nil, //人气pk
-	"PK_BATTLE_SETTLE_USER":         nil, //人气pk
-	"PK_BATTLE_SETTLE_V2":           nil, //人气pk
-	"PK_BATTLE_SETTLE":              nil, //人气pk
-	"SYS_MSG":                       nil, //系统消息
-	"ROOM_SKIN_MSG":                 nil,
-	"GUARD_ACHIEVEMENT_ROOM":        nil,
-	"ANCHOR_LOT_START":              replyF.anchor_lot_start, //天选之人开始
-	"ANCHOR_LOT_CHECKSTATUS":        nil,
-	"ANCHOR_LOT_END":                nil,                     //天选之人结束
-	"ANCHOR_LOT_AWARD":              replyF.anchor_lot_award, //天选之人获奖
-	"COMBO_SEND":                    nil,
-	"INTERACT_WORD":                 replyF.interact_word, //进入信息，包含直播间关注提示
-	"ACTIVITY_BANNER_UPDATE_V2":     nil,
-	"NOTICE_MSG":                    nil,
-	"ROOM_BANNER":                   nil,
-	"ONLINERANK":                    nil,
-	"WELCOME":                       nil,
-	"HOUR_RANK_AWARDS":              nil,
-	"ROOM_RANK":                     nil,
-	"ROOM_SHIELD":                   nil,
-	"USER_TOAST_MSG":                replyF.user_toast_msg,     //大航海购买信息
-	"WIN_ACTIVITY":                  replyF.win_activity,       //活动
-	"SPECIAL_GIFT":                  replyF.special_gift,       //节奏风暴
-	"GUARD_BUY":                     nil,                       //replyF.guard_buy,//大航海购买
-	"WELCOME_GUARD":                 nil,                       //replyF.welcome_guard,//大航海进入 ？已废弃？
-	"DANMU_MSG":                     replyF.danmu,              //弹幕
-	"DANMU_MSG:4:0:2:2:2:0":         replyF.danmu,              //弹幕
-	"ROOM_CHANGE":                   replyF.room_change,        //房间信息分区改变
-	"ROOM_SILENT_OFF":               replyF.roomsilent,         //禁言结束
-	"ROOM_SILENT_ON":                replyF.roomsilent,         //禁言开始
-	"SEND_GIFT":                     replyF.send_gift,          //礼物
-	"ROOM_BLOCK_MSG":                replyF.room_block_msg,     //封禁
-	"PREPARING":                     replyF.preparing,          //下播
-	"LIVE":                          replyF.live,               //开播
-	"SUPER_CHAT_ENTRANCE":           nil,                       //SC入口
-	"SUPER_CHAT_MESSAGE_DELETE":     nil,                       //SC删除
-	"SUPER_CHAT_MESSAGE":            nil,                       //replyF.super_chat_message,//SC
-	"SUPER_CHAT_MESSAGE_JPN":        replyF.super_chat_message, //SC
-	"PANEL":                         nil,                       //replyF.panel,//排行榜 被HOT_RANK_CHANGED替代
-	"ENTRY_EFFECT":                  replyF.entry_effect,       //进入特效
-	"ROOM_REAL_TIME_MESSAGE_UPDATE": nil,                       //replyF.roominfo,//粉丝数
-	"WATCHED_CHANGE":                replyF.watched_change,     //Msg-观看人数
-	"FULL_SCREEN_SPECIAL_EFFECT":    nil,
-	"GIFT_BOARD_RED_DOT":            nil,
-	"USER_PANEL_RED_ALARM":          nil,
+	`VOICE_JOIN_ROOM_COUNT_INFO`:        replyF.voice_join_room_count_info, //连麦等待
+	`VOICE_JOIN_LIST`:                   nil,
+	`VOICE_JOIN_STATUS`:                 replyF.voice_join_status,     //连麦人状态
+	`STOP_LIVE_ROOM_LIST`:               nil,                          //停止直播的直播间
+	`PK_LOTTERY_START`:                  replyF.pk_lottery_start,      //大乱斗pk
+	`PK_BATTLE_PRE_NEW`:                 nil,                          //pk准备
+	`PK_BATTLE_START_NEW`:               nil,                          //pk开始
+	`PK_BATTLE_PROCESS_NEW`:             replyF.pk_battle_process_new, //pk进行中
+	`VTR_GIFT_LOTTERY`:                  replyF.vtr_gift_lottery,      //特别礼物
+	`ENTRY_EFFECT_MUST_RECEIVE`:         nil,                          //高能榜前三进入
+	`GIFT_BAG_DOT`:                      nil,
+	`LITTLE_MESSAGE_BOX`:                replyF.little_message_box,           //小消息
+	`MESSAGEBOX_USER_MEDAL_CHANGE`:      replyF.messagebox_user_medal_change, //粉丝牌切换
+	`HOT_RANK_SETTLEMENT`:               replyF.hot_rank_settlement,          //热门榜获得
+	`HOT_RANK_SETTLEMENT_V2`:            replyF.hot_rank_settlement_v2,       //热门榜获得v2
+	`HOT_RANK_CHANGED`:                  replyF.hot_rank_changed,             //热门榜变动
+	`HOT_RANK_CHANGED_V2`:               replyF.hot_rank_changed_v2,          //热门榜变动v2
+	`CARD_MSG`:                          nil,                                 //提示关注
+	`WIDGET_BANNER`:                     nil,                                 //每日任务
+	`ROOM_ADMINS`:                       nil,                                 //房管列表
+	`ONLINE_RANK_TOP3`:                  nil,
+	`ONLINE_RANK_COUNT`:                 nil,
+	`ONLINE_RANK_V2`:                    nil,
+	"TRADING_SCORE":                     nil, //每日任务
+	"MATCH_ROOM_CONF":                   nil, //赛事房间配置
+	"HOT_ROOM_NOTIFY":                   nil, //热点房间
+	"MATCH_TEAM_GIFT_RANK":              nil, //赛事人气比拼
+	"ACTIVITY_MATCH_GIFT":               nil, //赛事礼物
+	"PK_BATTLE_PRE":                     nil, //人气pk
+	"PK_BATTLE_START":                   nil, //人气pk
+	"PK_BATTLE_PROCESS":                 nil, //人气pk
+	"PK_BATTLE_END":                     nil, //人气pk
+	"PK_BATTLE_RANK_CHANGE":             nil, //人气pk
+	"PK_BATTLE_SETTLE_USER":             nil, //人气pk
+	"PK_BATTLE_SETTLE_V2":               nil, //人气pk
+	"PK_BATTLE_SETTLE":                  nil, //人气pk
+	"SYS_MSG":                           nil, //系统消息
+	"ROOM_SKIN_MSG":                     nil,
+	"GUARD_ACHIEVEMENT_ROOM":            nil,
+	"ANCHOR_LOT_START":                  replyF.anchor_lot_start, //天选之人开始
+	"ANCHOR_LOT_CHECKSTATUS":            nil,
+	"ANCHOR_LOT_END":                    nil,                     //天选之人结束
+	"ANCHOR_LOT_AWARD":                  replyF.anchor_lot_award, //天选之人获奖
+	"COMBO_SEND":                        nil,
+	"INTERACT_WORD":                     replyF.interact_word, //进入信息，包含直播间关注提示
+	"ACTIVITY_BANNER_UPDATE_V2":         nil,
+	"NOTICE_MSG":                        nil,
+	"ROOM_BANNER":                       nil,
+	"ONLINERANK":                        nil,
+	"WELCOME":                           nil,
+	"HOUR_RANK_AWARDS":                  nil,
+	"ROOM_RANK":                         nil,
+	"ROOM_SHIELD":                       nil,
+	"USER_TOAST_MSG":                    replyF.user_toast_msg,     //大航海购买信息
+	"WIN_ACTIVITY":                      replyF.win_activity,       //活动
+	"SPECIAL_GIFT":                      replyF.special_gift,       //节奏风暴
+	"GUARD_BUY":                         nil,                       //replyF.guard_buy,//大航海购买
+	"WELCOME_GUARD":                     nil,                       //replyF.welcome_guard,//大航海进入 ？已废弃？
+	"DANMU_MSG":                         replyF.danmu,              //弹幕
+	"DANMU_MSG:4:0:2:2:2:0":             replyF.danmu,              //弹幕
+	"ROOM_CHANGE":                       replyF.room_change,        //房间信息分区改变
+	"ROOM_SILENT_OFF":                   replyF.roomsilent,         //禁言结束
+	"ROOM_SILENT_ON":                    replyF.roomsilent,         //禁言开始
+	"SEND_GIFT":                         replyF.send_gift,          //礼物
+	"ROOM_BLOCK_MSG":                    replyF.room_block_msg,     //封禁
+	"PREPARING":                         replyF.preparing,          //下播
+	"LIVE":                              replyF.live,               //开播
+	"SUPER_CHAT_ENTRANCE":               nil,                       //SC入口
+	"SUPER_CHAT_MESSAGE_DELETE":         nil,                       //SC删除
+	"SUPER_CHAT_MESSAGE":                nil,                       //replyF.super_chat_message,//SC
+	"SUPER_CHAT_MESSAGE_JPN":            replyF.super_chat_message, //SC
+	"PANEL":                             nil,                       //replyF.panel,//排行榜 被HOT_RANK_CHANGED替代
+	"ENTRY_EFFECT":                      replyF.entry_effect,       //进入特效
+	"ROOM_REAL_TIME_MESSAGE_UPDATE":     nil,                       //replyF.roominfo,//粉丝数
+	"WATCHED_CHANGE":                    replyF.watched_change,     //Msg-观看人数
+	"FULL_SCREEN_SPECIAL_EFFECT":        nil,
+	"GIFT_BOARD_RED_DOT":                nil,
+	"USER_PANEL_RED_ALARM":              nil,
+	"POPULARITY_RED_POCKET_NEW":         replyF.popularity_red_pocket_new,   //老板打赏新礼物红包
+	"POPULARITY_RED_POCKET_START":       replyF.popularity_red_pocket_start, //老板打赏礼物红包开始
+	"POPULARITY_RED_POCKET_WINNER_LIST": nil,                                //老板打赏礼物红包的得奖名单
+	"COMMON_NOTICE_DANMAKU":             replyF.common_notice_danmaku,       //元气赏连抽
 }
 
 //屏蔽不需要的消息
