@@ -119,6 +119,8 @@ golang go version go1.16 linux/amd64
 "Ass编码": "GB18030",
 ```
 
+当直播流类型为`hls`时，使用`ffmpeg -i 0.m3u8 -c copy 0.mp4`命令可以合并切片
+
 ass编码GB18030支持中文
 
 - `GB18030`(默认)
