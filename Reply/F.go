@@ -1055,6 +1055,10 @@ func init() {
 				currentStreamO.Newst_m4s.Pull_tag(map[string]func(interface{}) bool{
 					`m4s`: func(data interface{}) bool {
 						if b, ok := data.([]byte); ok {
+							if len(b) == 0 {
+								close(cancel)
+								return true
+							}
 							if _, err := w.Write(b); err != nil {
 								close(cancel)
 								return true

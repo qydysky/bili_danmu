@@ -488,6 +488,9 @@ func (t *M4SStream) saveStream() {
 			})
 		}
 
+		// 发送空字节会导致流服务终止
+		t.Newst_m4s.Push_tag(`m4s`, []byte{})
+
 		// 结束
 		if p.Checkfile().IsExist(save_path + "0.m3u8.dtmp") {
 			f := p.File()
