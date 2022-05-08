@@ -91,6 +91,8 @@ var Msg_map = map[string]func(replyF, string){
 	"ROOM_REAL_TIME_MESSAGE_UPDATE": nil,                       //replyF.roominfo,//粉丝数
 	"WATCHED_CHANGE":                replyF.watched_change,     //Msg-观看人数
 	"FULL_SCREEN_SPECIAL_EFFECT":    nil,
+	"GIFT_BOARD_RED_DOT":            nil,
+	"USER_PANEL_RED_ALARM":          nil,
 }
 
 //屏蔽不需要的消息
