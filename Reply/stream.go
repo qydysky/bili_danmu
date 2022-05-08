@@ -359,15 +359,15 @@ func (t *M4SStream) saveStream() {
 		t.stream_expires = time.Now().Add(time.Minute * 2).Unix() // 流链接过期时间
 
 		// 同时下载数限制
-		var download_limit = funcCtrl.BlockFuncN{
+		var download_limit = &funcCtrl.BlockFuncN{
 			Max: 3,
 		}
 
 		// 下载循环
 		for download_seq := []*m4s_link_item{}; ; {
 			// 过多需下载切片提示
-			if len(download_seq) > 15 {
-				t.log.L(`W: `, `待下载切片过多:`, len(download_seq))
+			if len(download_seq) > 3 {
+				t.log.L(`T: `, `待下载切片过多:`, len(download_seq))
 			}
 
 			// 下载切片
@@ -376,6 +376,8 @@ func (t *M4SStream) saveStream() {
 				if v.status == 2 {
 					continue
 				}
+
+				download_limit.Block()
 
 				v.status = 1 // 设置切片状态为正在下载
 
@@ -395,7 +397,6 @@ func (t *M4SStream) saveStream() {
 					v.Url = link_url.String()
 				}
 
-				download_limit.Block()
 				go func(link *m4s_link_item, path string) {
 					defer download_limit.UnBlock()
 
