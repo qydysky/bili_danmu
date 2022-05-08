@@ -38,6 +38,9 @@ func Demo(roomid ...int) {
 	var danmulog = c.C.Log.Base(`bilidanmu Demo`)
 	defer danmulog.Block(1000)
 
+	var stop = p.Sys().PreventSleep()
+	defer stop.Done()
+
 	//ctrl+c退出
 	interrupt := make(chan os.Signal, 2)
 	go func() {
