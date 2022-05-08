@@ -467,6 +467,74 @@ func (replyF) room_change(s string) {
 	msglog.Base_add("房").L(`I: `, sh...)
 }
 
+//Msg-开始了视频连线
+func (replyF) video_connection_join_start(s string) {
+	msglog := msglog.Base_add("房").Log_show_control(false)
+
+	var j ws_msg.VIDEO_CONNECTION_JOIN_START
+	if e := json.Unmarshal([]byte(s), &j); e != nil {
+		msglog.L(`E: `, e)
+	}
+
+	var tmp = `开始了与` + j.Data.InvitedUname + `的视频连线`
+
+	Gui_show(tmp, "0room")
+
+	msglog.Base_add("房").L(`I: `, tmp)
+}
+
+//Msg-结束了视频连线
+func (replyF) video_connection_join_end(s string) {
+	msglog := msglog.Base_add("房").Log_show_control(false)
+
+	var j ws_msg.VIDEO_CONNECTION_JOIN_END
+	if e := json.Unmarshal([]byte(s), &j); e != nil {
+		msglog.L(`E: `, e)
+	}
+
+	var tmp = j.Data.Toast
+
+	Gui_show(tmp, "0room")
+
+	msglog.Base_add("房").L(`I: `, tmp)
+}
+
+//Msg-视频连线状态改变
+func (replyF) video_connection_msg(s string) {
+	msglog := msglog.Base_add("房").Log_show_control(false)
+
+	var j ws_msg.VIDEO_CONNECTION_MSG
+	if e := json.Unmarshal([]byte(s), &j); e != nil {
+		msglog.L(`E: `, e)
+	}
+
+	var tmp = j.Data.Toast
+
+	Gui_show(tmp, "0room")
+
+	msglog.Base_add("房").L(`I: `, tmp)
+}
+
+//Msg-活动标题改变v2
+func (replyF) activity_banner_change_v2(s string) {
+	msglog := msglog.Base_add("房").Log_show_control(false)
+
+	var j ws_msg.ACTIVITY_BANNER_CHANGE_V2
+	if e := json.Unmarshal([]byte(s), &j); e != nil {
+		msglog.L(`E: `, e)
+	}
+
+	if len(j.Data.List) == 0 {
+		return
+	}
+
+	var tmp = `修改了活动标题 ` + j.Data.List[0].ActivityTitle
+
+	Gui_show(tmp, "0room")
+
+	msglog.Base_add("房").L(`I: `, tmp)
+}
+
 //Msg-大航海欢迎信息 或已废弃
 func (replyF) welcome_guard(s string) {
 	// username := p.Json().GetValFromS(s, "data.username");
