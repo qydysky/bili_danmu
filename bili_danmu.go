@@ -96,11 +96,12 @@ func Demo(roomid ...int) {
 				return false
 			},
 			`change_room`: func(data interface{}) bool { //房间改变
-				c.C.Rev = 0.0    //营收
-				c.C.Renqi = 1    //人气置1
-				c.C.GuardNum = 0 //舰长数
-				c.C.Note = ``    //分区排行
-				c.C.Uname = ``   //主播id
+				c.C.Rev = 0.0    // 营收
+				c.C.Renqi = 1    // 人气置1
+				c.C.Watched = 0  // 观看人数
+				c.C.GuardNum = 0 // 舰长数
+				c.C.Note = ``    // 分区排行
+				c.C.Uname = ``   // 主播id
 				c.C.Title = ``
 				c.C.Wearing_FansMedal = 0
 				for len(change_room_chan) != 0 {
