@@ -365,67 +365,71 @@ func (t *M4SStream) saveStream() {
 
 		// 下载循环
 		for download_seq := []*m4s_link_item{}; ; {
-			// 过多需下载切片提示
-			if len(download_seq) > 3 {
-				t.log.L(`T: `, `待下载切片过多:`, len(download_seq))
-			}
 
-			// 下载切片
-			for _, v := range download_seq {
-				// 已下载但还未移除的切片
-				if v.status == 2 {
-					continue
+			// 存在待下载切片
+			if len(download_seq) != 0 {
+				// 过多需下载切片提示
+				if len(download_seq) > 3 {
+					t.log.L(`T: `, `待下载切片过多:`, len(download_seq))
 				}
 
-				download_limit.Block()
+				// 下载切片
+				for _, v := range download_seq {
+					// 已下载但还未移除的切片
+					if v.status == 2 {
+						continue
+					}
 
-				v.status = 1 // 设置切片状态为正在下载
+					download_limit.Block()
 
-				// 均衡负载
-				if link_url, e := url.Parse(v.Url); e == nil {
-					if t.stream_hosts.Len() != 1 {
-						t.stream_hosts.Range(func(key, value interface{}) bool {
-							// 故障转移
-							if v.status == 3 && link_url.Host == key.(string) {
-								return true
+					v.status = 1 // 设置切片状态为正在下载
+
+					// 均衡负载
+					if link_url, e := url.Parse(v.Url); e == nil {
+						if t.stream_hosts.Len() != 1 {
+							t.stream_hosts.Range(func(key, value interface{}) bool {
+								// 故障转移
+								if v.status == 3 && link_url.Host == key.(string) {
+									return true
+								}
+								// 随机
+								link_url.Host = key.(string)
+								return false
+							})
+						}
+						v.Url = link_url.String()
+					}
+
+					go func(link *m4s_link_item, path string) {
+						defer download_limit.UnBlock()
+
+						r := reqf.New()
+						if e := r.Reqf(reqf.Rval{
+							Url:            link.Url,
+							SaveToPath:     path + link.Base,
+							ConnectTimeout: 2000,
+							ReadTimeout:    1000,
+							Timeout:        2000,
+							Proxy:          t.common.Proxy,
+						}); e != nil && !errors.Is(e, io.EOF) {
+							if !reqf.IsTimeout(e) {
+								t.log.L(`E: `, `hls切片下载失败:`, e)
 							}
-							// 随机
-							link_url.Host = key.(string)
-							return false
-						})
-					}
-					v.Url = link_url.String()
+							link.status = 3 // 设置切片状态为下载失败
+						} else {
+							if usedt := r.UsedTime.Seconds(); usedt > 700 {
+								t.log.L(`I: `, `hls切片下载慢`, usedt, `ms`)
+							}
+							link.data = r.Respon
+							link.status = 2 // 设置切片状态为下载完成
+						}
+					}(v, save_path)
 				}
 
-				go func(link *m4s_link_item, path string) {
-					defer download_limit.UnBlock()
-
-					r := reqf.New()
-					if e := r.Reqf(reqf.Rval{
-						Url:            link.Url,
-						SaveToPath:     path + link.Base,
-						ConnectTimeout: 2000,
-						ReadTimeout:    1000,
-						Timeout:        2000,
-						Proxy:          t.common.Proxy,
-					}); e != nil && !errors.Is(e, io.EOF) {
-						if !reqf.IsTimeout(e) {
-							t.log.L(`E: `, `hls切片下载失败:`, e)
-						}
-						link.status = 3 // 设置切片状态为下载失败
-					} else {
-						if usedt := r.UsedTime.Seconds(); usedt > 700 {
-							t.log.L(`I: `, `hls切片下载慢`, usedt, `ms`)
-						}
-						link.data = r.Respon
-						link.status = 2 // 设置切片状态为下载完成
-					}
-				}(v, save_path)
+				// 等待队列下载完成
+				download_limit.None()
+				download_limit.UnNone()
 			}
-
-			// 等待队列下载完成
-			download_limit.None()
-			download_limit.UnNone()
 
 			// 传递已下载切片
 			{
