@@ -662,8 +662,9 @@ func (replyF) room_block_msg(s string) {
 func (replyF) preparing(s string) {
 	msglog := msglog.Base_add("房")
 
-	if roomid := p.Json().GetValFromS(s, "roomid"); roomid == nil {
-		msglog.L(`E: `, "roomid", roomid)
+	var type_item ws_msg.PREPARING
+	if err := json.Unmarshal([]byte(s), &type_item); err != nil {
+		msglog.L(`E: `, err)
 		return
 	} else {
 		{ //附加功能 obs结束 `savestream`结束
@@ -671,17 +672,12 @@ func (replyF) preparing(s string) {
 			Obsf(false)
 			go ShowRevf()
 			c.C.Liveing = false
-		}
-		if p.Sys().Type(roomid) == "float64" {
 			// 停止此房间录制
-			StreamOStop(int(roomid.(float64)))
-
-			Gui_show(Itos([]interface{}{"房间", roomid, "下播了"}), "0room")
-			msglog.L(`I: `, "房间", int(roomid.(float64)), "下播了")
-			return
+			var roomId, _ = strconv.Atoi(type_item.Roomid)
+			StreamOStop(roomId)
 		}
-		Gui_show(Itos([]interface{}{"房间", roomid, "下播了"}), "0room")
-		msglog.L(`I: `, "房间", roomid, "下播了")
+		Gui_show("房间", type_item.Roomid, "下播了", "0room")
+		msglog.L(`I: `, "房间", type_item.Roomid, "下播了")
 	}
 }
 
