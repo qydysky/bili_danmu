@@ -360,18 +360,18 @@ func (replyF) heartbeat(s int) {
 
 	var pperm = float64(c.C.Watched) / float64(time.Since(c.C.Live_Start_Time)/time.Minute)
 	if pperm_old != 0 {
-		tmp2 += `(avg: ` + fmt.Sprintf("%.1f", pperm) + `人/分 `
+		tmp2 += fmt.Sprintf("(avg: %.1f人/分 ", pperm)
 		if pperm-pperm_old > 0 {
 			tmp2 += `+`
 		}
 		tmp2 += fmt.Sprintf("%.1f", pperm-pperm_old) + `)`
 	}
 	if renqi_old != s {
-		fmt.Printf("\t人气:%d %s\t观看人数:%d %s\n", s, tmp, c.C.Watched, tmp2)
+		fmt.Printf("\t人气:%d %s\n\t观看人数:%d %s\n", s, tmp, c.C.Watched, tmp2)
+		pperm_old = pperm
 	}
 	reply_log.Base_add(`人气`).Log_show_control(false).L(`I: `, "当前人气", s)
 	renqi_old = s
-	pperm_old = pperm
 }
 
 //Msg-房间特殊活动
