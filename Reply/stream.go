@@ -368,6 +368,9 @@ func (t *M4SStream) saveStream() {
 
 			// 存在待下载切片
 			if len(download_seq) != 0 {
+				// 设置限制计划
+				download_limit.Plan(int64(len(download_seq)))
+
 				// 下载切片
 				for _, v := range download_seq {
 					// 已下载但还未移除的切片
@@ -421,8 +424,7 @@ func (t *M4SStream) saveStream() {
 				}
 
 				// 等待队列下载完成
-				download_limit.None()
-				download_limit.UnNone()
+				download_limit.PlanDone()
 			}
 
 			// 传递已下载切片
