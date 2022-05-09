@@ -378,7 +378,7 @@ func (t *M4SStream) saveStream() {
 						download_limit.Block()
 
 						// 已下载但还未移除的切片
-						if v.status == 2 {
+						if link.status == 2 {
 							return
 						}
 
