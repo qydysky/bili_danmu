@@ -368,11 +368,6 @@ func (t *M4SStream) saveStream() {
 
 			// 存在待下载切片
 			if len(download_seq) != 0 {
-				// 过多需下载切片提示
-				if len(download_seq) > 3 {
-					t.log.L(`T: `, `待下载切片过多:`, len(download_seq))
-				}
-
 				// 下载切片
 				for _, v := range download_seq {
 					// 已下载但还未移除的切片
@@ -380,28 +375,27 @@ func (t *M4SStream) saveStream() {
 						continue
 					}
 
-					download_limit.Block()
-
-					v.status = 1 // 设置切片状态为正在下载
-
-					// 均衡负载
-					if link_url, e := url.Parse(v.Url); e == nil {
-						if t.stream_hosts.Len() != 1 {
-							t.stream_hosts.Range(func(key, value interface{}) bool {
-								// 故障转移
-								if v.status == 3 && link_url.Host == key.(string) {
-									return true
-								}
-								// 随机
-								link_url.Host = key.(string)
-								return false
-							})
-						}
-						v.Url = link_url.String()
-					}
-
 					go func(link *m4s_link_item, path string) {
 						defer download_limit.UnBlock()
+						download_limit.Block()
+
+						v.status = 1 // 设置切片状态为正在下载
+
+						// 均衡负载
+						if link_url, e := url.Parse(v.Url); e == nil {
+							if t.stream_hosts.Len() != 1 {
+								t.stream_hosts.Range(func(key, value interface{}) bool {
+									// 故障转移
+									if v.status == 3 && link_url.Host == key.(string) {
+										return true
+									}
+									// 随机
+									link_url.Host = key.(string)
+									return false
+								})
+							}
+							v.Url = link_url.String()
+						}
 
 						r := reqf.New()
 						if e := r.Reqf(reqf.Rval{
@@ -438,7 +432,7 @@ func (t *M4SStream) saveStream() {
 						t.first_m4s = v.data
 					}
 
-					if v.status != 3 {
+					if v.status == 2 {
 						download_seq = download_seq[1:]
 						t.Newst_m4s.Push_tag(`m4s`, v.data)
 					} else {
@@ -462,6 +456,7 @@ func (t *M4SStream) saveStream() {
 
 			// 刷新流地址
 			if time.Now().Unix()+60 > t.stream_expires {
+				t.stream_expires = time.Now().Add(time.Minute * 2).Unix() // 临时的流链接过期时间
 				go t.fetchCheckStream()
 			}
 
