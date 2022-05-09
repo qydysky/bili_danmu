@@ -164,7 +164,7 @@ func Cmd() {
 					fmt.Println(`营收:`, fmt.Sprintf("￥%.2f", c.C.Rev))
 				}
 				fmt.Println(`舰长数:`, c.C.GuardNum)
-				fmt.Println(`分区排行:`, c.C.Note, `人气：`, c.C.Renqi)
+				fmt.Println(`分区排行:`, c.C.Note, `人气：`, c.C.Renqi, `观看人数：`, c.C.Watched)
 				if c.C.Stream_url != "" {
 					fmt.Println(`直播Web服务:`, c.C.Stream_url)
 				}
