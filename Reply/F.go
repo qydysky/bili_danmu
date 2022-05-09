@@ -247,7 +247,7 @@ func dtos(t time.Duration) string {
 
 //hls
 //https://datatracker.ietf.org/doc/html/draft-pantos-http-live-streaming
-var streamO psync.Map
+var streamO = new(psync.Map)
 
 // 获取实例的Common
 func StreamOCommon(roomid int) (array []c.Common) {
@@ -313,14 +313,16 @@ func StreamOStop(roomid int) {
 			if v.(*M4SStream).Status.Islive() {
 				v.(*M4SStream).Stop()
 			}
+			streamO.Delete(roomid)
 		}
 	} else { //所有房间
-		streamO.Range(func(_, v interface{}) bool {
+		streamO.Range(func(_roomid, v interface{}) bool {
 			if v.(*M4SStream).Status.Islive() {
 				v.(*M4SStream).Stop()
 			}
 			return true
 		})
+		streamO = new(psync.Map)
 	}
 }
 
