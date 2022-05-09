@@ -458,7 +458,7 @@ func (t *M4SStream) saveStream() {
 
 			// 刷新流地址
 			if time.Now().Unix()+60 > t.stream_expires {
-				t.fetchCheckStream()
+				go t.fetchCheckStream()
 			}
 
 			// 获取解析m3u8
