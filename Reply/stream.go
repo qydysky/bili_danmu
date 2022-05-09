@@ -379,14 +379,14 @@ func (t *M4SStream) saveStream() {
 						defer download_limit.UnBlock()
 						download_limit.Block()
 
-						v.status = 1 // 设置切片状态为正在下载
+						link.status = 1 // 设置切片状态为正在下载
 
 						// 均衡负载
-						if link_url, e := url.Parse(v.Url); e == nil {
+						if link_url, e := url.Parse(link.Url); e == nil {
 							if t.stream_hosts.Len() != 1 {
 								t.stream_hosts.Range(func(key, value interface{}) bool {
 									// 故障转移
-									if v.status == 3 && link_url.Host == key.(string) {
+									if link.status == 3 && link_url.Host == key.(string) {
 										return true
 									}
 									// 随机
@@ -394,7 +394,7 @@ func (t *M4SStream) saveStream() {
 									return false
 								})
 							}
-							v.Url = link_url.String()
+							link.Url = link_url.String()
 						}
 
 						r := reqf.New()
