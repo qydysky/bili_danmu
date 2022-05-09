@@ -386,8 +386,11 @@ func (replyF) win_activity(s string) {
 func (replyF) watched_change(s string) {
 	var data ws_msg.WATCHED_CHANGE
 	json.Unmarshal([]byte(s), &data)
-	c.C.Watched = data.Data.Num
 	// fmt.Printf("\t观看人数:%d\n", watched)
+	if data.Data.Num == c.C.Watched {
+		return
+	}
+	c.C.Watched = data.Data.Num
 	var pperm = float64(c.C.Watched) / float64(time.Since(c.C.Live_Start_Time)/time.Minute)
 	msglog.Base_add("房").Log_show_control(false).L(`I: `, "观看人数", data.Data.Num, fmt.Sprintf(" avg:%.1f人/分", pperm))
 }
