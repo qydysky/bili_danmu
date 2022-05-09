@@ -373,14 +373,14 @@ func (t *M4SStream) saveStream() {
 
 				// 下载切片
 				for _, v := range download_seq {
-					// 已下载但还未移除的切片
-					if v.status == 2 {
-						continue
-					}
-
 					go func(link *m4s_link_item, path string) {
 						defer download_limit.UnBlock()
 						download_limit.Block()
+
+						// 已下载但还未移除的切片
+						if v.status == 2 {
+							return
+						}
 
 						link.status = 1 // 设置切片状态为正在下载
 
