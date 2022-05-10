@@ -285,37 +285,62 @@ func (t *M4SStream) fetchParseM3U8() (m4s_links []*m4s_link_item, m3u8_addon []b
 			t.last_m4s = last_m4s
 		}(m4s_links[len(m4s_links)-1])
 
+		// 首次下载
 		if t.last_m4s == nil {
 			return
 		}
 
 		// 只返回新增加的
-		for k, m4s_link := range m4s_links {
-			if m4s_link.Base == t.last_m4s.Base {
-				// 只返回新增加的切片
-				m4s_links = m4s_links[k+1:]
-
-				// 只返回新增加的m3u8字节
-				if index := bytes.Index(m3u8_addon, []byte(m4s_link.Base)); index != -1 {
-					index += len([]byte(m4s_link.Base))
-					if index == len(m3u8_addon) {
-						m3u8_addon = []byte{}
-					} else {
-						m3u8_addon = m3u8_addon[index+1:]
-					}
+		{
+			last_no, _ := t.last_m4s.getNo()
+			for k, m4s_link := range m4s_links {
+				// 剔除初始段
+				if m4s_link.isInit() {
+					m4s_links = append(m4s_links[:k], m4s_links[k+1:]...)
 				}
-				return
+				no, _ := m4s_link.getNo()
+				if no == last_no {
+					// 只返回新增加的切片
+					m4s_links = m4s_links[k+1:]
+					// 只返回新增加的m3u8字节
+					if index := bytes.Index(m3u8_addon, []byte(m4s_link.Base)); index != -1 {
+						index += len([]byte(m4s_link.Base))
+						if index == len(m3u8_addon) {
+							m3u8_addon = []byte{}
+						} else {
+							m3u8_addon = m3u8_addon[index+1:]
+						}
+					}
+					return
+				} else if no == last_no+1 {
+					// 刚刚好承接之前的结尾
+					return
+				}
 			}
 		}
 
 		// 来到此处说明出现了丢失 尝试补充
-		var guess_end_no, _ = m4s_links[0].getNo()
-		for no, _ := t.last_m4s.getNo(); no < guess_end_no; no += 1 {
+		var (
+			guess_end_no int
+			current_no   int
+		)
+		// 找出不是初始段的第一个切片
+		for _, v := range m4s_links {
+			if v.isInit() {
+				continue
+			}
+			guess_end_no, _ = v.getNo()
+			break
+		}
+		current_no, _ = t.last_m4s.getNo()
+
+		t.log.L(`I: `, `发现`, guess_end_no-current_no-1, `个切片遗漏，重新下载`)
+		for guess_no := guess_end_no - 1; guess_no > current_no; guess_no -= 1 {
 			// 补充m3u8
-			m3u8_addon = append([]byte(`#EXTINF:1.00\n`+strconv.Itoa(no)+`.m4s\n`), m3u8_addon...)
+			m3u8_addon = append([]byte("#EXTINF:1.00\n"+strconv.Itoa(guess_no)+".m4s\n"), m3u8_addon...)
 
 			//获取切片地址
-			u, err := url.Parse("./" + strconv.Itoa(no) + `.m4s`)
+			u, err := url.Parse("./" + strconv.Itoa(guess_no) + `.m4s`)
 			if err != nil {
 				e = err
 				return
@@ -325,7 +350,7 @@ func (t *M4SStream) fetchParseM3U8() (m4s_links []*m4s_link_item, m3u8_addon []b
 			m4s_links = append([]*m4s_link_item{
 				{
 					Url:  m3u8_url.ResolveReference(u).String(),
-					Base: strconv.Itoa(no) + `.m4s`,
+					Base: strconv.Itoa(guess_no) + `.m4s`,
 				},
 			}, m4s_links...)
 		}
