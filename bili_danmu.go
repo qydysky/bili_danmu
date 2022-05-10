@@ -275,7 +275,10 @@ func Demo(roomid ...int) {
 
 						{ //附加功能 进房间发送弹幕 直播流保存 营收
 							go reply.Entry_danmu()
-							c.C.Danmu_Main_mq.Push_tag(`savestream`, c.C.Roomid)
+							c.C.Danmu_Main_mq.Push_tag(`savestream`, reply.SavestreamO{
+								Roomid: c.C.Roomid,
+								IsRec:  true,
+							})
 							go reply.ShowRevf()
 							//小心心
 							go F.F_x25Kn()
@@ -314,13 +317,18 @@ func Demo(roomid ...int) {
 					break
 				}
 			}
-			{ //附加功能 直播流停止
-				reply.StreamOStop(-1)
+			{ //附加功能 ws信息保存
 				reply.Save_to_json(-1, []interface{}{`{}]`})
+				if v, ok := c.C.K_v.LoadV(`仅保存当前直播间流`).(bool); ok && v {
+					reply.StreamOStop(-1) //停止其他房间录制
+				}
 			}
 			p.Sys().Timeoutf(1)
 		}
 
+		{ //附加功能 直播流停止
+			reply.StreamOStop(-1)
+		}
 		close(interrupt)
 		danmulog.L(`I: `, "结束退出")
 	}

@@ -187,6 +187,9 @@ func init() {
 
 //设定字幕文件名，为""时停止输出
 func Ass_f(save_path string, file string, st time.Time) {
+	if !IsOn(`仅保存当前直播间流`) {
+		return
+	}
 	ass.file = file
 	if file == "" {
 		return
@@ -264,23 +267,23 @@ func StreamOCommon(roomid int) (array []c.Common) {
 	return
 }
 
+type SavestreamO struct {
+	Roomid int
+	IsRec  bool
+}
+
 // 实例操作
 func init() {
 	//使用带tag的消息队列在功能间传递消息
 	c.C.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
 		`savestream`: func(data interface{}) bool {
-			if roomid, ok := data.(int); ok {
-				if v, ok := streamO.Load(roomid); ok {
-					if v.(*M4SStream).Status.Islive() {
-						v.(*M4SStream).Stop()
-						streamO.Delete(roomid)
-					}
-				} else {
+			if item, ok := data.(SavestreamO); ok {
+				if v, ok := streamO.Load(item.Roomid); item.IsRec && !ok {
 					var (
 						tmp    = new(M4SStream)
 						common = c.C
 					)
-					common.Roomid = roomid
+					common.Roomid = item.Roomid
 					tmp.LoadConfig(common, c.C.Log)
 					//关于ass的回调
 					tmp.Callback_start = func(ms *M4SStream) {
@@ -289,11 +292,14 @@ func init() {
 					tmp.Callback_stop = func(ms *M4SStream) {
 						Ass_f("", "", time.Now()) //停止ass
 					}
-					streamO.Store(roomid, tmp)
+					streamO.Store(item.Roomid, tmp)
 					go tmp.Start()
+				} else if !item.IsRec && ok {
+					if v.(*M4SStream).Status.Islive() {
+						v.(*M4SStream).Stop()
+						streamO.Delete(item.Roomid)
+					}
 				}
-			} else {
-				flog.L(`E: `, `savestream必须为数字房间号`)
 			}
 			return false
 		},

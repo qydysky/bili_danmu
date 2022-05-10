@@ -334,6 +334,10 @@ func (t *M4SStream) fetchParseM3U8() (m4s_links []*m4s_link_item, m3u8_addon []b
 		}
 		current_no, _ = t.last_m4s.getNo()
 
+		if guess_end_no < current_no {
+			return
+		}
+
 		t.log.L(`I: `, `发现`, guess_end_no-current_no-1, `个切片遗漏，重新下载`)
 		for guess_no := guess_end_no - 1; guess_no > current_no; guess_no -= 1 {
 			// 补充m3u8

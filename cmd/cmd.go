@@ -56,13 +56,23 @@ func Cmd() {
 			//录制切换
 			if strings.Contains(inputs, ` rec`) {
 				if len(inputs) > 4 {
+					if v, ok := c.C.K_v.LoadV(`仅保存当前直播间流`).(bool); ok && v {
+						cmdlog.L(`W: `, "输入错误", inputs)
+						continue
+					}
 					if room, err := strconv.Atoi(inputs[4:]); err == nil {
-						c.C.Danmu_Main_mq.Push_tag(`savestream`, room)
+						c.C.Danmu_Main_mq.Push_tag(`savestream`, reply.SavestreamO{
+							Roomid: room,
+							IsRec:  !reply.StreamOStatus(room),
+						})
 						continue
 					}
 					cmdlog.L(`W: `, "输入错误", inputs)
 				} else {
-					c.C.Danmu_Main_mq.Push_tag(`savestream`, c.C.Roomid)
+					c.C.Danmu_Main_mq.Push_tag(`savestream`, reply.SavestreamO{
+						Roomid: c.C.Roomid,
+						IsRec:  !reply.StreamOStatus(c.C.Roomid),
+					})
 				}
 				continue
 			}
@@ -168,22 +178,18 @@ func Cmd() {
 				if c.C.Stream_url != "" {
 					fmt.Println(`直播Web服务:`, c.C.Stream_url)
 				}
-				if reply.StreamOStatus(c.C.Roomid) {
-					fmt.Println(`正在录制当前房间`)
-				} else {
-					fmt.Println(`未在录制当前房间`)
-				}
-
 				var array = reply.StreamOCommon(-1)
-				if len(array) > 1 {
-					fmt.Println(`正在录制的其他房间：`)
-					for _, v := range array {
-						fmt.Println("\t" + v.Uname + "(" + strconv.Itoa(v.Roomid) + ") " + v.Title)
-					}
+				fmt.Println(`正在录制的房间：`)
+				for _, v := range array {
+					fmt.Println("\t" + v.Uname + "(" + strconv.Itoa(v.Roomid) + ") " + v.Title)
 				}
-				fmt.Println("输入` rec` 来启停当前房间录制, 输入` rec房间号` 来启停其他录制")
+				fmt.Print("输入` rec` 来启停当前房间录制")
 
-				fmt.Print("\n")
+				if v, ok := c.C.K_v.LoadV(`仅保存当前直播间流`).(bool); !ok || !v {
+					fmt.Print(" 输入` rec房间号` 来启停其他录制")
+				}
+
+				fmt.Print("\n\n")
 
 				continue
 			}
