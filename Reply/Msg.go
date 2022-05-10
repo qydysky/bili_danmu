@@ -102,6 +102,7 @@ var Msg_map = map[string]func(replyF, string){
 	"VIDEO_CONNECTION_JOIN_START":       replyF.video_connection_join_start, //开始了与某人的视频连线
 	"VIDEO_CONNECTION_JOIN_END":         replyF.video_connection_join_end,   //结束了与某人的视频连线
 	"VIDEO_CONNECTION_MSG":              replyF.video_connection_msg,        //视频连线状态改变
+	"WARNING":                           replyF.warning,                     //超管警告
 }
 
 //屏蔽不需要的消息

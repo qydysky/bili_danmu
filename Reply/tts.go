@@ -20,6 +20,7 @@ import (
 	limit "github.com/qydysky/part/limit"
 	msgq "github.com/qydysky/part/msgq"
 	reqf "github.com/qydysky/part/reqf"
+	pstrings "github.com/qydysky/part/strings"
 	ws "github.com/qydysky/part/websocket"
 )
 
@@ -226,7 +227,7 @@ func youdao(msg string) error {
 			`q`:            msg,
 			`langType`:     "zh-CHS",
 			`youdaoappKey`: youdaoId,
-			`salt`:         p.Stringf().Rand(1, 8),
+			`salt`:         pstrings.Rand(1, 8),
 		}
 		postS string
 	)

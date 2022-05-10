@@ -15,6 +15,7 @@ import (
 	send "github.com/qydysky/bili_danmu/Send"
 	p "github.com/qydysky/part"
 	mq "github.com/qydysky/part/msgq"
+	pstrings "github.com/qydysky/part/strings"
 )
 
 var reply_log = c.C.Log.Base(`Reply`)
@@ -469,6 +470,21 @@ func (replyF) room_change(s string) {
 	Gui_show(Itos(sh), "0room")
 
 	msglog.Base_add("房").L(`I: `, sh...)
+}
+
+//Msg-超管警告
+func (replyF) warning(s string) {
+	var type_item ws_msg.WARNING
+
+	if e := json.Unmarshal([]byte(s), &type_item); e != nil {
+		msglog.L(`E: `, e)
+	}
+
+	s, _ = pstrings.UnescapeUnicode(type_item.Msg)
+
+	Gui_show(s, "0room")
+
+	msglog.Base_add("房").L(`I: `, s)
 }
 
 //Msg-开始了视频连线
