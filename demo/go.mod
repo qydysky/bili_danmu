@@ -4,7 +4,7 @@ go 1.14
 
 require (
 	github.com/qydysky/bili_danmu v0.5.9
-	github.com/qydysky/part v0.9.2 // indirect
+	github.com/qydysky/part v0.9.3 // indirect
 	github.com/stretchr/testify v1.7.1 // indirect
 )
 

@@ -28,6 +28,7 @@ import (
 	msgq "github.com/qydysky/part/msgq"
 	psync "github.com/qydysky/part/sync"
 	web "github.com/qydysky/part/web"
+	websocket "github.com/qydysky/part/websocket"
 
 	obsws "github.com/christopher-dG/go-obs-websocket"
 )
@@ -1004,6 +1005,8 @@ func AutoSend_silver_gift() {
 }
 
 //直播Web服务口
+var StreamWs = websocket.New_server()
+
 func init() {
 	flog := flog.Base_add(`直播Web服务`)
 	if port_f, ok := c.C.K_v.LoadV(`直播Web服务口`).(float64); ok && port_f >= 0 {
@@ -1085,8 +1088,24 @@ func init() {
 				<-cancel
 			}
 		)
+
 		s.Handle(map[string]func(http.ResponseWriter, *http.Request){
-			`/`: root,
+			`/`: func(w http.ResponseWriter, r *http.Request) {
+				var path string = r.URL.Path[1:]
+				if path == `` {
+					path = `index.html`
+				}
+				http.ServeFile(w, r, "html/artPlayer/"+path)
+			},
+			`/mp4`: root,
+			`/ws`: func(w http.ResponseWriter, r *http.Request) {
+				//获取通道
+				conn := StreamWs.WS(w, r)
+				//由通道获取本次会话id，并测试 提示
+				<-conn
+				//等待会话结束，通道释放
+				<-conn
+			},
 			`/exit`: func(w http.ResponseWriter, r *http.Request) {
 				s.Server.Shutdown(context.Background())
 			},

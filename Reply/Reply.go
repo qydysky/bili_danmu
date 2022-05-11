@@ -16,6 +16,7 @@ import (
 	p "github.com/qydysky/part"
 	mq "github.com/qydysky/part/msgq"
 	pstrings "github.com/qydysky/part/strings"
+	pwebsocket "github.com/qydysky/part/websocket"
 )
 
 var reply_log = c.C.Log.Base(`Reply`)
@@ -1250,7 +1251,10 @@ func Gui_show(m ...string) {
 	if len(m) > 1 {
 		uid = m[1]
 	}
-
+	StreamWs.Interface().Push_tag(`send`, pwebsocket.Uinterface{
+		Id:   0,
+		Data: []byte(`{"text":"` + strings.ReplaceAll(m[0], "\n", "") + `"}`),
+	})
 	Danmu_mq.Push_tag(`danmu`, Danmu_mq_t{
 		uid: uid,
 		msg: m[0],
