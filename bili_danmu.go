@@ -34,8 +34,8 @@ func init() {
 	}()
 }
 
-func Demo(roomid ...int) {
-	var danmulog = c.C.Log.Base(`bilidanmu Demo`)
+func Start(roomid ...int) {
+	var danmulog = c.C.Log.Base(`bilidanmu`)
 	defer danmulog.Block(1000)
 
 	var stop = p.Sys().PreventSleep()

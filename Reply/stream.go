@@ -148,7 +148,8 @@ func (t *M4SStream) fetchCheckStream() bool {
 		SleepTime: 1000,
 		Proxy:     t.common.Proxy,
 		Header: map[string]string{
-			`Cookie`: reqf.Map_2_Cookies_String(CookieM),
+			`Cookie`:     reqf.Map_2_Cookies_String(CookieM),
+			`Connection`: `close`,
 		},
 		Timeout:          5 * 1000,
 		JustResponseCode: true,
@@ -437,6 +438,9 @@ func (t *M4SStream) saveStream() {
 							ReadTimeout:    1000,
 							Timeout:        2000,
 							Proxy:          t.common.Proxy,
+							Header: map[string]string{
+								`Connection`: `close`,
+							},
 						}); e != nil && !errors.Is(e, io.EOF) {
 							if !reqf.IsTimeout(e) {
 								t.log.L(`E: `, `hls切片下载失败:`, e)
