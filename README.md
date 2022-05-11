@@ -127,7 +127,9 @@ ass编码GB18030支持中文
 - `utf-8`
 
 #### 直播流Web服务
-注意：在 [6ecff5b](6ecff5b82c16145bc7c459f086b9bf13574c2c76) 后的若干版本中，对流保存进行了重写，暂时只支持MP4格式流，直接进入串流地址即为MP4格式流
+注意：在 [6ecff5b](6ecff5b82c16145bc7c459f086b9bf13574c2c76) 后的若干版本中，对流保存进行了重写，暂时只支持MP4格式流，mp4流为`流地址/mp4`
+
+注意：直接进入串流地址为[artplayer](https://artplayer.org/)及[Danmaku](https://github.com/weizhenye/Danmaku)的演示前端界面
 
 启动Web流服务，为下载的直播流提供局域网内的流服务，提供flv、hls/mp4格式流。
 
