@@ -39,7 +39,7 @@ func main() {
     // defer f.Close()
     // pprof.StartCPUProfile(f)
 
-	q.Demo()
+	q.Start()
 
 	// pprof.StopCPUProfile()
 }
