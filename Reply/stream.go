@@ -31,15 +31,15 @@ type M4SStream struct {
 	log                  *log.Log_interface //日志
 	config               M4SStream_Config   //配置
 	stream_last_modified time.Time          //流地址更新时间
-	stream_expires       int64              //流到期时间
-	last_m4s             *m4s_link_item     //最后一个切片
-	stream_hosts         sync.Map           //使用的流服务器
-	Newst_m4s            *msgq.Msgq         //m4s消息 tag:m4s
-	first_m4s            []byte             //m4s起始块
-	common               c.Common           //通用配置副本
-	Current_save_path    string             //明确的直播流保存目录
-	Callback_start       func(*M4SStream)   //开始的回调
-	Callback_stop        func(*M4SStream)   //结束的回调
+	// stream_expires       int64              //流到期时间
+	last_m4s          *m4s_link_item   //最后一个切片
+	stream_hosts      sync.Map         //使用的流服务器
+	Newst_m4s         *msgq.Msgq       //m4s消息 tag:m4s
+	first_m4s         []byte           //m4s起始块
+	common            c.Common         //通用配置副本
+	Current_save_path string           //明确的直播流保存目录
+	Callback_start    func(*M4SStream) //开始的回调
+	Callback_stop     func(*M4SStream) //结束的回调
 }
 
 type M4SStream_Config struct {
@@ -126,13 +126,13 @@ func (t *M4SStream) fetchCheckStream() bool {
 	}
 
 	// 保存流地址过期时间
-	if m3u8_url, err := url.Parse(t.common.Live[0]); err != nil {
-		t.log.L(`E: `, err.Error())
-		return false
-	} else {
-		expires, _ := strconv.Atoi(m3u8_url.Query().Get("expires"))
-		t.stream_expires = int64(expires)
-	}
+	// if m3u8_url, err := url.Parse(t.common.Live[0]); err != nil {
+	// 	t.log.L(`E: `, err.Error())
+	// 	return false
+	// } else {
+	// 	expires, _ := strconv.Atoi(m3u8_url.Query().Get("expires"))
+	// 	t.stream_expires = int64(expires)
+	// }
 
 	// 检查是否可以获取
 	CookieM := make(map[string]string)
@@ -373,6 +373,9 @@ func (t *M4SStream) saveStream() {
 	t.Current_save_path = t.config.save_path + "/" + strconv.Itoa(t.common.Roomid) + "_" + time.Now().Format("2006_01_02_15-04-05-000") + `/`
 	var save_path = t.Current_save_path
 
+	// 清除初始值
+	t.last_m4s = nil
+
 	// 显示保存位置
 	if rel, err := filepath.Rel(t.config.save_path, save_path); err == nil {
 		t.log.L(`I: `, "保存到", rel+`/0.m3u8`)
@@ -386,8 +389,6 @@ func (t *M4SStream) saveStream() {
 
 	// 获取流
 	if strings.Contains(t.common.Live[0], `m3u8`) {
-		t.stream_expires = time.Now().Add(time.Minute * 2).Unix() // 流链接过期时间
-
 		// 同时下载数限制
 		var download_limit = &funcCtrl.BlockFuncN{
 			Max: 3,
@@ -479,7 +480,7 @@ func (t *M4SStream) saveStream() {
 			// 停止录制
 			if !t.Status.Islive() {
 				if len(download_seq) != 0 {
-					if time.Now().Unix() > t.stream_expires {
+					if time.Now().Unix() > t.stream_last_modified.Unix()+300 {
 						t.log.L(`E: `, `切片下载超时`)
 					} else {
 						t.log.L(`I: `, `下载最后切片:`, len(download_seq))
@@ -490,10 +491,15 @@ func (t *M4SStream) saveStream() {
 			}
 
 			// 刷新流地址
-			if time.Now().Unix()+60 > t.stream_expires {
-				t.stream_expires = time.Now().Add(time.Minute * 2).Unix() // 临时的流链接过期时间
-				go t.fetchCheckStream()
-			}
+			// 偶尔刷新后的切片编号与原来不连续，故不再提前检查，直到流获取失败再刷新
+			// if time.Now().Unix()+60 > t.stream_expires {
+			// 	t.stream_expires = time.Now().Add(time.Minute * 2).Unix() // 临时的流链接过期时间
+			// 	go func() {
+			// 		if t.fetchCheckStream() {
+			// 			t.last_m4s = nil
+			// 		}
+			// 	}()
+			// }
 
 			// 获取解析m3u8
 			var m4s_links, m3u8_addon, err = t.fetchParseM3U8()
