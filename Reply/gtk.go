@@ -624,8 +624,8 @@ func Gtk_danmu() {
 					if src == "" {
 						return
 					}
-					reqi := c.Common.ReqPool.Get()
-					defer c.Common.ReqPool.Put(reqi)
+					reqi := c.C.ReqPool.Get()
+					defer c.C.ReqPool.Put(reqi)
 					req := reqi.Item.(*reqf.Req)
 					if e := req.Reqf(reqf.Rval{
 						Url:        src,
