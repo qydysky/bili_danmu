@@ -67,18 +67,6 @@ func (t *Common) init() Common {
 		80:    "流畅",
 	}
 
-	t.Log = log.New(log.Config{
-		File:   `danmu.log`,
-		Stdout: true,
-		Prefix_string: map[string]struct{}{
-			`T: `: log.On,
-			`I: `: log.On,
-			`N: `: log.On,
-			`W: `: log.On,
-			`E: `: log.On,
-		},
-	})
-
 	t.Danmu_Main_mq = mq.New(200)
 
 	if bb, err := ioutil.ReadFile("config/config_K_v.json"); err == nil {
@@ -93,13 +81,28 @@ func (t *Common) init() Common {
 		t.Proxy = val.(string)
 	}
 
-	logmap := make(map[string]struct{})
-	if array, ok := t.K_v.Load(`日志显示`); ok {
-		for _, v := range array.([]interface{}) {
-			logmap[v.(string)] = log.On
+	{
+		v, _ := t.K_v.LoadV("日志文件输出").(string)
+		t.Log = log.New(log.Config{
+			File:   v,
+			Stdout: true,
+			Prefix_string: map[string]struct{}{
+				`T: `: log.On,
+				`I: `: log.On,
+				`N: `: log.On,
+				`W: `: log.On,
+				`E: `: log.On,
+			},
+		})
+		logmap := make(map[string]struct{})
+		if array, ok := t.K_v.Load(`日志显示`); ok {
+			for _, v := range array.([]interface{}) {
+				logmap[v.(string)] = log.On
+			}
 		}
+		t.Log = t.Log.Level(logmap)
 	}
-	t.Log = t.Log.Level(logmap)
+
 	t.ReqPool = idpool.New(func() interface{} {
 		return reqf.New()
 	})
