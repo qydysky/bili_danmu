@@ -116,8 +116,12 @@ func server() {
 		})
 	}
 
+	port := strconv.Itoa(sys.Sys().GetFreePort())
+	if v, ok := c.C.K_v.LoadV(`小心心端口`).(int); ok && v != 0 {
+		port = strconv.Itoa(v)
+	}
 	w := web.New(&http.Server{
-		Addr: "127.0.0.1:" + strconv.Itoa(sys.Sys().GetFreePort()),
+		Addr: "0.0.0.0:" + port,
 	}) //新建web实例
 	w.Handle(map[string]func(http.ResponseWriter, *http.Request){ //路径处理函数
 		`/`: func(w http.ResponseWriter, r *http.Request) {
@@ -138,7 +142,9 @@ func server() {
 	})
 	webpath = `http://` + w.Server.Addr
 	//提示
-	wslog.L(`I: `, `使用WebJs`, webpath, `进行加密`)
+	for _, v := range sys.GetIntranetIp(``) {
+		wslog.L(`I: `, `使用WebJs`, strings.ReplaceAll(webpath, "0.0.0.0", v), `进行加密`)
+	}
 }
 
 func Wasm(uid uintptr, rt RT) (so RT, o string) { //maxloop 超时重试

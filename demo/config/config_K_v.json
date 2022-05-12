@@ -28,6 +28,7 @@
     "save_to_json": "",
     "get_xiao_xinxin-help": "获取小心心",
     "get_xiao_xinxin": true,
+    "小心心端口": 0,
     "自动打开小心心浏览器": true,
     "小心心nodjs加密服务地址-help": "请查看项目README",
     "小心心nodjs加密服务地址": "",
