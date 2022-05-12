@@ -5,8 +5,10 @@ import (
 	"io/ioutil"
 	"time"
 
+	idpool "github.com/qydysky/part/idpool"
 	log "github.com/qydysky/part/log"
 	mq "github.com/qydysky/part/msgq"
+	reqf "github.com/qydysky/part/reqf"
 	syncmap "github.com/qydysky/part/sync"
 )
 
@@ -41,6 +43,7 @@ type Common struct {
 	K_v               syncmap.Map        //配置文件
 	Log               *log.Log_interface //日志
 	Danmu_Main_mq     *mq.Msgq           //消息
+	ReqPool           *idpool.Idpool     // 请求池
 }
 
 func (t *Common) init() Common {
@@ -97,7 +100,9 @@ func (t *Common) init() Common {
 		}
 	}
 	t.Log = t.Log.Level(logmap)
-
+	t.ReqPool = idpool.New(func() interface{} {
+		return reqf.New()
+	})
 	return *t
 }
 
