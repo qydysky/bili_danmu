@@ -181,15 +181,19 @@ func Wasm(uid uintptr, rt RT) (so RT, o string) { //maxloop 超时重试
 	}
 
 	{ //web
-		for try := 5; try > 0 && ws.Len() == 0; try -= 1 { //没有从池中取出
-			open.Run(webpath)
-			wslog.L(`I: `, `浏览器打开`, webpath)
-			time.Sleep(time.Second * time.Duration(10))
-		}
+		if v, ok := c.C.K_v.LoadV("自动打开小心心浏览器").(bool); !ok && v {
+			for try := 5; try > 0 && ws.Len() == 0; try -= 1 { //没有从池中取出
+				open.Run(webpath)
+				wslog.L(`I: `, `浏览器打开`, webpath)
+				time.Sleep(time.Second * time.Duration(10))
+			}
 
-		if ws.Len() == 0 {
-			wslog.L(`W: `, `浏览器打开`, webpath, `失败，请手动打开`)
-			return
+			if ws.Len() == 0 {
+				wslog.L(`W: `, `浏览器打开`, webpath, `失败，请手动打开`)
+				return
+			}
+		} else {
+			wslog.L(`I: `, `不自动打开小心心浏览器，手动打开`, webpath)
 		}
 
 		if !strings.Contains(so.R.Ua, `Test`) {
