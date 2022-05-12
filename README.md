@@ -388,7 +388,7 @@ go run [-tags "gtk"] main.go [-r 房间ID]
 apt-get update && apt-get install -y ca-certificates openssl
 ```
 
-如果你使用windows，那还需先编译linux版本
+如果你日常使用windows，但在ubuntu运行，那还需先编译linux版本
 ```
 set GOOS=linux
 go build mian.go
