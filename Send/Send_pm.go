@@ -65,7 +65,9 @@ func Send_pm(uid int, msg string) error {
 		return true
 	})
 
-	req := reqf.New()
+	reqi := c.C.ReqPool.Get()
+	defer c.C.ReqPool.Put(reqi)
+	req := reqi.Item.(*reqf.Req)
 	if e := req.Reqf(reqf.Rval{
 		Url:     `https://api.vc.bilibili.com/web_im/v1/web_im/send_msg`,
 		PostStr: url.PathEscape(send_str),

@@ -146,7 +146,9 @@ func Wasm(uid uintptr, rt RT) (so RT, o string) { //maxloop 超时重试
 
 	{ //nodejs
 		if nodeJsUrl != "" {
-			req := reqf.New()
+			reqi := c.C.ReqPool.Get()
+			defer c.C.ReqPool.Put(reqi)
+			req := reqi.Item.(*reqf.Req)
 			if err := req.Reqf(reqf.Rval{
 				Header: map[string]string{
 					`Content-Type`: `application/json`,

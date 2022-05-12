@@ -429,7 +429,9 @@ func (c *GetFunc) getInfoByRoom() (missKey []string) {
 	Roomid := strconv.Itoa(c.Roomid)
 
 	{ //使用其他api
-		req := reqf.New()
+		reqi := c.Common.ReqPool.Get()
+		defer c.Common.ReqPool.Put(reqi)
+		req := reqi.Item.(*reqf.Req)
 		if err := req.Reqf(reqf.Rval{
 			Url: "https://api.live.bilibili.com/xlive/web-room/v1/index/getInfoByRoom?room_id=" + Roomid,
 			Header: map[string]string{
@@ -516,7 +518,9 @@ func (c *GetFunc) getRoomPlayInfo() (missKey []string) {
 			return true
 		})
 
-		req := reqf.New()
+		reqi := c.Common.ReqPool.Get()
+		defer c.Common.ReqPool.Put(reqi)
+		req := reqi.Item.(*reqf.Req)
 		if err := req.Reqf(reqf.Rval{
 			Url: "https://api.live.bilibili.com/xlive/web-room/v2/index/getRoomPlayInfo?no_playurl=0&mask=1&qn=0&platform=web&protocol=0,1&format=0,2&codec=0,1&room_id=" + Roomid,
 			Header: map[string]string{
@@ -690,7 +694,9 @@ func (c *GetFunc) getRoomPlayInfoByQn() (missKey []string) {
 			return true
 		})
 
-		req := reqf.New()
+		reqi := c.Common.ReqPool.Get()
+		defer c.Common.ReqPool.Put(reqi)
+		req := reqi.Item.(*reqf.Req)
 		if err := req.Reqf(reqf.Rval{
 			Url: "https://api.live.bilibili.com/xlive/web-room/v2/index/getRoomPlayInfo?no_playurl=0&mask=1&qn=" + strconv.Itoa(c.Live_qn) + "&platform=web&protocol=0,1&format=0,2&codec=0,1&room_id=" + Roomid,
 			Header: map[string]string{
@@ -853,7 +859,9 @@ func (c *GetFunc) getDanmuInfo() (missKey []string) {
 			return true
 		})
 
-		req := reqf.New()
+		reqi := c.Common.ReqPool.Get()
+		defer c.Common.ReqPool.Put(reqi)
+		req := reqi.Item.(*reqf.Req)
 		if err := req.Reqf(reqf.Rval{
 			Url: "https://api.live.bilibili.com/xlive/web-room/v1/index/getDanmuInfo?type=0&id=" + Roomid,
 			Header: map[string]string{
@@ -902,7 +910,9 @@ func Get_face_src(uid string) string {
 		return true
 	})
 
-	req := reqf.New()
+	reqi := c.C.ReqPool.Get()
+	defer c.C.ReqPool.Put(reqi)
+	req := reqi.Item.(*reqf.Req)
 	if err := req.Reqf(reqf.Rval{
 		Url: "https://api.live.bilibili.com/xlive/web-room/v1/index/getDanmuMedalAnchorInfo?ruid=" + uid,
 		Header: map[string]string{
@@ -959,7 +969,9 @@ func (c *GetFunc) Get_HotRank() (missKey []string) {
 			return true
 		})
 
-		req := reqf.New()
+		reqi := c.ReqPool.Get()
+		defer c.ReqPool.Put(reqi)
+		req := reqi.Item.(*reqf.Req)
 		if err := req.Reqf(reqf.Rval{
 			Url: `https://api.live.bilibili.com/xlive/general-interface/v1/rank/getHotRank?ruid=` + strconv.Itoa(c.UpUid) + `&room_id=` + Roomid + `&is_pre=0&page_size=50&source=2&area_id=` + strconv.Itoa(c.ParentAreaID),
 			Header: map[string]string{
@@ -1031,7 +1043,9 @@ func (c *GetFunc) Get_guardNum() (missKey []string) {
 			return true
 		})
 
-		req := reqf.New()
+		reqi := c.ReqPool.Get()
+		defer c.ReqPool.Put(reqi)
+		req := reqi.Item.(*reqf.Req)
 		if err := req.Reqf(reqf.Rval{
 			Url: `https://api.live.bilibili.com/xlive/app-room/v2/guardTab/topList?roomid=` + Roomid + `&page=1&ruid=` + strconv.Itoa(c.UpUid) + `&page_size=29`,
 			Header: map[string]string{
@@ -1143,7 +1157,9 @@ func Info(UpUid int) (info J.Info) {
 
 	//html
 	{
-		req := reqf.New()
+		reqi := c.C.ReqPool.Get()
+		defer c.C.ReqPool.Put(reqi)
+		req := reqi.Item.(*reqf.Req)
 		if err := req.Reqf(reqf.Rval{
 			Url:     `https://api.bilibili.com/x/space/acc/info?mid=` + strconv.Itoa(UpUid) + `&jsonp=jsonp`,
 			Proxy:   c.C.Proxy,
@@ -1200,7 +1216,9 @@ func (c *GetFunc) Get_cookie() (missKey []string) {
 	var img_url string
 	var oauth string
 	{ //获取二维码
-		r := reqf.New()
+		reqi := c.ReqPool.Get()
+		defer c.ReqPool.Put(reqi)
+		r := reqi.Item.(*reqf.Req)
 		if e := r.Reqf(reqf.Rval{
 			Url:     `https://passport.bilibili.com/qrcode/getLoginUrl`,
 			Proxy:   c.Proxy,
@@ -1313,7 +1331,9 @@ func (c *GetFunc) Get_cookie() (missKey []string) {
 				return
 			}
 
-			r := reqf.New()
+			reqi := c.ReqPool.Get()
+			defer c.ReqPool.Put(reqi)
+			r := reqi.Item.(*reqf.Req)
 			if e := r.Reqf(reqf.Rval{
 				Url:     `https://passport.bilibili.com/qrcode/getLoginInfo`,
 				PostStr: `oauthKey=` + oauth,
@@ -1429,7 +1449,9 @@ func Get_list_in_room() (array []J.GetMyMedals_Items) {
 	{ //获取牌子列表
 		var medalList []J.GetMyMedals_Items
 		for pageNum := 1; true; pageNum += 1 {
-			r := reqf.New()
+			reqi := c.C.ReqPool.Get()
+			defer c.C.ReqPool.Put(reqi)
+			r := reqi.Item.(*reqf.Req)
 			if e := r.Reqf(reqf.Rval{
 				Url: `https://api.live.bilibili.com/xlive/app-ucenter/v1/user/GetMyMedals?page=` + strconv.Itoa(pageNum) + `&page_size=10`,
 				Header: map[string]string{
@@ -1487,7 +1509,9 @@ func Get_weared_medal() (item J.GetWearedMedal_Data) {
 	})
 
 	{ //获取
-		r := reqf.New()
+		reqi := c.C.ReqPool.Get()
+		defer c.C.ReqPool.Put(reqi)
+		r := reqi.Item.(*reqf.Req)
 		if e := r.Reqf(reqf.Rval{
 			Url: `https://api.live.bilibili.com/live_user/v1/UserInfo/get_weared_medal`,
 			Header: map[string]string{
@@ -1601,7 +1625,9 @@ func (c *GetFunc) CheckSwitch_FansMedal() (missKey []string) {
 		}
 	}
 	{ //切换牌子
-		r := reqf.New()
+		reqi := c.ReqPool.Get()
+		defer c.ReqPool.Put(reqi)
+		r := reqi.Item.(*reqf.Req)
 		if e := r.Reqf(reqf.Rval{
 			Url:     post_url,
 			PostStr: post_str,
@@ -1652,7 +1678,9 @@ func Dosign() {
 			return true
 		})
 
-		req := reqf.New()
+		reqi := c.C.ReqPool.Get()
+		defer c.C.ReqPool.Put(reqi)
+		req := reqi.Item.(*reqf.Req)
 		if err := req.Reqf(reqf.Rval{
 			Url: `https://api.live.bilibili.com/xlive/web-ucenter/v1/sign/WebGetSignInfo`,
 			Header: map[string]string{
@@ -1702,7 +1730,9 @@ func Dosign() {
 			return true
 		})
 
-		req := reqf.New()
+		reqi := c.C.ReqPool.Get()
+		defer c.C.ReqPool.Put(reqi)
+		req := reqi.Item.(*reqf.Req)
 		if err := req.Reqf(reqf.Rval{
 			Url: `https://api.live.bilibili.com/xlive/web-ucenter/v1/sign/DoSign`,
 			Header: map[string]string{
@@ -1762,7 +1792,9 @@ func (c *GetFunc) Get_LIVE_BUVID() (missKey []string) {
 	}
 
 	for _, roomid := range roomIdList { //获取
-		req := reqf.New()
+		reqi := c.ReqPool.Get()
+		defer c.ReqPool.Put(reqi)
+		req := reqi.Item.(*reqf.Req)
 		if err := req.Reqf(reqf.Rval{
 			Url: `https://api.live.bilibili.com/live/getRoomKanBanModel?roomid=` + roomid,
 			Header: map[string]string{
@@ -1930,7 +1962,9 @@ func F_x25Kn() {
 			return true
 		})
 
-		req := reqf.New()
+		reqi := c.C.ReqPool.Get()
+		defer c.C.ReqPool.Put(reqi)
+		req := reqi.Item.(*reqf.Req)
 		for {
 			//新调用，此退出
 			if boot_F_x25Kn.NeedExit(id) {
@@ -2049,7 +2083,9 @@ func F_x25Kn() {
 				return true
 			})
 
-			req := reqf.New()
+			reqi := c.C.ReqPool.Get()
+			defer c.C.ReqPool.Put(reqi)
+			req := reqi.Item.(*reqf.Req)
 			if err := req.Reqf(reqf.Rval{
 				Url: `https://live-trace.bilibili.com/xlive/data-interface/v1/x25Kn/X`,
 				Header: map[string]string{
@@ -2138,7 +2174,9 @@ func Gift_list() (list []Gift_list_type_Data_List) {
 		return true
 	})
 
-	req := reqf.New()
+	reqi := c.C.ReqPool.Get()
+	defer c.C.ReqPool.Put(reqi)
+	req := reqi.Item.(*reqf.Req)
 	if err := req.Reqf(reqf.Rval{
 		Url: `https://api.live.bilibili.com/xlive/web-room/v1/gift/bag_list?t=` + strconv.Itoa(int(p.Sys().GetMTime())) + `&room_id=` + strconv.Itoa(c.C.Roomid),
 		Header: map[string]string{
@@ -2207,7 +2245,9 @@ func (c *GetFunc) Silver_2_coin() (missKey []string) {
 			return true
 		})
 
-		req := reqf.New()
+		reqi := c.ReqPool.Get()
+		defer c.ReqPool.Put(reqi)
+		req := reqi.Item.(*reqf.Req)
 		if err := req.Reqf(reqf.Rval{
 			Url: `https://api.live.bilibili.com/xlive/revenue/v1/wallet/getStatus`,
 			Header: map[string]string{
@@ -2257,7 +2297,9 @@ func (c *GetFunc) Silver_2_coin() (missKey []string) {
 			return true
 		})
 
-		req := reqf.New()
+		reqi := c.ReqPool.Get()
+		defer c.ReqPool.Put(reqi)
+		req := reqi.Item.(*reqf.Req)
 		if err := req.Reqf(reqf.Rval{
 			Url: `https://api.live.bilibili.com/xlive/revenue/v1/wallet/getRule`,
 			Header: map[string]string{
@@ -2312,7 +2354,9 @@ func (c *GetFunc) Silver_2_coin() (missKey []string) {
 			return true
 		})
 
-		req := reqf.New()
+		reqi := c.ReqPool.Get()
+		defer c.ReqPool.Put(reqi)
+		req := reqi.Item.(*reqf.Req)
 		if err := req.Reqf(reqf.Rval{
 			Url:     `https://api.live.bilibili.com/xlive/revenue/v1/wallet/silver2coin`,
 			PostStr: url.PathEscape(post_str),
@@ -2402,7 +2446,9 @@ func Feed_list() (Uplist []UpItem) {
 		return true
 	})
 
-	req := reqf.New()
+	reqi := c.C.ReqPool.Get()
+	defer c.C.ReqPool.Put(reqi)
+	req := reqi.Item.(*reqf.Req)
 	for pageNum := 1; true; pageNum += 1 {
 		if err := req.Reqf(reqf.Rval{
 			Url: `https://api.live.bilibili.com/xlive/web-ucenter/v1/xfetter/FeedList?page=` + strconv.Itoa(pageNum) + `&pagesize=10`,
@@ -2465,7 +2511,9 @@ func GetHistory(Roomid_int int) (j J.GetHistory) {
 	Roomid := strconv.Itoa(Roomid_int)
 
 	{ //使用其他api
-		req := reqf.New()
+		reqi := c.C.ReqPool.Get()
+		defer c.C.ReqPool.Put(reqi)
+		req := reqi.Item.(*reqf.Req)
 		if err := req.Reqf(reqf.Rval{
 			Url: "https://api.live.bilibili.com/xlive/web-room/v1/dM/gethistory?roomid=" + Roomid,
 			Header: map[string]string{
@@ -2507,7 +2555,9 @@ func SearchUP(s string) (list []searchresult) {
 	} //超额请求阻塞，超时将取消
 
 	{ //使用其他api
-		req := reqf.New()
+		reqi := c.C.ReqPool.Get()
+		defer c.C.ReqPool.Put(reqi)
+		req := reqi.Item.(*reqf.Req)
 		if err := req.Reqf(reqf.Rval{
 			Url:     "https://api.bilibili.com/x/web-interface/search/type?context=&search_type=live_user&cover_type=user_cover&page=1&order=&category_id=&__refresh__=true&_extra=&highlight=1&single_column=0&keyword=" + url.PathEscape(s),
 			Proxy:   c.C.Proxy,
@@ -2565,7 +2615,9 @@ func IsConnected() bool {
 		return true
 	}
 
-	req := reqf.New()
+	reqi := c.C.ReqPool.Get()
+	defer c.C.ReqPool.Put(reqi)
+	req := reqi.Item.(*reqf.Req)
 	if err := req.Reqf(reqf.Rval{
 		Url:              "https://www.bilibili.com",
 		Proxy:            c.C.Proxy,

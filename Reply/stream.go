@@ -18,6 +18,7 @@ import (
 
 	p "github.com/qydysky/part"
 	funcCtrl "github.com/qydysky/part/funcCtrl"
+	idpool "github.com/qydysky/part/idpool"
 	log "github.com/qydysky/part/log"
 	msgq "github.com/qydysky/part/msgq"
 	reqf "github.com/qydysky/part/reqf"
@@ -40,6 +41,7 @@ type M4SStream struct {
 	Current_save_path string           //明确的直播流保存目录
 	Callback_start    func(*M4SStream) //开始的回调
 	Callback_stop     func(*M4SStream) //结束的回调
+	reqPool           *idpool.Idpool   //请求池
 }
 
 type M4SStream_Config struct {
@@ -141,8 +143,10 @@ func (t *M4SStream) fetchCheckStream() bool {
 		return true
 	})
 
-	var req = reqf.New()
-	if e := req.Reqf(reqf.Rval{
+	req := t.reqPool.Get()
+	defer t.reqPool.Put(req)
+	r := req.Item.(*reqf.Req)
+	if e := r.Reqf(reqf.Rval{
 		Url:       t.common.Live[0],
 		Retry:     10,
 		SleepTime: 1000,
@@ -157,11 +161,11 @@ func (t *M4SStream) fetchCheckStream() bool {
 		t.log.L(`W: `, e)
 	}
 
-	if req.Response == nil {
+	if r.Response == nil {
 		t.log.L(`W: `, `live响应错误`)
 		return false
-	} else if req.Response.StatusCode != 200 {
-		t.log.L(`W: `, `live响应错误`, req.Response.Status, string(req.Respon))
+	} else if r.Response.StatusCode != 200 {
+		t.log.L(`W: `, `live响应错误`, r.Response.Status, string(r.Respon))
 		return false
 	}
 	return true
@@ -202,7 +206,9 @@ func (t *M4SStream) fetchParseM3U8() (m4s_links []*m4s_link_item, m3u8_addon []b
 		}
 
 		// 开始请求
-		var r = reqf.New()
+		req := t.reqPool.Get()
+		defer t.reqPool.Put(req)
+		r := req.Item.(*reqf.Req)
 		if err := r.Reqf(rval); err != nil {
 			e = err
 			continue
@@ -431,7 +437,9 @@ func (t *M4SStream) saveStream() {
 							link.Url = link_url.String()
 						}
 
-						r := reqf.New()
+						req := t.reqPool.Get()
+						defer t.reqPool.Put(req)
+						r := req.Item.(*reqf.Req)
 						if e := r.Reqf(reqf.Rval{
 							Url:            link.Url,
 							SaveToPath:     path + link.Base,
@@ -557,6 +565,9 @@ func (t *M4SStream) Start() {
 	}
 	t.Status = signal.Init()
 	defer t.Status.Done()
+
+	// 初始化请求池
+	t.reqPool = t.common.ReqPool
 
 	// 初始化切片消息
 	t.Newst_m4s = msgq.New(15)

@@ -16,8 +16,8 @@ require (
 	github.com/shirou/gopsutil v3.21.5+incompatible // indirect
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966
+	github.com/stretchr/testify v1.7.1 // indirect
 	github.com/tklauser/go-sysconf v0.3.6 // indirect
-	golang.org/x/crypto v0.0.0-20210421170649-83a5a9bb288b // indirect
 	golang.org/x/net v0.0.0-20210614182718-04defd469f4e // indirect
 	golang.org/x/sys v0.0.0-20210611083646-a4fc73990273 // indirect
 	golang.org/x/text v0.3.6

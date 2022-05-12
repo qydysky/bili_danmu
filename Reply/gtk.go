@@ -624,7 +624,9 @@ func Gtk_danmu() {
 					if src == "" {
 						return
 					}
-					req := reqf.New()
+					reqi := c.Common.ReqPool.Get()
+					defer c.Common.ReqPool.Put(reqi)
+					req := reqi.Item.(*reqf.Req)
 					if e := req.Reqf(reqf.Rval{
 						Url:        src,
 						SaveToPath: Gtk_img_path + `/` + uid,
