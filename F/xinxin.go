@@ -117,9 +117,10 @@ func server() {
 	}
 
 	port := strconv.Itoa(sys.Sys().GetFreePort())
-	if v, ok := c.C.K_v.LoadV(`小心心端口`).(int); ok && v != 0 {
-		port = strconv.Itoa(v)
+	if v, ok := c.C.K_v.LoadV(`小心心端口`).(float64); ok && v != 0 {
+		port = strconv.Itoa(int(v))
 	}
+
 	w := web.New(&http.Server{
 		Addr: "0.0.0.0:" + port,
 	}) //新建web实例
