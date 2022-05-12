@@ -382,6 +382,20 @@ go build -v -tags `gtk` -o demo.exe -i main.go
 go run [-tags "gtk"] main.go [-r 房间ID]
 ```
 
+#### docker部署
+经测试可以部署到`ubuntu`镜像上，注意首先得[更新ca](https://stackoverflow.com/questions/64462922/docker-multi-stage-build-go-image-x509-certificate-signed-by-unknown-authorit)
+```
+apt-get update && apt-get install -y ca-certificates openssl
+```
+
+如果你使用windows，那还需先编译linux版本
+```
+set GOOS=linux
+go build mian.go
+```
+
+注意在`config_K_v.json`关闭`tts`及`自动打开小心心浏览器`等需要界面及音频的功能
+
 #### 注意事项
 * 其中[]内的内容为可选项
 * 法2的golang需1.15并建议使用最新提交
