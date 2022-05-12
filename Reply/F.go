@@ -27,6 +27,7 @@ import (
 	limit "github.com/qydysky/part/limit"
 	msgq "github.com/qydysky/part/msgq"
 	psync "github.com/qydysky/part/sync"
+	sys "github.com/qydysky/part/sys"
 	web "github.com/qydysky/part/web"
 	websocket "github.com/qydysky/part/websocket"
 
@@ -130,7 +131,7 @@ func ShowRevf() {
 	for {
 		c.C.Log.Base(`功能`).L(`I: `, fmt.Sprintf("营收 ￥%.2f", c.C.Rev))
 		for c.C.Rev == ShowRev_old {
-			p.Sys().Timeoutf(60)
+			sys.Sys().Timeoutf(60)
 		}
 		ShowRev_old = c.C.Rev
 	}
@@ -352,18 +353,18 @@ func Obsf(on bool) {
 	l := c.C.Log.Base(`obs`)
 
 	if on {
-		if p.Sys().CheckProgram("obs")[0] != 0 {
+		if sys.Sys().CheckProgram("obs")[0] != 0 {
 			l.L(`W: `, "obs已经启动")
 			return
 		}
-		if p.Sys().CheckProgram("obs")[0] == 0 {
+		if sys.Sys().CheckProgram("obs")[0] == 0 {
 			if obs.Prog == "" {
 				l.L(`E: `, "未知的obs程序位置")
 				return
 			}
 			l.L(`I: `, "启动obs")
 			p.Exec().Start(exec.Command(obs.Prog))
-			p.Sys().Timeoutf(3)
+			sys.Sys().Timeoutf(3)
 		}
 
 		// Connect a client.
@@ -372,7 +373,7 @@ func Obsf(on bool) {
 			return
 		}
 	} else {
-		if p.Sys().CheckProgram("obs")[0] == 0 {
+		if sys.Sys().CheckProgram("obs")[0] == 0 {
 			l.L(`W: `, "obs未启动")
 			return
 		}
@@ -387,7 +388,7 @@ func Obs_R(on bool) {
 
 	l := c.C.Log.Base("obs_R")
 
-	if p.Sys().CheckProgram("obs")[0] == 0 {
+	if sys.Sys().CheckProgram("obs")[0] == 0 {
 		l.L(`W: `, "obs未启动")
 		return
 	} else {
@@ -425,7 +426,7 @@ func Obs_R(on bool) {
 		if resp.Status() == "ok" {
 			l.L(`I: `, "停止录制")
 		}
-		p.Sys().Timeoutf(3)
+		sys.Sys().Timeoutf(3)
 	}
 }
 
@@ -565,7 +566,7 @@ func Danmuji_auto() {
 			if msg := list[i]; msg != `` {
 				Msg_senddanmu(msg)
 			}
-			p.Sys().Timeoutf(timeout)
+			sys.Sys().Timeoutf(timeout)
 		}
 	}()
 }
@@ -1025,7 +1026,7 @@ func init() {
 
 		addr := "0.0.0.0:"
 		if port == 0 {
-			addr += strconv.Itoa(p.Sys().GetFreePort())
+			addr += strconv.Itoa(sys.Sys().GetFreePort())
 		} else {
 			addr += strconv.Itoa(port)
 		}
@@ -1121,9 +1122,13 @@ func init() {
 				s.Server.Shutdown(context.Background())
 			},
 		})
-		host := p.Sys().GetIntranetIp()
-		c.C.Stream_url = strings.Replace(`http://`+s.Server.Addr, `0.0.0.0`, host, -1)
-		flog.L(`I: `, `启动于`, c.C.Stream_url)
+
+		c.C.Stream_url = []string{}
+		for _, v := range sys.GetIntranetIp(``) {
+			var url = strings.Replace(`http://`+s.Server.Addr, `0.0.0.0`, v, -1)
+			c.C.Stream_url = append(c.C.Stream_url, url)
+			flog.L(`I: `, `启动于`, url)
+		}
 	}
 }
 

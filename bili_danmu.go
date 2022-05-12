@@ -14,8 +14,8 @@ import (
 	reply "github.com/qydysky/bili_danmu/Reply"
 	send "github.com/qydysky/bili_danmu/Send"
 	Cmd "github.com/qydysky/bili_danmu/cmd"
+	sys "github.com/qydysky/part/sys"
 
-	p "github.com/qydysky/part"
 	msgq "github.com/qydysky/part/msgq"
 	reqf "github.com/qydysky/part/reqf"
 	ws "github.com/qydysky/part/websocket"
@@ -38,7 +38,7 @@ func Start(roomid ...int) {
 	var danmulog = c.C.Log.Base(`bilidanmu`)
 	defer danmulog.Block(1000)
 
-	var stop = p.Sys().PreventSleep()
+	var stop = sys.Sys().PreventSleep()
 	defer stop.Done()
 
 	//ctrl+c退出
@@ -220,7 +220,7 @@ func Start(roomid ...int) {
 					}
 					//30s获取一次人气
 					go func() {
-						p.Sys().MTimeoutf(500) //500ms
+						sys.Sys().MTimeoutf(500) //500ms
 						danmulog.L(`T: `, "获取人气")
 						go func() {
 							heartbeatmsg, heartinterval := F.Heartbeat()
@@ -323,7 +323,7 @@ func Start(roomid ...int) {
 					reply.StreamOStop(-1) //停止其他房间录制
 				}
 			}
-			p.Sys().Timeoutf(1)
+			sys.Sys().Timeoutf(1)
 		}
 
 		{ //附加功能 直播流停止

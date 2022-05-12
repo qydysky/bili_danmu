@@ -19,6 +19,7 @@ import (
 	g "github.com/qydysky/part/get"
 	limit "github.com/qydysky/part/limit"
 	reqf "github.com/qydysky/part/reqf"
+	sys "github.com/qydysky/part/sys"
 	web "github.com/qydysky/part/web"
 
 	uuid "github.com/gofrs/uuid"
@@ -1269,7 +1270,7 @@ func (c *GetFunc) Get_cookie() (missKey []string) {
 	}
 
 	var server = &http.Server{
-		Addr: p.Sys().GetIntranetIp() + ":" + strconv.Itoa(p.Sys().GetFreePort()),
+		Addr: "0.0.0.0:" + strconv.Itoa(sys.Sys().GetFreePort()),
 	}
 	{ //生成二维码
 		qr.WriteFile(img_url, qr.Medium, 256, `qr.png`)
@@ -1305,8 +1306,10 @@ func (c *GetFunc) Get_cookie() (missKey []string) {
 			WhiteChar: `OO`,
 		})
 		apilog.L(`W: `, `手机扫命令行二维码登录`)
-		apilog.L(`W: `, `或打开链接扫码登录：`, `http://`+server.Addr+`/qr.png`)
-		p.Sys().Timeoutf(1)
+		for _, v := range sys.GetIntranetIp(``) {
+			apilog.L(`W: `, `或打开链接扫码登录：`, strings.Replace(`http://`+s.Server.Addr+`/qr.png`, `0.0.0.0`, v, -1))
+		}
+		sys.Sys().Timeoutf(1)
 	}
 
 	//有新实例，退出
@@ -1324,7 +1327,7 @@ func (c *GetFunc) Get_cookie() (missKey []string) {
 
 		for {
 			//3s刷新查看是否通过
-			p.Sys().Timeoutf(3)
+			sys.Sys().Timeoutf(3)
 
 			//有新实例，退出
 			if boot_Get_cookie.NeedExit(id) {
@@ -1904,7 +1907,7 @@ func F_x25Kn() {
 	{ //查看今天小心心数量
 		var num = 0
 		for _, v := range Gift_list() {
-			if v.Gift_id == 30607 && v.Expire_at-int(p.Sys().GetSTime()) > 6*86400 {
+			if v.Gift_id == 30607 && v.Expire_at-int(sys.Sys().GetSTime()) > 6*86400 {
 				num = v.Gift_num
 			}
 		}
@@ -1949,7 +1952,7 @@ func F_x25Kn() {
 
 		PostStr := `id=[` + strconv.Itoa(c.C.ParentAreaID) + `,` + strconv.Itoa(c.C.AreaID) + `,` + strconv.Itoa(loop_num) + `,` + strconv.Itoa(c.C.Roomid) + `]&`
 		PostStr += `device=["` + LIVE_BUVID + `","` + new_uuid + `"]&`
-		PostStr += `ts=` + strconv.Itoa(int(p.Sys().GetMTime()))
+		PostStr += `ts=` + strconv.Itoa(int(sys.Sys().GetMTime()))
 		PostStr += `&is_patch=0&`
 		PostStr += `heart_beat=[]&`
 		PostStr += `ua=Mozilla/5.0 (X11; Linux x86_64; rv:84.0) Gecko/20100101 Firefox/84.0&`
@@ -2022,7 +2025,7 @@ func F_x25Kn() {
 				{ //查看今天小心心数量
 					var num = 0
 					for _, v := range Gift_list() {
-						if v.Gift_id == 30607 && v.Expire_at-int(p.Sys().GetSTime()) > 6*86400 {
+						if v.Gift_id == 30607 && v.Expire_at-int(sys.Sys().GetSTime()) > 6*86400 {
 							num = v.Gift_num
 						}
 					}
@@ -2051,7 +2054,7 @@ func F_x25Kn() {
 						Ets:       res.Data.Timestamp,
 						Benchmark: res.Data.Secret_key,
 						Time:      res.Data.Heartbeat_interval,
-						Ts:        int(p.Sys().GetMTime()),
+						Ts:        int(sys.Sys().GetMTime()),
 						Ua:        `Mozilla/5.0 (X11; Linux x86_64; rv:84.0) Gecko/20100101 Firefox/84.0`,
 					},
 					T: res.Data.Secret_rule,
@@ -2178,7 +2181,7 @@ func Gift_list() (list []Gift_list_type_Data_List) {
 	defer c.C.ReqPool.Put(reqi)
 	req := reqi.Item.(*reqf.Req)
 	if err := req.Reqf(reqf.Rval{
-		Url: `https://api.live.bilibili.com/xlive/web-room/v1/gift/bag_list?t=` + strconv.Itoa(int(p.Sys().GetMTime())) + `&room_id=` + strconv.Itoa(c.C.Roomid),
+		Url: `https://api.live.bilibili.com/xlive/web-room/v1/gift/bag_list?t=` + strconv.Itoa(int(sys.Sys().GetMTime())) + `&room_id=` + strconv.Itoa(c.C.Roomid),
 		Header: map[string]string{
 			`Host`:            `api.live.bilibili.com`,
 			`User-Agent`:      `Mozilla/5.0 (X11; Linux x86_64; rv:83.0) Gecko/20100101 Firefox/83.0`,

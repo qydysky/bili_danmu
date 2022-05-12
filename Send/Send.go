@@ -7,9 +7,9 @@ import (
 
 	c "github.com/qydysky/bili_danmu/CV"
 
-	p "github.com/qydysky/part"
 	limit "github.com/qydysky/part/limit"
 	reqf "github.com/qydysky/part/reqf"
+	sys "github.com/qydysky/part/sys"
 )
 
 //每5s一个令牌，最多等20秒
@@ -41,7 +41,7 @@ func Danmu_s(msg string, roomid int) {
 		return true
 	})
 
-	PostStr := `color=16777215&fontsize=25&mode=1&msg=` + msg + `&rnd=` + strconv.Itoa(int(p.Sys().GetSTime())) + `&roomid=` + strconv.Itoa(roomid) + `&bubble=0&csrf_token=` + csrf + `&csrf=` + csrf
+	PostStr := `color=16777215&fontsize=25&mode=1&msg=` + msg + `&rnd=` + strconv.Itoa(int(sys.Sys().GetSTime())) + `&roomid=` + strconv.Itoa(roomid) + `&bubble=0&csrf_token=` + csrf + `&csrf=` + csrf
 	l.L(`I: `, "发送", msg, "至", roomid)
 
 	reqi := c.C.ReqPool.Get()

@@ -18,6 +18,7 @@ import (
 
 	c "github.com/qydysky/bili_danmu/CV"
 	F "github.com/qydysky/bili_danmu/F"
+	sys "github.com/qydysky/part/sys"
 
 	p "github.com/qydysky/part"
 	msgq "github.com/qydysky/part/msgq"
@@ -125,7 +126,7 @@ func Gtk_danmu() {
 	)
 
 	application, err := gtk.ApplicationNew(
-		"com.github.qydysky.bili_danmu.reply"+p.Sys().GetTime(), //时间戳允许多开
+		"com.github.qydysky.bili_danmu.reply"+sys.Sys().GetTime(), //时间戳允许多开
 		glib.APPLICATION_FLAGS_NONE)
 
 	if err != nil {

@@ -175,8 +175,8 @@ func Cmd() {
 				}
 				fmt.Println(`舰长数:`, c.C.GuardNum)
 				fmt.Println(`分区排行:`, c.C.Note, `人气：`, c.C.Renqi, `观看人数：`, c.C.Watched)
-				if c.C.Stream_url != "" {
-					fmt.Println(`直播Web服务:`, c.C.Stream_url)
+				for _, v := range c.C.Stream_url {
+					fmt.Println(`直播Web服务:`, v)
 				}
 				var array = reply.StreamOCommon(-1)
 				fmt.Println(`正在录制的房间：`)

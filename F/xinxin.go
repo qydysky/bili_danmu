@@ -9,9 +9,9 @@ import (
 
 	c "github.com/qydysky/bili_danmu/CV"
 
-	p "github.com/qydysky/part"
 	msgq "github.com/qydysky/part/msgq"
 	reqf "github.com/qydysky/part/reqf"
+	sys "github.com/qydysky/part/sys"
 	web "github.com/qydysky/part/web"
 	websocket "github.com/qydysky/part/websocket"
 
@@ -117,7 +117,7 @@ func server() {
 	}
 
 	w := web.New(&http.Server{
-		Addr: "127.0.0.1:" + strconv.Itoa(p.Sys().GetFreePort()),
+		Addr: "127.0.0.1:" + strconv.Itoa(sys.Sys().GetFreePort()),
 	}) //新建web实例
 	w.Handle(map[string]func(http.ResponseWriter, *http.Request){ //路径处理函数
 		`/`: func(w http.ResponseWriter, r *http.Request) {
@@ -197,7 +197,7 @@ func Wasm(uid uintptr, rt RT) (so RT, o string) { //maxloop 超时重试
 		}
 
 		if !strings.Contains(so.R.Ua, `Test`) {
-			so.R.Ts = int(p.Sys().GetMTime())
+			so.R.Ts = int(sys.Sys().GetMTime())
 		}
 		b, e := json.Marshal(so)
 		if e != nil {

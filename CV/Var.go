@@ -36,7 +36,7 @@ type Common struct {
 	Token             string             //弹幕钥
 	WSURL             []string           //弹幕链接
 	LIVE_BUVID        bool               //cookies含LIVE_BUVID
-	Stream_url        string             //直播Web服务
+	Stream_url        []string           //直播Web服务
 	Proxy             string             //全局代理
 	AcceptQn          map[int]string     //允许的直播流质量
 	Qn                map[int]string     //全部直播流质量

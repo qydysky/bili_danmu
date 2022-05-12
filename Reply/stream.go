@@ -395,7 +395,9 @@ func (t *M4SStream) saveStream() {
 	} else {
 		t.log.L(`W: `, err)
 	}
-	t.log.L(`I: `, "流地址:", t.common.Stream_url)
+	for _, v := range t.common.Stream_url {
+		t.log.L(`I: `, "流地址:", v)
+	}
 
 	//开始,结束回调
 	t.Callback_start(t)
