@@ -16,7 +16,6 @@ import (
 	p "github.com/qydysky/part"
 	mq "github.com/qydysky/part/msgq"
 	pstrings "github.com/qydysky/part/strings"
-	pwebsocket "github.com/qydysky/part/websocket"
 )
 
 var reply_log = c.C.Log.Base(`Reply`)
@@ -702,8 +701,9 @@ func (replyF) preparing(s string) {
 func (replyF) live(s string) {
 	msglog := msglog.Base_add("房")
 
-	if roomid := p.Json().GetValFromS(s, "roomid"); roomid == nil {
-		msglog.L(`E: `, "roomid", roomid)
+	var type_item ws_msg.LIVE
+	if err := json.Unmarshal([]byte(s), &type_item); err != nil {
+		msglog.L(`E: `, err)
 		return
 	} else {
 		{ //附加功能 obs录播
@@ -715,25 +715,20 @@ func (replyF) live(s string) {
 			c.C.Liveing = true               //直播i标志
 			c.C.Live_Start_Time = time.Now() //开播h时间
 		}
-		if p.Sys().Type(roomid) == "float64" {
-			//开始录制
-			go func() {
-				if v, ok := c.C.K_v.LoadV(`仅保存当前直播间流`).(bool); ok && v {
-					StreamOStop(-1) //停止其他房间录制
-				}
-			}()
+		//开始录制
+		go func() {
+			if v, ok := c.C.K_v.LoadV(`仅保存当前直播间流`).(bool); ok && v {
+				StreamOStop(-1) //停止其他房间录制
+			}
+		}()
 
-			c.C.Danmu_Main_mq.Push_tag(`savestream`, SavestreamO{
-				Roomid: int(roomid.(float64)),
-				IsRec:  true,
-			})
+		c.C.Danmu_Main_mq.Push_tag(`savestream`, SavestreamO{
+			Roomid: type_item.Roomid,
+			IsRec:  true,
+		})
 
-			Gui_show(Itos([]interface{}{"房间", roomid, "开播了"}), "0room")
-			msglog.L(`I: `, "房间", int(roomid.(float64)), "开播了")
-			return
-		}
-		Gui_show(Itos([]interface{}{"房间", roomid, "开播了"}), "0room")
-		msglog.L(`I: `, "房间", roomid, "开播了")
+		Gui_show(Itos([]interface{}{"房间", type_item.Roomid, "开播了"}), "0room")
+		msglog.L(`I: `, "房间", type_item.Roomid, "开播了")
 	}
 }
 
@@ -1251,10 +1246,8 @@ func Gui_show(m ...string) {
 	if len(m) > 1 {
 		uid = m[1]
 	}
-	StreamWs.Interface().Push_tag(`send`, pwebsocket.Uinterface{
-		Id:   0,
-		Data: []byte(`{"text":"` + strings.ReplaceAll(m[0], "\n", "") + `"}`),
-	})
+	//直播流服务弹幕
+	SendStreamWs(m[0])
 	Danmu_mq.Push_tag(`danmu`, Danmu_mq_t{
 		uid: uid,
 		msg: m[0],

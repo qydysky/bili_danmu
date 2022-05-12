@@ -291,10 +291,12 @@ func init() {
 						Ass_f(ms.Current_save_path, ms.Current_save_path+"0", time.Now()) //开始ass
 					}
 					tmp.Callback_stop = func(ms *M4SStream) {
+						streamO.Delete(ms.common.Roomid)
 						Ass_f("", "", time.Now()) //停止ass
 					}
-					streamO.Store(item.Roomid, tmp)
-					go tmp.Start()
+					if tmp.Start() {
+						streamO.Store(item.Roomid, tmp)
+					}
 				} else if !item.IsRec && ok {
 					if v.(*M4SStream).Status.Islive() {
 						v.(*M4SStream).Stop()
@@ -1006,6 +1008,15 @@ func AutoSend_silver_gift() {
 
 //直播Web服务口
 var StreamWs = websocket.New_server()
+
+func SendStreamWs(msg string) {
+	msg = strings.ReplaceAll(msg, "\n", "")
+	msg = strings.ReplaceAll(msg, "\\", "\\\\")
+	StreamWs.Interface().Push_tag(`send`, websocket.Uinterface{
+		Id:   0,
+		Data: []byte(`{"text":"` + msg + `"}`),
+	})
+}
 
 func init() {
 	flog := flog.Base_add(`直播Web服务`)

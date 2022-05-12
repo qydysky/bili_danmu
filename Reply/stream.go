@@ -35,6 +35,7 @@ type M4SStream struct {
 	// stream_expires       int64              //流到期时间
 	last_m4s          *m4s_link_item   //最后一个切片
 	stream_hosts      sync.Map         //使用的流服务器
+	stream_type       string           //流类型
 	Newst_m4s         *msgq.Msgq       //m4s消息 tag:m4s
 	first_m4s         []byte           //m4s起始块
 	common            c.Common         //通用配置副本
@@ -127,7 +128,14 @@ func (t *M4SStream) fetchCheckStream() bool {
 		return false
 	}
 
-	// 保存流地址过期时间
+	// 保存流类型
+	if strings.Contains(t.common.Live[0], `m3u8`) {
+		t.stream_type = "m3u8"
+	} else if strings.Contains(t.common.Live[0], `flv`) {
+		t.stream_type = "flv"
+	}
+
+	// // 保存流地址过期时间
 	// if m3u8_url, err := url.Parse(t.common.Live[0]); err != nil {
 	// 	t.log.L(`E: `, err.Error())
 	// 	return false
@@ -377,232 +385,250 @@ func (t *M4SStream) fetchParseM3U8() (m4s_links []*m4s_link_item, m3u8_addon []b
 func (t *M4SStream) saveStream() {
 	// 设置保存路径
 	t.Current_save_path = t.config.save_path + "/" + strconv.Itoa(t.common.Roomid) + "_" + time.Now().Format("2006_01_02_15-04-05-000") + `/`
-	var save_path = t.Current_save_path
 
 	// 清除初始值
 	t.last_m4s = nil
 
 	// 显示保存位置
-	if rel, err := filepath.Rel(t.config.save_path, save_path); err == nil {
-		t.log.L(`I: `, "保存到", rel+`/0.m3u8`)
+	if rel, err := filepath.Rel(t.config.save_path, t.Current_save_path); err == nil {
+		t.log.L(`I: `, "保存到", rel+`/0.`+t.stream_type)
 	} else {
 		t.log.L(`W: `, err)
 	}
+	t.log.L(`I: `, "流地址:", t.common.Stream_url)
 
 	//开始,结束回调
 	t.Callback_start(t)
 	defer t.Callback_stop(t)
 
 	// 获取流
-	if strings.Contains(t.common.Live[0], `m3u8`) {
-		// 同时下载数限制
-		var download_limit = &funcCtrl.BlockFuncN{
-			Max: 3,
-		}
-
-		// 下载循环
-		for download_seq := []*m4s_link_item{}; ; {
-
-			// 存在待下载切片
-			if len(download_seq) != 0 {
-				// 设置限制计划
-				download_limit.Plan(int64(len(download_seq)))
-
-				// 下载切片
-				for _, v := range download_seq {
-					go func(link *m4s_link_item, path string) {
-						defer download_limit.UnBlock()
-						download_limit.Block()
-
-						// 已下载但还未移除的切片
-						if link.status == 2 {
-							return
-						}
-
-						link.status = 1 // 设置切片状态为正在下载
-
-						// 均衡负载
-						if link_url, e := url.Parse(link.Url); e == nil {
-							if t.stream_hosts.Len() != 1 {
-								t.stream_hosts.Range(func(key, value interface{}) bool {
-									// 故障转移
-									if link.status == 3 && link_url.Host == key.(string) {
-										return true
-									}
-									// 随机
-									link_url.Host = key.(string)
-									return false
-								})
-							}
-							link.Url = link_url.String()
-						}
-
-						req := t.reqPool.Get()
-						defer t.reqPool.Put(req)
-						r := req.Item.(*reqf.Req)
-						if e := r.Reqf(reqf.Rval{
-							Url:            link.Url,
-							SaveToPath:     path + link.Base,
-							ConnectTimeout: 2000,
-							ReadTimeout:    1000,
-							Timeout:        2000,
-							Proxy:          t.common.Proxy,
-							Header: map[string]string{
-								`Connection`: `close`,
-							},
-						}); e != nil && !errors.Is(e, io.EOF) {
-							if !reqf.IsTimeout(e) {
-								t.log.L(`E: `, `hls切片下载失败:`, e)
-							}
-							link.status = 3 // 设置切片状态为下载失败
-						} else {
-							if usedt := r.UsedTime.Seconds(); usedt > 700 {
-								t.log.L(`I: `, `hls切片下载慢`, usedt, `ms`)
-							}
-							link.data = r.Respon
-							link.status = 2 // 设置切片状态为下载完成
-						}
-					}(v, save_path)
-				}
-
-				// 等待队列下载完成
-				download_limit.PlanDone()
-			}
-
-			// 传递已下载切片
-			{
-				for _, v := range download_seq {
-					if strings.Contains(v.Base, `h`) {
-						t.first_m4s = v.data
-					}
-
-					if v.status == 2 {
-						download_seq = download_seq[1:]
-						t.Newst_m4s.Push_tag(`m4s`, v.data)
-					} else {
-						break
-					}
-				}
-			}
-
-			// 停止录制
-			if !t.Status.Islive() {
-				if len(download_seq) != 0 {
-					if time.Now().Unix() > t.stream_last_modified.Unix()+300 {
-						t.log.L(`E: `, `切片下载超时`)
-					} else {
-						t.log.L(`I: `, `下载最后切片:`, len(download_seq))
-						continue
-					}
-				}
-				break
-			}
-
-			// 刷新流地址
-			// 偶尔刷新后的切片编号与原来不连续，故不再提前检查，直到流获取失败再刷新
-			// if time.Now().Unix()+60 > t.stream_expires {
-			// 	t.stream_expires = time.Now().Add(time.Minute * 2).Unix() // 临时的流链接过期时间
-			// 	go func() {
-			// 		if t.fetchCheckStream() {
-			// 			t.last_m4s = nil
-			// 		}
-			// 	}()
-			// }
-
-			// 获取解析m3u8
-			var m4s_links, m3u8_addon, err = t.fetchParseM3U8()
-			if err != nil {
-				t.log.L(`E: `, `获取解析m3u8发生错误`, err)
-				if len(download_seq) != 0 {
-					continue
-				}
-				if !reqf.IsTimeout(err) {
-					break
-				}
-			}
-			if len(m4s_links) == 0 {
-				time.Sleep(time.Second)
-				continue
-			}
-
-			// 添加新切片到下载队列
-			download_seq = append(download_seq, m4s_links...)
-
-			// 添加m3u8字节
-			p.File().FileWR(p.Filel{
-				File:    save_path + "0.m3u8.dtmp",
-				Loc:     -1,
-				Context: []interface{}{m3u8_addon},
-			})
-		}
-
-		// 发送空字节会导致流服务终止
-		t.Newst_m4s.Push_tag(`m4s`, []byte{})
-
-		// 结束
-		if p.Checkfile().IsExist(save_path + "0.m3u8.dtmp") {
-			f := p.File()
-			f.FileWR(p.Filel{
-				File:    save_path + "0.m3u8.dtmp",
-				Loc:     -1,
-				Context: []interface{}{"#EXT-X-ENDLIST"},
-			})
-			p.FileMove(save_path+"0.m3u8.dtmp", save_path+"0.m3u8")
-		}
+	switch t.stream_type {
+	case `m3u8`:
+		t.saveStreamM4s()
+	case `flv`:
+		t.saveStreamFlv()
+	default:
+		t.log.L(`E: `, `undefind stream type`)
 	}
 }
 
-func (t *M4SStream) Start() {
+func (t *M4SStream) saveStreamFlv() {
+	t.log.L(`E: `, `not support yet`)
+	t.Status.Done()
+}
+
+func (t *M4SStream) saveStreamM4s() {
+	// 同时下载数限制
+	var download_limit = &funcCtrl.BlockFuncN{
+		Max: 3,
+	}
+
+	// 下载循环
+	for download_seq := []*m4s_link_item{}; ; {
+
+		// 存在待下载切片
+		if len(download_seq) != 0 {
+			// 设置限制计划
+			download_limit.Plan(int64(len(download_seq)))
+
+			// 下载切片
+			for _, v := range download_seq {
+				go func(link *m4s_link_item, path string) {
+					defer download_limit.UnBlock()
+					download_limit.Block()
+
+					// 已下载但还未移除的切片
+					if link.status == 2 {
+						return
+					}
+
+					link.status = 1 // 设置切片状态为正在下载
+
+					// 均衡负载
+					if link_url, e := url.Parse(link.Url); e == nil {
+						if t.stream_hosts.Len() != 1 {
+							t.stream_hosts.Range(func(key, value interface{}) bool {
+								// 故障转移
+								if link.status == 3 && link_url.Host == key.(string) {
+									return true
+								}
+								// 随机
+								link_url.Host = key.(string)
+								return false
+							})
+						}
+						link.Url = link_url.String()
+					}
+
+					req := t.reqPool.Get()
+					defer t.reqPool.Put(req)
+					r := req.Item.(*reqf.Req)
+					if e := r.Reqf(reqf.Rval{
+						Url:            link.Url,
+						SaveToPath:     path + link.Base,
+						ConnectTimeout: 2000,
+						ReadTimeout:    1000,
+						Timeout:        2000,
+						Proxy:          t.common.Proxy,
+						Header: map[string]string{
+							`Connection`: `close`,
+						},
+					}); e != nil && !errors.Is(e, io.EOF) {
+						if !reqf.IsTimeout(e) {
+							t.log.L(`E: `, `hls切片下载失败:`, e)
+						}
+						link.status = 3 // 设置切片状态为下载失败
+					} else {
+						if usedt := r.UsedTime.Seconds(); usedt > 700 {
+							t.log.L(`I: `, `hls切片下载慢`, usedt, `ms`)
+						}
+						link.data = r.Respon
+						link.status = 2 // 设置切片状态为下载完成
+					}
+				}(v, t.Current_save_path)
+			}
+
+			// 等待队列下载完成
+			download_limit.PlanDone()
+		}
+
+		// 传递已下载切片
+		{
+			for _, v := range download_seq {
+				if strings.Contains(v.Base, `h`) {
+					t.first_m4s = v.data
+				}
+
+				if v.status == 2 {
+					download_seq = download_seq[1:]
+					t.Newst_m4s.Push_tag(`m4s`, v.data)
+				} else {
+					break
+				}
+			}
+		}
+
+		// 停止录制
+		if !t.Status.Islive() {
+			if len(download_seq) != 0 {
+				if time.Now().Unix() > t.stream_last_modified.Unix()+300 {
+					t.log.L(`E: `, `切片下载超时`)
+				} else {
+					t.log.L(`I: `, `下载最后切片:`, len(download_seq))
+					continue
+				}
+			}
+			break
+		}
+
+		// 刷新流地址
+		// 偶尔刷新后的切片编号与原来不连续，故不再提前检查，直到流获取失败再刷新
+		// if time.Now().Unix()+60 > t.stream_expires {
+		// 	t.stream_expires = time.Now().Add(time.Minute * 2).Unix() // 临时的流链接过期时间
+		// 	go func() {
+		// 		if t.fetchCheckStream() {
+		// 			t.last_m4s = nil
+		// 		}
+		// 	}()
+		// }
+
+		// 获取解析m3u8
+		var m4s_links, m3u8_addon, err = t.fetchParseM3U8()
+		if err != nil {
+			t.log.L(`E: `, `获取解析m3u8发生错误`, err)
+			if len(download_seq) != 0 {
+				continue
+			}
+			if !reqf.IsTimeout(err) {
+				break
+			}
+		}
+		if len(m4s_links) == 0 {
+			time.Sleep(time.Second)
+			continue
+		}
+
+		// 添加新切片到下载队列
+		download_seq = append(download_seq, m4s_links...)
+
+		// 添加m3u8字节
+		p.File().FileWR(p.Filel{
+			File:    t.Current_save_path + "0.m3u8.dtmp",
+			Loc:     -1,
+			Context: []interface{}{m3u8_addon},
+		})
+	}
+
+	// 发送空字节会导致流服务终止
+	t.Newst_m4s.Push_tag(`m4s`, []byte{})
+
+	// 结束
+	if p.Checkfile().IsExist(t.Current_save_path + "0.m3u8.dtmp") {
+		f := p.File()
+		f.FileWR(p.Filel{
+			File:    t.Current_save_path + "0.m3u8.dtmp",
+			Loc:     -1,
+			Context: []interface{}{"#EXT-X-ENDLIST"},
+		})
+		p.FileMove(t.Current_save_path+"0.m3u8.dtmp", t.Current_save_path+"0.m3u8")
+	}
+}
+
+func (t *M4SStream) Start() bool {
 	// 清晰度-1 or 路径存在问题 不保存
 	if t.config.want_qn == -1 || t.config.save_path == "" {
-		return
+		return false
 	}
 
 	// 状态检测与设置
 	if t.Status.Islive() {
 		t.log.L(`T: `, `已存在实例`)
-		return
+		return false
 	}
+
 	t.Status = signal.Init()
-	defer t.Status.Done()
+	go func() {
+		defer t.Status.Done()
 
-	// 初始化请求池
-	t.reqPool = t.common.ReqPool
+		// 初始化请求池
+		t.reqPool = t.common.ReqPool
 
-	// 初始化切片消息
-	t.Newst_m4s = msgq.New(15)
+		// 初始化切片消息
+		t.Newst_m4s = msgq.New(15)
 
-	// 主循环
-	for t.Status.Islive() {
-		// 是否在直播
-		F.Get(&t.common).Get(`Liveing`)
-		if !t.common.Liveing {
-			t.log.L(`W: `, `未直播`)
-			break
-		}
-
-		// 获取 and 检查流地址状态
-		if !t.fetchCheckStream() {
-			time.Sleep(time.Second * 5)
-			continue
-		}
-
-		// 设置均衡负载
-		for _, v := range t.common.Live {
-			if url_struct, e := url.Parse(v); e == nil {
-				t.stream_hosts.Store(url_struct.Hostname(), nil)
-			}
-			if !t.config.banlance_host {
+		// 主循环
+		for t.Status.Islive() {
+			// 是否在直播
+			F.Get(&t.common).Get(`Liveing`)
+			if !t.common.Liveing {
+				t.log.L(`W: `, `未直播`)
 				break
 			}
+
+			// 获取 and 检查流地址状态
+			if !t.fetchCheckStream() {
+				time.Sleep(time.Second * 5)
+				continue
+			}
+
+			// 设置均衡负载
+			for _, v := range t.common.Live {
+				if url_struct, e := url.Parse(v); e == nil {
+					t.stream_hosts.Store(url_struct.Hostname(), nil)
+				}
+				if !t.config.banlance_host {
+					break
+				}
+			}
+
+			// 保存流
+			t.saveStream()
 		}
 
-		// 保存流
-		t.saveStream()
-	}
-
-	t.log.L(`I: `, `结束录制(`+strconv.Itoa(t.common.Roomid)+`)`)
-	t.exitSign.Done()
+		t.log.L(`I: `, `结束录制(`+strconv.Itoa(t.common.Roomid)+`)`)
+		t.exitSign.Done()
+	}()
+	return true
 }
 
 func (t *M4SStream) Stop() {
