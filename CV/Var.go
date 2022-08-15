@@ -111,7 +111,7 @@ func (t *Common) init() Common {
 
 var C = new(Common).init()
 
-//消息队列
+// 消息队列
 type Danmu_Main_mq_item struct {
 	Class string
 	Data  interface{}

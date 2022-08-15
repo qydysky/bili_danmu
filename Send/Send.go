@@ -12,10 +12,10 @@ import (
 	sys "github.com/qydysky/part/sys"
 )
 
-//每5s一个令牌，最多等20秒
+// 每5s一个令牌，最多等20秒
 var danmu_s_limit = limit.New(1, 5000, 20000)
 
-//弹幕发送
+// 弹幕发送
 func Danmu_s(msg string, roomid int) {
 	//等待令牌时阻塞，超时返回true
 	if danmu_s_limit.TO() {
@@ -55,7 +55,7 @@ func Danmu_s(msg string, roomid int) {
 		Proxy:   c.C.Proxy,
 		Header: map[string]string{
 			`Host`:            `api.live.bilibili.com`,
-			`User-Agent`:      `Mozilla/5.0 (X11; Linux x86_64; rv:83.0) Gecko/20100101 Firefox/83.0`,
+			`User-Agent`:      `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0`,
 			`Accept`:          `application/json, text/javascript, */*; q=0.01`,
 			`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
 			`Accept-Encoding`: `gzip, deflate, br`,

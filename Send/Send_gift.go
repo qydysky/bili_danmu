@@ -12,7 +12,7 @@ import (
 	reqf "github.com/qydysky/part/reqf"
 )
 
-//每2s一个令牌，最多等10秒
+// 每2s一个令牌，最多等10秒
 var gift_limit = limit.New(1, 2000, 10000)
 
 func Send_gift(gift_id, bag_id, gift_num int) {
@@ -68,7 +68,7 @@ func Send_gift(gift_id, bag_id, gift_num int) {
 			Proxy:   c.C.Proxy,
 			Header: map[string]string{
 				`Host`:            `api.vc.bilibili.com`,
-				`User-Agent`:      `Mozilla/5.0 (X11; Linux x86_64; rv:83.0) Gecko/20100101 Firefox/83.0`,
+				`User-Agent`:      `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0`,
 				`Accept`:          `application/json, text/javascript, */*; q=0.01`,
 				`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
 				`Accept-Encoding`: `gzip, deflate, br`,

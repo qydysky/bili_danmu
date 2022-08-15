@@ -976,7 +976,7 @@ func (c *GetFunc) Get_HotRank() (missKey []string) {
 			Url: `https://api.live.bilibili.com/xlive/general-interface/v1/rank/getHotRank?ruid=` + strconv.Itoa(c.UpUid) + `&room_id=` + Roomid + `&is_pre=0&page_size=50&source=2&area_id=` + strconv.Itoa(c.ParentAreaID),
 			Header: map[string]string{
 				`Host`:            `api.live.bilibili.com`,
-				`User-Agent`:      `Mozilla/5.0 (X11; Linux x86_64; rv:83.0) Gecko/20100101 Firefox/83.0`,
+				`User-Agent`:      `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0`,
 				`Accept`:          `application/json, text/plain, */*`,
 				`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
 				`Accept-Encoding`: `gzip, deflate, br`,
@@ -1050,7 +1050,7 @@ func (c *GetFunc) Get_guardNum() (missKey []string) {
 			Url: `https://api.live.bilibili.com/xlive/app-room/v2/guardTab/topList?roomid=` + Roomid + `&page=1&ruid=` + strconv.Itoa(c.UpUid) + `&page_size=29`,
 			Header: map[string]string{
 				`Host`:            `api.live.bilibili.com`,
-				`User-Agent`:      `Mozilla/5.0 (X11; Linux x86_64; rv:83.0) Gecko/20100101 Firefox/83.0`,
+				`User-Agent`:      `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0`,
 				`Accept`:          `application/json, text/plain, */*`,
 				`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
 				`Accept-Encoding`: `gzip, deflate, br`,
@@ -1687,7 +1687,7 @@ func Dosign() {
 			Url: `https://api.live.bilibili.com/xlive/web-ucenter/v1/sign/WebGetSignInfo`,
 			Header: map[string]string{
 				`Host`:            `api.live.bilibili.com`,
-				`User-Agent`:      `Mozilla/5.0 (X11; Linux x86_64; rv:83.0) Gecko/20100101 Firefox/83.0`,
+				`User-Agent`:      `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0`,
 				`Accept`:          `application/json, text/plain, */*`,
 				`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
 				`Accept-Encoding`: `gzip, deflate, br`,
@@ -1739,7 +1739,7 @@ func Dosign() {
 			Url: `https://api.live.bilibili.com/xlive/web-ucenter/v1/sign/DoSign`,
 			Header: map[string]string{
 				`Host`:            `api.live.bilibili.com`,
-				`User-Agent`:      `Mozilla/5.0 (X11; Linux x86_64; rv:83.0) Gecko/20100101 Firefox/83.0`,
+				`User-Agent`:      `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0`,
 				`Accept`:          `application/json, text/plain, */*`,
 				`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
 				`Accept-Encoding`: `gzip, deflate, br`,
@@ -1801,7 +1801,7 @@ func (c *GetFunc) Get_LIVE_BUVID() (missKey []string) {
 			Url: `https://api.live.bilibili.com/live/getRoomKanBanModel?roomid=` + roomid,
 			Header: map[string]string{
 				`Host`:                      `live.bilibili.com`,
-				`User-Agent`:                `Mozilla/5.0 (X11; Linux x86_64; rv:83.0) Gecko/20100101 Firefox/83.0`,
+				`User-Agent`:                `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0`,
 				`Accept`:                    `text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8`,
 				`Accept-Language`:           `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
 				`Accept-Encoding`:           `gzip, deflate, br`,
@@ -1901,7 +1901,7 @@ func Gift_list() (list []Gift_list_type_Data_List) {
 		Url: `https://api.live.bilibili.com/xlive/web-room/v1/gift/bag_list?t=` + strconv.Itoa(int(sys.Sys().GetMTime())) + `&room_id=` + strconv.Itoa(c.C.Roomid),
 		Header: map[string]string{
 			`Host`:            `api.live.bilibili.com`,
-			`User-Agent`:      `Mozilla/5.0 (X11; Linux x86_64; rv:83.0) Gecko/20100101 Firefox/83.0`,
+			`User-Agent`:      `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0`,
 			`Accept`:          `application/json, text/plain, */*`,
 			`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
 			`Accept-Encoding`: `gzip, deflate, br`,
@@ -1972,7 +1972,7 @@ func (c *GetFunc) Silver_2_coin() (missKey []string) {
 			Url: `https://api.live.bilibili.com/xlive/revenue/v1/wallet/getStatus`,
 			Header: map[string]string{
 				`Host`:            `api.live.bilibili.com`,
-				`User-Agent`:      `Mozilla/5.0 (X11; Linux x86_64; rv:83.0) Gecko/20100101 Firefox/83.0`,
+				`User-Agent`:      `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0`,
 				`Accept`:          `application/json, text/plain, */*`,
 				`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
 				`Accept-Encoding`: `gzip, deflate, br`,
@@ -2024,7 +2024,7 @@ func (c *GetFunc) Silver_2_coin() (missKey []string) {
 			Url: `https://api.live.bilibili.com/xlive/revenue/v1/wallet/getRule`,
 			Header: map[string]string{
 				`Host`:            `api.live.bilibili.com`,
-				`User-Agent`:      `Mozilla/5.0 (X11; Linux x86_64; rv:83.0) Gecko/20100101 Firefox/83.0`,
+				`User-Agent`:      `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0`,
 				`Accept`:          `application/json, text/plain, */*`,
 				`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
 				`Accept-Encoding`: `gzip, deflate, br`,
@@ -2082,7 +2082,7 @@ func (c *GetFunc) Silver_2_coin() (missKey []string) {
 			PostStr: url.PathEscape(post_str),
 			Header: map[string]string{
 				`Host`:            `api.live.bilibili.com`,
-				`User-Agent`:      `Mozilla/5.0 (X11; Linux x86_64; rv:83.0) Gecko/20100101 Firefox/83.0`,
+				`User-Agent`:      `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0`,
 				`Accept`:          `application/json, text/plain, */*`,
 				`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
 				`Accept-Encoding`: `gzip, deflate, br`,
@@ -2139,13 +2139,15 @@ func save_cookie(Cookies []*http.Cookie) {
 
 // 正在直播主播
 type UpItem struct {
-	Uname  string `json:"uname"`
-	Title  string `json:"title"`
-	Roomid int    `json:"roomid"`
+	Uname      string `json:"uname"`
+	Title      string `json:"title"`
+	Roomid     int    `json:"roomid"`
+	LiveStatus int    `json:"live_status"`
 }
 
-func Feed_list() (Uplist []UpItem) {
+func Feed_list() (Uplist []J.FollowingDataList) {
 	apilog := apilog.Base_add(`正在直播主播`).L(`T: `, `获取中`)
+	defer apilog.L(`T: `, `完成`)
 	//验证cookie
 	if missKey := CookieCheck([]string{
 		`bili_jct`,
@@ -2171,10 +2173,10 @@ func Feed_list() (Uplist []UpItem) {
 	req := reqi.Item.(*reqf.Req)
 	for pageNum := 1; true; pageNum += 1 {
 		if err := req.Reqf(reqf.Rval{
-			Url: `https://api.live.bilibili.com/xlive/web-ucenter/v1/xfetter/FeedList?page=` + strconv.Itoa(pageNum) + `&pagesize=10`,
+			Url: `https://api.live.bilibili.com/xlive/web-ucenter/user/following?page=` + strconv.Itoa(pageNum) + `&page_size=10`,
 			Header: map[string]string{
 				`Host`:            `api.live.bilibili.com`,
-				`User-Agent`:      `Mozilla/5.0 (X11; Linux x86_64; rv:83.0) Gecko/20100101 Firefox/83.0`,
+				`User-Agent`:      `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0`,
 				`Accept`:          `application/json, text/plain, */*`,
 				`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
 				`Accept-Encoding`: `gzip, deflate, br`,
@@ -2193,15 +2195,7 @@ func Feed_list() (Uplist []UpItem) {
 			return
 		}
 
-		var res struct {
-			Code    int    `json:"code"`
-			Msg     string `json:"msg"`
-			Message string `json:"message"`
-			Data    struct {
-				Results int      `json:"results"`
-				List    []UpItem `json:"list"`
-			} `json:"data"`
-		}
+		var res J.Following
 
 		if e := json.Unmarshal(req.Respon, &res); e != nil {
 			apilog.L(`E: `, e)
@@ -2213,15 +2207,21 @@ func Feed_list() (Uplist []UpItem) {
 			return
 		}
 
-		Uplist = append(Uplist, res.Data.List...)
+		// 提前结束获取，仅获取当前正在直播的主播
+		for _, item := range res.Data.List {
+			if item.LiveStatus == 0 {
+				break
+			} else {
+				Uplist = append(Uplist, item)
+			}
+		}
 
-		if pageNum*10 > res.Data.Results {
+		if pageNum*10 > res.Data.TotalPage {
 			break
 		}
 		time.Sleep(time.Second)
 	}
 
-	apilog.L(`T: `, `完成`)
 	return
 }
 
