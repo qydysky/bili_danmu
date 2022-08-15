@@ -22,7 +22,6 @@ import (
 	sys "github.com/qydysky/part/sys"
 	web "github.com/qydysky/part/web"
 
-	uuid "github.com/gofrs/uuid"
 	"github.com/mdp/qrterminal/v3"
 	qr "github.com/skip2/go-qrcode"
 )
@@ -1185,10 +1184,10 @@ func Info(UpUid int) (info J.Info) {
 	return
 }
 
-//调用记录
+// 调用记录
 var boot_Get_cookie funcCtrl.FlashFunc //新的替代旧的
 
-//扫码登录
+// 扫码登录
 func (c *GetFunc) Get_cookie() (missKey []string) {
 	if v, ok := c.K_v.LoadV(`扫码登录`).(bool); !ok || !v {
 		return
@@ -1425,12 +1424,12 @@ func (c *GetFunc) Get_cookie() (missKey []string) {
 	return
 }
 
-//短信登录
+// 短信登录
 func Get_cookie_by_msg() {
 	/*https://passport.bilibili.com/x/passport-login/web/sms/send*/
 }
 
-//获取牌子信息
+// 获取牌子信息
 func Get_list_in_room() (array []J.GetMyMedals_Items) {
 
 	apilog := apilog.Base_add(`获取牌子`)
@@ -1492,7 +1491,7 @@ func Get_list_in_room() (array []J.GetMyMedals_Items) {
 	}
 }
 
-//获取当前佩戴的牌子
+// 获取当前佩戴的牌子
 func Get_weared_medal() (item J.GetWearedMedal_Data) {
 
 	apilog := apilog.Base_add(`获取牌子`)
@@ -1661,7 +1660,7 @@ func (c *GetFunc) CheckSwitch_FansMedal() (missKey []string) {
 	return
 }
 
-//签到
+// 签到
 func Dosign() {
 	apilog := apilog.Base_add(`签到`).L(`T: `, `签到`)
 	//验证cookie
@@ -1777,7 +1776,7 @@ func Dosign() {
 	}
 }
 
-//LIVE_BUVID
+// LIVE_BUVID
 func (c *GetFunc) Get_LIVE_BUVID() (missKey []string) {
 	apilog := apilog.Base_add(`LIVE_BUVID`).L(`T: `, `获取`)
 
@@ -1850,289 +1849,7 @@ func (c *GetFunc) Get_LIVE_BUVID() (missKey []string) {
 	return
 }
 
-//小心心
-type E_json struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
-	Ttl     int    `json:"ttl"`
-	Data    struct {
-		Timestamp          int    `json:"timestamp"`
-		Heartbeat_interval int    `json:"heartbeat_interval"`
-		Secret_key         string `json:"secret_key"`
-		Secret_rule        []int  `json:"secret_rule"`
-		Patch_status       int    `json:"patch_status"`
-	} `json:"data"`
-}
-
-//调用记录
-var boot_F_x25Kn funcCtrl.FlashFunc //新的替代旧的
-
-func F_x25Kn_cancel() {
-	apilog.Base_add(`小心心`).L(`T: `, `取消`)
-	boot_F_x25Kn.Flash() //获取函数调用会话id
-	boot_F_x25Kn.UnFlash()
-}
-
-func F_x25Kn() {
-	apilog := apilog.Base_add(`小心心`)
-	if c.C.Wearing_FansMedal == 0 {
-		apilog.L(`I: `, `无粉丝牌，不获取`)
-		return
-	}
-	//验证cookie
-	if missKey := CookieCheck([]string{
-		`bili_jct`,
-		`DedeUserID`,
-		`LIVE_BUVID`,
-	}); len(missKey) != 0 {
-		apilog.L(`T: `, `Cookie无Key:`, missKey)
-		return
-	}
-	if c.C.ParentAreaID == -1 {
-		apilog.L(`E: `, `失败！未获取Parent_area_id`)
-		return
-	}
-	if c.C.AreaID == -1 {
-		apilog.L(`E: `, `失败！未获取Area_id`)
-		return
-	}
-	if api_limit.TO() {
-		apilog.L(`E: `, `超时！`)
-		return
-	} //超额请求阻塞，超时将取消
-
-	id := boot_F_x25Kn.Flash() //获取函数调用会话id
-	defer boot_F_x25Kn.UnFlash()
-
-	{ //查看今天小心心数量
-		var num = 0
-		for _, v := range Gift_list() {
-			if v.Gift_id == 30607 && v.Expire_at-int(sys.Sys().GetSTime()) > 6*86400 {
-				num = v.Gift_num
-			}
-		}
-		if num == 24 {
-			Close(0) //关闭全部（0）浏览器websocket连接
-			apilog.L(`I: `, `今天小心心已满！`)
-			return
-		} else {
-			apilog.L(`I: `, `今天已有`, num, `个小心心，开始获取`)
-			defer apilog.L(`T: `, `退出`)
-		}
-	}
-
-	var (
-		res      E_json
-		loop_num = 0
-	)
-
-	csrf, _ := c.C.Cookie.LoadV(`bili_jct`).(string)
-	if csrf == `` {
-		apilog.L(`E: `, "Cookie错误,无bili_jct")
-		return
-	}
-
-	LIVE_BUVID := c.C.Cookie.LoadV(`LIVE_BUVID`).(string)
-	if LIVE_BUVID == `` {
-		apilog.L(`E: `, "Cookie错误,无LIVE_BUVID")
-		return
-	}
-
-	var new_uuid string
-	{
-		if tmp_uuid, e := uuid.NewV4(); e == nil {
-			new_uuid = tmp_uuid.String()
-		} else {
-			apilog.L(`E: `, e)
-			return
-		}
-	}
-
-	{ //初始化
-
-		PostStr := `id=[` + strconv.Itoa(c.C.ParentAreaID) + `,` + strconv.Itoa(c.C.AreaID) + `,` + strconv.Itoa(loop_num) + `,` + strconv.Itoa(c.C.Roomid) + `]&`
-		PostStr += `device=["` + LIVE_BUVID + `","` + new_uuid + `"]&`
-		PostStr += `ts=` + strconv.Itoa(int(sys.Sys().GetMTime()))
-		PostStr += `&is_patch=0&`
-		PostStr += `heart_beat=[]&`
-		PostStr += `ua=Mozilla/5.0 (X11; Linux x86_64; rv:84.0) Gecko/20100101 Firefox/84.0&`
-		PostStr += `csrf_token=` + csrf + `&csrf=` + csrf + `&`
-		PostStr += `visit_id=`
-
-		Cookie := make(map[string]string)
-		c.C.Cookie.Range(func(k, v interface{}) bool {
-			Cookie[k.(string)] = v.(string)
-			return true
-		})
-
-		reqi := c.C.ReqPool.Get()
-		defer c.C.ReqPool.Put(reqi)
-		req := reqi.Item.(*reqf.Req)
-		for {
-			//新调用，此退出
-			if boot_F_x25Kn.NeedExit(id) {
-				return
-			}
-
-			if err := req.Reqf(reqf.Rval{
-				Url: `https://live-trace.bilibili.com/xlive/data-interface/v1/x25Kn/E`,
-				Header: map[string]string{
-					`Host`:            `api.live.bilibili.com`,
-					`User-Agent`:      `Mozilla/5.0 (X11; Linux x86_64; rv:83.0) Gecko/20100101 Firefox/83.0`,
-					`Accept`:          `application/json, text/plain, */*`,
-					`Content-Type`:    `application/x-www-form-urlencoded`,
-					`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
-					`Accept-Encoding`: `gzip, deflate, br`,
-					`Origin`:          `https://live.bilibili.com`,
-					`Connection`:      `keep-alive`,
-					`Pragma`:          `no-cache`,
-					`Cache-Control`:   `no-cache`,
-					`Referer`:         "https://live.bilibili.com/" + strconv.Itoa(c.C.Roomid),
-					`Cookie`:          reqf.Map_2_Cookies_String(Cookie),
-				},
-				PostStr: url.PathEscape(PostStr),
-				Proxy:   c.C.Proxy,
-				Timeout: 5 * 1000,
-				Retry:   2,
-			}); err != nil {
-				if !reqf.IsTimeout(err) {
-					apilog.L(`E: `, err)
-					return
-				}
-				apilog.L(`W: `, `响应超时，1min后重试`)
-				time.Sleep(time.Minute)
-			} else {
-				break
-			}
-		}
-
-		if e := json.Unmarshal(req.Respon, &res); e != nil {
-			apilog.L(`E: `, e)
-			return
-		}
-
-		if res.Code != 0 {
-			apilog.L(`E: `, `返回错误`, res.Message)
-			return
-		}
-	}
-
-	{ //loop
-		for loop_num < (24+2)*5 {
-			loop_num += 1
-			//查看今天小心心数量
-			if loop_num > 5 && loop_num%5 == 2 { //5min后每5min
-				{ //查看今天小心心数量
-					var num = 0
-					for _, v := range Gift_list() {
-						if v.Gift_id == 30607 && v.Expire_at-int(sys.Sys().GetSTime()) > 6*86400 {
-							num = v.Gift_num
-						}
-					}
-					if num == 24 {
-						Close(0) //关闭全部（0）浏览器websocket连接
-						apilog.L(`I: `, `今天小心心已满！`)
-						return
-					} else {
-						apilog.L(`I: `, `获取了今天的第`, num, `个小心心`)
-					}
-				}
-			}
-
-			<-time.After(time.Second * time.Duration(res.Data.Heartbeat_interval))
-
-			//新调用，此退出
-			if boot_F_x25Kn.NeedExit(id) {
-				return
-			}
-
-			var (
-				rt_obj = RT{
-					R: R{
-						Id:        `[` + strconv.Itoa(c.C.ParentAreaID) + `,` + strconv.Itoa(c.C.AreaID) + `,` + strconv.Itoa(loop_num) + `,` + strconv.Itoa(c.C.Roomid) + `]`,
-						Device:    `["` + LIVE_BUVID + `","` + new_uuid + `"]`,
-						Ets:       res.Data.Timestamp,
-						Benchmark: res.Data.Secret_key,
-						Time:      res.Data.Heartbeat_interval,
-						Ts:        int(sys.Sys().GetMTime()),
-						Ua:        `Mozilla/5.0 (X11; Linux x86_64; rv:84.0) Gecko/20100101 Firefox/84.0`,
-					},
-					T: res.Data.Secret_rule,
-				}
-				wasm string
-			)
-
-			if rt_obj, wasm = Wasm(0, rt_obj); wasm == `` { //0全局
-				apilog.L(`E: `, `发生错误`)
-				return
-			}
-
-			PostStr := `id=` + rt_obj.R.Id + `&`
-			PostStr += `device=["` + LIVE_BUVID + `","` + new_uuid + `"]&`
-			PostStr += `ets=` + strconv.Itoa(res.Data.Timestamp)
-			PostStr += `&benchmark=` + res.Data.Secret_key
-			PostStr += `&time=` + strconv.Itoa(res.Data.Heartbeat_interval)
-			PostStr += `&ts=` + strconv.Itoa(rt_obj.R.Ts)
-			PostStr += `&is_patch=0&`
-			PostStr += `heart_beat=[]&`
-			PostStr += `ua=` + rt_obj.R.Ua + `&`
-			PostStr += `csrf_token=` + csrf + `&csrf=` + csrf + `&`
-			PostStr += `visit_id=`
-			PostStr = `s=` + wasm + `&` + PostStr
-
-			Cookie := make(map[string]string)
-			c.C.Cookie.Range(func(k, v interface{}) bool {
-				Cookie[k.(string)] = v.(string)
-				return true
-			})
-
-			reqi := c.C.ReqPool.Get()
-			defer c.C.ReqPool.Put(reqi)
-			req := reqi.Item.(*reqf.Req)
-			if err := req.Reqf(reqf.Rval{
-				Url: `https://live-trace.bilibili.com/xlive/data-interface/v1/x25Kn/X`,
-				Header: map[string]string{
-					`Host`:            `api.live.bilibili.com`,
-					`User-Agent`:      `Mozilla/5.0 (X11; Linux x86_64; rv:83.0) Gecko/20100101 Firefox/83.0`,
-					`Accept`:          `application/json, text/plain, */*`,
-					`Content-Type`:    `application/x-www-form-urlencoded`,
-					`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
-					`Accept-Encoding`: `gzip, deflate, br`,
-					`Origin`:          `https://live.bilibili.com`,
-					`Connection`:      `keep-alive`,
-					`Pragma`:          `no-cache`,
-					`Cache-Control`:   `no-cache`,
-					`Referer`:         "https://live.bilibili.com/" + strconv.Itoa(c.C.Roomid),
-					`Cookie`:          reqf.Map_2_Cookies_String(Cookie),
-				},
-				PostStr: url.PathEscape(PostStr),
-				Proxy:   c.C.Proxy,
-				Timeout: 5 * 1000,
-				Retry:   2,
-			}); err != nil {
-				if !reqf.IsTimeout(err) {
-					loop_num -= 1
-					apilog.L(`W: `, `响应超时，将重试`)
-					continue
-				}
-				apilog.L(`E: `, err)
-				return
-			}
-
-			if e := json.Unmarshal(req.Respon, &res); e != nil {
-				apilog.L(`E: `, e)
-				return
-			}
-
-			if res.Code != 0 {
-				apilog.L(`E: `, `返回错误`, res.Message)
-				return
-			}
-		}
-	}
-}
-
-//礼物列表
+// 礼物列表
 type Gift_list_type struct {
 	Code    int                 `json:"code"`
 	Message string              `json:"message"`
@@ -2219,7 +1936,7 @@ func Gift_list() (list []Gift_list_type_Data_List) {
 	return res.Data.List
 }
 
-//银瓜子2硬币
+// 银瓜子2硬币
 func (c *GetFunc) Silver_2_coin() (missKey []string) {
 	apilog := apilog.Base_add(`银瓜子=>硬币`)
 
@@ -2420,7 +2137,7 @@ func save_cookie(Cookies []*http.Cookie) {
 	CookieSet([]byte(reqf.Map_2_Cookies_String(Cookie)))
 }
 
-//正在直播主播
+// 正在直播主播
 type UpItem struct {
 	Uname  string `json:"uname"`
 	Title  string `json:"title"`

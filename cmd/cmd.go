@@ -14,7 +14,7 @@ import (
 	send "github.com/qydysky/bili_danmu/Send"
 )
 
-//直播间缓存
+// 直播间缓存
 var liveList = make(map[string]int)
 
 func Cmd() {
@@ -40,7 +40,6 @@ func Cmd() {
 			if _, ok := c.C.Cookie.LoadV(`bili_jct`).(string); ok {
 				fmt.Println("发送弹幕->输入' 字符串'回车")
 				fmt.Println("查看直播中主播->输入' live'回车")
-				fmt.Println("获取小心心->输入' getheart'回车")
 			} else {
 				fmt.Println("登陆->输入' login'回车")
 			}
@@ -108,17 +107,6 @@ func Cmd() {
 				}
 				//获取cookie
 				F.Get(&c.C).Get(`Cookie`)
-
-				continue
-			}
-			//获取小心心
-			if strings.Contains(inputs, ` getheart`) && c.C.Roomid != 0 {
-				if _, ok := c.C.Cookie.LoadV(`bili_jct`).(string); !ok {
-					cmdlog.L(`W: `, "尚未登陆，不能获取小心心")
-					continue
-				}
-				//获取小心心
-				go F.F_x25Kn()
 
 				continue
 			}

@@ -20,9 +20,9 @@ import (
 
 var reply_log = c.C.Log.Base(`Reply`)
 
-//返回数据分派
-//传入接受到的ws数据
-//判断进行解压，并对每个json对象进行分派
+// 返回数据分派
+// 传入接受到的ws数据
+// 判断进行解压，并对每个json对象进行分派
 func Reply(b []byte) {
 	reply_log := reply_log.Base_add(`返回分派`)
 
@@ -76,16 +76,16 @@ func Reply(b []byte) {
 	}
 }
 
-//所有的json对象处理子函数类
-//包含Msg和HeartBeat两大类
+// 所有的json对象处理子函数类
+// 包含Msg和HeartBeat两大类
 type replyF struct{}
 
-//默认未识别Msg
+// 默认未识别Msg
 func (replyF) defaultMsg(s string) {
 	msglog.Base_add("Unknow").L(`E: `, s)
 }
 
-//大乱斗pk开始
+// 大乱斗pk开始
 func (replyF) pk_lottery_start(s string) {
 	msglog := msglog.Base_add("大乱斗")
 	var j ws_msg.PK_LOTTERY_START
@@ -97,7 +97,7 @@ func (replyF) pk_lottery_start(s string) {
 	msglog.L(`I: `, j.Data.Title)
 }
 
-//连麦人状态
+// 连麦人状态
 func (replyF) voice_join_status(s string) {
 	msglog := msglog.Base_add("连麦")
 	var j ws_msg.VOICE_JOIN_STATUS
@@ -113,7 +113,7 @@ func (replyF) voice_join_status(s string) {
 	msglog.L(`I: `, `连麦中:`, j.Data.UserName)
 }
 
-//连麦等待
+// 连麦等待
 func (replyF) voice_join_room_count_info(s string) {
 	msglog := msglog.Base_add("连麦")
 	var j ws_msg.VOICE_JOIN_ROOM_COUNT_INFO
@@ -125,7 +125,7 @@ func (replyF) voice_join_room_count_info(s string) {
 	msglog.L(`I: `, `连麦等待人数`, j.Data.ApplyCount)
 }
 
-//大乱斗pk状态
+// 大乱斗pk状态
 func (replyF) pk_battle_process_new(s string) {
 	msglog := msglog.Base_add("大乱斗")
 	var j ws_msg.PK_BATTLE_PROCESS_NEW
@@ -139,7 +139,7 @@ func (replyF) pk_battle_process_new(s string) {
 	}
 }
 
-//msg-特别礼物
+// msg-特别礼物
 func (replyF) vtr_gift_lottery(s string) {
 	msglog := msglog.Base_add("特别礼物")
 	var j ws_msg.VTR_GIFT_LOTTERY
@@ -159,7 +159,7 @@ func (replyF) vtr_gift_lottery(s string) {
 	msglog.L(`I: `, j.Data.InteractMsg)
 }
 
-//msg-直播间进入信息，此处用来提示关注
+// msg-直播间进入信息，此处用来提示关注
 func (replyF) interact_word(s string) {
 	msg_type := p.Json().GetValFromS(s, "data.msg_type")
 	if v, ok := msg_type.(float64); !ok || v < 2 {
@@ -178,7 +178,7 @@ func (replyF) interact_word(s string) {
 	}
 }
 
-//Msg-天选之人开始
+// Msg-天选之人开始
 func (replyF) anchor_lot_start(s string) {
 	award_name := p.Json().GetValFromS(s, "data.award_name")
 	var sh = []interface{}{">天选"}
@@ -195,7 +195,7 @@ func (replyF) anchor_lot_start(s string) {
 	msglog.Base_add("房").Log_show_control(false).L(`I`, sh...)
 }
 
-//Msg-天选之人结束
+// Msg-天选之人结束
 func (replyF) anchor_lot_award(s string) {
 	award_name := p.Json().GetValFromS(s, "data.award_name")
 	award_users := p.Json().GetValFromS(s, "data.award_users")
@@ -228,7 +228,7 @@ func (replyF) anchor_lot_award(s string) {
 	msglog.Base_add("房").Log_show_control(false).L(`I`, sh...)
 }
 
-//msg-通常是大航海购买续费
+// msg-通常是大航海购买续费
 func (replyF) user_toast_msg(s string) {
 	msglog := msglog.Base_add("礼")
 
@@ -320,7 +320,7 @@ func (replyF) user_toast_msg(s string) {
 	msglog.Log_show_control(false).L(`I: `, sh_log...)
 }
 
-//HeartBeat-心跳用来传递人气值
+// HeartBeat-心跳用来传递人气值
 var (
 	renqi_old  int
 	pperm_old  float64
@@ -375,7 +375,7 @@ func (replyF) heartbeat(s int) {
 	renqi_old = s
 }
 
-//Msg-房间特殊活动
+// Msg-房间特殊活动
 func (replyF) win_activity(s string) {
 	title := p.Json().GetValFromS(s, "data.title")
 
@@ -383,7 +383,7 @@ func (replyF) win_activity(s string) {
 	msglog.Base_add("房").Log_show_control(false).L(`I: `, "活动", title, "已开启")
 }
 
-//Msg-观看人数
+// Msg-观看人数
 func (replyF) watched_change(s string) {
 	var data ws_msg.WATCHED_CHANGE
 	json.Unmarshal([]byte(s), &data)
@@ -396,7 +396,7 @@ func (replyF) watched_change(s string) {
 	msglog.Base_add("房").Log_show_control(false).L(`I: `, "观看人数", data.Data.Num, fmt.Sprintf(" avg:%.1f人/分", pperm))
 }
 
-//Msg-特殊礼物，当前仅观察到节奏风暴
+// Msg-特殊礼物，当前仅观察到节奏风暴
 func (replyF) special_gift(s string) {
 
 	content := p.Json().GetValFromS(s, "data.39.content")
@@ -425,7 +425,7 @@ func (replyF) special_gift(s string) {
 
 }
 
-//Msg-大航海购买，由于信息少，用user_toast_msg进行替代
+// Msg-大航海购买，由于信息少，用user_toast_msg进行替代
 func (replyF) guard_buy(s string) {
 	username := p.Json().GetValFromS(s, "data.username")
 	gift_name := p.Json().GetValFromS(s, "data.gift_name")
@@ -453,7 +453,7 @@ func (replyF) guard_buy(s string) {
 
 }
 
-//Msg-房间信息改变，标题等
+// Msg-房间信息改变，标题等
 func (replyF) room_change(s string) {
 	title := p.Json().GetValFromS(s, "data.title")
 	area_name := p.Json().GetValFromS(s, "data.area_name")
@@ -472,7 +472,7 @@ func (replyF) room_change(s string) {
 	msglog.Base_add("房").L(`I: `, sh...)
 }
 
-//Msg-超管警告
+// Msg-超管警告
 func (replyF) warning(s string) {
 	var type_item ws_msg.WARNING
 
@@ -487,7 +487,7 @@ func (replyF) warning(s string) {
 	msglog.Base_add("房").L(`I: `, s)
 }
 
-//Msg-开始了视频连线
+// Msg-开始了视频连线
 func (replyF) video_connection_join_start(s string) {
 	msglog := msglog.Base_add("房").Log_show_control(false)
 
@@ -503,7 +503,7 @@ func (replyF) video_connection_join_start(s string) {
 	msglog.Base_add("房").L(`I: `, tmp)
 }
 
-//Msg-结束了视频连线
+// Msg-结束了视频连线
 func (replyF) video_connection_join_end(s string) {
 	msglog := msglog.Base_add("房").Log_show_control(false)
 
@@ -519,7 +519,7 @@ func (replyF) video_connection_join_end(s string) {
 	msglog.Base_add("房").L(`I: `, tmp)
 }
 
-//Msg-视频连线状态改变
+// Msg-视频连线状态改变
 func (replyF) video_connection_msg(s string) {
 	msglog := msglog.Base_add("房").Log_show_control(false)
 
@@ -535,7 +535,7 @@ func (replyF) video_connection_msg(s string) {
 	msglog.Base_add("房").L(`I: `, tmp)
 }
 
-//Msg-活动标题改变v2
+// Msg-活动标题改变v2
 func (replyF) activity_banner_change_v2(s string) {
 	msglog := msglog.Base_add("房").Log_show_control(false)
 
@@ -555,7 +555,7 @@ func (replyF) activity_banner_change_v2(s string) {
 	msglog.Base_add("房").L(`I: `, tmp)
 }
 
-//Msg-大航海欢迎信息 或已废弃
+// Msg-大航海欢迎信息 或已废弃
 func (replyF) welcome_guard(s string) {
 	// username := p.Json().GetValFromS(s, "data.username");
 	// guard_level := p.Json().GetValFromS(s, "data.guard_level");
@@ -587,7 +587,7 @@ func (replyF) welcome_guard(s string) {
 	// msglog.Base_add("房").Log_show_control(false).L(`I: `, sh...)
 }
 
-//Msg-礼物处理
+// Msg-礼物处理
 func (replyF) send_gift(s string) {
 	msglog := msglog.Base_add("礼").Log_show_control(false)
 
@@ -662,7 +662,7 @@ func (replyF) send_gift(s string) {
 	// Gui_show("====\n")
 }
 
-//Msg-房间封禁信息
+// Msg-房间封禁信息
 func (replyF) room_block_msg(s string) {
 	if uname := p.Json().GetValFromS(s, "uname"); uname == nil {
 		msglog.L(`E: `, "uname", uname)
@@ -674,7 +674,7 @@ func (replyF) room_block_msg(s string) {
 	}
 }
 
-//Msg-房间准备信息，通常出现在下播而不出现在开播
+// Msg-房间准备信息，通常出现在下播而不出现在开播
 func (replyF) preparing(s string) {
 	msglog := msglog.Base_add("房")
 
@@ -697,7 +697,7 @@ func (replyF) preparing(s string) {
 	}
 }
 
-//Msg-房间开播信息
+// Msg-房间开播信息
 func (replyF) live(s string) {
 	msglog := msglog.Base_add("房")
 
@@ -732,7 +732,7 @@ func (replyF) live(s string) {
 	}
 }
 
-//Msg-超级留言处理
+// Msg-超级留言处理
 var sc_buf = make(map[string]struct{})
 
 func (replyF) super_chat_message(s string) {
@@ -813,7 +813,7 @@ func (replyF) super_chat_message(s string) {
 	msglog.Log_show_control(false).L(`I: `, logg...)
 }
 
-//Msg-分区排行 使用热门榜替代
+// Msg-分区排行 使用热门榜替代
 func (replyF) panel(s string) {
 	msglog := msglog.Base_add("房").Log_show_control(false)
 
@@ -829,7 +829,7 @@ func (replyF) panel(s string) {
 	}
 }
 
-//Msg-热门榜变动
+// Msg-热门榜变动
 func (replyF) hot_rank_changed(s string) {
 	msglog := msglog.Base_add("房").Log_show_control(false)
 
@@ -849,7 +849,7 @@ func (replyF) hot_rank_changed(s string) {
 	}
 }
 
-//Msg-热门榜变动V2
+// Msg-热门榜变动V2
 func (replyF) hot_rank_changed_v2(s string) {
 	msglog := msglog.Base_add("房").Log_show_control(false)
 
@@ -869,7 +869,7 @@ func (replyF) hot_rank_changed_v2(s string) {
 	}
 }
 
-//Msg-热门榜获得
+// Msg-热门榜获得
 func (replyF) hot_rank_settlement(s string) {
 	msglog := msglog.Base_add("房")
 
@@ -895,7 +895,7 @@ func (replyF) hot_rank_settlement(s string) {
 	msglog.L(`I: `, "热门榜", tmp)
 }
 
-//Msg-热门榜获得v2
+// Msg-热门榜获得v2
 func (replyF) hot_rank_settlement_v2(s string) {
 	msglog := msglog.Base_add("房")
 
@@ -921,7 +921,7 @@ func (replyF) hot_rank_settlement_v2(s string) {
 	msglog.L(`I: `, "热门榜", tmp)
 }
 
-//Msg-老板打赏新礼物红包
+// Msg-老板打赏新礼物红包
 func (replyF) popularity_red_pocket_new(s string) {
 	msglog := msglog.Base_add("礼")
 
@@ -943,7 +943,7 @@ func (replyF) popularity_red_pocket_new(s string) {
 	msglog.L(`I: `, "礼物红包", tmp)
 }
 
-//Msg-老板打赏礼物红包
+// Msg-老板打赏礼物红包
 func (replyF) popularity_red_pocket_start(s string) {
 	msglog := msglog.Base_add("礼")
 
@@ -962,7 +962,7 @@ func (replyF) popularity_red_pocket_start(s string) {
 	msglog.L(`I: `, "礼物红包", tmp)
 }
 
-//Msg-元气赏连抽
+// Msg-元气赏连抽
 func (replyF) common_notice_danmaku(s string) {
 	msglog := msglog.Base_add("房")
 
@@ -985,7 +985,7 @@ func (replyF) common_notice_danmaku(s string) {
 	msglog.L(`I: `, "元气赏连抽", tmp)
 }
 
-//Msg-小消息
+// Msg-小消息
 func (replyF) little_message_box(s string) {
 	msglog := msglog.Base_add("系统")
 
@@ -995,13 +995,10 @@ func (replyF) little_message_box(s string) {
 	}
 	if type_item.Data.Msg != `` {
 		msglog.L(`I: `, type_item.Data.Msg)
-		if strings.Contains(type_item.Data.Msg, `小心心`) && strings.Contains(type_item.Data.Msg, `上限`) {
-			F.F_x25Kn_cancel()
-		}
 	}
 }
 
-//Msg-粉丝牌切换
+// Msg-粉丝牌切换
 func (replyF) messagebox_user_medal_change(s string) {
 	msglog := msglog.Base_add("房")
 
@@ -1014,7 +1011,7 @@ func (replyF) messagebox_user_medal_change(s string) {
 	}
 }
 
-//Msg-进入特效
+// Msg-进入特效
 func (replyF) entry_effect(s string) {
 
 	var res struct {
@@ -1066,7 +1063,7 @@ func (replyF) entry_effect(s string) {
 	msglog.Base_add("房").Log_show_control(false).L(`I: `, copy_writing)
 }
 
-//Msg-房间禁言
+// Msg-房间禁言
 func (replyF) roomsilent(s string) {
 	msglog := msglog.Base_add("房")
 
@@ -1081,7 +1078,7 @@ func (replyF) roomsilent(s string) {
 	}
 }
 
-//Msg-粉丝信息，常刷屏，不显示
+// Msg-粉丝信息，常刷屏，不显示
 func (replyF) roominfo(s string) {
 	fans := p.Json().GetValFromS(s, "data.fans")
 	fans_club := p.Json().GetValFromS(s, "data.fans_club")
@@ -1100,7 +1097,7 @@ func (replyF) roominfo(s string) {
 	}
 }
 
-//Msg-弹幕处理
+// Msg-弹幕处理
 type Danmu_item struct {
 	msg    string
 	auth   interface{}
@@ -1166,9 +1163,9 @@ func (replyF) danmu(s string) {
 	Msg_showdanmu(item)
 }
 
-//弹幕发送
-//传入字符串即可发送
-//需要cookie
+// 弹幕发送
+// 传入字符串即可发送
+// 需要cookie
 func Msg_senddanmu(msg string) {
 	if missKey := F.CookieCheck([]string{
 		`bili_jct`,
@@ -1181,8 +1178,8 @@ func Msg_senddanmu(msg string) {
 	send.Danmu_s(msg, c.C.Roomid)
 }
 
-//弹幕显示
-//由于额外功能有些需要显示，为了统一管理，使用此方法进行处理
+// 弹幕显示
+// 由于额外功能有些需要显示，为了统一管理，使用此方法进行处理
 func Msg_showdanmu(item Danmu_item) {
 	msg := item.msg
 	msglog := msglog.Log_show_control(false)

@@ -251,8 +251,6 @@ func Start(roomid ...int) {
 								// go F.Get(`VERSION`)
 								//每日兑换硬币
 								go F.Get(&c.C).Silver_2_coin()
-								//小心心
-								go F.F_x25Kn()
 								//附加功能 每日发送弹幕
 								go reply.Entry_danmu()
 								//附加功能 保持牌子点亮
@@ -280,8 +278,6 @@ func Start(roomid ...int) {
 								IsRec:  true,
 							})
 							go reply.ShowRevf()
-							//小心心
-							go F.F_x25Kn()
 						}
 					}()
 				}
