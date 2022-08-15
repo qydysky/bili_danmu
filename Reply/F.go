@@ -1034,8 +1034,23 @@ func init() {
 		s := web.New(&http.Server{
 			Addr: addr,
 		})
-		var (
-			root = func(w http.ResponseWriter, r *http.Request) {
+
+		s.Handle(map[string]func(http.ResponseWriter, *http.Request){
+			`/`: func(w http.ResponseWriter, r *http.Request) {
+				if v, ok := c.C.K_v.LoadV(`直播流保存位置`).(string); ok && v != "" {
+					http.FileServer(http.Dir(v)).ServeHTTP(w, r)
+				} else {
+					flog.L(`W: `, `直播流保存位置无效`)
+				}
+			},
+			`/now/`: func(w http.ResponseWriter, r *http.Request) {
+				var path string = r.URL.Path[4:]
+				if path == `` {
+					path = `index.html`
+				}
+				http.ServeFile(w, r, "html/artPlayer/"+path)
+			},
+			`/mp4`: func(w http.ResponseWriter, r *http.Request) {
 				//header
 				w.Header().Set("Access-Control-Allow-Credentials", "true")
 				w.Header().Set("Access-Control-Allow-Headers", "*")
@@ -1050,66 +1065,18 @@ func init() {
 					currentStreamO = v.(*M4SStream)
 				}
 
-				if len(currentStreamO.getFirstM4S()) == 0 {
+				// 未准备好
+				if !currentStreamO.Status.Islive() {
 					w.Header().Set("Retry-After", "1")
 					w.WriteHeader(http.StatusServiceUnavailable)
 					return
 				}
 
-				// path = base_dir+path
-				w.Header().Set("Content-Type", "video/mp4")
 				w.WriteHeader(http.StatusOK)
 
-				flusher, flushSupport := w.(http.Flusher)
-				if flushSupport {
-					flusher.Flush()
-				}
-
-				//写入hls头
-				if _, err := w.Write(currentStreamO.getFirstM4S()); err != nil {
-					return
-				} else if flushSupport {
-					flusher.Flush()
-				}
-
-				cancel := make(chan struct{})
-
-				//hls切片
-				currentStreamO.Newst_m4s.Pull_tag(map[string]func(interface{}) bool{
-					`m4s`: func(data interface{}) bool {
-						if b, ok := data.([]byte); ok {
-							if len(b) == 0 {
-								close(cancel)
-								return true
-							}
-							if _, err := w.Write(b); err != nil {
-								close(cancel)
-								return true
-							} else if flushSupport {
-								flusher.Flush()
-							}
-						}
-						return false
-					},
-					`close`: func(data interface{}) bool {
-						close(cancel)
-						return true
-					},
-				})
-
-				<-cancel
-			}
-		)
-
-		s.Handle(map[string]func(http.ResponseWriter, *http.Request){
-			`/`: func(w http.ResponseWriter, r *http.Request) {
-				var path string = r.URL.Path[1:]
-				if path == `` {
-					path = `index.html`
-				}
-				http.ServeFile(w, r, "html/artPlayer/"+path)
+				// 推送数据
+				currentStreamO.Pusher(w, r)
 			},
-			`/mp4`: root,
 			`/ws`: func(w http.ResponseWriter, r *http.Request) {
 				//获取通道
 				conn := StreamWs.WS(w, r)

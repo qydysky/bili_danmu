@@ -33,11 +33,11 @@ type M4SStream struct {
 	config               M4SStream_Config   //配置
 	stream_last_modified time.Time          //流地址更新时间
 	// stream_expires       int64              //流到期时间
-	last_m4s          *m4s_link_item   //最后一个切片
 	stream_hosts      sync.Map         //使用的流服务器
 	stream_type       string           //流类型
-	Newst_m4s         *msgq.Msgq       //m4s消息 tag:m4s
+	Stream_msg        *msgq.Msgq       //流数据消息 tag:data
 	first_m4s         []byte           //m4s起始块
+	last_m4s          *m4s_link_item   //最后一个切片
 	common            c.Common         //通用配置副本
 	Current_save_path string           //明确的直播流保存目录
 	Callback_start    func(*M4SStream) //开始的回调
@@ -425,6 +425,29 @@ func (t *M4SStream) saveStreamM4s() {
 		Max: 3,
 	}
 
+	// 直播流切片缓冲
+	var (
+		streamWebCache    chan []byte
+		streamWebCacheLen int
+	)
+	if v, ok := t.common.K_v.LoadV(`直播Web缓冲长度`).(float64); ok && v != 0 {
+		streamWebCacheLen = int(v)
+		streamWebCache = make(chan []byte, streamWebCacheLen)
+		defer close(streamWebCache)
+		go func() {
+			for {
+				if len(streamWebCache) <= streamWebCacheLen/2 {
+					time.Sleep(time.Second)
+				}
+				if data := <-streamWebCache; len(data) != 0 {
+					t.Stream_msg.Push_tag(`data`, data)
+				} else {
+					return
+				}
+			}
+		}()
+	}
+
 	// 下载循环
 	for download_seq := []*m4s_link_item{}; ; {
 
@@ -503,7 +526,14 @@ func (t *M4SStream) saveStreamM4s() {
 
 				if v.status == 2 {
 					download_seq = download_seq[1:]
-					t.Newst_m4s.Push_tag(`m4s`, v.data)
+					if streamWebCache != nil {
+						if streamWebCacheLen == len(streamWebCache) {
+							<-streamWebCache
+						}
+						streamWebCache <- v.data
+					} else {
+						t.Stream_msg.Push_tag(`data`, v.data)
+					}
 				} else {
 					break
 				}
@@ -562,7 +592,7 @@ func (t *M4SStream) saveStreamM4s() {
 	}
 
 	// 发送空字节会导致流服务终止
-	t.Newst_m4s.Push_tag(`m4s`, []byte{})
+	t.Stream_msg.Push_tag(`data`, []byte{})
 
 	// 结束
 	if p.Checkfile().IsExist(t.Current_save_path + "0.m3u8.dtmp") {
@@ -596,7 +626,7 @@ func (t *M4SStream) Start() bool {
 		t.reqPool = t.common.ReqPool
 
 		// 初始化切片消息
-		t.Newst_m4s = msgq.New(15)
+		t.Stream_msg = msgq.New(15)
 
 		// 主循环
 		for t.Status.Islive() {
@@ -641,4 +671,68 @@ func (t *M4SStream) Stop() {
 	t.Status.Done()
 	t.log.L(`I: `, `正在等待切片下载...`)
 	t.exitSign.Wait()
+}
+
+// 流服务推送方法
+func (t *M4SStream) Pusher(w http.ResponseWriter, r *http.Request) {
+	switch t.stream_type {
+	case `m3u8`:
+		t.pusherM4s(w, r)
+	case `flv`:
+		t.pusherFlv(w, r)
+	default:
+		t.log.L(`E: `, `no support stream_type`)
+	}
+}
+
+func (t *M4SStream) pusherM4s(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "video/mp4")
+
+	flusher, flushSupport := w.(http.Flusher)
+	if flushSupport {
+		flusher.Flush()
+	}
+
+	//写入hls头
+	if _, err := w.Write(t.getFirstM4S()); err != nil {
+		return
+	} else if flushSupport {
+		flusher.Flush()
+	}
+
+	cancel := make(chan struct{})
+
+	//hls切片
+	t.Stream_msg.Pull_tag(map[string]func(interface{}) bool{
+		`data`: func(data interface{}) bool {
+			if b, ok := data.([]byte); ok {
+				if len(b) == 0 {
+					close(cancel)
+					return true
+				}
+				if _, err := w.Write(b); err != nil {
+					close(cancel)
+					return true
+				} else if flushSupport {
+					flusher.Flush()
+				}
+			}
+			return false
+		},
+		`close`: func(data interface{}) bool {
+			close(cancel)
+			return true
+		},
+	})
+
+	<-cancel
+}
+
+func (t *M4SStream) pusherFlv(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "video/x-flv")
+
+	flusher, flushSupport := w.(http.Flusher)
+	if flushSupport {
+		flusher.Flush()
+	}
 }
