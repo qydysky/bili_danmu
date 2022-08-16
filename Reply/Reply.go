@@ -1180,7 +1180,7 @@ func Msg_senddanmu(msg string) {
 // 弹幕显示
 // 由于额外功能有些需要显示，为了统一管理，使用此方法进行处理
 func Msg_showdanmu(item Danmu_item) {
-	msg := item.msg
+	msg := strings.TrimSpace(item.msg)
 	msglog := msglog.Log_show_control(false)
 
 	//room change
