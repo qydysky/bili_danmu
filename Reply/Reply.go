@@ -720,12 +720,11 @@ func (replyF) live(s string) {
 			if v, ok := c.C.K_v.LoadV(`仅保存当前直播间流`).(bool); ok && v {
 				StreamOStop(-1) //停止其他房间录制
 			}
+			c.C.Danmu_Main_mq.Push_tag(`savestream`, SavestreamO{
+				Roomid: type_item.Roomid,
+				IsRec:  true,
+			})
 		}()
-
-		c.C.Danmu_Main_mq.Push_tag(`savestream`, SavestreamO{
-			Roomid: type_item.Roomid,
-			IsRec:  true,
-		})
 
 		Gui_show(Itos([]interface{}{"房间", type_item.Roomid, "开播了"}), "0room")
 		msglog.L(`I: `, "房间", type_item.Roomid, "开播了")
