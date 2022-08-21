@@ -35,18 +35,18 @@ import (
 )
 
 /*
-	F额外功能区
+F额外功能区
 */
 var flog = c.C.Log.Base(`功能`)
 
-//功能开关选取函数
+// 功能开关选取函数
 func IsOn(s string) bool {
 	v, ok := c.C.K_v.LoadV(s).(bool)
 	return ok && v
 }
 
-//字符重复度检查
-//a在buf中出现的字符占a的百分数
+// 字符重复度检查
+// a在buf中出现的字符占a的百分数
 func cross(a string, buf []string) float32 {
 	var s float32
 	var matched bool
@@ -70,7 +70,7 @@ func cross(a string, buf []string) float32 {
 	return s / float32(len([]rune(a)))
 }
 
-//在a中仅出现一次出现的字符占a的百分数
+// 在a中仅出现一次出现的字符占a的百分数
 func selfcross(a string) float32 {
 	buf := make(map[rune]bool)
 	for _, v := range a {
@@ -81,10 +81,10 @@ func selfcross(a string) float32 {
 	return 1 - float32(len(buf))/float32(len([]rune(a)))
 }
 
-//在a的每个字符串中
-//出现的字符次数最多的
-//占出现的字符总数的百分数
-//*单字符串中的重复出现计为1次
+// 在a的每个字符串中
+// 出现的字符次数最多的
+// 占出现的字符总数的百分数
+// *单字符串中的重复出现计为1次
 func selfcross2(a []string) (float32, string) {
 	buf := make(map[rune]float32)
 	for _, v := range a {
@@ -112,8 +112,8 @@ func selfcross2(a []string) (float32, string) {
 	return max / all, maxS
 }
 
-//功能区
-//ShowRev 显示h营收
+// 功能区
+// ShowRev 显示h营收
 var (
 	ShowRev_old   float64
 	ShowRev_start bool
@@ -137,7 +137,7 @@ func ShowRevf() {
 	}
 }
 
-//Ass 弹幕转字幕
+// Ass 弹幕转字幕
 type Ass struct {
 	file   string                    //弹幕ass文件名
 	startT time.Time                 //开始记录的基准时间
@@ -187,7 +187,7 @@ func init() {
 	}
 }
 
-//设定字幕文件名，为""时停止输出
+// 设定字幕文件名，为""时停止输出
 func Ass_f(save_path string, file string, st time.Time) {
 	if !IsOn(`仅保存当前直播间流`) {
 		return
@@ -212,7 +212,7 @@ func Ass_f(save_path string, file string, st time.Time) {
 	ass.startT = st
 }
 
-//传入要显示的单条字幕
+// 传入要显示的单条字幕
 func Assf(s string) {
 	if !IsOn("生成Ass弹幕") {
 		return
@@ -241,7 +241,7 @@ func Assf(s string) {
 	})
 }
 
-//时间转化为0:00:00.00规格字符串
+// 时间转化为0:00:00.00规格字符串
 func dtos(t time.Duration) string {
 	M := int(math.Floor(t.Minutes())) % 60
 	S := int(math.Floor(t.Seconds())) % 60
@@ -250,8 +250,8 @@ func dtos(t time.Duration) string {
 	return fmt.Sprintf("%d:%02d:%02d.%02d", int(math.Floor(t.Hours())), M, S, Ns)
 }
 
-//hls
-//https://datatracker.ietf.org/doc/html/draft-pantos-http-live-streaming
+// hls
+// https://datatracker.ietf.org/doc/html/draft-pantos-http-live-streaming
 var streamO = new(psync.Map)
 
 // 获取实例的Common
@@ -869,7 +869,7 @@ func Jiezouf(s []string) bool {
 	return false
 }
 
-//保存所有消息到json
+// 保存所有消息到json
 func init() {
 	Save_to_json(0, []interface{}{`[`})
 	c.C.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
@@ -894,7 +894,7 @@ func Save_to_json(Loc int, Context []interface{}) {
 	}
 }
 
-//进入房间发送弹幕
+// 进入房间发送弹幕
 func Entry_danmu() {
 	flog := flog.Base_add(`进房弹幕`)
 
@@ -918,7 +918,7 @@ func Entry_danmu() {
 	}
 }
 
-//保持所有牌子点亮
+// 保持所有牌子点亮
 func Keep_medal_light() {
 	if v, _ := c.C.K_v.LoadV(`保持牌子亮着`).(bool); !v {
 		return
@@ -978,7 +978,7 @@ func Keep_medal_light() {
 	}
 }
 
-//自动发送即将过期的银瓜子礼物
+// 自动发送即将过期的银瓜子礼物
 func AutoSend_silver_gift() {
 	day, _ := c.C.K_v.LoadV(`发送还有几天过期的礼物`).(float64)
 	if day <= 0 {
@@ -1007,7 +1007,7 @@ func AutoSend_silver_gift() {
 	}
 }
 
-//直播Web服务口
+// 直播Web服务口
 var StreamWs = websocket.New_server()
 
 func SendStreamWs(msg string) {
@@ -1050,7 +1050,7 @@ func init() {
 				}
 				http.ServeFile(w, r, "html/artPlayer/"+path)
 			},
-			`/mp4`: func(w http.ResponseWriter, r *http.Request) {
+			`/stream`: func(w http.ResponseWriter, r *http.Request) {
 				//header
 				w.Header().Set("Access-Control-Allow-Credentials", "true")
 				w.Header().Set("Access-Control-Allow-Headers", "*")
@@ -1099,7 +1099,7 @@ func init() {
 	}
 }
 
-//此次直播的交互人数
+// 此次直播的交互人数
 var communicate Communicate
 
 type Communicate struct {

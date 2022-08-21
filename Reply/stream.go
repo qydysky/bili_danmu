@@ -36,7 +36,7 @@ type M4SStream struct {
 	stream_hosts      sync.Map         //使用的流服务器
 	stream_type       string           //流类型
 	Stream_msg        *msgq.Msgq       //流数据消息 tag:data
-	first_m4s         []byte           //m4s起始块
+	first_buf         []byte           //m4s起始块 or flv起始块
 	last_m4s          *m4s_link_item   //最后一个切片
 	common            c.Common         //通用配置副本
 	Current_save_path string           //明确的直播流保存目录
@@ -114,11 +114,11 @@ func (t *M4SStream) LoadConfig(common c.Common, l *log.Log_interface) {
 	}
 }
 
-func (t *M4SStream) getFirstM4S() []byte {
+func (t *M4SStream) getFirstBuf() []byte {
 	if t == nil {
 		return []byte{}
 	}
-	return t.first_m4s
+	return t.first_buf
 }
 
 func (t *M4SStream) fetchCheckStream() bool {
@@ -160,8 +160,16 @@ func (t *M4SStream) fetchCheckStream() bool {
 		SleepTime: 1000,
 		Proxy:     t.common.Proxy,
 		Header: map[string]string{
-			`Cookie`:     reqf.Map_2_Cookies_String(CookieM),
-			`Connection`: `close`,
+			`User-Agent`:      `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0`,
+			`Accept`:          `*/*`,
+			`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
+			`Accept-Encoding`: `gzip, deflate, br`,
+			`Origin`:          `https://live.bilibili.com`,
+			`Pragma`:          `no-cache`,
+			`Cache-Control`:   `no-cache`,
+			`Referer`:         "https://live.bilibili.com/",
+			`Cookie`:          reqf.Map_2_Cookies_String(CookieM),
+			`Connection`:      `close`,
 		},
 		Timeout:          5 * 1000,
 		JustResponseCode: true,
@@ -415,7 +423,118 @@ func (t *M4SStream) saveStream() {
 }
 
 func (t *M4SStream) saveStreamFlv() {
-	t.log.L(`E: `, `not support yet`)
+	//对每个直播流进行尝试
+	for _, v := range t.common.Live {
+		//结束退出
+		if !t.Status.Islive() {
+			break
+		}
+
+		surl, err := url.Parse(v)
+		if err != nil {
+			t.log.L(`E: `, err)
+			break
+		}
+
+		//开始获取
+		req := t.reqPool.Get()
+		{
+			s := signal.Init()
+			r := req.Item.(*reqf.Req)
+
+			go func() {
+				select {
+				//停止录制
+				case <-t.Status.WaitC():
+					r.Cancel()
+				//当前连接终止
+				case <-s.WaitC():
+				}
+			}()
+
+			out, err := os.Create(t.Current_save_path + `0.flv`)
+			if err != nil {
+				out.Close()
+			}
+			rc, rw := io.Pipe()
+			go func() {
+				var buff []byte
+				var buf = make([]byte, 1<<16)
+				for {
+					n, e := rc.Read(buf)
+					buff = append(buff, buf[:n]...)
+					if n > 0 {
+						front_buf, keyframe, last_avilable_offset, e := Seach_stream_tag(buff)
+						if e != nil {
+							if strings.Contains(e.Error(), `no found available tag`) {
+								continue
+							}
+						}
+
+						if len(front_buf)+len(keyframe) != 0 {
+							if len(front_buf) != 0 {
+								t.first_buf = front_buf
+								// fmt.Println("write front_buf")
+								out.Write(front_buf)
+								t.Stream_msg.Push_tag(`data`, front_buf)
+							}
+							for _, frame := range keyframe {
+								// fmt.Println("write frame")
+								out.Write(frame)
+								t.Stream_msg.Push_tag(`data`, frame)
+							}
+							if last_avilable_offset != 0 {
+								// fmt.Println("write Sync")
+								buff = buff[last_avilable_offset-1:]
+								out.Sync()
+							}
+						}
+					}
+					if e != nil {
+						out.Close()
+						t.Stream_msg.Push_tag(`close`, nil)
+						break
+					}
+				}
+
+				buf = nil
+				buff = nil
+			}()
+
+			CookieM := make(map[string]string)
+			t.common.Cookie.Range(func(k, v interface{}) bool {
+				CookieM[k.(string)] = v.(string)
+				return true
+			})
+
+			if e := r.Reqf(reqf.Rval{
+				Url:              surl.String(),
+				SaveToPipeWriter: rw,
+				NoResponse:       true,
+				Proxy:            t.common.Proxy,
+				Header: map[string]string{
+					`Host`:            surl.Host,
+					`User-Agent`:      `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0`,
+					`Accept`:          `*/*`,
+					`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
+					`Origin`:          `https://live.bilibili.com`,
+					`Connection`:      `keep-alive`,
+					`Pragma`:          `no-cache`,
+					`Cache-Control`:   `no-cache`,
+					`Referer`:         "https://live.bilibili.com/",
+					`Cookie`:          reqf.Map_2_Cookies_String(CookieM),
+				},
+			}); e != nil && !errors.Is(e, io.EOF) {
+				if reqf.IsCancel(e) {
+					t.log.L(`I: `, `flv下载停止`)
+				} else if !reqf.IsTimeout(e) {
+					t.log.L(`E: `, `flv下载失败:`, e)
+				}
+			}
+			s.Done()
+		}
+		t.reqPool.Put(req)
+	}
 	t.Status.Done()
 }
 
@@ -521,7 +640,7 @@ func (t *M4SStream) saveStreamM4s() {
 		{
 			for _, v := range download_seq {
 				if strings.Contains(v.Base, `h`) {
-					t.first_m4s = v.data
+					t.first_buf = v.data
 				}
 
 				if v.status == 2 {
@@ -669,7 +788,7 @@ func (t *M4SStream) Stop() {
 	}
 	t.exitSign = signal.Init()
 	t.Status.Done()
-	t.log.L(`I: `, `正在等待切片下载...`)
+	t.log.L(`I: `, `正在等待下载完成...`)
 	t.exitSign.Wait()
 }
 
@@ -694,7 +813,7 @@ func (t *M4SStream) pusherM4s(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//写入hls头
-	if _, err := w.Write(t.getFirstM4S()); err != nil {
+	if _, err := w.Write(t.getFirstBuf()); err != nil {
 		return
 	} else if flushSupport {
 		flusher.Flush()
@@ -735,4 +854,38 @@ func (t *M4SStream) pusherFlv(w http.ResponseWriter, r *http.Request) {
 	if flushSupport {
 		flusher.Flush()
 	}
+
+	//写入flv头
+	if _, err := w.Write(t.getFirstBuf()); err != nil {
+		return
+	} else if flushSupport {
+		flusher.Flush()
+	}
+
+	cancel := make(chan struct{})
+
+	//hls切片
+	t.Stream_msg.Pull_tag(map[string]func(interface{}) bool{
+		`data`: func(data interface{}) bool {
+			if b, ok := data.([]byte); ok {
+				if len(b) == 0 {
+					close(cancel)
+					return true
+				}
+				if _, err := w.Write(b); err != nil {
+					close(cancel)
+					return true
+				} else if flushSupport {
+					flusher.Flush()
+				}
+			}
+			return false
+		},
+		`close`: func(data interface{}) bool {
+			close(cancel)
+			return true
+		},
+	})
+
+	<-cancel
 }

@@ -427,10 +427,11 @@ func TimeStramp_Check(path string) error {
 
 // this fuction read []byte and return flv header and all complete keyframe if possible.
 // complete keyframe means the video and audio tags between two video key frames tag
-func Seach_stream_tag(buf []byte) (front_buf []byte, keyframe [][]byte, err error) {
+func Seach_stream_tag(buf []byte) (front_buf []byte, keyframe [][]byte, last_avilable_offset int, err error) {
 	//get flv header(9byte) + FirstTagSize(4byte)
 	if header_offset := bytes.Index(buf, flv_header_sign); header_offset != -1 {
 		front_buf = buf[header_offset : header_offset+flv_header_size+previou_tag_size]
+		last_avilable_offset = header_offset + flv_header_size + previou_tag_size
 	}
 
 	var (
@@ -465,6 +466,7 @@ func Seach_stream_tag(buf []byte) (front_buf []byte, keyframe [][]byte, err erro
 		streamid := int(F.Btoi32([]byte{0x00, buf[tag_offset+8], buf[tag_offset+9], buf[tag_offset+10]}, 0))
 		if streamid != 0 {
 			buf_offset = tag_offset + 1
+			last_avilable_offset = buf_offset
 			// fmt.Printf("streamid error %x\n",buf[tag_offset:tag_offset+tag_header_size])
 			continue //streamid error
 		}
@@ -477,6 +479,7 @@ func Seach_stream_tag(buf []byte) (front_buf []byte, keyframe [][]byte, err erro
 		}
 		if tag_size == 0 {
 			buf_offset = tag_offset + 1
+			last_avilable_offset = buf_offset
 			// fmt.Printf("tag_size error %x\n",buf[tag_offset:tag_offset+tag_header_size])
 			continue //tag_size error
 		}
@@ -487,18 +490,21 @@ func Seach_stream_tag(buf []byte) (front_buf []byte, keyframe [][]byte, err erro
 		}
 		if tag_size_check != tag_size+tag_header_size {
 			buf_offset = tag_offset + 1
+			last_avilable_offset = buf_offset
 			// fmt.Printf("tag_size_check error %x\n",buf[tag_offset:tag_offset+tag_header_size])
 			continue //tag_size_check error
 		}
 
 		time_stamp := int(F.Btoi32([]byte{buf[tag_offset+7], buf[tag_offset+4], buf[tag_offset+5], buf[tag_offset+6]}, 0))
 
-		// fmt.Printf("%x\n",buf[tag_offset:tag_offset+tag_header_size])
+		// show tag header
+		// fmt.Printf("%x\n", buf[tag_offset:tag_offset+tag_header_size])
 
 		tag_num += 1
 
 		if time_stamp == 0 {
 			if len(front_buf) != 0 {
+				//first video audio script tag
 				if (buf[tag_offset] == video_tag) && (sign&0x04 == 0x00) {
 					sign |= 0x04
 					front_buf = append(front_buf, buf[tag_offset:tag_offset+tag_size_check+previou_tag_size]...)
@@ -511,6 +517,7 @@ func Seach_stream_tag(buf []byte) (front_buf []byte, keyframe [][]byte, err erro
 				}
 			}
 			buf_offset = tag_offset + tag_size_check + previou_tag_size
+			last_avilable_offset = buf_offset
 			continue
 		}
 
@@ -518,6 +525,7 @@ func Seach_stream_tag(buf []byte) (front_buf []byte, keyframe [][]byte, err erro
 			if buf[tag_offset+11]&0xf0 == 0x10 { //key frame
 				keyframe_num += 1
 				keyframe = append(keyframe, []byte{})
+				last_avilable_offset = tag_offset
 			}
 
 			if keyframe_num >= 0 {
@@ -527,7 +535,6 @@ func Seach_stream_tag(buf []byte) (front_buf []byte, keyframe [][]byte, err erro
 			if keyframe_num >= 0 {
 				keyframe[keyframe_num] = append(keyframe[keyframe_num], buf[tag_offset:tag_offset+tag_size_check+previou_tag_size]...)
 			}
-		} else {
 		}
 
 		buf_offset = tag_offset + tag_size_check + previou_tag_size
@@ -536,7 +543,7 @@ func Seach_stream_tag(buf []byte) (front_buf []byte, keyframe [][]byte, err erro
 	return
 }
 
-//same as Seach_stream_tag but faster
+// same as Seach_stream_tag but faster
 func Seach_keyframe_tag(buf []byte) (front_buf []byte, keyframe [][]byte, err error) {
 
 	var (
@@ -557,6 +564,8 @@ func Seach_keyframe_tag(buf []byte) (front_buf []byte, keyframe [][]byte, err er
 		front_buf = buf[header_offset : header_offset+flv_header_size+previou_tag_size]
 
 		for buf_offset+tag_header_size < len(buf) {
+
+			fmt.Println(`front_buf`, buf_offset)
 
 			tag_offset := buf_offset + bytes.IndexAny(buf[buf_offset:], string([]byte{video_tag, audio_tag, script_tag}))
 			if tag_offset == buf_offset-1 {
@@ -625,7 +634,7 @@ func Seach_keyframe_tag(buf []byte) (front_buf []byte, keyframe [][]byte, err er
 	//keyframe
 	var last_keyframe_offset int
 	for buf_offset+tag_header_size < len(buf) {
-
+		fmt.Println(`keyframe`, buf_offset)
 		tag_offset := buf_offset + bytes.Index(buf[buf_offset:], []byte{video_tag})
 		if tag_offset == buf_offset-1 {
 			err = errors.New(`no found available tag`)
@@ -686,8 +695,8 @@ func Seach_keyframe_tag(buf []byte) (front_buf []byte, keyframe [][]byte, err er
 	return
 }
 
-//this fuction merge two stream and return the merge buffer,which has the newest frame.
-//once len(merge_buf) isn't 0,old_buf can be drop and new_buf can be used from now on.or it's still need to keep buf until find the same tag.
+// this fuction merge two stream and return the merge buffer,which has the newest frame.
+// once len(merge_buf) isn't 0,old_buf can be drop and new_buf can be used from now on.or it's still need to keep buf until find the same tag.
 func Merge_stream(keyframe_lists [][][]byte, last_keyframe_timestramp int) (keyframe_timestamp int, merge_buf []byte, merged int) {
 
 	if len(keyframe_lists) == 0 {
@@ -913,6 +922,48 @@ func Keyframe_timebase(buf [][]byte, last_keyframe_timestamp int) (keyframe_time
 			buf[i][tag_offset+6] = time_stamp_byte[3]
 
 			buf_offset = tag_offset + tag_size_check + previou_tag_size
+		}
+	}
+	return
+}
+
+func SearchStreamOffset(buf []byte) (front_buf []byte, available_offset int) {
+	//get flv header(9byte) + FirstTagSize(4byte)
+	{
+		if bytes.Index(buf, flv_header_sign) == 0 {
+			front_buf = buf[:flv_header_size+previou_tag_size]
+		}
+	}
+
+	var sign = 0x00
+	for buf_offset := 0; buf_offset < len(buf); {
+		if tag_offset := buf_offset + bytes.IndexAny(buf[buf_offset:], string([]byte{video_tag, audio_tag, script_tag})); tag_offset == buf_offset-1 {
+			return //no found available video,audio,script tag
+		} else if streamid_offset := tag_offset + bytes.Index(buf[tag_offset:], []byte{0x00, 0x00, 0x00}); streamid_offset == tag_offset-1 {
+			return //no found available streamid
+		} else if streamid_offset-8 != tag_offset {
+			buf_offset = tag_offset + 1
+			continue //streamid offset error
+		} else if time_offset := tag_offset + 4; bytes.Index(buf[time_offset:time_offset+2], []byte{0x00, 0x00, 0x00}) == 0 {
+
+			size := int(F.Btoi32(append([]byte{0x00}, buf[tag_offset+1:tag_offset+3]...), 0) + 7)
+			if (buf[tag_offset] == video_tag) && (sign&0x04 == 0x00) {
+				sign |= 0x04
+				front_buf = append(front_buf, buf[tag_offset:tag_offset+size]...)
+			} else if (buf[tag_offset] == audio_tag) && (sign&0x02 == 0x00) {
+				sign |= 0x02
+				front_buf = append(front_buf, buf[tag_offset:tag_offset+size]...)
+			} else if (buf[tag_offset] == script_tag) && (sign&0x01 == 0x00) {
+				sign |= 0x01
+				front_buf = append(front_buf, buf[tag_offset:tag_offset+size]...)
+			}
+
+			buf_offset = tag_offset + 1
+			continue //time error
+
+		} else {
+			available_offset = tag_offset
+			return
 		}
 	}
 	return

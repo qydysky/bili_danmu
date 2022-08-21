@@ -571,6 +571,8 @@ func (c *GetFunc) getRoomPlayInfo() (missKey []string) {
 				Format_name   string
 				Codec_name    string
 			}
+
+			//所有支持的格式
 			var name_map = map[string]Stream_name{
 				`flv`: {
 					Protocol_name: "http_stream",
@@ -584,7 +586,10 @@ func (c *GetFunc) getRoomPlayInfo() (missKey []string) {
 				},
 			}
 
+			// 默认使用hls
 			want_type := name_map[`hls`]
+
+			//从配置文件选取格式
 			if v, ok := c.K_v.LoadV(`直播流类型`).(string); ok {
 				if v, ok := name_map[v]; ok {
 					want_type = v
@@ -594,19 +599,24 @@ func (c *GetFunc) getRoomPlayInfo() (missKey []string) {
 			} else {
 				apilog.L(`T: `, `默认hls`)
 			}
+
 			no_found_type := true
 			for {
+				//返回的所有支持的格式
 				for _, v := range j.Data.PlayurlInfo.Playurl.Stream {
+					//选取配置中的格式
 					if v.ProtocolName != want_type.Protocol_name {
 						continue
 					}
 
 					for _, v := range v.Format {
+						//选取配置中的格式
 						if v.FormatName != want_type.Format_name {
 							continue
 						}
 
 						for _, v := range v.Codec {
+							//选取配置中的格式
 							if v.CodecName != want_type.Codec_name {
 								continue
 							}
@@ -631,6 +641,9 @@ func (c *GetFunc) getRoomPlayInfo() (missKey []string) {
 							for _, v1 := range v.URLInfo {
 								c.Live = append(c.Live, v1.Host+v.BaseURL+v1.Extra)
 							}
+
+							//找到配置格式，跳出
+							break
 						}
 					}
 				}
