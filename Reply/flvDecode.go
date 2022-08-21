@@ -442,6 +442,9 @@ func Seach_stream_tag(buf []byte) (front_buf []byte, keyframe [][]byte, last_avi
 
 	defer func() {
 		if sign != 0x07 {
+			// if sign != 0x00 {
+			// fmt.Printf("front_buf error:%x\n", sign)
+			// }
 			front_buf = []byte{}
 		}
 		if len(keyframe) > 0 {
@@ -502,7 +505,7 @@ func Seach_stream_tag(buf []byte) (front_buf []byte, keyframe [][]byte, last_avi
 
 		tag_num += 1
 
-		if time_stamp == 0 {
+		if time_stamp == 0 || sign != 0x00 { // ignore first video audio time_stamp
 			if len(front_buf) != 0 {
 				//first video audio script tag
 				if (buf[tag_offset] == video_tag) && (sign&0x04 == 0x00) {

@@ -510,6 +510,7 @@ func (t *M4SStream) saveStreamFlv() {
 			if e := r.Reqf(reqf.Rval{
 				Url:              surl.String(),
 				SaveToPipeWriter: rw,
+				SaveToPath:       t.Current_save_path + `1.flv`,
 				NoResponse:       true,
 				Proxy:            t.common.Proxy,
 				Header: map[string]string{
