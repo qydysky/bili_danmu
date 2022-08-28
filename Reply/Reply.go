@@ -427,29 +427,29 @@ func (replyF) special_gift(s string) {
 
 // Msg-大航海购买，由于信息少，用user_toast_msg进行替代
 func (replyF) guard_buy(s string) {
-	username := p.Json().GetValFromS(s, "data.username")
-	gift_name := p.Json().GetValFromS(s, "data.gift_name")
-	price := p.Json().GetValFromS(s, "data.price")
+	// username := p.Json().GetValFromS(s, "data.username")
+	// gift_name := p.Json().GetValFromS(s, "data.gift_name")
+	// price := p.Json().GetValFromS(s, "data.price")
 
-	var sh []interface{}
-	var sh_log []interface{}
+	// var sh []interface{}
+	// var sh_log []interface{}
 
-	if username != nil {
-		sh = append(sh, username)
-	}
-	if gift_name != nil {
-		sh = append(sh, "购买了", gift_name)
-	}
-	if price != nil {
-		sh_log = append(sh, "￥", int(price.(float64))/1000) //不在界面显示价格
-	}
-	{ //额外 ass
-		Assf(fmt.Sprintln(sh...))
-	}
-	fmt.Println("\n====")
-	fmt.Println(sh...)
-	fmt.Print("====\n\n")
-	msglog.Base_add("礼").Log_show_control(false).L(`I: `, sh_log...)
+	// if username != nil {
+	// 	sh = append(sh, username)
+	// }
+	// if gift_name != nil {
+	// 	sh = append(sh, "购买了", gift_name)
+	// }
+	// if price != nil {
+	// 	sh_log = append(sh, "￥", int(price.(float64))/1000) //不在界面显示价格
+	// }
+	// { //额外 ass
+	// 	Assf(fmt.Sprintln(sh...))
+	// }
+	// fmt.Println("\n====")
+	// fmt.Println(sh...)
+	// fmt.Print("====\n\n")
+	// msglog.Base_add("礼").Log_show_control(false).L(`I: `, sh_log...)
 
 }
 
@@ -718,7 +718,7 @@ func (replyF) live(s string) {
 		//开始录制
 		go func() {
 			if v, ok := c.C.K_v.LoadV(`仅保存当前直播间流`).(bool); ok && v {
-				StreamOStop(-1) //停止其他房间录制
+				StreamOStop(-2) //停止其他房间录制
 			}
 			c.C.Danmu_Main_mq.Push_tag(`savestream`, SavestreamO{
 				Roomid: type_item.Roomid,

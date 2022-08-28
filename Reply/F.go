@@ -318,14 +318,19 @@ func StreamOStatus(roomid int) bool {
 
 // 停止实例
 func StreamOStop(roomid int) {
-	if roomid != -1 { // 针对某房间
-		if v, ok := streamO.Load(roomid); ok {
+	switch roomid {
+	case -2: // 其他房间
+		streamO.Range(func(_roomid, v interface{}) bool {
+			if c.C.Roomid == _roomid {
+				return true
+			}
 			if v.(*M4SStream).Status.Islive() {
 				v.(*M4SStream).Stop()
 			}
-			streamO.Delete(roomid)
-		}
-	} else { //所有房间
+			streamO.Delete(_roomid)
+			return true
+		})
+	case -1: // 所有房间
 		streamO.Range(func(_roomid, v interface{}) bool {
 			if v.(*M4SStream).Status.Islive() {
 				v.(*M4SStream).Stop()
@@ -333,6 +338,13 @@ func StreamOStop(roomid int) {
 			return true
 		})
 		streamO = new(psync.Map)
+	default: // 针对某房间
+		if v, ok := streamO.Load(roomid); ok {
+			if v.(*M4SStream).Status.Islive() {
+				v.(*M4SStream).Stop()
+			}
+			streamO.Delete(roomid)
+		}
 	}
 }
 
@@ -447,9 +459,7 @@ func Autobanf(s string) bool {
 			File: "Autoban.txt",
 		})
 
-		for _, v := range strings.Split(f, "\n") {
-			autoban.Banbuf = append(autoban.Banbuf, v)
-		}
+		autoban.Banbuf = append(autoban.Banbuf, strings.Split(f, "\n")...)
 	}
 
 	if len(autoban.buf) < 10 {
@@ -1061,12 +1071,16 @@ func init() {
 
 				// 获取当前房间的
 				var currentStreamO *M4SStream
-				if v, ok := streamO.Load(c.C.Roomid); ok {
-					currentStreamO = v.(*M4SStream)
-				}
+				streamO.Range(func(key, value interface{}) bool {
+					if key != nil && c.C.Roomid == key.(int) {
+						currentStreamO = value.(*M4SStream)
+						return false
+					}
+					return true
+				})
 
 				// 未准备好
-				if !currentStreamO.Status.Islive() {
+				if currentStreamO == nil || !currentStreamO.Status.Islive() {
 					w.Header().Set("Retry-After", "1")
 					w.WriteHeader(http.StatusServiceUnavailable)
 					return

@@ -13,7 +13,7 @@ import (
 
 var msglog = c.C.Log.Base(`Msg`)
 
-//Msg类型数据处理方法map
+// Msg类型数据处理方法map
 var Msg_map = map[string]func(replyF, string){
 	`VOICE_JOIN_ROOM_COUNT_INFO`:        replyF.voice_join_room_count_info, //连麦等待
 	`VOICE_JOIN_LIST`:                   nil,
@@ -103,9 +103,10 @@ var Msg_map = map[string]func(replyF, string){
 	"VIDEO_CONNECTION_JOIN_END":         replyF.video_connection_join_end,   //结束了与某人的视频连线
 	"VIDEO_CONNECTION_MSG":              replyF.video_connection_msg,        //视频连线状态改变
 	"WARNING":                           replyF.warning,                     //超管警告
+	"DANMU_AGGREGATION":                 nil,                                //聚合弹幕
 }
 
-//屏蔽不需要的消息
+// 屏蔽不需要的消息
 func init() {
 	{ //加载不需要的消息
 		bb, err := ioutil.ReadFile("config/config_disable_msg.json")
@@ -126,8 +127,8 @@ func init() {
 	}
 }
 
-//Msg类型数据处理方法挑选
-//识别cmd字段类型，查找上述map中设置的方法，并将json转为字符串型传入
+// Msg类型数据处理方法挑选
+// 识别cmd字段类型，查找上述map中设置的方法，并将json转为字符串型传入
 func Msg(b []byte) {
 
 	msglog := msglog.Base_add(`select func`)
@@ -145,6 +146,4 @@ func Msg(b []byte) {
 	} else {
 		(replyF{}).defaultMsg(string(b))
 	}
-
-	return
 }
