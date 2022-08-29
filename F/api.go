@@ -2291,9 +2291,19 @@ func SearchUP(s string) (list []searchresult) {
 		reqi := c.C.ReqPool.Get()
 		defer c.C.ReqPool.Put(reqi)
 		req := reqi.Item.(*reqf.Req)
+
+		Cookie := make(map[string]string)
+		c.C.Cookie.Range(func(k, v interface{}) bool {
+			Cookie[k.(string)] = v.(string)
+			return true
+		})
+
 		if err := req.Reqf(reqf.Rval{
-			Url:     "https://api.bilibili.com/x/web-interface/search/type?context=&search_type=live_user&cover_type=user_cover&page=1&order=&category_id=&__refresh__=true&_extra=&highlight=1&single_column=0&keyword=" + url.PathEscape(s),
-			Proxy:   c.C.Proxy,
+			Url:   "https://api.bilibili.com/x/web-interface/search/type?__refresh__=true&_extra=&context=&page=1&page_size=10&order=online&duration=&from_source=&from_spmid=333.337&platform=pc&highlight=1&single_column=0&category_id=&search_type=live_user&dynamic_offset=0&preload=true&com2co=true&keyword=" + url.PathEscape(s),
+			Proxy: c.C.Proxy,
+			Header: map[string]string{
+				`Cookie`: reqf.Map_2_Cookies_String(Cookie),
+			},
 			Timeout: 10 * 1000,
 			Retry:   2,
 		}); err != nil {
