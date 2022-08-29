@@ -6,10 +6,11 @@ import (
 	// "runtime/pprof"
 	"os"
 	// "log"
-	// "net/http"
 	"fmt"
+	// "net/http"
 	// _ "net/http/pprof"
 	"runtime/debug"
+
 	// "github.com/skratchdot/open-golang/open"
 	q "github.com/qydysky/bili_danmu"
 )
@@ -22,29 +23,29 @@ func main() {
 	// 	open.Run("http://127.0.0.1:8899/debug/pprof/goroutine?debug=2")
 	// 	time.Sleep(time.Duration(3)*time.Second)
 	// }()
-	go func(){
-		fmt.Printf("PID:%d\n",os.Getpid())
-		for{
+	go func() {
+		fmt.Printf("PID:%d\n", os.Getpid())
+		for {
 			View()
-			time.Sleep(time.Duration(60)*time.Second)
+			time.Sleep(time.Duration(60) * time.Second)
 			{
 				debug.FreeOSMemory()
 			}
 		}
 	}()
 	// f, err := os.OpenFile("cpu.pprof", os.O_RDWR|os.O_CREATE, 0644)
-    // if err != nil {
-    //     log.Fatal(err)
+	// if err != nil {
+	//     log.Fatal(err)
 	// }
-    // defer f.Close()
-    // pprof.StartCPUProfile(f)
+	// defer f.Close()
+	// pprof.StartCPUProfile(f)
 
-	q.Demo()
+	q.Start()
 
 	// pprof.StopCPUProfile()
 }
 
-func View(){
+func View() {
 	// var memStats runtime.MemStats
 	// runtime.ReadMemStats(&memStats)
 	// fmt.Printf("=====\n")
