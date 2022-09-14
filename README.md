@@ -41,7 +41,7 @@ golang go version go1.16 linux/amd64
 ### 当前支持显示/功能
 
 #### 当前支持显示
-以下内容可能过时，点击查看[当前支持显示](https://github.com/qydysky/bili_danmu/blob/maintenance/Reply/Msg.go#L13)
+以下内容可能过时，点击查看[当前支持显示](https://github.com/qydysky/bili_danmu/blob/master/Reply/Msg.go#L13)
 - [x] 人气
 - [x] 天选之人开始
 - [x] 天选之人获奖
@@ -60,7 +60,7 @@ golang go version go1.16 linux/amd64
 - [x] 排行榜
 
 #### 当前支持功能
-以下内容可能过时，点击查看[功能配置](https://github.com/qydysky/bili_danmu/blob/maintenance/demo/config/config_K_v.json)
+以下内容可能过时，点击查看[功能配置](https://github.com/qydysky/bili_danmu/blob/master/demo/config/config_K_v.json)
 - [x] 直播流服务
 - [x] 每天自动发送将要过期的银瓜子礼物(默认发送3天内过期的)
 - [x] 保持当前已点亮的粉丝牌总是点亮
