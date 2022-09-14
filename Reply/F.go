@@ -958,6 +958,22 @@ func Keep_medal_light() {
 		time.Sleep(time.Second)
 	}
 
+	//重试，使用点赞
+	for _, v := range F.Get_list_in_room() {
+		if v.IsLighted == 1 {
+			continue
+		}
+
+		info := F.Info(v.TargetID)
+		//两天内到期，发弹幕续期
+		send.Danmu_s2(map[string]string{
+			`msg`:     `official_147`,
+			`dm_type`: `1`,
+			`roomid`:  strconv.Itoa(info.Data.LiveRoom.Roomid),
+		})
+		time.Sleep(time.Second)
+	}
+
 	//重试，使用历史弹幕
 	for _, v := range F.Get_list_in_room() {
 		if v.IsLighted == 1 {

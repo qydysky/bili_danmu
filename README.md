@@ -95,12 +95,31 @@ golang go version go1.16 linux/amd64
 - [x] 直播流断流再保存
 - [x] 直播hls流均衡负载
 - [x] 多房间直播流保存
-- [x] 命令行支持房间切换、弹幕发送、启停录制、重载弹幕
+- [x] 命令行支持房间切换、弹幕发送、表情发送、启停录制、重载弹幕
 - [x] GTK信息窗支持房间切换、弹幕格式化发送、时长统计
 - [x] GTK弹幕窗支持自定义人/事件消息停留
 
 ### 说明
 本项目使用github action自动构建，构建过程详见[yml](https://github.com/qydysky/bili_danmu/blob/master/.github/workflows/go.yml)
+
+#### 表情发送
+当`demo/config/config_K_v.json`中`弹幕_识别表情代码`为`true`时，发送特定的文字将发送表情。
+
+在`demo/config/config_danmu_official.json`中可找到支持的特殊文字
+
+如，命令行输入点赞回车：
+```
+点赞
+
+I: 2022/09/15 02:23:21 弹幕发送 [发送 official_147 至 92613]
+赞
+```
+
+danmu.log
+```
+I: 2022/09/15 02:23:21 弹幕发送 [发送 official_147 至 92613]
+I: 2022/09/15 02:23:23 Msg [qydysky丶 : 赞]
+```
 
 #### 流保存以及弹幕ass
 ~~注意：在 [6ecff5b](6ecff5b82c16145bc7c459f086b9bf13574c2c76) 后的若干版本中，对流保存进行了重写，暂时只支持hls类型~~

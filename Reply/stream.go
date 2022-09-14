@@ -741,6 +741,8 @@ func (t *M4SStream) Start() bool {
 	go func() {
 		defer t.Status.Done()
 
+		t.log.L(`I: `, `初始化录制(`+strconv.Itoa(t.common.Roomid)+`)`)
+
 		// 初始化请求池
 		t.reqPool = t.common.ReqPool
 
