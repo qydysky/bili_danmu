@@ -737,6 +737,13 @@ func (t *M4SStream) Start() bool {
 		return false
 	}
 
+	// 是否在直播
+	F.Get(&t.common).Get(`Liveing`)
+	if !t.common.Liveing {
+		t.log.L(`W: `, `未直播`)
+		return false
+	}
+
 	t.Status = signal.Init()
 	go func() {
 		defer t.Status.Done()
