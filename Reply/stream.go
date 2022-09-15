@@ -37,6 +37,8 @@ type M4SStream struct {
 	stream_type       string           //流类型
 	Stream_msg        *msgq.Msgq       //流数据消息 tag:data
 	first_buf         []byte           //m4s起始块 or flv起始块
+	boot_buf          [][]byte         //快速启动缓冲
+	boot_buf_size     int              //快速启动缓冲长度
 	last_m4s          *m4s_link_item   //最后一个切片
 	common            c.Common         //通用配置副本
 	Current_save_path string           //明确的直播流保存目录
@@ -481,6 +483,7 @@ func (t *M4SStream) saveStreamFlv() {
 							for _, frame := range keyframe {
 								// fmt.Println("write frame")
 								out.Write(frame)
+								t.bootBufPush(frame)
 								t.Stream_msg.Push_tag(`data`, frame)
 							}
 							if last_avilable_offset != 0 {
@@ -542,29 +545,6 @@ func (t *M4SStream) saveStreamM4s() {
 	// 同时下载数限制
 	var download_limit = &funcCtrl.BlockFuncN{
 		Max: 3,
-	}
-
-	// 直播流切片缓冲
-	var (
-		streamWebCache    chan []byte
-		streamWebCacheLen int
-	)
-	if v, ok := t.common.K_v.LoadV(`直播Web缓冲长度`).(float64); ok && v != 0 {
-		streamWebCacheLen = int(v)
-		streamWebCache = make(chan []byte, streamWebCacheLen)
-		defer close(streamWebCache)
-		go func() {
-			for {
-				if len(streamWebCache) <= streamWebCacheLen/2 {
-					time.Sleep(time.Second)
-				}
-				if data := <-streamWebCache; len(data) != 0 {
-					t.Stream_msg.Push_tag(`data`, data)
-				} else {
-					return
-				}
-			}
-		}()
 	}
 
 	// 下载循环
@@ -645,14 +625,8 @@ func (t *M4SStream) saveStreamM4s() {
 
 				if v.status == 2 {
 					download_seq = download_seq[1:]
-					if streamWebCache != nil {
-						if streamWebCacheLen == len(streamWebCache) {
-							<-streamWebCache
-						}
-						streamWebCache <- v.data
-					} else {
-						t.Stream_msg.Push_tag(`data`, v.data)
-					}
+					t.bootBufPush(v.data)
+					t.Stream_msg.Push_tag(`data`, v.data)
 				} else {
 					break
 				}
@@ -756,6 +730,15 @@ func (t *M4SStream) Start() bool {
 		// 初始化切片消息
 		t.Stream_msg = msgq.New(15)
 
+		// 初始化快速启动缓冲
+		if v, ok := t.common.K_v.LoadV(`直播Web缓冲长度`).(float64); ok && v != 0 {
+			t.boot_buf_size = int(v)
+			t.boot_buf = make([][]byte, t.boot_buf_size)
+			defer func() {
+				t.boot_buf = nil
+			}()
+		}
+
 		// 主循环
 		for t.Status.Islive() {
 			// 是否在直播
@@ -828,6 +811,15 @@ func (t *M4SStream) pusherM4s(w http.ResponseWriter, r *http.Request) {
 		flusher.Flush()
 	}
 
+	//写入快速启动缓冲
+	if t.boot_buf != nil && len(t.boot_buf) > 0 {
+		if _, err := w.Write(t.getBootBuf()); err != nil {
+			return
+		} else if flushSupport {
+			flusher.Flush()
+		}
+	}
+
 	cancel := make(chan struct{})
 
 	//hls切片
@@ -871,6 +863,15 @@ func (t *M4SStream) pusherFlv(w http.ResponseWriter, r *http.Request) {
 		flusher.Flush()
 	}
 
+	//写入快速启动缓冲
+	if t.boot_buf != nil && len(t.boot_buf) > 0 {
+		if _, err := w.Write(t.getBootBuf()); err != nil {
+			return
+		} else if flushSupport {
+			flusher.Flush()
+		}
+	}
+
 	cancel := make(chan struct{})
 
 	//hls切片
@@ -897,4 +898,20 @@ func (t *M4SStream) pusherFlv(w http.ResponseWriter, r *http.Request) {
 	})
 
 	<-cancel
+}
+
+func (t *M4SStream) bootBufPush(buf []byte) {
+	if t.boot_buf != nil {
+		if len(t.boot_buf) == t.boot_buf_size {
+			t.boot_buf = t.boot_buf[1:]
+		}
+		t.boot_buf = append(t.boot_buf, buf)
+	}
+}
+
+func (t *M4SStream) getBootBuf() (buf []byte) {
+	for i := 0; i < len(t.boot_buf); i++ {
+		buf = append(buf, t.boot_buf[i]...)
+	}
+	return buf
 }

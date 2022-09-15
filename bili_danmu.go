@@ -184,6 +184,7 @@ func Start(roomid ...int) {
 			for i := 0; i < len(c.C.WSURL); i += 1 {
 				v := c.C.WSURL[i]
 				//ws启动
+				danmulog.L(`T: `, "连接 "+v)
 				u, _ := url.Parse(v)
 				ws_c := ws.New_client(ws.Client{
 					Url:               v,
@@ -209,7 +210,6 @@ func Start(roomid ...int) {
 
 				//SendChan 传入发送[]byte
 				//RecvChan 接收[]byte
-				danmulog.L(`T: `, "连接", v)
 				ws_c.SendChan <- F.HelloGen(c.C.Roomid, c.C.Token)
 				if F.HelloChe(<-ws_c.RecvChan) {
 					danmulog.L(`I: `, "已连接到房间", c.C.Uname, `(`, c.C.Roomid, `)`)
