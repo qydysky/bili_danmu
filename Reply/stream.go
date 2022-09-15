@@ -33,12 +33,13 @@ type M4SStream struct {
 	config               M4SStream_Config   //配置
 	stream_last_modified time.Time          //流地址更新时间
 	// stream_expires       int64              //流到期时间
-	stream_hosts      sync.Map         //使用的流服务器
-	stream_type       string           //流类型
-	Stream_msg        *msgq.Msgq       //流数据消息 tag:data
-	first_buf         []byte           //m4s起始块 or flv起始块
-	boot_buf          [][]byte         //快速启动缓冲
-	boot_buf_size     int              //快速启动缓冲长度
+	stream_hosts      sync.Map   //使用的流服务器
+	stream_type       string     //流类型
+	Stream_msg        *msgq.Msgq //流数据消息 tag:data
+	first_buf         []byte     //m4s起始块 or flv起始块
+	boot_buf          [][]byte   //快速启动缓冲
+	boot_buf_size     int        //快速启动缓冲长度
+	boot_buf_locker   funcCtrl.BlockFunc
 	last_m4s          *m4s_link_item   //最后一个切片
 	common            c.Common         //通用配置副本
 	Current_save_path string           //明确的直播流保存目录
@@ -902,6 +903,9 @@ func (t *M4SStream) pusherFlv(w http.ResponseWriter, r *http.Request) {
 
 func (t *M4SStream) bootBufPush(buf []byte) {
 	if t.boot_buf != nil {
+		t.boot_buf_locker.Block()
+		defer t.boot_buf_locker.UnBlock()
+
 		if len(t.boot_buf) == t.boot_buf_size {
 			t.boot_buf = t.boot_buf[1:]
 		}
