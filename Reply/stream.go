@@ -539,7 +539,6 @@ func (t *M4SStream) saveStreamFlv() {
 		}
 		t.reqPool.Put(req)
 	}
-	t.Status.Done()
 }
 
 func (t *M4SStream) saveStreamM4s() {
