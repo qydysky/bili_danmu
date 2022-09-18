@@ -57,7 +57,6 @@
     "直播流类型-help": "flv or hls",
     "直播流类型": "flv",
     "直播流保存位置": "./live",
-    "直播hls流缓冲": 20,
     "直播hls流均衡-help":"true:使用所有hls服务器",
     "直播hls流均衡": true,
     "直播hls流保存为MP4": true,
