@@ -1099,6 +1099,7 @@ func (replyF) roominfo(s string) {
 // Msg-弹幕处理
 type Danmu_item struct {
 	msg    string
+	color  string
 	auth   interface{}
 	uid    string
 	roomid int //to avoid danmu show when room has changed
@@ -1118,6 +1119,9 @@ func (replyF) danmu(s string) {
 	item := Danmu_item{}
 	{
 		//解析
+		if i, ok := infob[0].([]interface{}); ok {
+			item.color = "#" + fmt.Sprintf("%x", F.Itob32(int32(i[3].(float64)))[1:])
+		}
 		if len(infob) > 0 {
 			item.msg, _ = infob[1].(string)
 		}
@@ -1190,7 +1194,11 @@ func Msg_showdanmu(item Danmu_item) {
 
 	//展示
 	{
-		Assf(msg) //ass
+		//ass
+		Assf(msg)
+		//直播流服务弹幕
+		SendStreamWs(item)
+
 		if item.auth != nil {
 			Gui_show(fmt.Sprint(item.auth)+`: `+msg, item.uid)
 		} else {
@@ -1242,8 +1250,6 @@ func Gui_show(m ...string) {
 	if len(m) > 1 {
 		uid = m[1]
 	}
-	//直播流服务弹幕
-	SendStreamWs(m[0])
 	Danmu_mq.Push_tag(`danmu`, Danmu_mq_t{
 		uid: uid,
 		msg: m[0],

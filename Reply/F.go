@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"math"
 	"net/http"
+	"net/url"
 	"os/exec"
 	"path/filepath"
 	"strconv"
@@ -1040,12 +1041,39 @@ func AutoSend_silver_gift() {
 // 直播Web服务口
 var StreamWs = websocket.New_server()
 
-func SendStreamWs(msg string) {
+func SendStreamWs(item Danmu_item) {
+	var msg string
+	if item.auth != nil {
+		msg += fmt.Sprint(item.auth) + `: `
+	}
+	msg += item.msg
 	msg = strings.ReplaceAll(msg, "\n", "")
 	msg = strings.ReplaceAll(msg, "\\", "\\\\")
+
+	type DataStyle struct {
+		Color string `json:"color"`
+	}
+
+	type Data struct {
+		Text  string    `json:"text"`
+		Style DataStyle `json:"style"`
+	}
+
+	var data, err = json.Marshal(Data{
+		Text: msg,
+		Style: DataStyle{
+			Color: item.color,
+		},
+	})
+
+	if err != nil {
+		flog.Base_add(`流服务弹幕`).L(`E: `, err)
+		return
+	}
+
 	StreamWs.Interface().Push_tag(`send`, websocket.Uinterface{
 		Id:   0,
-		Data: []byte(`{"text":"` + msg + `"}`),
+		Data: data,
 	})
 }
 
@@ -1067,6 +1095,15 @@ func init() {
 
 		s.Handle(map[string]func(http.ResponseWriter, *http.Request){
 			`/`: func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path != `/` {
+					paths := strings.Split(r.URL.Path, "/")
+					var path string = paths[len(paths)-1]
+					if paths[len(paths)-1] == `` {
+						path = `index.html`
+					}
+					http.ServeFile(w, r, "html/artPlayer/"+path)
+					return
+				}
 				if v, ok := c.C.K_v.LoadV(`直播流保存位置`).(string); ok && v != "" {
 					http.FileServer(http.Dir(v)).ServeHTTP(w, r)
 				} else {
@@ -1088,6 +1125,32 @@ func init() {
 				w.Header().Set("Access-Control-Allow-Origin", "*")
 				w.Header().Set("Connection", "keep-alive")
 				w.Header().Set("Content-Transfer-Encoding", "binary")
+
+				if referer, e := url.Parse(r.Header.Get(`Referer`)); e != nil {
+					w.Header().Set("Retry-After", "1")
+					w.WriteHeader(http.StatusServiceUnavailable)
+					flog.L(`E: `, e)
+					return
+				} else if referer.Path != `/now/` {
+					if v, ok := c.C.K_v.LoadV(`直播流保存位置`).(string); ok && v != "" {
+						if strings.HasSuffix(v, "/") || strings.HasSuffix(v, "\\") {
+							v += referer.Path[1:]
+						} else {
+							v += referer.Path
+						}
+						if p.Checkfile().IsExist(v + "0.flv") {
+							http.ServeFile(w, r, v+"0.flv")
+						}
+						if p.Checkfile().IsExist(v + "0.mp4") {
+							http.ServeFile(w, r, v+"0.mp4")
+						}
+					} else {
+						w.Header().Set("Retry-After", "1")
+						w.WriteHeader(http.StatusServiceUnavailable)
+						flog.L(`W: `, `直播流保存位置无效`)
+					}
+					return
+				}
 
 				// 获取当前房间的
 				var currentStreamO *M4SStream

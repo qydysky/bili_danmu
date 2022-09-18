@@ -122,16 +122,22 @@ I: 2022/09/15 02:23:23 Msg [qydysky丶 : 赞]
 ```
 
 #### 流保存以及弹幕ass
-~~注意：在 [6ecff5b](6ecff5b82c16145bc7c459f086b9bf13574c2c76) 后的若干版本中，对流保存进行了重写，暂时只支持hls类型~~
-
 在`demo/config/config_K_v.json`中可找到配置项
 
 ```json
 "直播流清晰度-help": "清晰度可选-1:不保存 0:默认 10000:原画 800:4K 401:蓝光(杜比) 400:蓝光 250:超清 150:高清 80:流畅,无提供所选清晰度时，使用低一档清晰度",
-"直播流清晰度": 150,
+"直播流清晰度": 10000,
 "直播流类型-help": "flv or hls",
-"直播流类型": "hls",
-"直播流保存位置": "./live",
+"直播流类型": "flv",
+"直播流保存位置": "E:\\test",
+"直播hls流均衡-help":"true:使用所有hls服务器",
+"直播hls流均衡": true,
+"直播hls流保存为MP4": true,
+"仅保存当前直播间流-help": "启用此项，才会保存Ass",
+"仅保存当前直播间流": true,
+"直播Web服务口":0,
+"直播Web缓冲长度-help":"非负整数，越长直播流延迟越高 内存占用越高",
+"直播Web缓冲长度":3,
 "ass-help": "只有保存直播流时才考虑生成ass，ass编码默认GB18030(可选utf-8)",
 "生成Ass弹幕": true,
 "Ass编码": "GB18030",
@@ -139,15 +145,15 @@ I: 2022/09/15 02:23:23 Msg [qydysky丶 : 赞]
 
 当直播流类型为`hls`时，使用`ffmpeg -i 0.m3u8 -c copy 0.mp4`命令可以合并切片
 
+当`直播hls流保存为MP4`为`true`时，默认将下载的切片合并保存为mp4
+
 ass编码GB18030支持中文
 
 - `GB18030`(默认)
 - `utf-8`
 
 #### 直播流Web服务
-~~注意：在 [6ecff5b](6ecff5b82c16145bc7c459f086b9bf13574c2c76) 后的若干版本中，对流保存进行了重写，暂时只支持MP4格式流，mp4流为`流地址/mp4`~~
-
-注意：直接进入串流地址为[artplayer](https://artplayer.org/)及[Danmaku](https://github.com/weizhenye/Danmaku)的演示前端界面
+注意：直接进入串流地址为[artplayer](https://artplayer.org/)、[mpegts](https://github.com/xqq/mpegts.js)及[Danmaku](https://github.com/weizhenye/Danmaku)的演示前端界面
 
 启动Web流服务，为下载的直播流提供局域网内的流服务，提供flv、hls/mp4格式流。
 
@@ -167,14 +173,12 @@ I: 2021/04/13 20:07:45 命令行操作 [直播Web服务: http://192.168.31.245:3
 
 支持跨域，注意：在https网站默认无法加载非本机http服务
 
-- flv/m3u8结尾：保存完毕的直播流，播放此链接时将从头开始播放
-- ass结尾：保存完毕的直播流字幕，有些播放器会在串流时获取此文件
-- m4s结尾：hls切片
+点击进入任意一个目录，将进行回放
 
 **特殊**
 - 路径为`/now`
 
-  例：当服务地址为下方的38259口时，此对应的路径为`http://192.168.31.245:38259/now`)，会重定向到当前正在获取的流，播放此链接时进度将保持当前流进度。若`直播流类型`为flv,则需要在url添加`?type=flv`
+  例：当服务地址为下方的38259口时，此对应的路径为`http://192.168.31.245:38259/now`)，会重定向到当前正在获取的流，播放此链接时进度将保持当前流进度，并加载实时弹幕(支持颜色)。 ~~若`直播流类型`为flv,则需要在url添加`?type=flv`~~
 
 - 路径为`/stream`
 
@@ -184,7 +188,7 @@ I: 2021/04/13 20:07:45 命令行操作 [直播Web服务: http://192.168.31.245:3
 
 - flv-html播放器
   - [xqq/mpegts.js](https://github.com/xqq/mpegts.js)
-  - [bilibili/flv.js](https://github.com/bilibili/flv.js)
+  - ~~[bilibili/flv.js](https://github.com/bilibili/flv.js)~~
 - hls-html播放器
   - [bytedance/xgplayer](https://github.com/bytedance/xgplayer)
   - [videojs/video.js](https://github.com/videojs/video.js)([demo](https://videojs-http-streaming.netlify.app))
@@ -195,11 +199,6 @@ I: 2021/04/13 20:07:45 命令行操作 [直播Web服务: http://192.168.31.245:3
 - 客户端播放器
   - [mpv](https://mpv.io/)
   - [MXPlayer](https://sites.google.com/site/mxvpen/home)
-
-**特殊的**
-
-由于hls流使用浏览器支持的编码格式，故可以使用浏览器直接打开mp4直播流链接，即上述带`?type=mp4`的链接。
-
 
 #### 命令行操作
 在准备动作完成(`T: 2021/03/06 16:22:39 命令行操作 [回车查看帮助]`)后，输入回车将显示帮助

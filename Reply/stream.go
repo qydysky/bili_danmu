@@ -52,7 +52,7 @@ type M4SStream_Config struct {
 	save_path     string //直播流保存目录
 	want_qn       int    //直播流清晰度
 	want_type     string //直播流类型
-	bufsize       int    //直播hls流缓冲
+	save_as_mp4   bool   //直播hls流保存为MP4
 	banlance_host bool   //直播hls流均衡
 }
 
@@ -103,8 +103,8 @@ func (t *M4SStream) LoadConfig(common c.Common, l *log.Log_interface) {
 			return
 		}
 	}
-	if v, ok := common.K_v.LoadV(`直播hls流缓冲`).(float64); ok && v > 0 {
-		t.config.bufsize = int(v)
+	if v, ok := common.K_v.LoadV(`直播hls流保存为MP4`).(bool); ok {
+		t.config.save_as_mp4 = v
 	}
 	if v, ok := common.K_v.LoadV(`直播hls流均衡`).(bool); ok {
 		t.config.banlance_host = v
@@ -133,7 +133,11 @@ func (t *M4SStream) fetchCheckStream() bool {
 
 	// 保存流类型
 	if strings.Contains(t.common.Live[0], `m3u8`) {
-		t.stream_type = "m3u8"
+		if t.config.save_as_mp4 {
+			t.stream_type = "mp4"
+		} else {
+			t.stream_type = "m3u8"
+		}
 	} else if strings.Contains(t.common.Live[0], `flv`) {
 		t.stream_type = "flv"
 	}
@@ -417,6 +421,7 @@ func (t *M4SStream) saveStream() {
 	// 获取流
 	switch t.stream_type {
 	case `m3u8`:
+	case `mp4`:
 		t.saveStreamM4s()
 	case `flv`:
 		t.saveStreamFlv()
@@ -547,6 +552,16 @@ func (t *M4SStream) saveStreamM4s() {
 		Max: 3,
 	}
 
+	var out *os.File
+	if t.config.save_as_mp4 {
+		var err error
+		out, err = os.Create(t.Current_save_path + `0.mp4`)
+		if err != nil {
+			out.Close()
+		}
+		defer out.Close()
+	}
+
 	// 下载循环
 	for download_seq := []*m4s_link_item{}; ; {
 
@@ -586,10 +601,10 @@ func (t *M4SStream) saveStreamM4s() {
 
 					req := t.reqPool.Get()
 					defer t.reqPool.Put(req)
+
 					r := req.Item.(*reqf.Req)
-					if e := r.Reqf(reqf.Rval{
+					reqConfig := reqf.Rval{
 						Url:            link.Url,
-						SaveToPath:     path + link.Base,
 						ConnectTimeout: 2000,
 						ReadTimeout:    1000,
 						Timeout:        2000,
@@ -597,7 +612,11 @@ func (t *M4SStream) saveStreamM4s() {
 						Header: map[string]string{
 							`Connection`: `close`,
 						},
-					}); e != nil && !errors.Is(e, io.EOF) {
+					}
+					if !t.config.save_as_mp4 {
+						reqConfig.SaveToPath = path + link.Base
+					}
+					if e := r.Reqf(reqConfig); e != nil && !errors.Is(e, io.EOF) {
 						if !reqf.IsTimeout(e) {
 							t.log.L(`E: `, `hls切片下载失败:`, e)
 						}
@@ -627,9 +646,15 @@ func (t *M4SStream) saveStreamM4s() {
 					download_seq = download_seq[1:]
 					t.bootBufPush(v.data)
 					t.Stream_msg.Push_tag(`data`, v.data)
+					if t.config.save_as_mp4 {
+						out.Write(v.data)
+					}
 				} else {
 					break
 				}
+			}
+			if t.config.save_as_mp4 {
+				out.Sync()
 			}
 		}
 
@@ -676,26 +701,30 @@ func (t *M4SStream) saveStreamM4s() {
 		// 添加新切片到下载队列
 		download_seq = append(download_seq, m4s_links...)
 
-		// 添加m3u8字节
-		p.File().FileWR(p.Filel{
-			File:    t.Current_save_path + "0.m3u8.dtmp",
-			Loc:     -1,
-			Context: []interface{}{m3u8_addon},
-		})
+		if !t.config.save_as_mp4 {
+			// 添加m3u8字节
+			p.File().FileWR(p.Filel{
+				File:    t.Current_save_path + "0.m3u8.dtmp",
+				Loc:     -1,
+				Context: []interface{}{m3u8_addon},
+			})
+		}
 	}
 
 	// 发送空字节会导致流服务终止
 	t.Stream_msg.Push_tag(`data`, []byte{})
 
-	// 结束
-	if p.Checkfile().IsExist(t.Current_save_path + "0.m3u8.dtmp") {
-		f := p.File()
-		f.FileWR(p.Filel{
-			File:    t.Current_save_path + "0.m3u8.dtmp",
-			Loc:     -1,
-			Context: []interface{}{"#EXT-X-ENDLIST"},
-		})
-		p.FileMove(t.Current_save_path+"0.m3u8.dtmp", t.Current_save_path+"0.m3u8")
+	if !t.config.save_as_mp4 {
+		// 结束
+		if p.Checkfile().IsExist(t.Current_save_path + "0.m3u8.dtmp") {
+			f := p.File()
+			f.FileWR(p.Filel{
+				File:    t.Current_save_path + "0.m3u8.dtmp",
+				Loc:     -1,
+				Context: []interface{}{"#EXT-X-ENDLIST"},
+			})
+			p.FileMove(t.Current_save_path+"0.m3u8.dtmp", t.Current_save_path+"0.m3u8")
+		}
 	}
 }
 
@@ -788,6 +817,7 @@ func (t *M4SStream) Stop() {
 func (t *M4SStream) Pusher(w http.ResponseWriter, r *http.Request) {
 	switch t.stream_type {
 	case `m3u8`:
+	case `mp4`:
 		t.pusherM4s(w, r)
 	case `flv`:
 		t.pusherFlv(w, r)
