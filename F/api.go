@@ -902,6 +902,9 @@ func (c *GetFunc) getDanmuInfo() (missKey []string) {
 		c.Token = j.Data.Token
 		//弹幕链接
 		for _, v := range j.Data.HostList {
+			if v.WssPort != 443 {
+				c.WSURL = append(c.WSURL, "wss://"+v.Host+":"+strconv.Itoa(v.WssPort)+"/sub")
+			}
 			c.WSURL = append(c.WSURL, "wss://"+v.Host+"/sub")
 		}
 	}
