@@ -615,6 +615,8 @@ func (c *GetFunc) getRoomPlayInfo() (missKey []string) {
 							continue
 						}
 
+						no_found_type = false
+
 						for _, v := range v.Codec {
 							//选取配置中的格式
 							if v.CodecName != want_type.Codec_name {
