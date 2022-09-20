@@ -494,7 +494,7 @@ func (replyF) like_info_v3_click(s string) {
 	if e := json.Unmarshal([]byte(s), &type_item); e != nil {
 		msglog.L(`E: `, e)
 	}
-	s := type_item.Data.Uname + type_item.Data.LikeText
+	s = type_item.Data.Uname + type_item.Data.LikeText
 
 	Gui_show(s, "0room")
 
