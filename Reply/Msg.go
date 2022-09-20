@@ -104,6 +104,9 @@ var Msg_map = map[string]func(replyF, string){
 	"VIDEO_CONNECTION_MSG":              replyF.video_connection_msg,        //视频连线状态改变
 	"WARNING":                           replyF.warning,                     //超管警告
 	"DANMU_AGGREGATION":                 nil,                                //聚合弹幕
+	"GUARD_HONOR_THOUSAND":              nil,
+	"LIKE_INFO_V3_CLICK":                replyF.like_info_v3_click, //为主播点赞了
+	"LIKE_INFO_V3_UPDATE":               nil,                       //为主播点赞了总个数
 }
 
 // 屏蔽不需要的消息

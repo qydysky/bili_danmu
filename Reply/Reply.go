@@ -487,6 +487,20 @@ func (replyF) warning(s string) {
 	msglog.Base_add("房").L(`I: `, s)
 }
 
+// Msg-为主播点赞了
+func (replyF) like_info_v3_click(s string) {
+	var type_item ws_msg.LIKE_INFO_V3_CLICK
+
+	if e := json.Unmarshal([]byte(s), &type_item); e != nil {
+		msglog.L(`E: `, e)
+	}
+	s := type_item.Data.Uname + type_item.Data.LikeText
+
+	Gui_show(s, "0room")
+
+	msglog.Base_add("房").L(`I: `, s)
+}
+
 // Msg-开始了视频连线
 func (replyF) video_connection_join_start(s string) {
 	msglog := msglog.Base_add("房").Log_show_control(false)
