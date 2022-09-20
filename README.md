@@ -366,33 +366,54 @@ go build -v -tags `gtk` -o demo.exe -i main.go
 
 ### 运行 
 #### 方法
-1. 前往[releases](https://github.com/qydysky/bili_danmu/releases)页下载对应系统版本。解压后进入`demo`目录(文件夹)，运行`demo.run`(`demo.exe`)。
-```
-./demo.run [-r 房间ID]
-```
+1. 预先编译
 
-2. clone本项目。进入`demo`目录(文件夹)，运行：
+下载安装[golang](https://go.dev/)/[golangCN](https://golang.google.cn/)
+
+clone/下载本项目。进入`demo`目录(文件夹)，运行：
+```
+go build [-tags "gtk"] main.go
+```
+再运行生成的`main.exe`或`main`
+
+2. 即时编译
+
+下载安装[golang](https://go.dev/)/[golangCN](https://golang.google.cn/)
+
+clone/下载本项目。进入`demo`目录(文件夹)，运行：
 ```
 go run [-tags "gtk"] main.go [-r 房间ID]
 ```
 
-#### docker部署
+3. docker部署
+
 经测试可以部署到`ubuntu`镜像上，注意首先得[更新ca](https://stackoverflow.com/questions/64462922/docker-multi-stage-build-go-image-x509-certificate-signed-by-unknown-authorit)
 ```
 apt-get update && apt-get install -y ca-certificates openssl
 ```
 
 如果你日常使用windows，但在ubuntu运行，那还需先编译linux版本
+
+下载安装[golang](https://go.dev/)/[golangCN](https://golang.google.cn/)
+
+clone/下载本项目。进入`demo`目录(文件夹)，运行：
 ```
 set GOOS=linux
-go build mian.go
+go build main.go
 ```
 
-注意在`config_K_v.json`关闭`tts`等需要界面及音频的功能
+注意实际使用时，在`config_K_v.json`关闭`tts`等需要关闭界面及音频的功能，配置好录播存放位置，做好直播流服务的端口映射
+
+4. [不推荐] github编译
+
+前往[releases](https://github.com/qydysky/bili_danmu/releases)页下载对应系统版本。解压后进入`demo`目录(文件夹)，运行`demo.run`(`demo.exe`)。
+```
+./demo.run [-r 房间ID]
+```
 
 #### 注意事项
 * 其中[]内的内容为可选项
-* 法2的golang需1.15并建议使用最新提交
+* 法1，2，3建议使用最新提交
 * 弹幕及礼物会记录于danmu.log中
 * 部分功能(如签到、发送弹幕、获取原画等)**需要在`demo`目录(文件夹)下放置`cookie.txt`才可用** 或 **运行时按提示使用扫码登录成功后才可用(登录信息会保存在`demo/cookie.txt`中)**
 
