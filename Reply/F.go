@@ -24,6 +24,7 @@ import (
 
 	c "github.com/qydysky/bili_danmu/CV"
 	F "github.com/qydysky/bili_danmu/F"
+	J "github.com/qydysky/bili_danmu/Json"
 	send "github.com/qydysky/bili_danmu/Send"
 
 	p "github.com/qydysky/part"
@@ -949,48 +950,57 @@ func Keep_medal_light() {
 	}
 
 	flog.L(`T: `, `开始`)
+	defer flog.L(`I: `, `完成`)
 
-	var hasKeep bool
-	for _, v := range F.Get_list_in_room() {
+	cacheInfo := make(map[int]J.Info)
+	medals := F.Get_list_in_room()
+	if len(medals) == 0 {
+		return
+	}
+	for _, v := range medals {
 		if v.IsLighted == 1 {
 			continue
 		} //点亮状态
 
-		hasKeep = true
-
-		info := F.Info(v.TargetID)
+		cacheInfo[v.TargetID] = F.Info(v.TargetID)
 		//两天内到期，发弹幕续期
 		rand := p.Rand().MixRandom(0, int64(len(array)-1))
-		send.Danmu_s(array[rand].(string), info.Data.LiveRoom.Roomid)
+		send.Danmu_s(array[rand].(string), cacheInfo[v.TargetID].Data.LiveRoom.Roomid)
 		time.Sleep(time.Second)
 	}
 
 	//重试，使用点赞
-	for _, v := range F.Get_list_in_room() {
+	medals = F.Get_list_in_room()
+	if len(medals) == 0 {
+		return
+	}
+	for _, v := range medals {
 		if v.IsLighted == 1 {
 			continue
 		}
 
-		info := F.Info(v.TargetID)
 		//两天内到期，发弹幕续期
 		send.Danmu_s2(map[string]string{
 			`msg`:     `official_147`,
 			`dm_type`: `1`,
-			`roomid`:  strconv.Itoa(info.Data.LiveRoom.Roomid),
+			`roomid`:  strconv.Itoa(cacheInfo[v.TargetID].Data.LiveRoom.Roomid),
 		})
 		time.Sleep(time.Second)
 	}
 
 	//重试，使用历史弹幕
-	for _, v := range F.Get_list_in_room() {
+	medals = F.Get_list_in_room()
+	if len(medals) == 0 {
+		return
+	}
+	for _, v := range medals {
 		if v.IsLighted == 1 {
 			continue
 		}
 
-		info := F.Info(v.TargetID)
 		//两天内到期，发弹幕续期
 		var Str string
-		for _, v := range F.GetHistory(info.Data.LiveRoom.Roomid).Data.Room {
+		for _, v := range F.GetHistory(cacheInfo[v.TargetID].Data.LiveRoom.Roomid).Data.Room {
 			if v.Text != "" {
 				Str = v.Text
 				break
@@ -1000,14 +1010,8 @@ func Keep_medal_light() {
 			rand := p.Rand().MixRandom(0, int64(len(array)-1))
 			Str = array[rand].(string)
 		}
-		send.Danmu_s(Str, info.Data.LiveRoom.Roomid)
+		send.Danmu_s(Str, cacheInfo[v.TargetID].Data.LiveRoom.Roomid)
 		time.Sleep(time.Second)
-	}
-
-	if hasKeep {
-		flog.L(`I: `, `完成`)
-	} else {
-		flog.L(`T: `, `完成`)
 	}
 }
 
