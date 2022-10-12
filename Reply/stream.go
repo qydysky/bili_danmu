@@ -486,12 +486,34 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 			if err != nil {
 				out.Close()
 			}
+
 			rc, rw := io.Pipe()
+			var leastReadTime time.Time
+			// read timeout
+			go func() {
+				timer := time.NewTimer(5 * time.Second)
+				defer timer.Stop()
+				for {
+					select {
+					case <-s.WaitC():
+						return
+					case curT := <-timer.C:
+						if curT.Sub(leastReadTime).Seconds() > 5 {
+							// 5s未接收到任何数据
+							r.Cancel()
+							return
+						}
+					}
+				}
+			}()
+
+			// read
 			go func() {
 				var buff []byte
 				var buf = make([]byte, 1<<16)
 				for {
 					n, e := rc.Read(buf)
+					leastReadTime = time.Now()
 					buff = append(buff, buf[:n]...)
 					if n > 0 {
 						front_buf, keyframe, last_avilable_offset, e := Seach_stream_tag(buff)
@@ -869,7 +891,7 @@ func (t *M4SStream) Pusher(w http.ResponseWriter, r *http.Request) {
 	case `flv`:
 		t.pusherFlv(w, r)
 	default:
-		t.log.L(`E: `, `no support stream_type`)
+		t.log.L(`W: `, `Pusher no support stream_type`)
 	}
 }
 
