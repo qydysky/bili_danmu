@@ -107,6 +107,8 @@ var Msg_map = map[string]func(replyF, string){
 	"GUARD_HONOR_THOUSAND":              nil,
 	"LIKE_INFO_V3_CLICK":                replyF.like_info_v3_click, //为主播点赞了
 	"LIKE_INFO_V3_UPDATE":               nil,                       //为主播点赞了总个数
+	"USER_TASK_PROGRESS":                nil,
+	"LITTLE_TIPS":                       replyF.little_tips, //小提示窗口
 }
 
 // 屏蔽不需要的消息

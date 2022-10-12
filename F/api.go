@@ -1175,14 +1175,22 @@ func Info(UpUid int) (info J.Info) {
 
 	//html
 	{
+		Cookie := make(map[string]string)
+		c.C.Cookie.Range(func(k, v interface{}) bool {
+			Cookie[k.(string)] = v.(string)
+			return true
+		})
 		reqi := c.C.ReqPool.Get()
 		defer c.C.ReqPool.Put(reqi)
 		req := reqi.Item.(*reqf.Req)
 		if err := req.Reqf(reqf.Rval{
-			Url:     `https://api.bilibili.com/x/space/acc/info?mid=` + strconv.Itoa(UpUid) + `&jsonp=jsonp`,
+			Url:     `https://api.bilibili.com/x/space/acc/info?mid=` + strconv.Itoa(UpUid) + `&token=&platform=web&jsonp=jsonp`,
 			Proxy:   c.C.Proxy,
 			Timeout: 10 * 1000,
 			Retry:   2,
+			Header: map[string]string{
+				`Cookie`: reqf.Map_2_Cookies_String(Cookie),
+			},
 		}); err != nil {
 			apilog.L(`E: `, err)
 			return
@@ -1323,9 +1331,7 @@ func (c *GetFunc) Get_cookie() (missKey []string) {
 			WhiteChar: `OO`,
 		})
 		apilog.L(`W: `, `手机扫命令行二维码登录`)
-		for _, v := range sys.GetIntranetIp(``) {
-			apilog.L(`W: `, `或打开链接扫码登录：`, strings.Replace(`http://`+s.Server.Addr+`/qr.png`, `0.0.0.0`, v, -1))
-		}
+		apilog.L(`W: `, `或打开链接扫码登录： http://`+s.Server.Addr+`/qr.png`)
 		sys.Sys().Timeoutf(1)
 	}
 

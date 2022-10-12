@@ -52,6 +52,15 @@ func Start(roomid ...int) {
 		os.Exit(1)
 	}()
 
+	//启动时显示ip
+	{
+		if v, ok := c.C.K_v.LoadV("启动时显示ip").(bool); ok && v {
+			for _, v := range sys.GetIntranetIp(``) {
+				danmulog.L(`I: `, `当前ip：http://`+v)
+			}
+		}
+	}
+
 	{
 		var groomid = flag.Int("r", 0, "roomid")
 		flag.Parse()

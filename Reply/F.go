@@ -1217,11 +1217,8 @@ func init() {
 		})
 
 		c.C.Stream_url = []string{}
-		for _, v := range sys.GetIntranetIp(``) {
-			var url = strings.Replace(`http://`+s.Server.Addr, `0.0.0.0`, v, -1)
-			c.C.Stream_url = append(c.C.Stream_url, url)
-			flog.L(`I: `, `启动于`, url)
-		}
+		c.C.Stream_url = append(c.C.Stream_url, `http://`+s.Server.Addr)
+		flog.L(`I: `, `启动于 http://`+s.Server.Addr)
 	}
 }
 

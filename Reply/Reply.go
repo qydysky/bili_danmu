@@ -501,6 +501,20 @@ func (replyF) like_info_v3_click(s string) {
 	msglog.Base_add("房").L(`I: `, s)
 }
 
+// Msg-小提示窗口
+func (replyF) little_tips(s string) {
+	var type_item ws_msg.LITTLE_TIPS
+
+	if e := json.Unmarshal([]byte(s), &type_item); e != nil {
+		msglog.L(`E: `, e)
+	}
+	s = type_item.Data.Msg
+
+	Gui_show(s, "0room")
+
+	msglog.Base_add("房").L(`I: `, s)
+}
+
 // Msg-开始了视频连线
 func (replyF) video_connection_join_start(s string) {
 	msglog := msglog.Base_add("房").Log_show_control(false)

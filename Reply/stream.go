@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"net/url"
 	"os"
@@ -57,10 +59,11 @@ type M4SStream_Config struct {
 }
 
 type m4s_link_item struct {
-	Url    string // m4s链接
-	Base   string // m4s文件名
-	status int    // 下载状态 0:未下载 1:正在下载 2:下载完成 3:下载失败
-	data   []byte // 下载的数据
+	Url         string    // m4s链接
+	Base        string    // m4s文件名
+	status      int       // 下载状态 0:未下载 1:正在下载 2:下载完成 3:下载失败
+	data        []byte    // 下载的数据
+	createdTime time.Time //创建时间
 }
 
 func (t *m4s_link_item) isInit() bool {
@@ -262,6 +265,7 @@ func (t *M4SStream) fetchParseM3U8() (m4s_links []*m4s_link_item, m3u8_addon []b
 		}
 
 		// 解析m3u8
+		var tmp []*m4s_link_item
 		for _, line := range bytes.Split(m3u8_respon, []byte("\n")) {
 			if len(line) == 0 {
 				continue
@@ -304,11 +308,25 @@ func (t *M4SStream) fetchParseM3U8() (m4s_links []*m4s_link_item, m3u8_addon []b
 			}
 
 			//将切片添加到返回切片数组
-			m4s_links = append(m4s_links, &m4s_link_item{
-				Url:  m3u8_url.ResolveReference(u).String(),
-				Base: m4s_link,
+			tmp = append(tmp, &m4s_link_item{
+				Url:         m3u8_url.ResolveReference(u).String(),
+				Base:        m4s_link,
+				createdTime: time.Now(),
 			})
 		}
+
+		// 检查是否服务器发生故障,产出多个切片
+		if t.last_m4s != nil {
+			timed := tmp[len(tmp)-1].createdTime.Sub(t.last_m4s.createdTime).Seconds()
+			nos, _ := tmp[len(tmp)-1].getNo()
+			noe, _ := t.last_m4s.getNo()
+			if math.Abs(timed-float64(nos-noe)) > 2 {
+				e = fmt.Errorf("服务器 %s 发生故障 %d 秒产出了 %d 切片", m3u8_url.Host, int(timed), nos-noe)
+				continue
+			}
+		}
+
+		m4s_links = append(m4s_links, tmp...)
 
 		// 设置最后的切片
 		defer func(last_m4s *m4s_link_item) {
@@ -390,14 +408,14 @@ func (t *M4SStream) fetchParseM3U8() (m4s_links []*m4s_link_item, m3u8_addon []b
 		}
 
 		// 请求解析成功，退出获取循环
-		break
+		return
 	}
 
-	e = nil
+	e = errors.New("未能找到可用流服务器")
 	return
 }
 
-func (t *M4SStream) saveStream() {
+func (t *M4SStream) saveStream() (e error) {
 	// 设置保存路径
 	t.Current_save_path = t.config.save_path + "/" + time.Now().Format("2006_01_02_15_04_05_000") + "_" + strconv.Itoa(t.common.Roomid) + `/`
 
@@ -422,15 +440,18 @@ func (t *M4SStream) saveStream() {
 	switch t.stream_type {
 	case `m3u8`:
 	case `mp4`:
-		t.saveStreamM4s()
+		e = t.saveStreamM4s()
 	case `flv`:
-		t.saveStreamFlv()
+		e = t.saveStreamFlv()
 	default:
-		t.log.L(`E: `, `undefind stream type`)
+		e = errors.New("undefind stream type")
+		t.log.L(`E: `, e)
 	}
+
+	return
 }
 
-func (t *M4SStream) saveStreamFlv() {
+func (t *M4SStream) saveStreamFlv() (e error) {
 	//对每个直播流进行尝试
 	for _, v := range t.common.Live {
 		//结束退出
@@ -441,6 +462,7 @@ func (t *M4SStream) saveStreamFlv() {
 		surl, err := url.Parse(v)
 		if err != nil {
 			t.log.L(`E: `, err)
+			e = err
 			break
 		}
 
@@ -516,7 +538,7 @@ func (t *M4SStream) saveStreamFlv() {
 				return true
 			})
 
-			if e := r.Reqf(reqf.Rval{
+			if err := r.Reqf(reqf.Rval{
 				Url:              surl.String(),
 				SaveToPipeWriter: rw,
 				NoResponse:       true,
@@ -533,20 +555,24 @@ func (t *M4SStream) saveStreamFlv() {
 					`Referer`:         "https://live.bilibili.com/",
 					`Cookie`:          reqf.Map_2_Cookies_String(CookieM),
 				},
-			}); e != nil && !errors.Is(e, io.EOF) {
-				if reqf.IsCancel(e) {
+			}); err != nil && !errors.Is(err, io.EOF) {
+				if reqf.IsCancel(err) {
 					t.log.L(`I: `, `flv下载停止`)
-				} else if !reqf.IsTimeout(e) {
-					t.log.L(`E: `, `flv下载失败:`, e)
+				} else if !reqf.IsTimeout(err) {
+					e = err
+					t.log.L(`E: `, `flv下载失败:`, err)
 				}
 			}
 			s.Done()
 		}
 		t.reqPool.Put(req)
 	}
+
+	e = errors.New("未能找到可用流服务器")
+	return
 }
 
-func (t *M4SStream) saveStreamM4s() {
+func (t *M4SStream) saveStreamM4s() (e error) {
 	// 同时下载数限制
 	var download_limit = &funcCtrl.BlockFuncN{
 		Max: 3,
@@ -662,7 +688,8 @@ func (t *M4SStream) saveStreamM4s() {
 		if !t.Status.Islive() {
 			if len(download_seq) != 0 {
 				if time.Now().Unix() > t.stream_last_modified.Unix()+300 {
-					t.log.L(`E: `, `切片下载超时`)
+					e = errors.New("切片下载超时")
+					t.log.L(`E: `, e)
 				} else {
 					t.log.L(`I: `, `下载最后切片:`, len(download_seq))
 					continue
@@ -690,6 +717,7 @@ func (t *M4SStream) saveStreamM4s() {
 				continue
 			}
 			if !reqf.IsTimeout(err) {
+				e = err
 				break
 			}
 		}
@@ -726,6 +754,8 @@ func (t *M4SStream) saveStreamM4s() {
 			p.FileMove(t.Current_save_path+"0.m3u8.dtmp", t.Current_save_path+"0.m3u8")
 		}
 	}
+
+	return
 }
 
 func (t *M4SStream) Start() bool {
@@ -794,7 +824,24 @@ func (t *M4SStream) Start() bool {
 			}
 
 			// 保存流
-			t.saveStream()
+			err := t.saveStream()
+
+			// 直播流类型故障切换
+			if v, ok := t.common.K_v.LoadV(`直播流类型故障切换`).(bool); v && ok {
+				if err != nil && err.Error() == "未能找到可用流服务器" {
+					if v, ok := t.common.K_v.LoadV(`直播流类型`).(string); ok {
+						switch v {
+						case "hls":
+							t.common.K_v.Store(`直播流类型`, `flv`)
+						case "flv":
+							t.common.K_v.Store(`直播流类型`, `hls`)
+						default:
+							t.log.L(`E: `, `未知的流类型:`+v)
+						}
+					}
+				}
+			}
+
 		}
 
 		t.log.L(`I: `, `结束录制(`+strconv.Itoa(t.common.Roomid)+`)`)
