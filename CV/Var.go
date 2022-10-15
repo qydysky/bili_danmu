@@ -48,9 +48,8 @@ type Common struct {
 
 func (t *Common) init() Common {
 	t.Qn = map[int]string{ // no change
+		20000: "4K",
 		10000: "原画",
-		800:   "4K",
-		401:   "蓝光(杜比)",
 		400:   "蓝光",
 		250:   "超清",
 		150:   "高清",
@@ -58,9 +57,8 @@ func (t *Common) init() Common {
 	}
 
 	t.AcceptQn = map[int]string{ // no change
+		20000: "4K",
 		10000: "原画",
-		800:   "4K",
-		401:   "蓝光(杜比)",
 		400:   "蓝光",
 		250:   "超清",
 		150:   "高清",

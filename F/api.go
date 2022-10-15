@@ -268,27 +268,25 @@ func (c *GetFunc) Html() (missKey []string) {
 
 			//Roominitres
 			{
-				var j struct {
-					Roominitres J.Roominitres `json:"roomInitRes"`
-				}
+				var j J.NEPTUNE_IS_MY_WAIFU
 				if e := json.Unmarshal([]byte(s), &j); e != nil {
 					apilog.L(`E: `, e)
 					return
-				} else if j.Roominitres.Code != 0 {
-					apilog.L(`E: `, j.Roominitres.Message)
+				} else if j.RoomInitRes.Code != 0 {
+					apilog.L(`E: `, j.RoomInitRes.Message)
 					return
 				}
 
 				//主播uid
-				c.UpUid = j.Roominitres.Data.UID
+				c.UpUid = j.RoomInitRes.Data.UID
 				//房间号（完整）
-				if j.Roominitres.Data.RoomID != 0 {
-					c.Roomid = j.Roominitres.Data.RoomID
+				if j.RoomInitRes.Data.RoomID != 0 {
+					c.Roomid = j.RoomInitRes.Data.RoomID
 				}
 				//直播开始时间
-				c.Live_Start_Time = time.Unix(int64(j.Roominitres.Data.LiveTime), 0)
+				c.Live_Start_Time = time.Unix(int64(j.RoomInitRes.Data.LiveTime), 0)
 				//是否在直播
-				c.Liveing = j.Roominitres.Data.LiveStatus == 1
+				c.Liveing = j.RoomInitRes.Data.LiveStatus == 1
 
 				//未在直播，不获取直播流
 				if !c.Liveing {
@@ -329,7 +327,7 @@ func (c *GetFunc) Html() (missKey []string) {
 						apilog.L(`T: `, `默认flv`)
 					}
 
-					for _, v := range j.Roominitres.Data.PlayurlInfo.Playurl.Stream {
+					for _, v := range j.RoomInitRes.Data.PlayurlInfo.Playurl.Stream {
 						if v.ProtocolName != want_type.Protocol_name {
 							continue
 						}
@@ -535,7 +533,7 @@ func (c *GetFunc) getRoomPlayInfo() (missKey []string) {
 			return
 		}
 
-		var j J.Roominitres
+		var j J.GetRoomPlayInfo
 
 		if e := json.Unmarshal([]byte(req.Respon), &j); e != nil {
 			apilog.L(`E: `, e)
@@ -726,7 +724,7 @@ func (c *GetFunc) getRoomPlayInfoByQn() (missKey []string) {
 			return
 		}
 
-		var j J.Roominitres
+		var j J.GetRoomPlayInfo
 
 		if e := json.Unmarshal([]byte(req.Respon), &j); e != nil {
 			apilog.L(`E: `, e)
