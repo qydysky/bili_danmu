@@ -1275,28 +1275,30 @@ var Recoder = websocket.Recorder{
 }
 
 func StartRecDanmu(filePath string) {
-	if IsOn("弹幕回放") {
-		f := flog.Base("弹幕回放")
-		if e := Recoder.Start(filePath); e == nil {
-			f.L(`T: `, `开始`)
-		} else {
-			f.L(`E: `, e)
-		}
+	if !IsOn(`仅保存当前直播间流`) || !IsOn("弹幕回放") {
+		return
+	}
+	f := flog.Base("弹幕回放")
+	if e := Recoder.Start(filePath); e == nil {
+		f.L(`T: `, `开始`)
+	} else {
+		f.L(`E: `, e)
 	}
 }
 
 func PlayRecDanmu(filePath string) (*websocket.Server, func()) {
-	if IsOn("弹幕回放") {
-		return websocket.Play(filePath, 70, 1000)
+	if !IsOn(`仅保存当前直播间流`) || !IsOn("弹幕回放") {
+		return nil, nil
 	}
-	return nil, nil
+	return websocket.Play(filePath, 70, 1000)
 }
 
 func StopRecDanmu() {
-	if IsOn("弹幕回放") {
-		flog.Base("弹幕回放").L(`T: `, `停止`)
-		Recoder.Stop()
+	if !IsOn(`仅保存当前直播间流`) || !IsOn("弹幕回放") {
+		return
 	}
+	flog.Base("弹幕回放").L(`T: `, `停止`)
+	Recoder.Stop()
 }
 
 // 此次直播的交互人数
