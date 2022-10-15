@@ -42,7 +42,7 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        go: [ '1.17', '1.18.0' ]
+        go: [ '1.18', '1.19' ]
     steps:
     - name: Set up Go${{ matrix.go }}
       uses: actions/setup-go@v3
