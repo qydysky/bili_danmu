@@ -109,6 +109,7 @@ var Msg_map = map[string]func(replyF, string){
 	"LIKE_INFO_V3_UPDATE":               nil,                       //为主播点赞了总个数
 	"USER_TASK_PROGRESS":                nil,
 	"LITTLE_TIPS":                       replyF.little_tips, //小提示窗口
+	"LIKE_INFO_V3_NOTICE":               nil,
 }
 
 // 屏蔽不需要的消息

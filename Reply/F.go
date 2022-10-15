@@ -291,14 +291,19 @@ func init() {
 					)
 					common.Roomid = item.Roomid
 					tmp.LoadConfig(common, c.C.Log)
-					//关于ass的回调
-					tmp.Callback_start = func(ms *M4SStream) {
-						streamO.Store(ms.common.Roomid, tmp)                              //流服务添加
+					//录制回调，关于ass
+					tmp.Callback_startRec = func(ms *M4SStream) {
 						Ass_f(ms.Current_save_path, ms.Current_save_path+"0", time.Now()) //开始ass
+					}
+					tmp.Callback_stopRec = func(ms *M4SStream) {
+						Ass_f("", "", time.Now()) //停止ass
+					}
+					//实例回调，避免重复录制
+					tmp.Callback_start = func(ms *M4SStream) {
+						streamO.Store(ms.common.Roomid, tmp) //流服务添加
 					}
 					tmp.Callback_stop = func(ms *M4SStream) {
 						streamO.Delete(ms.common.Roomid) //流服务去除
-						Ass_f("", "", time.Now())        //停止ass
 					}
 					if tmp.Start() {
 						streamO.Store(item.Roomid, tmp)

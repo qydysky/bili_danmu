@@ -45,8 +45,10 @@ type M4SStream struct {
 	last_m4s          *m4s_link_item   //最后一个切片
 	common            c.Common         //通用配置副本
 	Current_save_path string           //明确的直播流保存目录
-	Callback_start    func(*M4SStream) //开始的回调
-	Callback_stop     func(*M4SStream) //结束的回调
+	Callback_start    func(*M4SStream) //实例开始的回调
+	Callback_startRec func(*M4SStream) //录制开始的回调
+	Callback_stopRec  func(*M4SStream) //录制结束的回调
+	Callback_stop     func(*M4SStream) //实例结束的回调
 	reqPool           *idpool.Idpool   //请求池
 }
 
@@ -432,9 +434,13 @@ func (t *M4SStream) saveStream() (e error) {
 		t.log.L(`I: `, "流地址:", v)
 	}
 
-	//开始,结束回调
-	t.Callback_start(t)
-	defer t.Callback_stop(t)
+	// 录制回调
+	if t.Callback_startRec != nil {
+		t.Callback_startRec(t)
+	}
+	if t.Callback_stopRec != nil {
+		defer t.Callback_stopRec(t)
+	}
 
 	// 获取流
 	switch t.stream_type {
@@ -802,6 +808,14 @@ func (t *M4SStream) Start() bool {
 	t.Status = signal.Init()
 	go func() {
 		defer t.Status.Done()
+
+		// 实例回调
+		if t.Callback_start != nil {
+			t.Callback_start(t)
+		}
+		if t.Callback_stop != nil {
+			defer t.Callback_stop(t)
+		}
 
 		t.log.L(`I: `, `初始化录制(`+strconv.Itoa(t.common.Roomid)+`)`)
 
