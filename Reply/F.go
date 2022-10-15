@@ -28,6 +28,7 @@ import (
 	send "github.com/qydysky/bili_danmu/Send"
 
 	p "github.com/qydysky/part"
+	file "github.com/qydysky/part/file"
 	limit "github.com/qydysky/part/limit"
 	msgq "github.com/qydysky/part/msgq"
 	psync "github.com/qydysky/part/sync"
@@ -293,9 +294,11 @@ func init() {
 					tmp.LoadConfig(common, c.C.Log)
 					//录制回调，关于ass
 					tmp.Callback_startRec = func(ms *M4SStream) {
+						StartRecDanmu(ms.Current_save_path + "0.csv")
 						Ass_f(ms.Current_save_path, ms.Current_save_path+"0", time.Now()) //开始ass
 					}
 					tmp.Callback_stopRec = func(ms *M4SStream) {
+						StopRecDanmu()
 						Ass_f("", "", time.Now()) //停止ass
 					}
 					//实例回调，避免重复录制
@@ -1210,6 +1213,44 @@ func init() {
 				currentStreamO.Pusher(w, r)
 			},
 			`/ws`: func(w http.ResponseWriter, r *http.Request) {
+				if protocol, e := url.Parse(r.Header.Get(`Sec-WebSocket-Protocol`)); e != nil {
+					w.Header().Set("Retry-After", "1")
+					w.WriteHeader(http.StatusServiceUnavailable)
+					flog.L(`E: `, e)
+					return
+				} else if protocol.Path != `/now/` {
+					if v, ok := c.C.K_v.LoadV(`直播流保存位置`).(string); ok && v != "" {
+						if strings.HasSuffix(v, "/") || strings.HasSuffix(v, "\\") {
+							v += protocol.Path[1:]
+						} else {
+							v += protocol.Path
+						}
+
+						if !file.New(v+"0.csv", 0, true).IsExist() {
+							w.WriteHeader(http.StatusNotFound)
+							return
+						}
+
+						if s, closeF := PlayRecDanmu(v + "0.csv"); s == nil {
+							w.WriteHeader(http.StatusNotFound)
+							return
+						} else {
+							defer closeF()
+							//获取通道
+							conn := s.WS(w, r)
+							//由通道获取本次会话id，并测试 提示
+							<-conn
+							//等待会话结束，通道释放
+							<-conn
+						}
+					} else {
+						w.Header().Set("Retry-After", "1")
+						w.WriteHeader(http.StatusServiceUnavailable)
+						flog.L(`W: `, `直播流保存位置无效`)
+					}
+					return
+				}
+
 				//获取通道
 				conn := StreamWs.WS(w, r)
 				//由通道获取本次会话id，并测试 提示
@@ -1225,6 +1266,36 @@ func init() {
 		c.C.Stream_url = []string{}
 		c.C.Stream_url = append(c.C.Stream_url, `http://`+s.Server.Addr)
 		flog.L(`I: `, `启动于 http://`+s.Server.Addr)
+	}
+}
+
+// 弹幕回放
+var Recoder = websocket.Recorder{
+	Server: StreamWs,
+}
+
+func StartRecDanmu(filePath string) {
+	if IsOn("弹幕回放") {
+		f := flog.Base("弹幕回放")
+		if e := Recoder.Start(filePath); e == nil {
+			f.L(`T: `, `开始`)
+		} else {
+			f.L(`E: `, e)
+		}
+	}
+}
+
+func PlayRecDanmu(filePath string) (*websocket.Server, func()) {
+	if IsOn("弹幕回放") {
+		return websocket.Play(filePath, 70, 1000)
+	}
+	return nil, nil
+}
+
+func StopRecDanmu() {
+	if IsOn("弹幕回放") {
+		flog.Base("弹幕回放").L(`T: `, `停止`)
+		Recoder.Stop()
 	}
 }
 
