@@ -464,7 +464,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 	for _, v := range t.common.Live {
 		//结束退出
 		if !t.Status.Islive() {
-			break
+			return
 		}
 
 		surl, err := url.Parse(v)
