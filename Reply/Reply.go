@@ -64,7 +64,9 @@ func Reply(b []byte) {
 		switch head.OpeaT {
 		case c.WS_OP_MESSAGE:
 			Msg(contain)
-			Save_to_json(-1, []interface{}{contain, `,`})
+			var tmp []byte
+			copy(tmp, contain)
+			Save_to_json(-1, append(tmp, ','))
 		case c.WS_OP_HEARTBEAT_REPLY: //心跳响应
 			Heart(contain)
 			return //忽略剩余内容

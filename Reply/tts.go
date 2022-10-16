@@ -16,6 +16,7 @@ import (
 	c "github.com/qydysky/bili_danmu/CV"
 
 	p "github.com/qydysky/part"
+	file "github.com/qydysky/part/file"
 	funcCtrl "github.com/qydysky/part/funcCtrl"
 	limit "github.com/qydysky/part/limit"
 	msgq "github.com/qydysky/part/msgq"
@@ -408,10 +409,7 @@ func init() {
 					}
 				}
 				if len(buf) != 0 {
-					p.File().FileWR(p.Filel{
-						File:    sys.Sys().Cdir() + `/tts.mp3`,
-						Context: []interface{}{buf},
-					})
+					file.New(sys.Sys().Cdir()+`/tts.mp3`, 0, true).Write(buf, true)
 					play()
 				}
 				xfwsClient.Close()

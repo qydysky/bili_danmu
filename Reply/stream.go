@@ -19,6 +19,7 @@ import (
 	F "github.com/qydysky/bili_danmu/F"
 
 	p "github.com/qydysky/part"
+	file "github.com/qydysky/part/file"
 	funcCtrl "github.com/qydysky/part/funcCtrl"
 	idpool "github.com/qydysky/part/idpool"
 	log "github.com/qydysky/part/log"
@@ -760,11 +761,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 
 		if !t.config.save_as_mp4 {
 			// 添加m3u8字节
-			p.File().FileWR(p.Filel{
-				File:    t.Current_save_path + "0.m3u8.dtmp",
-				Loc:     -1,
-				Context: []interface{}{m3u8_addon},
-			})
+			file.New(t.Current_save_path+"0.m3u8.dtmp", -1, true).Write(m3u8_addon, true)
 		}
 	}
 
@@ -774,12 +771,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 	if !t.config.save_as_mp4 {
 		// 结束
 		if p.Checkfile().IsExist(t.Current_save_path + "0.m3u8.dtmp") {
-			f := p.File()
-			f.FileWR(p.Filel{
-				File:    t.Current_save_path + "0.m3u8.dtmp",
-				Loc:     -1,
-				Context: []interface{}{"#EXT-X-ENDLIST"},
-			})
+			file.New(t.Current_save_path+"0.m3u8.dtmp", -1, true).Write([]byte("#EXT-X-ENDLIST"), true)
 			p.FileMove(t.Current_save_path+"0.m3u8.dtmp", t.Current_save_path+"0.m3u8")
 		}
 	}

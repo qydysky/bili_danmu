@@ -4,11 +4,11 @@ import (
 	"fmt"
 
 	c "github.com/qydysky/bili_danmu/CV"
-	p "github.com/qydysky/part"
 	crypto "github.com/qydysky/part/crypto"
+	file "github.com/qydysky/part/file"
 )
 
-//公私钥加密
+// 公私钥加密
 var (
 	clog = c.C.Log.Base(`cookie加密`)
 	pub  []byte
@@ -71,12 +71,7 @@ func CookieSet(source []byte) {
 				pub = d
 			}
 		} else {
-			f := p.File()
-			f.FileWR(p.Filel{
-				File:    `cookie.txt`,
-				Loc:     0,
-				Context: []interface{}{`nol`, source},
-			})
+			file.New(`cookie.txt`, 0, true).Write(append([]byte("nol"), source...), true)
 			return
 		}
 	}
@@ -84,11 +79,6 @@ func CookieSet(source []byte) {
 		clog.L(`E: `, e)
 		return
 	} else {
-		f := p.File()
-		f.FileWR(p.Filel{
-			File:    `cookie.txt`,
-			Loc:     0,
-			Context: []interface{}{`pem`, source},
-		})
+		file.New(`cookie.txt`, 0, true).Write(append([]byte("pem"), source...), true)
 	}
 }

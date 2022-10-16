@@ -323,7 +323,7 @@ func Start(roomid ...int) {
 				}
 			}
 			{ //附加功能 ws信息保存
-				reply.Save_to_json(-1, []interface{}{`{}]`})
+				reply.Save_to_json(-1, []byte("{}]"))
 				if v, ok := c.C.K_v.LoadV(`仅保存当前直播间流`).(bool); ok && v {
 					reply.StreamOStop(-2) //停止其他房间录制
 				}

@@ -37,6 +37,7 @@ import (
 	websocket "github.com/qydysky/part/websocket"
 
 	obsws "github.com/christopher-dG/go-obs-websocket"
+	encoder "golang.org/x/text/encoding"
 )
 
 /*
@@ -144,10 +145,10 @@ func ShowRevf() {
 
 // Ass 弹幕转字幕
 type Ass struct {
-	file   string                    //弹幕ass文件名
-	startT time.Time                 //开始记录的基准时间
-	header string                    //ass开头
-	wrap   func(io.Writer) io.Writer //编码
+	file   string           //弹幕ass文件名
+	startT time.Time        //开始记录的基准时间
+	header string           //ass开头
+	wrap   encoder.Encoding //编码
 }
 
 var (
@@ -174,7 +175,7 @@ Style: Default,,` + strconv.Itoa(Ass_font) + `,&H40FFFFFF,&H000017FF,&H80000000,
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 `,
-	wrap: simplifiedchinese.GB18030.NewEncoder().Writer,
+	wrap: simplifiedchinese.GB18030,
 }
 
 func init() {
@@ -193,12 +194,12 @@ func init() {
 }
 
 // 设定字幕文件名，为""时停止输出
-func Ass_f(save_path string, file string, st time.Time) {
+func Ass_f(save_path string, filePath string, st time.Time) {
 	if !IsOn(`仅保存当前直播间流`) {
 		return
 	}
-	ass.file = file
-	if file == "" {
+	ass.file = filePath
+	if filePath == "" {
 		return
 	}
 
@@ -208,12 +209,14 @@ func Ass_f(save_path string, file string, st time.Time) {
 		c.C.Log.Base(`Ass`).L(`I: `, "保存到", ass.file+".ass")
 		c.C.Log.Base(`Ass`).L(`W: `, err)
 	}
-	p.File().FileWR(p.Filel{
-		File:       ass.file + ".ass",
-		Loc:        0,
-		Context:    []interface{}{ass.header},
-		WrapWriter: ass.wrap,
-	})
+	f := &file.File{
+		Config: file.Config{
+			FilePath:  ass.file + ".ass",
+			AutoClose: true,
+			Coder:     ass.wrap,
+		},
+	}
+	f.Write([]byte(ass.header), true)
 	ass.startT = st
 }
 
@@ -238,12 +241,12 @@ func Assf(s string) {
 	b += `Dialogue: 0,`
 	b += dtos(st) + `,` + dtos(et)
 	b += `,Default,,0,0,0,,{\fad(200,500)\blur3}` + s + "\n"
-	p.File().FileWR(p.Filel{
-		File:       ass.file + ".ass",
-		Loc:        -1,
-		Context:    []interface{}{b},
-		WrapWriter: ass.wrap,
-	})
+
+	f := file.New(ass.file+".ass", -1, true)
+	f.Config.Coder = ass.wrap
+	if _, e := f.Write([]byte(b), true); e != nil {
+		flog.Base(`Assf`).L(`E: `, e)
+	}
 }
 
 // 时间转化为0:00:00.00规格字符串
@@ -471,12 +474,20 @@ func Autobanf(s string) bool {
 		return false
 	}
 
-	if len(autoban.Banbuf) == 0 {
-		f := p.File().FileWR(p.Filel{
-			File: "Autoban.txt",
-		})
+	l := c.C.Log.Base("autoban")
 
-		autoban.Banbuf = append(autoban.Banbuf, strings.Split(f, "\n")...)
+	if len(autoban.Banbuf) == 0 {
+		f := file.New("Autoban.txt", -1, false)
+		for {
+			if data, e := f.ReadUntil('\n', 50, 5000); e != nil {
+				if !errors.Is(e, io.EOF) {
+					l.L(`E: `, e)
+				}
+				break
+			} else {
+				autoban.Banbuf = append(autoban.Banbuf, string(data))
+			}
+		}
 	}
 
 	if len(autoban.buf) < 10 {
@@ -513,7 +524,6 @@ func Autobanf(s string) bool {
 		} //ban字符重复低去除
 		res = append(res, pt)
 	}
-	l := c.C.Log.Base("autoban")
 	l.L(`W: `, res)
 	return true
 }
@@ -898,26 +908,22 @@ func Jiezouf(s []string) bool {
 
 // 保存所有消息到json
 func init() {
-	Save_to_json(0, []interface{}{`[`})
+	Save_to_json(0, []byte{'['})
 	c.C.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
 		`change_room`: func(data interface{}) bool { //房间改变
-			Save_to_json(0, []interface{}{`[`})
+			Save_to_json(0, []byte{'['})
 			return false
 		},
 		`flash_room`: func(data interface{}) bool { //房间改变
-			Save_to_json(0, []interface{}{`[`})
+			Save_to_json(0, []byte{'['})
 			return false
 		},
 	})
 }
 
-func Save_to_json(Loc int, Context []interface{}) {
+func Save_to_json(Loc int, context []byte) {
 	if path, ok := c.C.K_v.LoadV(`save_to_json`).(string); ok && path != `` {
-		p.File().FileWR(p.Filel{
-			File:    path,
-			Loc:     int64(Loc),
-			Context: Context,
-		})
+		file.New(path, int64(Loc), true).Write(context, true)
 	}
 }
 
