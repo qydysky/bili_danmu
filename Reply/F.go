@@ -1219,17 +1219,17 @@ func init() {
 				currentStreamO.Pusher(w, r)
 			},
 			`/ws`: func(w http.ResponseWriter, r *http.Request) {
-				if protocol, e := url.Parse(r.Header.Get(`Sec-WebSocket-Protocol`)); e != nil {
+				if p, e := url.Parse(r.URL.Query().Get("p")); e != nil {
 					w.Header().Set("Retry-After", "1")
 					w.WriteHeader(http.StatusServiceUnavailable)
 					flog.L(`E: `, e)
 					return
-				} else if protocol.Path != `/now/` {
+				} else if p.Path != `/now/` {
 					if v, ok := c.C.K_v.LoadV(`直播流保存位置`).(string); ok && v != "" {
 						if strings.HasSuffix(v, "/") || strings.HasSuffix(v, "\\") {
-							v += protocol.Path[1:]
+							v += p.Path[1:]
 						} else {
-							v += protocol.Path
+							v += p.Path
 						}
 
 						if !file.New(v+"0.csv", 0, true).IsExist() {
