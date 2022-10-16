@@ -446,7 +446,7 @@ func (t *M4SStream) saveStream() (e error) {
 	// 获取流
 	switch t.stream_type {
 	case `m3u8`:
-		e = t.saveStreamM4s()
+		fallthrough
 	case `mp4`:
 		e = t.saveStreamM4s()
 	case `flv`:
@@ -496,17 +496,18 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 			}
 
 			rc, rw := io.Pipe()
-			var leastReadTime time.Time
+			var leastReadUnix = time.Now().Unix()
 			// read timeout
 			go func() {
-				timer := time.NewTimer(5 * time.Second)
+				timer := time.NewTicker(5 * time.Second)
 				defer timer.Stop()
 				for {
 					select {
 					case <-s.WaitC():
 						return
 					case curT := <-timer.C:
-						if curT.Sub(leastReadTime).Seconds() > 5 {
+						if curT.Unix()-leastReadUnix > 5 {
+							t.log.L(`W: `, "5s未接收到任何数据")
 							// 5s未接收到任何数据
 							r.Cancel()
 							return
@@ -521,7 +522,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 				var buf = make([]byte, 1<<16)
 				for {
 					n, e := rc.Read(buf)
-					leastReadTime = time.Now()
+					leastReadUnix = time.Now().Unix()
 					buff = append(buff, buf[:n]...)
 					if n > 0 {
 						front_buf, keyframe, last_avilable_offset, e := Seach_stream_tag(buff)
