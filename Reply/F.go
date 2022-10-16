@@ -10,7 +10,6 @@ import (
 	"math"
 	"net/http"
 	"net/url"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
@@ -1164,29 +1163,12 @@ func init() {
 						} else if p.Checkfile().IsExist(v + "0.mp4") {
 							v += "0.mp4"
 						}
-						if f, e := os.OpenFile(v, os.O_RDONLY, 0644); e != nil {
-							w.Header().Set("Retry-After", "1")
-							w.WriteHeader(http.StatusServiceUnavailable)
+
+						f := file.New(v, 0, false)
+						defer f.Close()
+
+						if e := f.CopyToIoWriter(w, 1000000, true); e != nil {
 							flog.L(`E: `, e)
-						} else {
-							// 流推送
-							l := limit.New(5, 500, -1)
-							defer l.Close()
-							var buf = make([]byte, 1<<16)
-							for {
-								if n, e := f.Read(buf); e != nil {
-									if errors.Is(e, io.EOF) {
-										break
-									} else {
-										flog.L(`E: `, e)
-									}
-								} else {
-									if _, e := w.Write(buf[:n]); e != nil {
-										break
-									}
-								}
-								l.TO()
-							}
 						}
 					} else {
 						w.Header().Set("Retry-After", "1")
