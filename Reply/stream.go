@@ -445,6 +445,7 @@ func (t *M4SStream) saveStream() (e error) {
 	// 获取流
 	switch t.stream_type {
 	case `m3u8`:
+		e = t.saveStreamM4s()
 	case `mp4`:
 		e = t.saveStreamM4s()
 	case `flv`:
@@ -861,6 +862,9 @@ func (t *M4SStream) Start() bool {
 
 			// 保存流
 			err := t.saveStream()
+			if err != nil {
+				t.log.L(`E: `, "saveStream:", err)
+			}
 
 			// 直播流类型故障切换
 			if v, ok := t.common.K_v.LoadV(`直播流类型故障切换`).(bool); v && ok {
