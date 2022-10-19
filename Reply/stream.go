@@ -164,40 +164,43 @@ func (t *M4SStream) fetchCheckStream() bool {
 		return true
 	})
 
-	req := t.reqPool.Get()
-	defer t.reqPool.Put(req)
-	r := req.Item.(*reqf.Req)
-	if e := r.Reqf(reqf.Rval{
-		Url:       t.common.Live[0],
-		Retry:     10,
-		SleepTime: 1000,
-		Proxy:     t.common.Proxy,
-		Header: map[string]string{
-			`User-Agent`:      `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0`,
-			`Accept`:          `*/*`,
-			`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
-			`Accept-Encoding`: `gzip, deflate, br`,
-			`Origin`:          `https://live.bilibili.com`,
-			`Pragma`:          `no-cache`,
-			`Cache-Control`:   `no-cache`,
-			`Referer`:         "https://live.bilibili.com/",
-			`Cookie`:          reqf.Map_2_Cookies_String(CookieM),
-			`Connection`:      `close`,
-		},
-		Timeout:          5 * 1000,
-		JustResponseCode: true,
-	}); e != nil {
-		t.log.L(`W: `, e)
+	for _, v := range t.common.Live {
+		req := t.reqPool.Get()
+		r := req.Item.(*reqf.Req)
+		if e := r.Reqf(reqf.Rval{
+			Url:       v,
+			Retry:     10,
+			SleepTime: 1000,
+			Proxy:     t.common.Proxy,
+			Header: map[string]string{
+				`User-Agent`:      `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0`,
+				`Accept`:          `*/*`,
+				`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
+				`Accept-Encoding`: `gzip, deflate, br`,
+				`Origin`:          `https://live.bilibili.com`,
+				`Pragma`:          `no-cache`,
+				`Cache-Control`:   `no-cache`,
+				`Referer`:         "https://live.bilibili.com/",
+				`Cookie`:          reqf.Map_2_Cookies_String(CookieM),
+				`Connection`:      `close`,
+			},
+			Timeout:          5 * 1000,
+			JustResponseCode: true,
+		}); e != nil {
+			t.log.L(`W: `, e)
+		}
+
+		if r.Response == nil {
+			t.log.L(`W: `, `live响应错误`)
+			t.common.Live = t.common.Live[1:]
+		} else if r.Response.StatusCode != 200 {
+			t.log.L(`W: `, `live响应错误`, r.Response.Status, string(r.Respon))
+			t.common.Live = t.common.Live[1:]
+		}
+		t.reqPool.Put(req)
 	}
 
-	if r.Response == nil {
-		t.log.L(`W: `, `live响应错误`)
-		return false
-	} else if r.Response.StatusCode != 200 {
-		t.log.L(`W: `, `live响应错误`, r.Response.Status, string(r.Respon))
-		return false
-	}
-	return true
+	return len(t.common.Live) != 0
 }
 
 func (t *M4SStream) fetchParseM3U8() (m4s_links []*m4s_link_item, m3u8_addon []byte, e error) {
@@ -462,22 +465,24 @@ func (t *M4SStream) saveStream() (e error) {
 func (t *M4SStream) saveStreamFlv() (e error) {
 	//对每个直播流进行尝试
 	for _, v := range t.common.Live {
+		surl, err := url.Parse(v)
+		if err != nil {
+			t.log.L(`E: `, err)
+			e = err
+			continue
+		}
+
 		//结束退出
 		if !t.Status.Islive() {
 			return
 		}
 
-		surl, err := url.Parse(v)
-		if err != nil {
-			t.log.L(`E: `, err)
-			e = err
-			break
-		}
+		// 如果被主动关闭，则退出saveStreamFlv，否则继续尝试其他live
+		s := signal.Init()
 
 		//开始获取
 		req := t.reqPool.Get()
 		{
-			s := signal.Init()
 			r := req.Item.(*reqf.Req)
 
 			go func() {
@@ -490,10 +495,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 				}
 			}()
 
-			out, err := os.Create(t.Current_save_path + `0.flv`)
-			if err != nil {
-				out.Close()
-			}
+			out := file.New(t.Current_save_path+`0.flv`, -1, true).File()
 
 			rc, rw := io.Pipe()
 			var leastReadUnix = time.Now().Unix()
@@ -511,6 +513,15 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 							// 5s未接收到任何数据
 							r.Cancel()
 							return
+						}
+						if v, ok := c.C.K_v.LoadV(`直播流清晰度`).(float64); ok {
+							if t.config.want_qn != int(v) {
+								t.log.L(`I: `, "直播流清晰度改变:", t.common.Qn[t.config.want_qn], "=>", t.common.Qn[int(v)])
+								t.config.want_qn = int(v)
+								s.Done()
+								r.Cancel()
+								return
+							}
 						}
 					}
 				}
@@ -569,6 +580,8 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 				return true
 			})
 
+			t.log.L(`I: `, `flv下载开始`)
+
 			if err := r.Reqf(reqf.Rval{
 				Url:              surl.String(),
 				SaveToPipeWriter: rw,
@@ -594,9 +607,14 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 					t.log.L(`E: `, `flv下载失败:`, err)
 				}
 			}
-			s.Done()
 		}
 		t.reqPool.Put(req)
+
+		if s.Islive() {
+			s.Done()
+		} else {
+			return
+		}
 	}
 
 	e = errors.New("未能找到可用流服务器")
@@ -643,7 +661,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 					// 均衡负载
 					if link_url, e := url.Parse(link.Url); e == nil {
 						if t.stream_hosts.Len() != 1 {
-							t.stream_hosts.Range(func(key, value interface{}) bool {
+							t.stream_hosts.Range(func(key, _ interface{}) bool {
 								// 故障转移
 								if link.status == 3 && link_url.Host == key.(string) {
 									return true
@@ -727,6 +745,14 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 				}
 			}
 			break
+		}
+
+		if v, ok := c.C.K_v.LoadV(`直播流清晰度`).(float64); ok {
+			if t.config.want_qn != int(v) {
+				t.log.L(`I: `, "直播流清晰度改变:", t.common.Qn[t.config.want_qn], "=>", t.common.Qn[int(v)])
+				t.config.want_qn = int(v)
+				return
+			}
 		}
 
 		// 刷新流地址
@@ -949,7 +975,7 @@ func (t *M4SStream) pusherM4s(w http.ResponseWriter, r *http.Request) {
 			}
 			return false
 		},
-		`close`: func(data interface{}) bool {
+		`close`: func(_ interface{}) bool {
 			close(cancel)
 			return true
 		},
@@ -1001,7 +1027,7 @@ func (t *M4SStream) pusherFlv(w http.ResponseWriter, r *http.Request) {
 			}
 			return false
 		},
-		`close`: func(data interface{}) bool {
+		`close`: func(_ interface{}) bool {
 			close(cancel)
 			return true
 		},

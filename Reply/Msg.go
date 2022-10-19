@@ -2,9 +2,9 @@ package reply
 
 import (
 	"encoding/json"
-	"io/ioutil"
 
 	c "github.com/qydysky/bili_danmu/CV"
+	file "github.com/qydysky/part/file"
 )
 
 /*
@@ -110,12 +110,13 @@ var Msg_map = map[string]func(replyF, string){
 	"USER_TASK_PROGRESS":                nil,
 	"LITTLE_TIPS":                       replyF.little_tips, //小提示窗口
 	"LIKE_INFO_V3_NOTICE":               nil,
+	"LIVE_INTERACTIVE_GAME":             nil,
 }
 
 // 屏蔽不需要的消息
 func init() {
 	{ //加载不需要的消息
-		bb, err := ioutil.ReadFile("config/config_disable_msg.json")
+		bb, err := file.New("config/config_disable_msg.json", 0, true).ReadAll(100, 1<<16)
 		if err != nil {
 			return
 		}

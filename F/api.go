@@ -680,7 +680,7 @@ func (c *GetFunc) getRoomPlayInfoByQn() (missKey []string) {
 
 	{
 		AcceptQn := []int{}
-		for k, _ := range c.AcceptQn {
+		for k := range c.AcceptQn {
 			if k <= c.Live_want_qn {
 				AcceptQn = append(AcceptQn, k)
 			}
@@ -1311,7 +1311,7 @@ func (c *GetFunc) Get_cookie() (missKey []string) {
 				}
 				http.ServeFile(w, r, path)
 			},
-			`/exit`: func(w http.ResponseWriter, r *http.Request) {
+			`/exit`: func(_ http.ResponseWriter, _ *http.Request) {
 				s.Server.Shutdown(context.Background())
 			},
 		})

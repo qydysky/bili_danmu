@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/url"
 	"os/exec"
 	"strings"
@@ -78,7 +77,7 @@ func init() {
 			}
 		}
 
-		bb, err := ioutil.ReadFile("config/config_tts.json")
+		bb, err := file.New("config/config_tts.json", 0, true).ReadAll(100, 1<<16)
 		if err != nil {
 			return
 		}
@@ -144,7 +143,7 @@ func init() {
 			}
 			return false
 		},
-		`change_room`: func(data interface{}) bool {
+		`change_room`: func(_ interface{}) bool {
 			for {
 				select {
 				case <-tts_List:
@@ -152,7 +151,6 @@ func init() {
 					return false
 				}
 			}
-			return false
 		},
 	})
 }
@@ -173,8 +171,6 @@ func TTS(msg string) {
 		tts_log.L(`E: `, err)
 		return
 	}
-
-	return
 }
 
 func play() {
@@ -427,7 +423,7 @@ func xf(msg string) error {
 
 	voice := xfVoice
 	if voice == `random` {
-		for k, _ := range xfVmap {
+		for k := range xfVmap {
 			voice = k
 			break
 		}

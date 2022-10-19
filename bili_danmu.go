@@ -97,14 +97,14 @@ func Start(roomid ...int) {
 
 		//使用带tag的消息队列在功能间传递消息
 		c.C.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
-			`flash_room`: func(data interface{}) bool { //房间重进
+			`flash_room`: func(_ interface{}) bool { //房间重进
 				select {
 				case flash_room_chan <- struct{}{}:
 				default:
 				}
 				return false
 			},
-			`change_room`: func(data interface{}) bool { //房间改变
+			`change_room`: func(_ interface{}) bool { //房间改变
 				c.C.Rev = 0.0    // 营收
 				c.C.Renqi = 1    // 人气置1
 				c.C.Watched = 0  // 观看人数
@@ -129,7 +129,7 @@ func Start(roomid ...int) {
 				}
 				return false
 			},
-			`gtk_close`: func(data interface{}) bool { //gtk关闭信号
+			`gtk_close`: func(_ interface{}) bool { //gtk关闭信号
 				interrupt <- os.Interrupt
 				return false
 			},
@@ -243,7 +243,7 @@ func Start(roomid ...int) {
 						F.Get(&c.C).Get(`GuardNum`)
 						//使用带tag的消息队列在功能间传递消息
 						c.C.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
-							`guard_update`: func(data interface{}) bool { //舰长更新
+							`guard_update`: func(_ interface{}) bool { //舰长更新
 								go F.Get(&c.C).Get(`GuardNum`)
 								return false
 							},
@@ -253,7 +253,7 @@ func Start(roomid ...int) {
 							`change_room`: func(data interface{}) bool { //换房时退出当前房间
 								return true
 							},
-							`new day`: func(data interface{}) bool { //日期更换
+							`new day`: func(_ interface{}) bool { //日期更换
 								//每日签到
 								F.Dosign()
 								// //获取用户版本  不再需要

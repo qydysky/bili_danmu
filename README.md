@@ -1,5 +1,6 @@
 ## bilibili 直播弹幕机
-golang go version go1.16 linux/amd64
+
+[![Go Report Card](https://goreportcard.com/badge/github.com/qydysky/bili_danmu)](https://goreportcard.com/report/github.com/qydysky/bili_danmu)
 
 ---
 ### 目录释义

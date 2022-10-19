@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math"
 	"net/http"
 	"net/url"
@@ -268,7 +267,7 @@ func StreamOCommon(roomid int) (array []c.Common) {
 			return []c.Common{v.(*M4SStream).Common()}
 		}
 	} else { //返回所有
-		streamO.Range(func(k, v interface{}) bool {
+		streamO.Range(func(_, v interface{}) bool {
 			array = append(array, v.(*M4SStream).Common())
 			return true
 		})
@@ -299,7 +298,7 @@ func init() {
 						StartRecDanmu(ms.Current_save_path + "0.csv")
 						Ass_f(ms.Current_save_path, ms.Current_save_path+"0", time.Now()) //开始ass
 					}
-					tmp.Callback_stopRec = func(ms *M4SStream) {
+					tmp.Callback_stopRec = func(_ *M4SStream) {
 						StopRecDanmu()
 						Ass_f("", "", time.Now()) //停止ass
 					}
@@ -350,7 +349,7 @@ func StreamOStop(roomid int) {
 			return true
 		})
 	case -1: // 所有房间
-		streamO.Range(func(_roomid, v interface{}) bool {
+		streamO.Range(func(_, v interface{}) bool {
 			if v.(*M4SStream).Status.Islive() {
 				v.(*M4SStream).Stop()
 			}
@@ -544,7 +543,7 @@ var danmuji = Danmuji{
 }
 
 func init() { //初始化反射型弹幕机
-	bb, err := ioutil.ReadFile("config/config_auto_reply.json")
+	bb, err := file.New("config/config_auto_reply.json", 0, true).ReadAll(100, 1<<16)
 	if err != nil {
 		return
 	}
@@ -909,11 +908,11 @@ func Jiezouf(s []string) bool {
 func init() {
 	Save_to_json(0, []byte{'['})
 	c.C.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
-		`change_room`: func(data interface{}) bool { //房间改变
+		`change_room`: func(_ interface{}) bool { //房间改变
 			Save_to_json(0, []byte{'['})
 			return false
 		},
-		`flash_room`: func(data interface{}) bool { //房间改变
+		`flash_room`: func(_ interface{}) bool { //房间改变
 			Save_to_json(0, []byte{'['})
 			return false
 		},
@@ -989,7 +988,7 @@ func Keep_medal_light() {
 		return
 	}
 	for _, v := range medals {
-		if v.IsLighted == 1 {
+		if v.IsLighted == 1 || cacheInfo[v.TargetID].Data.LiveRoom.Roomid == 0 {
 			continue
 		}
 
@@ -1008,7 +1007,7 @@ func Keep_medal_light() {
 		return
 	}
 	for _, v := range medals {
-		if v.IsLighted == 1 {
+		if v.IsLighted == 1 || cacheInfo[v.TargetID].Data.LiveRoom.Roomid == 0 {
 			continue
 		}
 
@@ -1246,7 +1245,7 @@ func init() {
 				//等待会话结束，通道释放
 				<-conn
 			},
-			`/exit`: func(w http.ResponseWriter, r *http.Request) {
+			`/exit`: func(_ http.ResponseWriter, _ *http.Request) {
 				s.Server.Shutdown(context.Background())
 			},
 		})
@@ -1299,11 +1298,11 @@ type Communicate struct {
 func init() {
 	communicate.Buf = new(psync.Map)
 	c.C.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
-		`change_room`: func(data interface{}) bool { //房间改变
+		`change_room`: func(_ interface{}) bool { //房间改变
 			communicate.Reset()
 			return false
 		},
-		`flash_room`: func(data interface{}) bool { //房间改变
+		`flash_room`: func(_ interface{}) bool { //房间改变
 			communicate.Reset()
 			return false
 		},

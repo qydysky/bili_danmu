@@ -2,9 +2,11 @@ package cv
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"errors"
+	"io"
 	"time"
 
+	file "github.com/qydysky/part/file"
 	idpool "github.com/qydysky/part/idpool"
 	log "github.com/qydysky/part/log"
 	mq "github.com/qydysky/part/msgq"
@@ -67,13 +69,42 @@ func (t *Common) init() Common {
 
 	t.Danmu_Main_mq = mq.New(200)
 
-	if bb, err := ioutil.ReadFile("config/config_K_v.json"); err == nil {
-		var data map[string]interface{}
-		json.Unmarshal(bb, &data)
-		for k, v := range data {
-			t.K_v.Store(k, v)
+	if bb, err := file.New("config/config_K_v.json", 0, true).ReadAll(100, 1<<16); err != nil {
+		if errors.Is(err, io.EOF) {
+			var data map[string]interface{}
+			json.Unmarshal(bb, &data)
+			for k, v := range data {
+				t.K_v.Store(k, v)
+			}
+		} else {
+			panic(err)
 		}
 	}
+
+	go func() {
+		for {
+			v, ok := t.K_v.LoadV("几秒后重载").(float64)
+			if !ok || v < 0 {
+				break
+			} else if v < 60 {
+				v = 60
+			}
+			time.Sleep(time.Duration(int(v)) * time.Second)
+
+			// 64k
+			if bb, e := file.New("config/config_K_v.json", 0, true).ReadAll(100, 1<<16); e != nil {
+				if !errors.Is(e, io.EOF) {
+					panic(e)
+				} else {
+					var data map[string]interface{}
+					json.Unmarshal(bb, &data)
+					for k, v := range data {
+						t.K_v.Store(k, v)
+					}
+				}
+			}
+		}
+	}()
 
 	if val, exist := t.K_v.Load("http代理地址"); exist {
 		t.Proxy = val.(string)

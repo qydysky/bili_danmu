@@ -427,34 +427,6 @@ func (replyF) special_gift(s string) {
 
 }
 
-// Msg-大航海购买，由于信息少，用user_toast_msg进行替代
-func (replyF) guard_buy(s string) {
-	// username := p.Json().GetValFromS(s, "data.username")
-	// gift_name := p.Json().GetValFromS(s, "data.gift_name")
-	// price := p.Json().GetValFromS(s, "data.price")
-
-	// var sh []interface{}
-	// var sh_log []interface{}
-
-	// if username != nil {
-	// 	sh = append(sh, username)
-	// }
-	// if gift_name != nil {
-	// 	sh = append(sh, "购买了", gift_name)
-	// }
-	// if price != nil {
-	// 	sh_log = append(sh, "￥", int(price.(float64))/1000) //不在界面显示价格
-	// }
-	// { //额外 ass
-	// 	Assf(fmt.Sprintln(sh...))
-	// }
-	// fmt.Println("\n====")
-	// fmt.Println(sh...)
-	// fmt.Print("====\n\n")
-	// msglog.Base_add("礼").Log_show_control(false).L(`I: `, sh_log...)
-
-}
-
 // Msg-房间信息改变，标题等
 func (replyF) room_change(s string) {
 	title := p.Json().GetValFromS(s, "data.title")
@@ -583,38 +555,6 @@ func (replyF) activity_banner_change_v2(s string) {
 	Gui_show(tmp, "0room")
 
 	msglog.Base_add("房").L(`I: `, tmp)
-}
-
-// Msg-大航海欢迎信息 或已废弃
-func (replyF) welcome_guard(s string) {
-	// username := p.Json().GetValFromS(s, "data.username");
-	// guard_level := p.Json().GetValFromS(s, "data.guard_level");
-	// img := "0default"
-
-	// var sh = []interface{}{"欢迎"}
-
-	// if guard_level != nil {
-	// 	switch guard_level.(float64) {
-	// 	case 1:sh = append(sh, "总督");img="0level1"
-	// 	case 2:sh = append(sh, "提督");img="0level2"
-	// 	case 3:sh = append(sh, "舰长");img="0level3"
-	// 	default:sh = append(sh, "等级", guard_level)
-	// 	}
-	// }
-	// if username != nil {
-	// 	sh = append(sh, username, "进入直播间")
-	// }
-	// {//语言tts
-	// 	c.Danmu_Main_mq.Push_tag(`tts`,Danmu_mq_t{//传入消息队列
-	// 		uid:img,
-	// 		msg:fmt.Sprintln(sh...),
-	// 	})
-	// }
-	// fmt.Print(">>> ")
-	// fmt.Println(sh...)
-	// Gui_show(Itos(append([]interface{}{">>> "}, sh...)), img)
-
-	// msglog.Base_add("房").Log_show_control(false).L(`I: `, sh...)
 }
 
 // Msg-礼物处理
@@ -778,7 +718,7 @@ func (replyF) super_chat_message(s string) {
 			return
 		}
 		if len(sc_buf) >= 10 {
-			for k, _ := range sc_buf {
+			for k := range sc_buf {
 				delete(sc_buf, k)
 				break
 			}
@@ -840,88 +780,6 @@ func (replyF) super_chat_message(s string) {
 		Gui_show(Itos(sh), "0superchat")
 	}
 	msglog.Log_show_control(false).L(`I: `, logg...)
-}
-
-// Msg-分区排行 使用热门榜替代
-func (replyF) panel(s string) {
-	msglog := msglog.Base_add("房").Log_show_control(false)
-
-	if note := p.Json().GetValFromS(s, "data.note"); note == nil {
-		msglog.L(`E: `, "note", note)
-		return
-	} else {
-		if v, ok := note.(string); ok {
-			c.C.Note = v
-		}
-		fmt.Println("排行", note)
-		msglog.L(`I: `, "排行", note)
-	}
-}
-
-// Msg-热门榜变动
-func (replyF) hot_rank_changed(s string) {
-	msglog := msglog.Base_add("房").Log_show_control(false)
-
-	var type_item ws_msg.HOT_RANK_CHANGED
-	if e := json.Unmarshal([]byte(s), &type_item); e != nil {
-		msglog.L(`E: `, e)
-	}
-	if type_item.Data.Area_name != `` {
-		c.C.Note = type_item.Data.Area_name + " "
-		if type_item.Data.Rank == 0 {
-			c.C.Note += "50+"
-		} else {
-			c.C.Note += strconv.Itoa(type_item.Data.Rank)
-		}
-		fmt.Printf("%s\t%s\n", "热门榜", c.C.Note)
-		msglog.L(`I: `, "热门榜", c.C.Note)
-	}
-}
-
-// Msg-热门榜变动V2
-func (replyF) hot_rank_changed_v2(s string) {
-	msglog := msglog.Base_add("房").Log_show_control(false)
-
-	var type_item ws_msg.HOT_RANK_CHANGED_V2
-	if e := json.Unmarshal([]byte(s), &type_item); e != nil {
-		msglog.L(`E: `, e)
-	}
-	if type_item.Data.AreaName != `` {
-		c.C.Note = type_item.Data.AreaName + " "
-		if type_item.Data.Rank == 0 {
-			c.C.Note += "50+"
-		} else {
-			c.C.Note += strconv.Itoa(type_item.Data.Rank)
-		}
-		fmt.Printf("%s\t%s\n", "热门榜", c.C.Note)
-		msglog.L(`I: `, "热门榜", c.C.Note)
-	}
-}
-
-// Msg-热门榜获得
-func (replyF) hot_rank_settlement(s string) {
-	msglog := msglog.Base_add("房")
-
-	var type_item ws_msg.HOT_RANK_SETTLEMENT
-	if e := json.Unmarshal([]byte(s), &type_item); e != nil {
-		msglog.L(`E: `, e)
-	}
-	var tmp = `获得:`
-	if type_item.Data.Area_name != `` {
-		tmp += type_item.Data.Area_name + " 第"
-	}
-	if type_item.Data.Rank != 0 {
-		tmp += strconv.Itoa(type_item.Data.Rank)
-	}
-	Gui_show(tmp, "0rank")
-	c.C.Danmu_Main_mq.Push_tag(`tts`, Danmu_mq_t{ //传入消息队列
-		uid: "0rank",
-		m: map[string]string{
-			`{Area_name}`: type_item.Data.Area_name,
-			`{Rank}`:      strconv.Itoa(type_item.Data.Rank),
-		},
-	})
-	msglog.L(`I: `, "热门榜", tmp)
 }
 
 // Msg-热门榜获得v2
@@ -1107,25 +965,6 @@ func (replyF) roomsilent(s string) {
 	}
 }
 
-// Msg-粉丝信息，常刷屏，不显示
-func (replyF) roominfo(s string) {
-	fans := p.Json().GetValFromS(s, "data.fans")
-	fans_club := p.Json().GetValFromS(s, "data.fans_club")
-
-	var sh []interface{}
-
-	if fans != nil {
-		sh = append(sh, "粉丝总人数:", fans)
-	}
-	if fans_club != nil {
-		sh = append(sh, "粉丝团人数:", fans_club)
-	}
-
-	if len(sh) != 0 {
-		msglog.Base_add("粉").L(`I: `, sh...)
-	}
-}
-
 // Msg-弹幕处理
 type Danmu_item struct {
 	msg    string
@@ -1289,15 +1128,15 @@ func Gui_show(m ...string) {
 func Itos(i []interface{}) string {
 	r := ""
 	for _, v := range i {
-		switch v.(type) {
+		switch v := v.(type) {
 		case string:
-			r += v.(string)
+			r += v
 		case int:
-			r += strconv.Itoa(v.(int))
+			r += strconv.Itoa(v)
 		case int64:
-			r += strconv.Itoa(int(v.(int64)))
+			r += strconv.Itoa(int(v))
 		case float64:
-			r += strconv.Itoa(int(v.(float64)))
+			r += strconv.Itoa(int(v))
 		default:
 			fmt.Println("unkonw type", v)
 		}
