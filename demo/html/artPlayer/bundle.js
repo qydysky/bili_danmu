@@ -955,7 +955,7 @@ __webpack_require__.r(__webpack_exports__);
                         if(needUnload){
                             setTimeout(function(){
                                 flvPlayer.unload();
-                            },100);
+                            },1000);
                             flvPlayer.on("error", function(){
                                 var c = config;
                                 c.type="mp4";
