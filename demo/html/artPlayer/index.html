@@ -1,12 +1,14 @@
 <!DOCTYPE html>
 <html>
     <head>
+        <title>live</title>
+        <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
             body {
-                background-color: black;
-                padding: 0;
                 margin: 0;
+                padding: 0;
+                background-color: black;
             }
             .art-danmuku {
                 font-size: 2em;
@@ -18,6 +20,22 @@
         <div style="width: 100%;height: 100vh">
             <div class="artplayer-app" style="width: 100%;height: 100%"></div>
         </div>
-        <script src="bundle.js"></script>
+        <script>
+            /**
+             * @function addDOM 添加节点
+             * @version 0.0
+             * @param {*} El 添加到哪个元素
+             * @param {*} ElN 添加的元素名
+             * @param {*} text 元素内的值
+             * @param {*} cla 该元素属性，数组，[[属性名,属性值],[..,..],]
+             */
+            function addDOM(El,ElN,text,cla){
+                var d=document.createElement(ElN);
+                if(text)d.innerHTML=text;
+                for(var i=0;i<cla.length;i++)d.setAttribute(cla[i][0],cla[i][1]);
+                El.appendChild(d);
+            }
+            addDOM(document.body, "script", "", [["src", "bundle.js?_="+new Date().getTime()]])
+        </script>
     </body>
 </html>
