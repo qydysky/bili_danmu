@@ -954,7 +954,7 @@ __webpack_require__.r(__webpack_exports__);
                         flvPlayer.load();
                         if(needUnload){
                             setTimeout(function(){
-                                flvPlayer.unload();
+                                if(flvPlayer.paused)flvPlayer.unload();
                             },1000);
                             flvPlayer.on("error", function(){
                                 var c = config;
@@ -1016,10 +1016,10 @@ __webpack_require__.r(__webpack_exports__);
         danmaku = new danmaku__WEBPACK_IMPORTED_MODULE_5__["default"]({
             container: document.getElementsByClassName('art-danmuku')[0],
         });
-        setInterval(function () { 
-            if(danmaku != undefined && danmaku.resize != undefined)danmaku.resize()
-         }, 1000)
     }initPlay(config);
+    setInterval(function () { 
+        if(danmaku != undefined && danmaku.resize != undefined)danmaku.resize();
+     }, 1000)
 })();
 
 })();
