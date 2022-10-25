@@ -1157,13 +1157,32 @@ func init() {
 						} else {
 							v += referer.Path
 						}
-						if p.Checkfile().IsExist(v + "0.flv") {
+						if file.New(v+"0.flv", 0, true).IsExist() {
 							v += "0.flv"
-						} else if p.Checkfile().IsExist(v + "0.mp4") {
+						} else if file.New(v+"0.mp4", 0, true).IsExist() {
 							v += "0.mp4"
 						}
 
-						f := file.New(v, 0, false)
+						var rangeHeaderNum int
+						if rangeHeader := r.Header.Get(`range`); rangeHeader != "" {
+							if strings.Index(rangeHeader, "bytes=") != 0 {
+								w.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
+								flog.L(`W: `, `请求的范围不合法:仅支持bytes`)
+								return
+							} else if strings.Contains(rangeHeader, ",") && strings.Index(rangeHeader, "-") != len(rangeHeader)-1 {
+								w.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
+								flog.L(`W: `, `请求的范围不合法:仅支持向后范围`)
+								return
+							} else if rangeHeaderNum, e = strconv.Atoi(string(rangeHeader[6 : len(rangeHeader)-1])); e != nil {
+								w.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
+								flog.L(`W: `, `请求的范围不合法:`, e)
+								return
+							} else {
+								w.WriteHeader(http.StatusPartialContent)
+							}
+						}
+
+						f := file.New(v, int64(rangeHeaderNum), false)
 						defer f.Close()
 
 						if e := f.CopyToIoWriter(w, 1000000, true); e != nil {
