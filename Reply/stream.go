@@ -637,6 +637,17 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 		defer out.Close()
 	}
 
+	//
+	var (
+		buf              []byte
+		lastVideoTime    int
+		lastAudioTime    int
+		diffVideoTime    int
+		diffAudioTime    int
+		diffSumVideoTime int
+		diffSumAudioTime int
+	)
+
 	// 下载循环
 	for download_seq := []*m4s_link_item{}; ; {
 
@@ -713,16 +724,58 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 		// 传递已下载切片
 		{
 			for _, v := range download_seq {
-				if strings.Contains(v.Base, `h`) {
-					t.first_buf = v.data
-				}
-
 				if v.status == 2 {
 					download_seq = download_seq[1:]
-					t.bootBufPush(v.data)
-					t.Stream_msg.Push_tag(`data`, v.data)
-					if t.config.save_as_mp4 {
-						out.Write(v.data)
+					buf = append(buf, v.data...)
+
+					if strings.Contains(v.Base, `h`) {
+						t.first_buf = v.data
+						if t.config.save_as_mp4 {
+							out.Write(v.data)
+						}
+						continue
+					}
+
+					fmp4KeyFrames, last_avilable_offset, e := Seach_stream_fmp4(buf)
+					if e != nil {
+						t.log.L(`E: `, e)
+					}
+
+					for _, fmp4KeyFrame := range fmp4KeyFrames {
+						{ // 视频时间戳
+							if lastVideoTime != 0 {
+								if diffVideoTime != 0 {
+									diffSumVideoTime = fmp4KeyFrame.videoTime - lastVideoTime - diffVideoTime
+								}
+								diffVideoTime = fmp4KeyFrame.videoTime - lastVideoTime
+							}
+							lastVideoTime = fmp4KeyFrame.videoTime
+						}
+						{ // 音频时间戳
+							if lastAudioTime != 0 {
+								if diffAudioTime != 0 {
+									diffSumAudioTime = fmp4KeyFrame.audioTime - lastAudioTime - diffAudioTime
+								}
+								diffAudioTime = fmp4KeyFrame.audioTime - lastAudioTime
+							}
+							lastAudioTime = fmp4KeyFrame.audioTime
+						}
+
+						if diffAudioTime != 0 && diffVideoTime != 0 {
+							if math.Abs(float64(diffSumVideoTime)) < 5000 && math.Abs(float64(diffSumAudioTime)) < 5000 {
+								t.bootBufPush(fmp4KeyFrame.data)
+								t.Stream_msg.Push_tag(`data`, fmp4KeyFrame.data)
+								if t.config.save_as_mp4 {
+									out.Write(fmp4KeyFrame.data)
+								}
+							} else {
+								t.log.L(`W: `, `时间戳失去同步`)
+							}
+						}
+					}
+
+					if last_avilable_offset > 0 {
+						buf = buf[last_avilable_offset:]
 					}
 				} else {
 					break

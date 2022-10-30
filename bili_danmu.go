@@ -1,6 +1,7 @@
 package bili_danmu
 
 import (
+	_ "embed"
 	"flag"
 	"fmt"
 	"net/url"
@@ -21,6 +22,9 @@ import (
 	ws "github.com/qydysky/part/websocket"
 )
 
+//go:embed VERSION
+var version string
+
 func init() {
 	go func() { //日期变化
 		var old = time.Now().Hour()
@@ -40,6 +44,8 @@ func Start(roomid ...int) {
 
 	var stop = sys.Sys().PreventSleep()
 	defer stop.Done()
+
+	danmulog.L(`I: `, "version: ", version)
 
 	//ctrl+c退出
 	interrupt := make(chan os.Signal, 2)
