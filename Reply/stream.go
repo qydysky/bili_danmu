@@ -639,13 +639,8 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 
 	//
 	var (
-		buf              []byte
-		lastVideoTime    int
-		lastAudioTime    int
-		diffVideoTime    int
-		diffAudioTime    int
-		diffSumVideoTime int
-		diffSumAudioTime int
+		buf         []byte
+		fmp4Decoder = &Fmp4Decoder{}
 	)
 
 	// 下载循环
@@ -729,6 +724,13 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 					buf = append(buf, v.data...)
 
 					if strings.Contains(v.Base, `h`) {
+						if e := fmp4Decoder.Init_fmp4(v.data); e != nil {
+							t.log.L(`E: `, e)
+						} else {
+							for _, trak := range fmp4Decoder.traks {
+								t.log.L(`T: `, "找到trak:", string(trak.handlerType), trak.trackID, trak.timescale)
+							}
+						}
 						t.first_buf = v.data
 						if t.config.save_as_mp4 {
 							out.Write(v.data)
@@ -736,41 +738,16 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 						continue
 					}
 
-					fmp4KeyFrames, last_avilable_offset, e := Seach_stream_fmp4(buf)
+					fmp4KeyFrames, last_avilable_offset, e := fmp4Decoder.Seach_stream_fmp4(buf)
 					if e != nil {
 						t.log.L(`E: `, e)
 					}
 
 					for _, fmp4KeyFrame := range fmp4KeyFrames {
-						{ // 视频时间戳
-							if lastVideoTime != 0 {
-								if diffVideoTime != 0 {
-									diffSumVideoTime = fmp4KeyFrame.videoTime - lastVideoTime - diffVideoTime
-								}
-								diffVideoTime = fmp4KeyFrame.videoTime - lastVideoTime
-							}
-							lastVideoTime = fmp4KeyFrame.videoTime
-						}
-						{ // 音频时间戳
-							if lastAudioTime != 0 {
-								if diffAudioTime != 0 {
-									diffSumAudioTime = fmp4KeyFrame.audioTime - lastAudioTime - diffAudioTime
-								}
-								diffAudioTime = fmp4KeyFrame.audioTime - lastAudioTime
-							}
-							lastAudioTime = fmp4KeyFrame.audioTime
-						}
-
-						if diffAudioTime != 0 && diffVideoTime != 0 {
-							if math.Abs(float64(diffSumVideoTime)) < 5000 && math.Abs(float64(diffSumAudioTime)) < 5000 {
-								t.bootBufPush(fmp4KeyFrame.data)
-								t.Stream_msg.Push_tag(`data`, fmp4KeyFrame.data)
-								if t.config.save_as_mp4 {
-									out.Write(fmp4KeyFrame.data)
-								}
-							} else {
-								t.log.L(`W: `, `时间戳失去同步`)
-							}
+						t.bootBufPush(fmp4KeyFrame)
+						t.Stream_msg.Push_tag(`data`, fmp4KeyFrame)
+						if t.config.save_as_mp4 {
+							out.Write(fmp4KeyFrame)
 						}
 					}
 
