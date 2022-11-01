@@ -2,7 +2,6 @@ package bili_danmu
 
 import (
 	_ "embed"
-	"flag"
 	"fmt"
 	"net/url"
 	"os"
@@ -38,7 +37,7 @@ func init() {
 	}()
 }
 
-func Start(roomid ...int) {
+func Start() {
 	var danmulog = c.C.Log.Base(`bilidanmu`)
 	defer danmulog.Block(1000)
 
@@ -68,19 +67,10 @@ func Start(roomid ...int) {
 	}
 
 	{
-		var groomid = flag.Int("r", 0, "roomid")
-		flag.Parse()
-
 		var (
 			change_room_chan = make(chan struct{})
 			flash_room_chan  = make(chan struct{})
 		)
-
-		//-r 房间初始化
-		var room = *groomid
-		if room == 0 && len(roomid) != 0 {
-			room = roomid[0]
-		}
 
 		//如果连接中断，则等待
 		F.KeepConnect()
@@ -88,16 +78,16 @@ func Start(roomid ...int) {
 		F.Get(&c.C).Get(`Cookie`)
 		//获取LIVE_BUVID
 		F.Get(&c.C).Get(`LIVE_BUVID`)
-		if room == 0 {
+
+		// 房间初始化
+		if c.C.Roomid == 0 {
 			c.C.Log.Block(1000) //等待所有日志输出完毕
 			fmt.Println("输入房间号或` live`获取正在直播的主播")
 		} else {
-			fmt.Print("房间号: ", strconv.Itoa(room), "\n")
-			if c.C.Roomid == 0 {
-				c.C.Roomid = room
-				go func() { change_room_chan <- struct{}{} }()
-			}
+			fmt.Print("房间号: ", strconv.Itoa(c.C.Roomid), "\n")
+			go func() { change_room_chan <- struct{}{} }()
 		}
+
 		//命令行操作 切换房间 发送弹幕
 		go Cmd.Cmd()
 

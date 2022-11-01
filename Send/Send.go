@@ -2,11 +2,11 @@ package send
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"strconv"
 
 	c "github.com/qydysky/bili_danmu/CV"
 
+	file "github.com/qydysky/part/file"
 	limit "github.com/qydysky/part/limit"
 	reqf "github.com/qydysky/part/reqf"
 	sys "github.com/qydysky/part/sys"
@@ -18,7 +18,7 @@ var damnu_official = make(map[string]string)
 
 // 初始化表情代码
 func init() {
-	bb, err := ioutil.ReadFile("config/config_danmu_official.json")
+	bb, err := file.New("config/config_danmu_official.json", 0, true).ReadAll(1000, 1<<16)
 	if err != nil {
 		return
 	}

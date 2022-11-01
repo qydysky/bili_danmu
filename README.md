@@ -103,6 +103,9 @@
 ### 说明
 本项目使用github action自动构建，构建过程详见[yml](https://github.com/qydysky/bili_danmu/blob/master/.github/workflows/go.yml)
 
+#### 自定义config_K_v.json
+当启动时使用`-ckv 路径`，将从此路径加载config_K_v.json并覆盖默认config_K_v.json中的配置项。使用此配置，可以在有新配置项时，默认使用新配置项而保持之前其他的配置。
+
 #### 表情发送
 当`demo/config/config_K_v.json`中`弹幕_识别表情代码`为`true`时，发送特定的文字将发送表情。
 
@@ -392,7 +395,7 @@ go build [-tags "gtk"] main.go
 
 clone/下载本项目。进入`demo`目录(文件夹)，运行：
 ```
-go run [-tags "gtk"] main.go [-r 房间ID]
+go run [-tags "gtk"] main.go [-r 房间ID] [-ckv 自定义config_K_v.json]
 ```
 
 3. docker部署

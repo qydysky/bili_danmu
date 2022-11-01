@@ -3,6 +3,7 @@ package cv
 import (
 	"encoding/json"
 	"errors"
+	"flag"
 	"io"
 	"time"
 
@@ -45,7 +46,7 @@ type Common struct {
 	K_v               syncmap.Map        //配置文件
 	Log               *log.Log_interface //日志
 	Danmu_Main_mq     *mq.Msgq           //消息
-	ReqPool           *idpool.Idpool     // 请求池
+	ReqPool           *idpool.Idpool     //请求池
 }
 
 func (t *Common) init() Common {
@@ -69,6 +70,13 @@ func (t *Common) init() Common {
 
 	t.Danmu_Main_mq = mq.New(200)
 
+	var (
+		ckv     = flag.String("ckv", "", "自定义配置KV文件，将会覆盖config_K_v配置")
+		roomIdP = flag.Int("r", 0, "roomid")
+	)
+	flag.Parse()
+	t.Roomid = *roomIdP
+
 	if bb, err := file.New("config/config_K_v.json", 0, true).ReadAll(100, 1<<16); err != nil {
 		if errors.Is(err, io.EOF) {
 			var data map[string]interface{}
@@ -78,6 +86,24 @@ func (t *Common) init() Common {
 			}
 		} else {
 			panic(err)
+		}
+	}
+
+	if t.K_v.Len() == 0 {
+		panic("未能加载配置")
+	}
+
+	if *ckv != "" {
+		if bb, err := file.New(*ckv, 0, true).ReadAll(100, 1<<16); err != nil {
+			if errors.Is(err, io.EOF) {
+				var data map[string]interface{}
+				json.Unmarshal(bb, &data)
+				for k, v := range data {
+					t.K_v.Store(k, v)
+				}
+			} else {
+				panic(err)
+			}
 		}
 	}
 
