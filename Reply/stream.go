@@ -58,7 +58,7 @@ type M4SStream_Config struct {
 	want_qn       int    //直播流清晰度
 	want_type     string //直播流类型
 	save_as_mp4   bool   //直播hls流保存为MP4
-	banlance_host bool   //直播hls流均衡
+	banlance_host bool   //直播hls流故障转移
 }
 
 type m4s_link_item struct {
@@ -112,7 +112,7 @@ func (t *M4SStream) LoadConfig(common c.Common, l *log.Log_interface) {
 	if v, ok := common.K_v.LoadV(`直播hls流保存为MP4`).(bool); ok {
 		t.config.save_as_mp4 = v
 	}
-	if v, ok := common.K_v.LoadV(`直播hls流均衡`).(bool); ok {
+	if v, ok := common.K_v.LoadV(`直播hls流故障转移`).(bool); ok {
 		t.config.banlance_host = v
 	}
 	if v, ok := common.K_v.LoadV(`直播流清晰度`).(float64); ok {
@@ -664,16 +664,25 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 
 					link.status = 1 // 设置切片状态为正在下载
 
-					// 均衡负载
+					// 故障转移
 					if link_url, e := url.Parse(link.Url); e == nil {
 						if t.stream_hosts.Len() != 1 {
-							t.stream_hosts.Range(func(key, _ interface{}) bool {
-								// 故障转移
-								if link.status == 3 && link_url.Host == key.(string) {
-									return true
+							t.stream_hosts.Range(func(key, v interface{}) bool {
+								if link.status == 3 {
+									if link_url.Host == key.(string) {
+										t.stream_hosts.Store(key, false)
+										return true
+									} else if v != nil {
+										return true
+									} else {
+										link_url.Host = key.(string)
+										return false
+									}
 								}
-								// 随机
-								link_url.Host = key.(string)
+
+								if v != nil {
+									t.stream_hosts.Store(key, nil)
+								}
 								return false
 							})
 						}
@@ -899,13 +908,10 @@ func (t *M4SStream) Start() bool {
 				continue
 			}
 
-			// 设置均衡负载
+			// 设置全部服务
 			for _, v := range t.common.Live {
 				if url_struct, e := url.Parse(v); e == nil {
 					t.stream_hosts.Store(url_struct.Hostname(), nil)
-				}
-				if !t.config.banlance_host {
-					break
 				}
 			}
 
