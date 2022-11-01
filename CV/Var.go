@@ -129,6 +129,20 @@ func (t *Common) init() Common {
 					}
 				}
 			}
+
+			if *ckv != "" {
+				if bb, err := file.New(*ckv, 0, true).ReadAll(100, 1<<16); err != nil {
+					if errors.Is(err, io.EOF) {
+						var data map[string]interface{}
+						json.Unmarshal(bb, &data)
+						for k, v := range data {
+							t.K_v.Store(k, v)
+						}
+					} else {
+						panic(err)
+					}
+				}
+			}
 		}
 	}()
 

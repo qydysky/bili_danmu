@@ -778,6 +778,11 @@ func (replyF) super_chat_message(s string) {
 		Assf(fmt.Sprintln(sh...))
 		// Gui_show("====\n")
 		Gui_show(Itos(sh), "0superchat")
+		//直播流服务弹幕
+		SendStreamWs(Danmu_item{
+			auth: uname,
+			msg:  "SC: " + message,
+		})
 	}
 	msglog.Log_show_control(false).L(`I: `, logg...)
 }

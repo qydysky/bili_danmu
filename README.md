@@ -166,7 +166,7 @@ ass编码GB18030支持中文
 在[直播流Web服务](#直播流Web服务)中，点击进入任意一个目录，进行回放，如`弹幕回放`为`true`，则会将会将弹幕回放出来
 
 #### 直播流Web服务
-注意：直接进入串流地址为[artplayer](https://artplayer.org/)、[mpegts](https://github.com/xqq/mpegts.js)及[Danmaku](https://github.com/weizhenye/Danmaku)的演示前端界面
+注意：直接进入串流地址为[artplayer](https://artplayer.org/)、[mpegts](https://github.com/xqq/mpegts.js)的演示前端界面
 
 启动Web流服务，为下载的直播流提供局域网内的流服务，提供flv、hls/mp4格式流。
 
@@ -191,7 +191,7 @@ I: 2021/04/13 20:07:45 命令行操作 [直播Web服务: http://192.168.31.245:3
 **特殊**
 - 路径为`/now`
 
-  例：当服务地址为下方的38259口时，此对应的路径为`http://192.168.31.245:38259/now`)，会重定向到当前正在获取的流，播放此链接时进度将保持当前流进度，并加载实时弹幕(支持颜色)。 ~~若`直播流类型`为flv,则需要在url添加`?type=flv`~~
+  例：当服务地址为下方的38259口时，此对应的路径为`http://192.168.31.245:38259/now`)，会重定向到当前正在获取的流，播放此链接时进度将保持当前流进度，并加载实时弹幕(支持颜色)，也可以发送弹幕。
 
 - 路径为`/stream`
 
@@ -201,7 +201,6 @@ I: 2021/04/13 20:07:45 命令行操作 [直播Web服务: http://192.168.31.245:3
 
 - flv-html播放器
   - [xqq/mpegts.js](https://github.com/xqq/mpegts.js)
-  - ~~[bilibili/flv.js](https://github.com/bilibili/flv.js)~~
 - hls-html播放器
   - [bytedance/xgplayer](https://github.com/bytedance/xgplayer)
   - [videojs/video.js](https://github.com/videojs/video.js)([demo](https://videojs-http-streaming.netlify.app))

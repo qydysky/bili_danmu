@@ -1,6 +1,7 @@
 package reply
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -1076,6 +1077,7 @@ func SendStreamWs(item Danmu_item) {
 	type Data struct {
 		Text  string    `json:"text"`
 		Style DataStyle `json:"style"`
+		Time  float64   `json:"time"`
 	}
 
 	var data, err = json.Marshal(Data{
@@ -1089,7 +1091,6 @@ func SendStreamWs(item Danmu_item) {
 		flog.Base_add(`流服务弹幕`).L(`E: `, err)
 		return
 	}
-
 	StreamWs.Interface().Push_tag(`send`, websocket.Uinterface{
 		Id:   0,
 		Data: data,
@@ -1177,7 +1178,7 @@ func init() {
 								w.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
 								flog.L(`W: `, `请求的范围不合法:`, e)
 								return
-							} else {
+							} else if rangeHeaderNum != 0 {
 								w.WriteHeader(http.StatusPartialContent)
 							}
 						}
@@ -1255,6 +1256,19 @@ func init() {
 						flog.L(`W: `, `直播流保存位置无效`)
 					}
 					return
+				} else if IsOn("直播Web可以发送弹幕") {
+					StreamWs.Interface().Pull_tag(map[string](func(interface{}) bool){
+						`recv`: func(i interface{}) bool {
+							if u, ok := i.(websocket.Uinterface); ok {
+								if !bytes.Equal(u.Data, []byte("test")) && len(u.Data) > 0 {
+									flog.Base_add(`流服务弹幕`).L(`I: `, string(u.Data))
+									Msg_senddanmu(string(u.Data))
+								}
+							}
+							return false
+						},
+						`close`: func(i interface{}) bool { return true },
+					})
 				}
 
 				//获取通道
