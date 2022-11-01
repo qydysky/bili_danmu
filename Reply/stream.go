@@ -417,7 +417,9 @@ func (t *M4SStream) fetchParseM3U8() (m4s_links []*m4s_link_item, m3u8_addon []b
 		return
 	}
 
-	e = errors.New("未能找到可用流服务器")
+	if e != nil {
+		e = errors.New(e.Error() + " 未能找到可用流服务器")
+	}
 	return
 }
 
@@ -750,6 +752,8 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 					fmp4KeyFrames, last_avilable_offset, e := fmp4Decoder.Seach_stream_fmp4(buf)
 					if e != nil {
 						t.log.L(`E: `, e)
+						//丢弃所有数据
+						last_avilable_offset = len(buf)
 					}
 
 					for _, fmp4KeyFrame := range fmp4KeyFrames {

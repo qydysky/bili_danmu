@@ -111,6 +111,7 @@ var Msg_map = map[string]func(replyF, string){
 	"LITTLE_TIPS":                       replyF.little_tips, //小提示窗口
 	"LIKE_INFO_V3_NOTICE":               nil,
 	"LIVE_INTERACTIVE_GAME":             nil,
+	"LIVE_MULTI_VIEW_CHANGE":            nil,
 }
 
 // 屏蔽不需要的消息
