@@ -74,6 +74,17 @@ func Btoi64(b []byte, offset int) int64 {
 	return btoi64(b[offset : offset+8])
 }
 
+func Btoi(b []byte, offset int, size int) int64 {
+	if size > 8 {
+		panic("最大8位")
+	}
+	var buf = b[offset : offset+size]
+	for len(buf) < 8 {
+		buf = append([]byte{0x00}, buf...)
+	}
+	return btoi64(buf)
+}
+
 func Btoi32(b []byte, offset int) int32 {
 	for len(b) < 4 {
 		b = append([]byte{0x00}, b...)

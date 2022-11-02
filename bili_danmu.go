@@ -66,6 +66,13 @@ func Start() {
 		}
 	}
 
+	//检查配置
+	{
+		if c.C.K_v.Len() == 0 {
+			panic("未能加载配置")
+		}
+	}
+
 	{
 		var (
 			change_room_chan = make(chan struct{})

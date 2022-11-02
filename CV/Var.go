@@ -5,6 +5,7 @@ import (
 	"errors"
 	"flag"
 	"io"
+	"testing"
 	"time"
 
 	file "github.com/qydysky/part/file"
@@ -49,7 +50,7 @@ type Common struct {
 	ReqPool           *idpool.Idpool     //请求池
 }
 
-func (t *Common) init() Common {
+func (t *Common) Init() Common {
 	t.Qn = map[int]string{ // no change
 		20000: "4K",
 		10000: "原画",
@@ -74,6 +75,7 @@ func (t *Common) init() Common {
 		ckv     = flag.String("ckv", "", "自定义配置KV文件，将会覆盖config_K_v配置")
 		roomIdP = flag.Int("r", 0, "roomid")
 	)
+	testing.Init()
 	flag.Parse()
 	t.Roomid = *roomIdP
 
@@ -87,10 +89,6 @@ func (t *Common) init() Common {
 		} else {
 			panic(err)
 		}
-	}
-
-	if t.K_v.Len() == 0 {
-		panic("未能加载配置")
 	}
 
 	if *ckv != "" {
@@ -178,7 +176,7 @@ func (t *Common) init() Common {
 	return *t
 }
 
-var C = new(Common).init()
+var C = new(Common).Init()
 
 // 消息队列
 type Danmu_Main_mq_item struct {

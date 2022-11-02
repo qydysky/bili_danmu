@@ -27,7 +27,7 @@ func (t *Fmp4Decoder) Init_fmp4(buf []byte) error {
 		}
 		moovI = cu + moovI - 4
 		cu = moovI
-		moovE := moovI + int(F.Btoi32(buf, moovI))
+		moovE := moovI + int(F.Btoi(buf, moovI, 4))
 		if moovE > len(buf) {
 			return errors.New("moov包破损")
 		}
@@ -40,7 +40,7 @@ func (t *Fmp4Decoder) Init_fmp4(buf []byte) error {
 			}
 			trakI = cu + trakI - 4
 			cu = trakI
-			trakE := trakI + int(F.Btoi32(buf, trakI))
+			trakE := trakI + int(F.Btoi(buf, trakI, 4))
 			if trakE > moovE {
 				return errors.New("trak包破损")
 			}
@@ -52,7 +52,7 @@ func (t *Fmp4Decoder) Init_fmp4(buf []byte) error {
 			}
 			tkhdI = cu + tkhdI - 4
 			cu = tkhdI
-			tkhdE := tkhdI + int(F.Btoi32(buf, tkhdI))
+			tkhdE := tkhdI + int(F.Btoi(buf, tkhdI, 4))
 			if tkhdE > trakE {
 				return errors.New("tkhd包破损")
 			}
@@ -64,7 +64,7 @@ func (t *Fmp4Decoder) Init_fmp4(buf []byte) error {
 			}
 			mdiaI = cu + mdiaI - 4
 			cu = mdiaI
-			mdiaE := mdiaI + int(F.Btoi32(buf, mdiaI))
+			mdiaE := mdiaI + int(F.Btoi(buf, mdiaI, 4))
 			if mdiaE > trakE {
 				return errors.New("mdia包破损")
 			}
@@ -76,7 +76,7 @@ func (t *Fmp4Decoder) Init_fmp4(buf []byte) error {
 			}
 			mdhdI = cu + mdhdI - 4
 			cu = mdhdI
-			mdhdE := mdhdI + int(F.Btoi32(buf, mdhdI))
+			mdhdE := mdhdI + int(F.Btoi(buf, mdhdI, 4))
 			if mdhdE > mdiaE {
 				return errors.New("mdhd包破损")
 			}
@@ -88,18 +88,18 @@ func (t *Fmp4Decoder) Init_fmp4(buf []byte) error {
 			}
 			hdlrI = cu + hdlrI - 4
 			cu = hdlrI
-			hdlrE := hdlrI + int(F.Btoi32(buf, hdlrI))
+			hdlrE := hdlrI + int(F.Btoi(buf, hdlrI, 4))
 			if hdlrE > mdiaE {
 				return errors.New("hdlr包破损")
 			}
 
-			tackId := int(F.Btoi32(buf, tkhdI+20))
+			tackId := int(F.Btoi(buf, tkhdI+20, 4))
 			if t.traks == nil {
 				t.traks = make(map[int]trak)
 			}
 			t.traks[tackId] = trak{
 				trackID:     tackId,
-				timescale:   int(F.Btoi32(buf, mdhdI+20)),
+				timescale:   int(F.Btoi(buf, mdhdI+20, 4)),
 				handlerType: buf[hdlrI+16],
 			}
 		}
@@ -129,7 +129,7 @@ func (t *Fmp4Decoder) Seach_stream_fmp4(buf []byte) (keyframes [][]byte, last_av
 		}
 		moofI = cu + moofI - 4
 		cu = moofI
-		moofE := moofI + int(F.Btoi32(buf, moofI))
+		moofE := moofI + int(F.Btoi(buf, moofI, 4))
 		if moofE > len(buf) {
 			break
 		}
@@ -151,7 +151,7 @@ func (t *Fmp4Decoder) Seach_stream_fmp4(buf []byte) (keyframes [][]byte, last_av
 			}
 			trafI = cu + trafI - 4
 			cu = trafI
-			trafE := trafI + int(F.Btoi32(buf, trafI))
+			trafE := trafI + int(F.Btoi(buf, trafI, 4))
 			if trafE > moofE {
 				break
 			}
@@ -164,7 +164,7 @@ func (t *Fmp4Decoder) Seach_stream_fmp4(buf []byte) (keyframes [][]byte, last_av
 			}
 			tfhdI = cu + tfhdI - 4
 			cu = tfhdI
-			tfhdE := tfhdI + int(F.Btoi32(buf, tfhdI))
+			tfhdE := tfhdI + int(F.Btoi(buf, tfhdI, 4))
 			if tfhdE > trafE {
 				err = errors.New("tfhd包破损")
 				break
@@ -178,7 +178,7 @@ func (t *Fmp4Decoder) Seach_stream_fmp4(buf []byte) (keyframes [][]byte, last_av
 			}
 			tfdtI = cu + tfdtI - 4
 			cu = tfdtI
-			tfdtE := tfdtI + int(F.Btoi32(buf, tfdtI))
+			tfdtE := tfdtI + int(F.Btoi(buf, tfdtI, 4))
 			if tfdtE > trafE {
 				err = errors.New("tfdt包破损")
 				break
@@ -192,7 +192,7 @@ func (t *Fmp4Decoder) Seach_stream_fmp4(buf []byte) (keyframes [][]byte, last_av
 			}
 			trunI = cu + trunI - 4
 			cu = trunI
-			trunE := trunI + int(F.Btoi32(buf, trunI))
+			trunE := trunI + int(F.Btoi(buf, trunI, 4))
 			if trunE > trafE {
 				err = errors.New("trun包破损")
 				break
@@ -207,17 +207,17 @@ func (t *Fmp4Decoder) Seach_stream_fmp4(buf []byte) (keyframes [][]byte, last_av
 			case 0:
 				timeSize = 4
 				timeStampIndex = tfdtI + 16
-				timeStamp = int(F.Btoi32(buf, tfdtI+16))
+				timeStamp = int(F.Btoi(buf, tfdtI+16, 4))
 			case 1:
 				timeSize = 8
 				timeStampIndex = tfdtI + 12
 				timeStamp = int(F.Btoi64(buf, tfdtI+12))
 			}
 
-			track, ok := t.traks[int(F.Btoi32(buf, tfhdI+12))]
+			track, ok := t.traks[int(F.Btoi(buf, tfhdI+12, 4))]
 			if !ok {
 				err = errors.New("找不到trak")
-				// log.Default().Println(`cant find trak`, int(F.Btoi32(buf, tfhdI+12)))
+				// log.Default().Println(`cant find trak`, int(F.Btoi(buf, tfhdI+12)))
 				continue
 			}
 
@@ -275,7 +275,7 @@ func (t *Fmp4Decoder) Seach_stream_fmp4(buf []byte) (keyframes [][]byte, last_av
 		}
 		mdatI = cu + mdatI - 4
 		cu = mdatI
-		mdatE := mdatI + int(F.Btoi32(buf, mdatI))
+		mdatE := mdatI + int(F.Btoi(buf, mdatI, 4))
 		if mdatE > len(buf) {
 			err = errors.New("mdat包破损")
 			break
