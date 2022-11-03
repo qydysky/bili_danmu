@@ -1292,9 +1292,14 @@ func (c *GetFunc) Get_cookie() (missKey []string) {
 		return
 	}
 
-	var server = &http.Server{
-		Addr: "0.0.0.0:" + strconv.Itoa(sys.Sys().GetFreePort()),
+	scanPort := int(c.K_v.LoadV("扫码登录端口").(float64))
+	if scanPort <= 0 {
+		scanPort = sys.Sys().GetFreePort()
 	}
+	var server = &http.Server{
+		Addr: "0.0.0.0:" + strconv.Itoa(scanPort),
+	}
+
 	{ //生成二维码
 		qr.WriteFile(img_url, qr.Medium, 256, `qr.png`)
 		if !p.Checkfile().IsExist(`qr.png`) {

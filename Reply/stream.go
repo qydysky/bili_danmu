@@ -326,7 +326,7 @@ func (t *M4SStream) fetchParseM3U8() (m4s_links []*m4s_link_item, m3u8_addon []b
 			timed := tmp[len(tmp)-1].createdTime.Sub(t.last_m4s.createdTime).Seconds()
 			nos, _ := tmp[len(tmp)-1].getNo()
 			noe, _ := t.last_m4s.getNo()
-			if math.Abs(timed-float64(nos-noe)) > 2 {
+			if timed > 3 && math.Abs(timed-float64(nos-noe)) > 2 {
 				e = fmt.Errorf("服务器 %s 发生故障 %d 秒产出了 %d 切片", m3u8_url.Host, int(timed), nos-noe)
 				continue
 			}

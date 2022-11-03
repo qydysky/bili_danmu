@@ -1162,6 +1162,11 @@ func init() {
 							v += "0.flv"
 						} else if file.New(v+"0.mp4", 0, true).IsExist() {
 							v += "0.mp4"
+						} else {
+							w.Header().Set("Retry-After", "1")
+							w.WriteHeader(http.StatusServiceUnavailable)
+							flog.L(`E: `, "未找到流文件", v)
+							return
 						}
 
 						var rangeHeaderNum int

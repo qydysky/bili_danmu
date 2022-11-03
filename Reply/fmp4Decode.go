@@ -284,5 +284,11 @@ func (t *Fmp4Decoder) Seach_stream_fmp4(buf []byte) (keyframes [][]byte, last_av
 		keyframe = append(keyframe, buf[moofI:mdatE]...)
 	}
 
+	if cu == 0 {
+		err = errors.New("未找到moof")
+	}
+	if last_avilable_offset == 0 && len(buf) > 1024*1024*20 {
+		err = errors.New("buf超过20M")
+	}
 	return
 }
