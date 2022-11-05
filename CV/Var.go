@@ -145,7 +145,7 @@ func (t *Common) loadConf(customConf string) error {
 	}
 
 	if customConf != "" {
-		if strings.Contains(customConf, "http") {
+		if strings.Contains(customConf, "http:") || strings.Contains(customConf, "https:") {
 			//从网址读取
 			req := t.ReqPool.Get()
 			r := req.Item.(*reqf.Req)

@@ -277,7 +277,7 @@ func (t *Fmp4Decoder) Seach_stream_fmp4(buf []byte) (keyframes [][]byte, last_av
 		cu = mdatI
 		mdatE := mdatI + int(F.Btoi(buf, mdatI, 4))
 		if mdatE > len(buf) {
-			err = errors.New("mdat包破损")
+			// err = errors.New("mdat包破损")
 			break
 		}
 
