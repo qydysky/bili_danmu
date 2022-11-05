@@ -99,7 +99,9 @@ func (t *Common) Init() Common {
 			}
 			time.Sleep(time.Duration(int(v)) * time.Second)
 
-			fmt.Println(t.loadConf(*ckv))
+			if e := t.loadConf(*ckv); e != nil {
+				fmt.Println(e)
+			}
 		}
 	}()
 
