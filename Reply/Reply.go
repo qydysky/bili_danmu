@@ -330,6 +330,9 @@ var (
 )
 
 func (replyF) heartbeat(s int) {
+	if v, ok := c.C.K_v.LoadV("下播后不记录人气观看人数").(bool); ok && v && !c.C.Liveing {
+		return
+	}
 	c.C.Danmu_Main_mq.Push_tag(`c.Renqi`, s) //使用连续付费的新舰长无法区分，刷新舰长数
 	if s == 1 {
 		return
@@ -387,6 +390,9 @@ func (replyF) win_activity(s string) {
 
 // Msg-观看人数
 func (replyF) watched_change(s string) {
+	if v, ok := c.C.K_v.LoadV("下播后不记录人气观看人数").(bool); ok && v && !c.C.Liveing {
+		return
+	}
 	var data ws_msg.WATCHED_CHANGE
 	json.Unmarshal([]byte(s), &data)
 	// fmt.Printf("\t观看人数:%d\n", watched)

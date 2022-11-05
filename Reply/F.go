@@ -1165,7 +1165,7 @@ func init() {
 						} else {
 							w.Header().Set("Retry-After", "1")
 							w.WriteHeader(http.StatusServiceUnavailable)
-							flog.L(`E: `, "未找到流文件", v)
+							flog.L(`I: `, "未找到流文件", v)
 							return
 						}
 

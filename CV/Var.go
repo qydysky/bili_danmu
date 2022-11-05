@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
+	"fmt"
 	"io"
+	"strings"
 	"testing"
 	"time"
 
@@ -71,6 +73,10 @@ func (t *Common) Init() Common {
 
 	t.Danmu_Main_mq = mq.New(200)
 
+	t.ReqPool = idpool.New(func() interface{} {
+		return reqf.New()
+	})
+
 	var (
 		ckv     = flag.String("ckv", "", "自定义配置KV文件，将会覆盖config_K_v配置")
 		roomIdP = flag.Int("r", 0, "roomid")
@@ -79,30 +85,8 @@ func (t *Common) Init() Common {
 	flag.Parse()
 	t.Roomid = *roomIdP
 
-	if bb, err := file.New("config/config_K_v.json", 0, true).ReadAll(100, 1<<16); err != nil {
-		if errors.Is(err, io.EOF) {
-			var data map[string]interface{}
-			json.Unmarshal(bb, &data)
-			for k, v := range data {
-				t.K_v.Store(k, v)
-			}
-		} else {
-			panic(err)
-		}
-	}
-
-	if *ckv != "" {
-		if bb, err := file.New(*ckv, 0, true).ReadAll(100, 1<<16); err != nil {
-			if errors.Is(err, io.EOF) {
-				var data map[string]interface{}
-				json.Unmarshal(bb, &data)
-				for k, v := range data {
-					t.K_v.Store(k, v)
-				}
-			} else {
-				panic(err)
-			}
-		}
+	if e := t.loadConf(*ckv); e != nil {
+		panic(e)
 	}
 
 	go func() {
@@ -115,32 +99,7 @@ func (t *Common) Init() Common {
 			}
 			time.Sleep(time.Duration(int(v)) * time.Second)
 
-			// 64k
-			if bb, e := file.New("config/config_K_v.json", 0, true).ReadAll(100, 1<<16); e != nil {
-				if !errors.Is(e, io.EOF) {
-					panic(e)
-				} else {
-					var data map[string]interface{}
-					json.Unmarshal(bb, &data)
-					for k, v := range data {
-						t.K_v.Store(k, v)
-					}
-				}
-			}
-
-			if *ckv != "" {
-				if bb, err := file.New(*ckv, 0, true).ReadAll(100, 1<<16); err != nil {
-					if errors.Is(err, io.EOF) {
-						var data map[string]interface{}
-						json.Unmarshal(bb, &data)
-						for k, v := range data {
-							t.K_v.Store(k, v)
-						}
-					} else {
-						panic(err)
-					}
-				}
-			}
+			fmt.Println(t.loadConf(*ckv))
 		}
 	}()
 
@@ -170,10 +129,74 @@ func (t *Common) Init() Common {
 		t.Log = t.Log.Level(logmap)
 	}
 
-	t.ReqPool = idpool.New(func() interface{} {
-		return reqf.New()
-	})
 	return *t
+}
+
+func (t *Common) loadConf(customConf string) error {
+	var data map[string]interface{}
+
+	// 64k
+	if bb, e := file.New("config/config_K_v.json", 0, true).ReadAll(100, 1<<16); e != nil {
+		if !errors.Is(e, io.EOF) {
+			return e
+		} else {
+			json.Unmarshal(bb, &data)
+		}
+	}
+
+	if customConf != "" {
+		if strings.Contains(customConf, "http") {
+			//从网址读取
+			req := t.ReqPool.Get()
+			r := req.Item.(*reqf.Req)
+			if e := r.Reqf(reqf.Rval{
+				Url: customConf,
+				Header: map[string]string{
+					`User-Agent`:      `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0`,
+					`Accept`:          `*/*`,
+					`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
+					`Accept-Encoding`: `gzip, deflate, br`,
+					`Pragma`:          `no-cache`,
+					`Cache-Control`:   `no-cache`,
+					`Connection`:      `close`,
+				},
+				Timeout: 10 * 1000,
+			}); e != nil {
+				return errors.New("无法获取自定义配置文件 " + e.Error())
+			}
+			if r.Response == nil {
+				return errors.New("无法获取自定义配置文件 响应为空")
+			} else if r.Response.StatusCode != 200 {
+				return fmt.Errorf("无法获取自定义配置文件 %d", r.Response.StatusCode)
+			} else {
+				var tmp map[string]interface{}
+				json.Unmarshal(r.Respon, &tmp)
+				for k, v := range tmp {
+					data[k] = v
+				}
+			}
+			t.ReqPool.Put(req)
+		} else {
+			//从文件读取
+			if bb, err := file.New(customConf, 0, true).ReadAll(100, 1<<16); err != nil {
+				if errors.Is(err, io.EOF) {
+					var tmp map[string]interface{}
+					json.Unmarshal(bb, &tmp)
+					for k, v := range tmp {
+						data[k] = v
+					}
+				} else {
+					return err
+				}
+			}
+		}
+	}
+
+	for k, v := range data {
+		t.K_v.Store(k, v)
+	}
+
+	return nil
 }
 
 var C = new(Common).Init()
