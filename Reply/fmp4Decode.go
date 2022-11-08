@@ -117,8 +117,9 @@ func (t *Fmp4Decoder) Seach_stream_fmp4(buf []byte) (keyframes [][]byte, last_av
 	}
 
 	var (
-		cu       int
-		keyframe []byte
+		cu           int
+		haveKeyframe bool
+		keyframe     []byte
 	)
 
 	for cu < len(buf) {
@@ -128,11 +129,11 @@ func (t *Fmp4Decoder) Seach_stream_fmp4(buf []byte) (keyframes [][]byte, last_av
 			break
 		}
 		moofI = cu + moofI - 4
-		cu = moofI
 		moofE := moofI + int(F.Btoi(buf, moofI, 4))
 		if moofE > len(buf) {
 			break
 		}
+		cu = moofI
 
 		var (
 			iskeyFrame     bool
@@ -150,11 +151,11 @@ func (t *Fmp4Decoder) Seach_stream_fmp4(buf []byte) (keyframes [][]byte, last_av
 				break
 			}
 			trafI = cu + trafI - 4
-			cu = trafI
 			trafE := trafI + int(F.Btoi(buf, trafI, 4))
 			if trafE > moofE {
 				break
 			}
+			cu = trafI
 
 			//tfhd
 			tfhdI := bytes.Index(buf[cu:], []byte("tfhd"))
@@ -163,12 +164,12 @@ func (t *Fmp4Decoder) Seach_stream_fmp4(buf []byte) (keyframes [][]byte, last_av
 				break
 			}
 			tfhdI = cu + tfhdI - 4
-			cu = tfhdI
 			tfhdE := tfhdI + int(F.Btoi(buf, tfhdI, 4))
 			if tfhdE > trafE {
 				err = errors.New("tfhd包破损")
 				break
 			}
+			cu = tfhdI
 
 			//tfdt
 			tfdtI := bytes.Index(buf[cu:], []byte("tfdt"))
@@ -177,12 +178,12 @@ func (t *Fmp4Decoder) Seach_stream_fmp4(buf []byte) (keyframes [][]byte, last_av
 				break
 			}
 			tfdtI = cu + tfdtI - 4
-			cu = tfdtI
 			tfdtE := tfdtI + int(F.Btoi(buf, tfdtI, 4))
 			if tfdtE > trafE {
 				err = errors.New("tfdt包破损")
 				break
 			}
+			cu = tfdtI
 
 			//trun
 			trunI := bytes.Index(buf[cu:], []byte("trun"))
@@ -191,12 +192,12 @@ func (t *Fmp4Decoder) Seach_stream_fmp4(buf []byte) (keyframes [][]byte, last_av
 				break
 			}
 			trunI = cu + trunI - 4
-			cu = trunI
 			trunE := trunI + int(F.Btoi(buf, trunI, 4))
 			if trunE > trafE {
 				err = errors.New("trun包破损")
 				break
 			}
+			cu = trunI
 
 			var (
 				timeStamp      int
@@ -260,7 +261,8 @@ func (t *Fmp4Decoder) Seach_stream_fmp4(buf []byte) (keyframes [][]byte, last_av
 		}
 
 		if iskeyFrame {
-			last_avilable_offset = moofI - 1
+			haveKeyframe = true
+			last_avilable_offset = moofI
 			if len(keyframe) != 0 {
 				keyframes = append(keyframes, keyframe)
 			}
@@ -274,11 +276,17 @@ func (t *Fmp4Decoder) Seach_stream_fmp4(buf []byte) (keyframes [][]byte, last_av
 			break
 		}
 		mdatI = cu + mdatI - 4
-		cu = mdatI
 		mdatE := mdatI + int(F.Btoi(buf, mdatI, 4))
 		if mdatE > len(buf) {
 			// err = errors.New("mdat包破损")
 			break
+		}
+		cu = mdatI
+
+		if !iskeyFrame && !haveKeyframe {
+			// 之前并没有关键帧，丢弃
+			last_avilable_offset = cu
+			continue
 		}
 
 		keyframe = append(keyframe, buf[moofI:mdatE]...)
@@ -287,7 +295,7 @@ func (t *Fmp4Decoder) Seach_stream_fmp4(buf []byte) (keyframes [][]byte, last_av
 	if cu == 0 {
 		err = errors.New("未找到moof")
 	}
-	if last_avilable_offset == 0 && len(buf) > 1024*1024*20 {
+	if len(buf) > 1024*1024*20 {
 		err = errors.New("buf超过20M")
 	}
 	return
