@@ -26,11 +26,11 @@ func (t *Fmp4Decoder) Init_fmp4(buf []byte) error {
 			break
 		}
 		moovI = cu + moovI - 4
-		cu = moovI
 		moovE := moovI + int(F.Btoi(buf, moovI, 4))
 		if moovE > len(buf) {
 			return errors.New("moov包破损")
 		}
+		cu = moovI
 
 		for cu < moovE {
 			//trak
@@ -39,11 +39,11 @@ func (t *Fmp4Decoder) Init_fmp4(buf []byte) error {
 				break
 			}
 			trakI = cu + trakI - 4
-			cu = trakI
 			trakE := trakI + int(F.Btoi(buf, trakI, 4))
 			if trakE > moovE {
 				return errors.New("trak包破损")
 			}
+			cu = trakI
 
 			//tkhd
 			tkhdI := bytes.Index(buf[cu:], []byte("tkhd"))
@@ -51,11 +51,11 @@ func (t *Fmp4Decoder) Init_fmp4(buf []byte) error {
 				return errors.New("未找到tkhd包")
 			}
 			tkhdI = cu + tkhdI - 4
-			cu = tkhdI
 			tkhdE := tkhdI + int(F.Btoi(buf, tkhdI, 4))
 			if tkhdE > trakE {
 				return errors.New("tkhd包破损")
 			}
+			cu = tkhdI
 
 			//mdia
 			mdiaI := bytes.Index(buf[cu:], []byte("mdia"))
@@ -63,11 +63,11 @@ func (t *Fmp4Decoder) Init_fmp4(buf []byte) error {
 				return errors.New("未找到mdia包")
 			}
 			mdiaI = cu + mdiaI - 4
-			cu = mdiaI
 			mdiaE := mdiaI + int(F.Btoi(buf, mdiaI, 4))
 			if mdiaE > trakE {
 				return errors.New("mdia包破损")
 			}
+			cu = mdiaI
 
 			//mdhd
 			mdhdI := bytes.Index(buf[cu:], []byte("mdhd"))
@@ -75,11 +75,11 @@ func (t *Fmp4Decoder) Init_fmp4(buf []byte) error {
 				return errors.New("未找到mdhd包")
 			}
 			mdhdI = cu + mdhdI - 4
-			cu = mdhdI
 			mdhdE := mdhdI + int(F.Btoi(buf, mdhdI, 4))
 			if mdhdE > mdiaE {
 				return errors.New("mdhd包破损")
 			}
+			cu = mdhdI
 
 			//hdlr
 			hdlrI := bytes.Index(buf[cu:], []byte("hdlr"))
@@ -87,11 +87,11 @@ func (t *Fmp4Decoder) Init_fmp4(buf []byte) error {
 				return errors.New("未找到hdlr包")
 			}
 			hdlrI = cu + hdlrI - 4
-			cu = hdlrI
 			hdlrE := hdlrI + int(F.Btoi(buf, hdlrI, 4))
 			if hdlrE > mdiaE {
 				return errors.New("hdlr包破损")
 			}
+			cu = hdlrI
 
 			tackId := int(F.Btoi(buf, tkhdI+20, 4))
 			if t.traks == nil {
@@ -248,15 +248,11 @@ func (t *Fmp4Decoder) Seach_stream_fmp4(buf []byte) (keyframes [][]byte, last_av
 			case 4:
 				// log.Default().Println("set audio to:", int32(videoTime*float64(audioTimeScale)))
 				date := F.Itob32(int32(videoTime * float64(audioTimeScale)))
-				for i := 0; i < audioTimeSize; i += 1 {
-					buf[audioTimeIndex+i] = date[i]
-				}
+				copy(buf[audioTimeIndex:], date)
 			case 8:
 				// log.Default().Println("set audio to:", int64(videoTime*float64(audioTimeScale)))
 				date := F.Itob64(int64(videoTime * float64(audioTimeScale)))
-				for i := 0; i < audioTimeSize; i += 1 {
-					buf[audioTimeIndex+i] = date[i]
-				}
+				copy(buf[audioTimeIndex:], date)
 			}
 		}
 

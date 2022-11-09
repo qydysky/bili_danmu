@@ -7,7 +7,7 @@ require (
 	github.com/gofrs/uuid v4.3.0+incompatible
 	github.com/gotk3/gotk3 v0.6.1
 	github.com/mdp/qrterminal/v3 v3.0.0
-	github.com/qydysky/part v0.10.17
+	github.com/qydysky/part v0.18.19
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966
 	golang.org/x/text v0.3.8
@@ -21,7 +21,7 @@ require (
 	github.com/miekg/dns v1.1.50 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
-	github.com/stretchr/testify v1.7.1 // indirect
+	github.com/stretchr/testify v1.8.1 // indirect
 	github.com/thedevsaddam/gojsonq/v2 v2.5.2 // indirect
 	github.com/tklauser/go-sysconf v0.3.10 // indirect
 	github.com/tklauser/numcpus v0.5.0 // indirect
