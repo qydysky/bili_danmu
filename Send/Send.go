@@ -2,6 +2,8 @@ package send
 
 import (
 	"encoding/json"
+	"errors"
+	"io"
 	"strconv"
 
 	c "github.com/qydysky/bili_danmu/CV"
@@ -19,7 +21,7 @@ var damnu_official = make(map[string]string)
 // 初始化表情代码
 func init() {
 	bb, err := file.New("config/config_danmu_official.json", 0, true).ReadAll(1000, 1<<16)
-	if err != nil {
+	if !errors.Is(err, io.EOF) {
 		return
 	}
 	var buf map[string]interface{}

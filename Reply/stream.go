@@ -585,10 +585,11 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 
 			t.log.L(`I: `, `flv下载开始`)
 
-			if err := r.Reqf(reqf.Rval{
+			r.Reqf(reqf.Rval{
 				Url:              surl.String(),
 				SaveToPipeWriter: rw,
 				NoResponse:       true,
+				Async:            true,
 				Proxy:            t.common.Proxy,
 				Header: map[string]string{
 					`Host`:            surl.Host,
@@ -602,7 +603,8 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 					`Referer`:         "https://live.bilibili.com/",
 					`Cookie`:          reqf.Map_2_Cookies_String(CookieM),
 				},
-			}); err != nil && !errors.Is(err, io.EOF) {
+			})
+			if e := r.Wait(); e != nil && !errors.Is(err, io.EOF) {
 				if reqf.IsCancel(err) {
 					t.log.L(`I: `, `flv下载停止`)
 				} else if !reqf.IsTimeout(err) {
@@ -630,13 +632,9 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 		Max: 3,
 	}
 
-	var out *os.File
+	var out *file.File
 	if t.config.save_as_mp4 {
-		var err error
-		out, err = os.Create(t.Current_save_path + `0.mp4`)
-		if err != nil {
-			out.Close()
-		}
+		out = file.New(t.Current_save_path+`0.mp4`, 0, false)
 		defer out.Close()
 	}
 
@@ -656,14 +654,17 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 
 			// 下载切片
 			for _, v := range download_seq {
+
+				// 已下载但还未移除的切片
+				if v.status == 2 {
+					download_limit.Block()
+					download_limit.UnBlock()
+					continue
+				}
+
 				go func(link *m4s_link_item, path string) {
 					defer download_limit.UnBlock()
 					download_limit.Block()
-
-					// 已下载但还未移除的切片
-					if link.status == 2 {
-						return
-					}
 
 					link.status = 1 // 设置切片状态为正在下载
 					link.tryDownCount += 1
@@ -735,27 +736,38 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 		{
 			for _, v := range download_seq {
 				if v.status == 2 {
-					download_seq = download_seq[1:]
-					buf = append(buf, v.data...)
-
 					if strings.Contains(v.Base, `h`) {
-						if e := fmp4Decoder.Init_fmp4(v.data); e != nil {
-							t.log.L(`E: `, e)
+						if header, e := fmp4Decoder.Init_fmp4(v.data); e != nil {
+							t.log.L(`E: `, e, ` 重试!`)
+							v.status = 3
+							break
 						} else {
 							for _, trak := range fmp4Decoder.traks {
 								t.log.L(`T: `, "找到trak:", string(trak.handlerType), trak.trackID, trak.timescale)
 							}
+							t.first_buf = header
+							if out != nil {
+								out.Write(t.first_buf, true)
+								out.Sync()
+							}
 						}
-						t.first_buf = v.data
-						if t.config.save_as_mp4 {
-							out.Write(v.data)
-						}
+						download_seq = download_seq[1:]
+						continue
+					} else if t.first_buf == nil {
+						download_seq = download_seq[1:]
 						continue
 					}
 
-					fmp4KeyFrames, last_avilable_offset, e := fmp4Decoder.Seach_stream_fmp4(buf)
-					if e != nil {
-						t.log.L(`E: `, e)
+					download_seq = download_seq[1:]
+					buf = append(buf, v.data...)
+
+					fmp4KeyFrames, last_avilable_offset, err := fmp4Decoder.Seach_stream_fmp4(buf)
+					if err != nil {
+						t.log.L(`E: `, err)
+						if err.Error() == "未初始化traks" {
+							e = err
+							return
+						}
 						//丢弃所有数据
 						last_avilable_offset = len(buf)
 					}
@@ -763,8 +775,9 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 					for _, fmp4KeyFrame := range fmp4KeyFrames {
 						t.bootBufPush(fmp4KeyFrame)
 						t.Stream_msg.Push_tag(`data`, fmp4KeyFrame)
-						if t.config.save_as_mp4 {
-							out.Write(fmp4KeyFrame)
+						if out != nil {
+							out.Write(fmp4KeyFrame, true)
+							out.Sync()
 						}
 					}
 
@@ -777,9 +790,6 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 				} else {
 					break
 				}
-			}
-			if t.config.save_as_mp4 {
-				out.Sync()
 			}
 		}
 

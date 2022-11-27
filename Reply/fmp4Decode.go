@@ -3,6 +3,7 @@ package reply
 import (
 	"bytes"
 	"errors"
+	"fmt"
 
 	F "github.com/qydysky/bili_danmu/F"
 )
@@ -17,8 +18,25 @@ type Fmp4Decoder struct {
 	traks map[int]trak
 }
 
-func (t *Fmp4Decoder) Init_fmp4(buf []byte) error {
-	var cu int
+func (t *Fmp4Decoder) Init_fmp4(buf []byte) ([]byte, error) {
+	var (
+		cu        int
+		lastMoovI int
+		lastMoovE int
+	)
+
+	//ftyp
+	ftypI := bytes.Index(buf[cu:], []byte("ftyp"))
+	if ftypI == -1 {
+		return nil, errors.New("未找到ftyp包")
+	}
+	ftypI = cu + ftypI - 4
+	ftypE := ftypI + int(F.Btoi(buf, ftypI, 4))
+	if ftypE > len(buf) {
+		return nil, errors.New("ftyp包破损")
+	}
+	cu = ftypI
+
 	for cu < len(buf) {
 		//moov
 		moovI := bytes.Index(buf[cu:], []byte("moov"))
@@ -28,9 +46,12 @@ func (t *Fmp4Decoder) Init_fmp4(buf []byte) error {
 		moovI = cu + moovI - 4
 		moovE := moovI + int(F.Btoi(buf, moovI, 4))
 		if moovE > len(buf) {
-			return errors.New("moov包破损")
+			return nil, errors.New("moov包破损")
 		}
 		cu = moovI
+
+		lastMoovI = moovI
+		lastMoovE = moovE
 
 		for cu < moovE {
 			//trak
@@ -41,55 +62,55 @@ func (t *Fmp4Decoder) Init_fmp4(buf []byte) error {
 			trakI = cu + trakI - 4
 			trakE := trakI + int(F.Btoi(buf, trakI, 4))
 			if trakE > moovE {
-				return errors.New("trak包破损")
+				return nil, errors.New("trak包破损")
 			}
 			cu = trakI
 
 			//tkhd
 			tkhdI := bytes.Index(buf[cu:], []byte("tkhd"))
 			if tkhdI == -1 {
-				return errors.New("未找到tkhd包")
+				return nil, errors.New("未找到tkhd包")
 			}
 			tkhdI = cu + tkhdI - 4
 			tkhdE := tkhdI + int(F.Btoi(buf, tkhdI, 4))
 			if tkhdE > trakE {
-				return errors.New("tkhd包破损")
+				return nil, errors.New("tkhd包破损")
 			}
 			cu = tkhdI
 
 			//mdia
 			mdiaI := bytes.Index(buf[cu:], []byte("mdia"))
 			if mdiaI == -1 {
-				return errors.New("未找到mdia包")
+				return nil, errors.New("未找到mdia包")
 			}
 			mdiaI = cu + mdiaI - 4
 			mdiaE := mdiaI + int(F.Btoi(buf, mdiaI, 4))
 			if mdiaE > trakE {
-				return errors.New("mdia包破损")
+				return nil, errors.New("mdia包破损")
 			}
 			cu = mdiaI
 
 			//mdhd
 			mdhdI := bytes.Index(buf[cu:], []byte("mdhd"))
 			if mdhdI == -1 {
-				return errors.New("未找到mdhd包")
+				return nil, errors.New("未找到mdhd包")
 			}
 			mdhdI = cu + mdhdI - 4
 			mdhdE := mdhdI + int(F.Btoi(buf, mdhdI, 4))
 			if mdhdE > mdiaE {
-				return errors.New("mdhd包破损")
+				return nil, errors.New("mdhd包破损")
 			}
 			cu = mdhdI
 
 			//hdlr
 			hdlrI := bytes.Index(buf[cu:], []byte("hdlr"))
 			if hdlrI == -1 {
-				return errors.New("未找到hdlr包")
+				return nil, errors.New("未找到hdlr包")
 			}
 			hdlrI = cu + hdlrI - 4
 			hdlrE := hdlrI + int(F.Btoi(buf, hdlrI, 4))
 			if hdlrE > mdiaE {
-				return errors.New("hdlr包破损")
+				return nil, errors.New("hdlr包破损")
 			}
 			cu = hdlrI
 
@@ -105,9 +126,9 @@ func (t *Fmp4Decoder) Init_fmp4(buf []byte) error {
 		}
 	}
 	if len(t.traks) == 0 {
-		return errors.New("未找到trak包")
+		return nil, errors.New("未找到trak包")
 	}
-	return nil
+	return append(buf[ftypI:ftypE], buf[lastMoovI:lastMoovE]...), nil
 }
 
 func (t *Fmp4Decoder) Seach_stream_fmp4(buf []byte) (keyframes [][]byte, last_avilable_offset int, err error) {
@@ -120,6 +141,7 @@ func (t *Fmp4Decoder) Seach_stream_fmp4(buf []byte) (keyframes [][]byte, last_av
 		cu           int
 		haveKeyframe bool
 		keyframe     []byte
+		frameTime    int
 	)
 
 	for cu < len(buf) {
@@ -235,6 +257,14 @@ func (t *Fmp4Decoder) Seach_stream_fmp4(buf []byte) (keyframes [][]byte, last_av
 			if !iskeyFrame && buf[trunI+20] == byte(0x02) {
 				iskeyFrame = true
 			}
+
+			if track.handlerType == 'v' {
+				if timeStamp < frameTime {
+					err = fmt.Errorf("时间戳异常: (current)%d < (last)%d", timeStamp, frameTime)
+					break
+				}
+				frameTime = timeStamp
+			}
 		}
 
 		if err != nil {
@@ -291,7 +321,7 @@ func (t *Fmp4Decoder) Seach_stream_fmp4(buf []byte) (keyframes [][]byte, last_av
 	if cu == 0 {
 		err = errors.New("未找到moof")
 	}
-	if len(buf) > 1024*1024*20 {
+	if len(buf)-last_avilable_offset > 1024*1024*20 {
 		err = errors.New("buf超过20M")
 	}
 	return

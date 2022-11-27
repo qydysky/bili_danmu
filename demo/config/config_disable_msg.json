@@ -2,5 +2,6 @@
     "help":"禁用指定消息类型,false将忽略此类消息,true将显示此类消息的json纯文本",
     "PK_BATTLE_PRE":false,
     "LIVE_INTERACTIVE_GAME":false,
-    "room_admin_entrance":false
+    "room_admin_entrance":false,
+    "LIKE_INFO_V3_CLICK":false
 }

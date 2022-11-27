@@ -2,6 +2,8 @@ package reply
 
 import (
 	"encoding/json"
+	"errors"
+	"io"
 
 	c "github.com/qydysky/bili_danmu/CV"
 	file "github.com/qydysky/part/file"
@@ -118,7 +120,7 @@ var Msg_map = map[string]func(replyF, string){
 func init() {
 	{ //加载不需要的消息
 		bb, err := file.New("config/config_disable_msg.json", 0, true).ReadAll(100, 1<<16)
-		if err != nil {
+		if !errors.Is(err, io.EOF) {
 			return
 		}
 		var buf map[string]interface{}

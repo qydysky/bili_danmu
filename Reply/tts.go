@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/url"
 	"os/exec"
 	"strings"
@@ -78,7 +79,7 @@ func init() {
 		}
 
 		bb, err := file.New("config/config_tts.json", 0, true).ReadAll(100, 1<<16)
-		if err != nil {
+		if !errors.Is(err, io.EOF) {
 			return
 		}
 		var buf map[string]interface{}

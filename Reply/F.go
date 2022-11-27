@@ -545,7 +545,7 @@ var danmuji = Danmuji{
 
 func init() { //初始化反射型弹幕机
 	bb, err := file.New("config/config_auto_reply.json", 0, true).ReadAll(100, 1<<16)
-	if err != nil {
+	if !errors.Is(err, io.EOF) {
 		return
 	}
 	var buf map[string]interface{}
