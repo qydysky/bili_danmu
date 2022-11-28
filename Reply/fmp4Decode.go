@@ -3,7 +3,6 @@ package reply
 import (
 	"bytes"
 	"errors"
-	"fmt"
 
 	F "github.com/qydysky/bili_danmu/F"
 )
@@ -260,7 +259,10 @@ func (t *Fmp4Decoder) Seach_stream_fmp4(buf []byte) (keyframes [][]byte, last_av
 
 			if track.handlerType == 'v' {
 				if timeStamp < frameTime {
-					err = fmt.Errorf("时间戳异常: (current)%d < (last)%d", timeStamp, frameTime)
+					// log.Default().Println("时间戳异常 忽略到下个关键帧")
+					iskeyFrame = false
+					haveKeyframe = false
+					keyframe = []byte{}
 					break
 				}
 				frameTime = timeStamp
