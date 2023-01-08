@@ -607,7 +607,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 			if e := r.Wait(); e != nil && !errors.Is(err, io.EOF) {
 				if reqf.IsCancel(err) {
 					t.log.L(`I: `, `flv下载停止`)
-				} else if !reqf.IsTimeout(err) {
+				} else if err != nil && !reqf.IsTimeout(err) {
 					e = err
 					t.log.L(`E: `, `flv下载失败:`, err)
 				}
@@ -640,8 +640,10 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 
 	//
 	var (
-		buf         []byte
-		fmp4Decoder = &Fmp4Decoder{}
+		buf              bufB
+		fmp4KeyFrames    bufB
+		fmp4KeyFramesBuf []byte
+		fmp4Decoder      = &Fmp4Decoder{}
 	)
 
 	// 下载循环
@@ -719,10 +721,11 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 							link.status = 3 // 设置切片状态为下载失败
 						}
 					} else {
-						if usedt := r.UsedTime.Seconds(); usedt > 700 {
-							t.log.L(`I: `, `hls切片下载慢`, usedt, `ms`)
-						}
-						link.data = r.Respon
+						// if usedt := r.UsedTime.Seconds(); usedt > 700 {
+						// 	t.log.L(`I: `, `hls切片下载慢`, usedt, `ms`)
+						// }
+						link.data = make([]byte, len(r.Respon))
+						copy(link.data, r.Respon)
 						link.status = 2 // 设置切片状态为下载完成
 					}
 				}(v, t.Current_save_path)
@@ -733,64 +736,85 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 		}
 
 		// 传递已下载切片
-		{
-			for _, v := range download_seq {
-				if v.status == 2 {
-					if strings.Contains(v.Base, `h`) {
-						if header, e := fmp4Decoder.Init_fmp4(v.data); e != nil {
-							t.log.L(`E: `, e, ` 重试!`)
-							v.status = 3
-							break
-						} else {
-							for _, trak := range fmp4Decoder.traks {
-								t.log.L(`T: `, "找到trak:", string(trak.handlerType), trak.trackID, trak.timescale)
-							}
-							t.first_buf = header
-							if out != nil {
-								out.Write(t.first_buf, true)
-								out.Sync()
-							}
-						}
-						download_seq = download_seq[1:]
-						continue
-					} else if t.first_buf == nil {
-						download_seq = download_seq[1:]
-						continue
-					}
+		for k := 0; k < len(download_seq); k++ {
+			v := download_seq[k]
 
-					download_seq = download_seq[1:]
-					buf = append(buf, v.data...)
-
-					fmp4KeyFrames, last_avilable_offset, err := fmp4Decoder.Seach_stream_fmp4(buf)
-					if err != nil {
-						t.log.L(`E: `, err)
-						if err.Error() == "未初始化traks" {
-							e = err
-							return
-						}
-						//丢弃所有数据
-						last_avilable_offset = len(buf)
-					}
-
-					for _, fmp4KeyFrame := range fmp4KeyFrames {
-						t.bootBufPush(fmp4KeyFrame)
-						t.Stream_msg.Push_tag(`data`, fmp4KeyFrame)
-						if out != nil {
-							out.Write(fmp4KeyFrame, true)
-							out.Sync()
-						}
-					}
-
-					if last_avilable_offset > 0 {
-						buf = buf[last_avilable_offset:]
-					}
-				} else if v.tryDownCount >= 4 {
+			if v.status != 2 {
+				if v.tryDownCount >= 4 {
 					//下载了4次，任未下载成功，忽略此块
-					download_seq = download_seq[1:]
+					download_seq = append(download_seq[:k], download_seq[k+1:]...)
+					k -= 1
+					continue
 				} else {
 					break
 				}
 			}
+
+			if strings.Contains(v.Base, `h`) {
+				if header, e := fmp4Decoder.Init_fmp4(v.data); e != nil {
+					t.log.L(`E: `, e, `重试!`)
+					v.status = 3
+					break
+				} else {
+					for _, trak := range fmp4Decoder.traks {
+						// fmt.Println(`T: `, "找到trak:", string(trak.handlerType), trak.trackID, trak.timescale)
+						t.log.L(`T: `, "找到trak:", string(trak.handlerType), trak.trackID, trak.timescale)
+					}
+					t.first_buf = header
+					if out != nil {
+						out.Write(t.first_buf, true)
+						out.Sync()
+					}
+				}
+				download_seq = append(download_seq[:k], download_seq[k+1:]...)
+				k -= 1
+				continue
+			} else if t.first_buf == nil {
+				download_seq = append(download_seq[:k], download_seq[k+1:]...)
+				k -= 1
+				continue
+			}
+
+			buf.append(v.data)
+			download_seq = append(download_seq[:k], download_seq[k+1:]...)
+			k -= 1
+
+			last_avilable_offset, err := fmp4Decoder.Seach_stream_fmp4(buf.getCopyBuf(), &fmp4KeyFrames)
+			if err != nil {
+				if !errors.Is(err, io.EOF) {
+					t.log.L(`E: `, err)
+
+					// no, _ := v.getNo()
+					// file.New("error/"+strconv.Itoa(no)+".m4s", 0, true).Write(buf.getCopyBuf(), true)
+					// file.New("error/"+strconv.Itoa(no)+"S.m4s", 0, true).Write(v.data, true)
+
+					if err.Error() == "未初始化traks" {
+						e = err
+						return
+					}
+					//丢弃所有数据
+					buf.reset()
+				} else {
+					fmp4KeyFrames.reset()
+					last_avilable_offset = 0
+				}
+			}
+
+			// no, _ := v.getNo()
+			// fmt.Println(no, "fmp4KeyFrames", len(fmp4KeyFrames), last_avilable_offset, err)
+
+			if !fmp4KeyFrames.isEmpty() {
+				fmp4KeyFramesBuf = fmp4KeyFrames.getCopyBuf()
+				fmp4KeyFrames.reset()
+				t.bootBufPush(fmp4KeyFramesBuf)
+				t.Stream_msg.Push_tag(`data`, fmp4KeyFramesBuf)
+				if out != nil {
+					out.Write(fmp4KeyFramesBuf, true)
+					out.Sync()
+				}
+			}
+
+			buf.removeFront(last_avilable_offset)
 		}
 
 		// 停止录制

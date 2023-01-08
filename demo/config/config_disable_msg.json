@@ -3,5 +3,6 @@
     "PK_BATTLE_PRE":false,
     "LIVE_INTERACTIVE_GAME":false,
     "room_admin_entrance":false,
-    "LIKE_INFO_V3_CLICK":false
+    "LIKE_INFO_V3_CLICK":false,
+    "PK_BATTLE_ENTRANCE": false
 }

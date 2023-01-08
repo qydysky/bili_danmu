@@ -495,6 +495,20 @@ func (replyF) little_tips(s string) {
 	msglog.Base_add("房").L(`I: `, s)
 }
 
+// Msg-人气排名
+func (replyF) popular_rank_changed(s string) {
+	var type_item ws_msg.POPULAR_RANK_CHANGED
+
+	if e := json.Unmarshal([]byte(s), &type_item); e != nil {
+		msglog.L(`E: `, e)
+	}
+	s = fmt.Sprintf("人气排行 %d", type_item.Data.Rank)
+
+	Gui_show(s, "0room")
+
+	msglog.Base_add("房").L(`I: `, s)
+}
+
 // Msg-开始了视频连线
 func (replyF) video_connection_join_start(s string) {
 	msglog := msglog.Base_add("房").Log_show_control(false)
@@ -1124,6 +1138,7 @@ type Danmu_mq_t struct {
 
 var Danmu_mq = mq.New(10)
 
+// 消息显示
 func Gui_show(m ...string) {
 	//m[0]:msg m[1]:uid
 	uid := ""
