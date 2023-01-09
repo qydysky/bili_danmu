@@ -532,20 +532,38 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 
 			// read
 			go func() {
-				var buff []byte
-				var buf = make([]byte, 1<<16)
+				var (
+					ticker = time.NewTicker(time.Second)
+					buff   bufB
+					buf    = make([]byte, 1<<16)
+				)
 				for {
 					n, e := rc.Read(buf)
+					buff.append(buf[:n])
+					if e != nil {
+						out.Close()
+						t.Stream_msg.Push_tag(`close`, nil)
+						break
+					}
 					leastReadUnix = time.Now().Unix()
-					buff = append(buff, buf[:n]...)
-					if n > 0 {
-						front_buf, keyframe, last_avilable_offset, e := Seach_stream_tag(buff)
+
+					skip := true
+					select {
+					case <-ticker.C:
+						skip = false
+					default:
+					}
+					if skip {
+						continue
+					}
+
+					if !buff.isEmpty() {
+						front_buf, keyframe, last_avilable_offset, e := Seach_stream_tag(buff.getCopyBuf())
 						if e != nil {
 							if strings.Contains(e.Error(), `no found available tag`) {
 								continue
 							}
 						}
-
 						if len(front_buf)+len(keyframe) != 0 {
 							if len(front_buf) != 0 {
 								t.first_buf = front_buf
@@ -559,22 +577,17 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 								t.bootBufPush(frame)
 								t.Stream_msg.Push_tag(`data`, frame)
 							}
-							if last_avilable_offset != 0 {
-								// fmt.Println("write Sync")
-								buff = buff[last_avilable_offset-1:]
-								out.Sync()
-							}
 						}
-					}
-					if e != nil {
-						out.Close()
-						t.Stream_msg.Push_tag(`close`, nil)
-						break
+						if last_avilable_offset > 1 {
+							// fmt.Println("write Sync")
+							buff.removeFront(last_avilable_offset - 1)
+							out.Sync()
+						}
 					}
 				}
 
 				buf = nil
-				buff = nil
+				buff.reset()
 			}()
 
 			CookieM := make(map[string]string)

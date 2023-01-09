@@ -114,6 +114,31 @@ func (t *Fmp4Decoder) Seach_stream_fmp4(buf []byte, keyframes *bufB) (cu int, er
 		haveKeyframe      bool
 		bufModified       = t.buf.getModifiedTime()
 		maxSequenceNumber int
+
+		//get timeStamp
+		get_timeStamp = func(tfdt int) (ts timeStamp) {
+			switch buf[tfdt+8] {
+			case 0:
+				ts.data = buf[tfdt+16 : tfdt+20]
+				ts.timeStamp = int(F.Btoi(buf, tfdt+16, 4))
+			case 1:
+				ts.data = buf[tfdt+12 : tfdt+20]
+				ts.timeStamp = int(F.Btoi64(buf, tfdt+12))
+			}
+			return
+		}
+
+		//get track type
+		get_track_type = func(tfhd, tfdt int) (ts timeStamp, handlerType byte) {
+			track, ok := t.traks[int(F.Btoi(buf, tfhd+12, 4))]
+			if ok {
+				ts := get_timeStamp(tfdt)
+				ts.handlerType = track.handlerType
+				ts.timescale = track.timescale
+				return ts, track.handlerType
+			}
+			return
+		}
 	)
 
 	err = deal(buf,
@@ -143,31 +168,6 @@ func (t *Fmp4Decoder) Seach_stream_fmp4(buf []byte, keyframes *bufB) (cu int, er
 				return false
 			} else {
 				maxSequenceNumber = moofSN
-			}
-
-			//get timeStamp
-			var get_timeStamp = func(tfdt int) (ts timeStamp) {
-				switch buf[tfdt+8] {
-				case 0:
-					ts.data = buf[tfdt+16 : tfdt+20]
-					ts.timeStamp = int(F.Btoi(buf, tfdt+16, 4))
-				case 1:
-					ts.data = buf[tfdt+12 : tfdt+20]
-					ts.timeStamp = int(F.Btoi64(buf, tfdt+12))
-				}
-				return
-			}
-
-			//get track type
-			var get_track_type = func(tfhd, tfdt int) (ts timeStamp, handlerType byte) {
-				track, ok := t.traks[int(F.Btoi(buf, tfhd+12, 4))]
-				if ok {
-					ts := get_timeStamp(tfdt)
-					ts.handlerType = track.handlerType
-					ts.timescale = track.timescale
-					return ts, track.handlerType
-				}
-				return
 			}
 			{
 				ts, handlerType := get_track_type(m[3].i, m[4].i)
