@@ -63,9 +63,17 @@ type Fmp4Decoder struct {
 func (t *Fmp4Decoder) Init_fmp4(buf []byte) (b []byte, err error) {
 	var ftypI, ftypE, moovI, moovE int
 
-	err = deal(buf,
+	ies, e := decode(buf, "ftyp")
+	if len(ies) == 0 {
+		err = errors.New("未找到box")
+	}
+	if e != nil {
+		return
+	}
+
+	err = deal(ies,
 		[]string{"ftyp", "moov"},
-		func(m []*ie) bool {
+		func(m []ie) bool {
 			ftypI = m[0].i
 			ftypE = m[0].e
 			moovI = m[1].i
@@ -77,9 +85,9 @@ func (t *Fmp4Decoder) Init_fmp4(buf []byte) (b []byte, err error) {
 		return nil, err
 	}
 
-	err = deal(buf,
+	err = deal(ies,
 		[]string{"tkhd", "mdia", "mdhd", "hdlr"},
-		func(m []*ie) bool {
+		func(m []ie) bool {
 			tackId := int(F.Btoi(buf, m[0].i+20, 4))
 			if t.traks == nil {
 				t.traks = make(map[int]trak)
@@ -111,9 +119,11 @@ func (t *Fmp4Decoder) Seach_stream_fmp4(buf []byte, keyframes *bufB) (cu int, er
 
 	t.buf.reset()
 	var (
-		haveKeyframe      bool
-		bufModified       = t.buf.getModifiedTime()
-		maxSequenceNumber int
+		haveKeyframe bool
+		bufModified  = t.buf.getModifiedTime()
+		// maxSequenceNumber int //有时并不是单调增加
+		maxVT float64
+		maxAT float64
 
 		//get timeStamp
 		get_timeStamp = func(tfdt int) (ts timeStamp) {
@@ -139,119 +149,188 @@ func (t *Fmp4Decoder) Seach_stream_fmp4(buf []byte, keyframes *bufB) (cu int, er
 			}
 			return
 		}
+
+		//is t error?
+		check_set_maxT = func(ts timeStamp, equal func(ts timeStamp) error, larger func(ts timeStamp) error) (err error) {
+			switch ts.handlerType {
+			case 'v':
+				if maxVT == 0 {
+					maxVT = ts.getT()
+				} else if maxVT == ts.getT() && equal != nil {
+					err = equal(ts)
+				} else if maxVT > ts.getT() && larger != nil {
+					err = larger(ts)
+				} else {
+					maxVT = ts.getT()
+				}
+			case 'a':
+				if maxAT == 0 {
+					maxAT = ts.getT()
+				} else if maxAT == ts.getT() && equal != nil {
+					err = equal(ts)
+				} else if maxAT > ts.getT() && larger != nil {
+					err = larger(ts)
+				} else {
+					maxAT = ts.getT()
+				}
+			default:
+			}
+			return
+		}
 	)
 
-	err = deal(buf,
-		[]string{"moof", "mfhd",
-			"traf", "tfhd", "tfdt", "trun",
-			"traf", "tfhd", "tfdt", "trun",
-			"mdat"},
-		func(m []*ie) bool {
-			var (
-				keyframeMoof = buf[m[5].i+20] == byte(0x02) || buf[m[9].i+20] == byte(0x02)
-				moofSN       = int(F.Btoi(buf, m[1].i+12, 4))
-				video        timeStamp
-				audio        timeStamp
-			)
+	ies, e := decode(buf, "moof")
+	if len(ies) == 0 {
+		err = errors.New("未找到box")
+	}
+	if e != nil {
+		return
+	}
 
-			// fmt.Println(moofSN, "frame", keyframeMoof, t.buf.size(), m[0].i, m[10].n, m[10].e)
+	err = deals(ies,
+		[][]string{
+			{"moof", "mfhd", "traf", "tfhd", "tfdt", "trun", "mdat"},
+			{"moof", "mfhd", "traf", "tfhd", "tfdt", "trun", "traf", "tfhd", "tfdt", "trun", "mdat"}},
+		[]func(m []ie) bool{
+			func(m []ie) bool {
+				var (
+					keyframeMoof = buf[m[5].i+20] == byte(0x02)
+					// moofSN       = int(F.Btoi(buf, m[1].i+12, 4))
+				)
 
-			//is sn error?
-			if maxSequenceNumber == 0 {
-				maxSequenceNumber = moofSN
-			} else if moofSN == maxSequenceNumber {
-				return false
-			} else if moofSN != maxSequenceNumber+1 {
-				t.buf.reset()
-				haveKeyframe = false
-				cu = m[0].i
-				return false
-			} else {
-				maxSequenceNumber = moofSN
-			}
-			{
-				ts, handlerType := get_track_type(m[3].i, m[4].i)
-				switch handlerType {
-				case 'v':
-					video = ts
-				case 's':
-					audio = ts
+				{
+					ts, _ := get_track_type(m[3].i, m[4].i)
+					if nil != check_set_maxT(ts, func(_ timeStamp) error {
+						return errors.New("skip")
+					}, func(_ timeStamp) error {
+						t.buf.reset()
+						haveKeyframe = false
+						cu = m[0].i
+						return errors.New("skip")
+					}) {
+						return false
+					}
 				}
-			}
-			{
-				ts, handlerType := get_track_type(m[7].i, m[8].i)
-				switch handlerType {
-				case 'v':
-					video = ts
-				case 's':
-					audio = ts
-				}
-			}
 
-			//deal frame
-			if keyframeMoof {
+				// fmt.Println(ts.getT(), "frame0", keyframeMoof, t.buf.size(), m[0].i, m[6].n, m[6].e)
+
+				//deal frame
+				if keyframeMoof {
+					if t.buf.hadModified(bufModified) && !t.buf.isEmpty() {
+						keyframes.append(t.buf.getPureBuf())
+						cu = m[0].i
+						t.buf.reset()
+					}
+					haveKeyframe = true
+				} else if !haveKeyframe {
+					cu = m[6].e
+				}
+				if haveKeyframe {
+					t.buf.append(buf[m[0].i:m[6].e])
+				}
+				return false
+			},
+			func(m []ie) bool {
+				var (
+					keyframeMoof = buf[m[5].i+20] == byte(0x02) || buf[m[9].i+20] == byte(0x02)
+					// moofSN       = int(F.Btoi(buf, m[1].i+12, 4))
+					video timeStamp
+					audio timeStamp
+				)
+
+				// fmt.Println(moofSN, "frame1", keyframeMoof, t.buf.size(), m[0].i, m[10].n, m[10].e)
+
+				{
+					ts, handlerType := get_track_type(m[3].i, m[4].i)
+					switch handlerType {
+					case 'v':
+						video = ts
+					case 's':
+						audio = ts
+					}
+					if nil != check_set_maxT(ts, func(_ timeStamp) error {
+						return errors.New("skip")
+					}, func(_ timeStamp) error {
+						t.buf.reset()
+						haveKeyframe = false
+						cu = m[0].i
+						return errors.New("skip")
+					}) {
+						return false
+					}
+				}
+				{
+					ts, handlerType := get_track_type(m[7].i, m[8].i)
+					switch handlerType {
+					case 'v':
+						video = ts
+					case 's':
+						audio = ts
+					}
+					if nil != check_set_maxT(ts, func(_ timeStamp) error {
+						return errors.New("skip")
+					}, func(_ timeStamp) error {
+						t.buf.reset()
+						haveKeyframe = false
+						cu = m[0].i
+						return errors.New("skip")
+					}) {
+						return false
+					}
+				}
+
 				//sync audio timeStamp
 				if audio.getT() != video.getT() {
 					date := F.Itob64(int64(video.getT() * float64(audio.timescale)))
 					copy(audio.data, date)
 				}
-				if t.buf.hadModified(bufModified) && !t.buf.isEmpty() {
-					keyframes.append(t.buf.getPureBuf())
-					cu = m[0].i
-					t.buf.reset()
+
+				//deal frame
+				if keyframeMoof {
+					if t.buf.hadModified(bufModified) && !t.buf.isEmpty() {
+						keyframes.append(t.buf.getPureBuf())
+						cu = m[0].i
+						t.buf.reset()
+					}
+					haveKeyframe = true
+				} else if !haveKeyframe {
+					cu = m[10].e
 				}
-				haveKeyframe = true
-			} else if !haveKeyframe {
-				cu = m[10].e
-			}
-			if haveKeyframe {
-				t.buf.append(buf[m[0].i:m[10].e])
-			}
-			return false
-		})
-
-	if len(buf) > 1024*1024*20 {
-		err = errors.New("buf超过20M")
-	}
-
+				if haveKeyframe {
+					t.buf.append(buf[m[0].i:m[10].e])
+				}
+				return false
+			}})
 	return
 }
 
-func deal(buf []byte, boxName []string, f func([]*ie) (breakloop bool)) (err error) {
+func deal(ies []ie, boxNames []string, fs func([]ie) (breakloop bool)) (err error) {
+	return deals(ies, [][]string{boxNames}, []func([]ie) (breakloop bool){fs})
+}
 
-	m, e := decode(buf, boxName[0])
-	if len(m) == 0 {
-		return errors.New("未找到box")
+func deals(ies []ie, boxNames [][]string, fs []func([]ie) (breakloop bool)) (err error) {
+	if len(boxNames) != len(fs) {
+		panic("boxNames与fs数量不相等")
 	}
-	if e != nil {
-		err = e
-	}
-
-	var matchCount = 0
-	for cu := 0; cu < len(m); cu++ {
-		if m[cu].n == boxName[matchCount] {
-			matchCount += 1
-			if matchCount == len(boxName) {
-				var ies []*ie
-
-				for k, v := range boxName {
-					ies = append(ies, &ie{
-						n: v,
-						i: m[cu-(matchCount-1)+k].i,
-						e: m[cu-(matchCount-1)+k].e,
-					})
+	var matchCounts = make([]int, len(boxNames))
+	for cu := 0; cu < len(ies) && len(boxNames) != 0; cu++ {
+		for i := 0; i < len(boxNames); i++ {
+			if ies[cu].n == boxNames[i][matchCounts[i]] {
+				matchCounts[i] += 1
+				if matchCounts[i] == len(boxNames[i]) {
+					matchCounts[i] = 0
+					if fs[i](ies[cu-len(boxNames[i])+1 : cu+1]) {
+						boxNames = append(boxNames[:i], boxNames[i+1:]...)
+						fs = append(fs[:i], fs[i+1:]...)
+						matchCounts = append(matchCounts[:i], matchCounts[i+1:]...)
+						i -= 1
+					}
 				}
-
-				if f(ies) {
-					break
-				}
-				matchCount = 0
+			} else {
+				matchCounts[i] = 0
 			}
-		} else {
-			matchCount = 0
 		}
 	}
-
 	return
 }
 

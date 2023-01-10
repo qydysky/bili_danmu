@@ -745,7 +745,9 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 			}
 
 			// 等待队列下载完成
-			download_limit.PlanDone()
+			download_limit.PlanDone(func() {
+				time.Sleep(time.Millisecond * 10)
+			})
 		}
 
 		// 传递已下载切片
@@ -814,7 +816,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 			}
 
 			// no, _ := v.getNo()
-			// fmt.Println(no, "fmp4KeyFrames", len(fmp4KeyFrames), last_avilable_offset, err)
+			// fmt.Println(no, "fmp4KeyFrames", fmp4KeyFrames.size(), last_avilable_offset, err)
 
 			if !fmp4KeyFrames.isEmpty() {
 				fmp4KeyFramesBuf = fmp4KeyFrames.getCopyBuf()
@@ -1017,6 +1019,7 @@ func (t *M4SStream) Stop() {
 func (t *M4SStream) Pusher(w http.ResponseWriter, r *http.Request) {
 	switch t.stream_type {
 	case `m3u8`:
+		t.pusherM4s(w, r)
 	case `mp4`:
 		t.pusherM4s(w, r)
 	case `flv`:
@@ -1104,7 +1107,7 @@ func (t *M4SStream) pusherFlv(w http.ResponseWriter, r *http.Request) {
 
 	cancel := make(chan struct{})
 
-	//hls切片
+	//flv
 	t.Stream_msg.Pull_tag(map[string]func(interface{}) bool{
 		`data`: func(data interface{}) bool {
 			if b, ok := data.([]byte); ok {
