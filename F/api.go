@@ -93,7 +93,8 @@ func (c *GetFunc) Get(key string) {
 				c.Html,
 			},
 			`Note`: { //分区排行
-				c.Get_HotRank,
+				c.getPopularAnchorRank,
+				// c.Get_HotRank,
 				c.getInfoByRoom,
 				c.Html,
 			},
@@ -956,6 +957,81 @@ func Get_face_src(uid string) string {
 	return rface.(string) + `@58w_58h`
 }
 
+func (c *GetFunc) getPopularAnchorRank() (missKey []string) {
+	apilog := apilog.Base_add(`Get_HotRank`)
+
+	if c.Uid == 0 {
+		missKey = append(missKey, `Uid`)
+	}
+	if c.UpUid == 0 {
+		missKey = append(missKey, `UpUid`)
+	}
+	if c.Roomid == 0 {
+		missKey = append(missKey, `Roomid`)
+	}
+	if len(missKey) > 0 {
+		return
+	}
+
+	Roomid := strconv.Itoa(c.Roomid)
+
+	//getHotRank
+	{
+		Cookie := make(map[string]string)
+		c.Cookie.Range(func(k, v interface{}) bool {
+			Cookie[k.(string)] = v.(string)
+			return true
+		})
+
+		reqi := c.ReqPool.Get()
+		defer c.ReqPool.Put(reqi)
+		req := reqi.Item.(*reqf.Req)
+		if err := req.Reqf(reqf.Rval{
+			Url: `https://api.live.bilibili.com/xlive/general-interface/v1/rank/getPopularAnchorRank?uid=` + strconv.Itoa(c.Uid) + `&ruid=` + strconv.Itoa(c.UpUid) + `&clientType=2`,
+			Header: map[string]string{
+				`Host`:            `api.live.bilibili.com`,
+				`User-Agent`:      `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0`,
+				`Accept`:          `application/json, text/plain, */*`,
+				`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
+				`Accept-Encoding`: `gzip, deflate, br`,
+				`Origin`:          `https://live.bilibili.com`,
+				`Connection`:      `keep-alive`,
+				`Pragma`:          `no-cache`,
+				`Cache-Control`:   `no-cache`,
+				`Referer`:         "https://live.bilibili.com/" + Roomid,
+				`Cookie`:          reqf.Map_2_Cookies_String(Cookie),
+			},
+			Proxy:   c.Proxy,
+			Timeout: 3 * 1000,
+			Retry:   2,
+		}); err != nil {
+			apilog.L(`E: `, err)
+			return
+		}
+
+		var j J.GetPopularAnchorRank
+
+		if e := json.Unmarshal(req.Respon, &j); e != nil {
+			apilog.L(`E: `, e)
+			return
+		} else if j.Code != 0 {
+			apilog.L(`E: `, j.Message)
+			return
+		}
+
+		//获取排名
+		c.Note = "人气榜 "
+		if j.Data.Anchor.Rank == 0 {
+			c.Note += "100+"
+		} else {
+			c.Note += strconv.Itoa(j.Data.Anchor.Rank)
+		}
+	}
+
+	return
+}
+
+// Deprecated: 2023-01-15
 func (c *GetFunc) Get_HotRank() (missKey []string) {
 	apilog := apilog.Base_add(`Get_HotRank`)
 
