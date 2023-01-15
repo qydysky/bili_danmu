@@ -267,17 +267,16 @@ func (c *GetFunc) Html() (missKey []string) {
 		} else {
 			s := tmp.RS[0]
 
+			var j J.NEPTUNE_IS_MY_WAIFU
+			if e := json.Unmarshal([]byte(s), &j); e != nil {
+				apilog.L(`E: `, e)
+				return
+			} else if j.RoomInitRes.Code != 0 {
+				apilog.L(`E: `, j.RoomInitRes.Message)
+				return
+			}
 			//Roominitres
 			{
-				var j J.NEPTUNE_IS_MY_WAIFU
-				if e := json.Unmarshal([]byte(s), &j); e != nil {
-					apilog.L(`E: `, e)
-					return
-				} else if j.RoomInitRes.Code != 0 {
-					apilog.L(`E: `, j.RoomInitRes.Message)
-					return
-				}
-
 				//主播uid
 				c.UpUid = j.RoomInitRes.Data.UID
 				//房间号（完整）
@@ -371,37 +370,25 @@ func (c *GetFunc) Html() (missKey []string) {
 
 			//Roominfores
 			{
-				var j struct {
-					Roominfores J.Roominfores `json:"roomInitRes"`
-				}
-
-				if e := json.Unmarshal([]byte(s), &j); e != nil {
-					apilog.L(`E: `, e)
-					return
-				} else if j.Roominfores.Code != 0 {
-					apilog.L(`E: `, j.Roominfores.Message)
-					return
-				}
-
 				//直播间标题
-				c.Title = j.Roominfores.Data.RoomInfo.Title
+				c.Title = j.RoomInfoRes.Data.RoomInfo.Title
 				//主播名
-				c.Uname = j.Roominfores.Data.AnchorInfo.BaseInfo.Uname
+				c.Uname = j.RoomInfoRes.Data.AnchorInfo.BaseInfo.Uname
 				//分区
-				c.ParentAreaID = j.Roominfores.Data.RoomInfo.ParentAreaID
+				c.ParentAreaID = j.RoomInfoRes.Data.RoomInfo.ParentAreaID
 				//子分区
-				c.AreaID = j.Roominfores.Data.RoomInfo.AreaID
+				c.AreaID = j.RoomInfoRes.Data.RoomInfo.AreaID
 				//舰长数
-				c.GuardNum = j.Roominfores.Data.GuardInfo.Count
+				c.GuardNum = j.RoomInfoRes.Data.GuardInfo.Count
 				//分区排行
-				c.Note = j.Roominfores.Data.HotRankInfo.AreaName
-				if rank := j.Roominfores.Data.HotRankInfo.Rank; rank > 50 || rank == 0 {
-					c.Note += "50+"
+				c.Note = j.RoomInfoRes.Data.PopularRankInfo.RankName + " "
+				if rank := j.RoomInfoRes.Data.PopularRankInfo.Rank; rank > 50 || rank == 0 {
+					c.Note += "100+"
 				} else {
 					c.Note += strconv.Itoa(rank)
 				}
 				//直播间是否被封禁
-				if j.Roominfores.Data.RoomInfo.LockStatus == 1 {
+				if j.RoomInfoRes.Data.RoomInfo.LockStatus == 1 {
 					apilog.L(`W: `, "直播间封禁中")
 					c.Locked = true
 					return
@@ -477,9 +464,9 @@ func (c *GetFunc) getInfoByRoom() (missKey []string) {
 			//舰长数
 			c.GuardNum = j.Data.GuardInfo.Count
 			//分区排行
-			c.Note = j.Data.HotRankInfo.AreaName
-			if rank := j.Data.HotRankInfo.Rank; rank > 50 || rank == 0 {
-				c.Note += "50+"
+			c.Note = j.Data.PopularRankInfo.RankName + " "
+			if rank := j.Data.PopularRankInfo.Rank; rank > 50 || rank == 0 {
+				c.Note += "100+"
 			} else {
 				c.Note += strconv.Itoa(rank)
 			}
@@ -1033,78 +1020,78 @@ func (c *GetFunc) getPopularAnchorRank() (missKey []string) {
 
 // Deprecated: 2023-01-15
 func (c *GetFunc) Get_HotRank() (missKey []string) {
-	apilog := apilog.Base_add(`Get_HotRank`)
+	// apilog := apilog.Base_add(`Get_HotRank`)
 
-	if c.UpUid == 0 {
-		missKey = append(missKey, `UpUid`)
-	}
-	if c.Roomid == 0 {
-		missKey = append(missKey, `Roomid`)
-	}
-	if c.ParentAreaID == 0 {
-		missKey = append(missKey, `ParentAreaID`)
-	}
-	if !c.LIVE_BUVID {
-		missKey = append(missKey, `LIVE_BUVID`)
-	}
-	if len(missKey) > 0 {
-		return
-	}
+	// if c.UpUid == 0 {
+	// 	missKey = append(missKey, `UpUid`)
+	// }
+	// if c.Roomid == 0 {
+	// 	missKey = append(missKey, `Roomid`)
+	// }
+	// if c.ParentAreaID == 0 {
+	// 	missKey = append(missKey, `ParentAreaID`)
+	// }
+	// if !c.LIVE_BUVID {
+	// 	missKey = append(missKey, `LIVE_BUVID`)
+	// }
+	// if len(missKey) > 0 {
+	// 	return
+	// }
 
-	Roomid := strconv.Itoa(c.Roomid)
+	// Roomid := strconv.Itoa(c.Roomid)
 
-	//getHotRank
-	{
-		Cookie := make(map[string]string)
-		c.Cookie.Range(func(k, v interface{}) bool {
-			Cookie[k.(string)] = v.(string)
-			return true
-		})
+	// //getHotRank
+	// {
+	// 	Cookie := make(map[string]string)
+	// 	c.Cookie.Range(func(k, v interface{}) bool {
+	// 		Cookie[k.(string)] = v.(string)
+	// 		return true
+	// 	})
 
-		reqi := c.ReqPool.Get()
-		defer c.ReqPool.Put(reqi)
-		req := reqi.Item.(*reqf.Req)
-		if err := req.Reqf(reqf.Rval{
-			Url: `https://api.live.bilibili.com/xlive/general-interface/v1/rank/getHotRank?ruid=` + strconv.Itoa(c.UpUid) + `&room_id=` + Roomid + `&is_pre=0&page_size=50&source=2&area_id=` + strconv.Itoa(c.ParentAreaID),
-			Header: map[string]string{
-				`Host`:            `api.live.bilibili.com`,
-				`User-Agent`:      `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0`,
-				`Accept`:          `application/json, text/plain, */*`,
-				`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
-				`Accept-Encoding`: `gzip, deflate, br`,
-				`Origin`:          `https://live.bilibili.com`,
-				`Connection`:      `keep-alive`,
-				`Pragma`:          `no-cache`,
-				`Cache-Control`:   `no-cache`,
-				`Referer`:         "https://live.bilibili.com/" + Roomid,
-				`Cookie`:          reqf.Map_2_Cookies_String(Cookie),
-			},
-			Proxy:   c.Proxy,
-			Timeout: 3 * 1000,
-			Retry:   2,
-		}); err != nil {
-			apilog.L(`E: `, err)
-			return
-		}
+	// 	reqi := c.ReqPool.Get()
+	// 	defer c.ReqPool.Put(reqi)
+	// 	req := reqi.Item.(*reqf.Req)
+	// 	if err := req.Reqf(reqf.Rval{
+	// 		Url: `https://api.live.bilibili.com/xlive/general-interface/v1/rank/getHotRank?ruid=` + strconv.Itoa(c.UpUid) + `&room_id=` + Roomid + `&is_pre=0&page_size=50&source=2&area_id=` + strconv.Itoa(c.ParentAreaID),
+	// 		Header: map[string]string{
+	// 			`Host`:            `api.live.bilibili.com`,
+	// 			`User-Agent`:      `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0`,
+	// 			`Accept`:          `application/json, text/plain, */*`,
+	// 			`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
+	// 			`Accept-Encoding`: `gzip, deflate, br`,
+	// 			`Origin`:          `https://live.bilibili.com`,
+	// 			`Connection`:      `keep-alive`,
+	// 			`Pragma`:          `no-cache`,
+	// 			`Cache-Control`:   `no-cache`,
+	// 			`Referer`:         "https://live.bilibili.com/" + Roomid,
+	// 			`Cookie`:          reqf.Map_2_Cookies_String(Cookie),
+	// 		},
+	// 		Proxy:   c.Proxy,
+	// 		Timeout: 3 * 1000,
+	// 		Retry:   2,
+	// 	}); err != nil {
+	// 		apilog.L(`E: `, err)
+	// 		return
+	// 	}
 
-		var j J.GetHotRank
+	// 	var j J.GetHotRank
 
-		if e := json.Unmarshal([]byte(req.Respon), &j); e != nil {
-			apilog.L(`E: `, e)
-			return
-		} else if j.Code != 0 {
-			apilog.L(`E: `, j.Message)
-			return
-		}
+	// 	if e := json.Unmarshal([]byte(req.Respon), &j); e != nil {
+	// 		apilog.L(`E: `, e)
+	// 		return
+	// 	} else if j.Code != 0 {
+	// 		apilog.L(`E: `, j.Message)
+	// 		return
+	// 	}
 
-		//获取排名
-		c.Note = j.Data.Own.AreaName + " "
-		if j.Data.Own.Rank == 0 {
-			c.Note += "50+"
-		} else {
-			c.Note += strconv.Itoa(j.Data.Own.Rank)
-		}
-	}
+	// 	//获取排名
+	// 	c.Note = j.Data.Own.AreaName + " "
+	// 	if j.Data.Own.Rank == 0 {
+	// 		c.Note += "50+"
+	// 	} else {
+	// 		c.Note += strconv.Itoa(j.Data.Own.Rank)
+	// 	}
+	// }
 
 	return
 }

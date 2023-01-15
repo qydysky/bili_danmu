@@ -40,8 +40,8 @@ type Roominfores struct {
 			OnVoiceJoin int `json:"on_voice_join"`
 			Online      int `json:"online"`
 			RoomType    struct {
-				Three13 int `json:"3-13"`
-				Four1   int `json:"4-1"`
+				Two3    int `json:"2-3"`
+				Three21 int `json:"3-21"`
 			} `json:"room_type"`
 		} `json:"room_info"`
 		AnchorInfo struct {
@@ -50,19 +50,21 @@ type Roominfores struct {
 				Face         string `json:"face"`
 				Gender       string `json:"gender"`
 				OfficialInfo struct {
-					Role  int    `json:"role"`
-					Title string `json:"title"`
-					Desc  string `json:"desc"`
+					Role     int    `json:"role"`
+					Title    string `json:"title"`
+					Desc     string `json:"desc"`
+					IsNft    int    `json:"is_nft"`
+					NftDmark string `json:"nft_dmark"`
 				} `json:"official_info"`
 			} `json:"base_info"`
 			LiveInfo struct {
-				Level        int    `json:"level"`
-				LevelColor   int    `json:"level_color"`
-				Score        int    `json:"score"`
-				UpgradeScore int    `json:"upgrade_score"`
-				Current      []int  `json:"current"`
-				Next         []int  `json:"next"`
-				Rank         string `json:"rank"`
+				Level        int           `json:"level"`
+				LevelColor   int           `json:"level_color"`
+				Score        int           `json:"score"`
+				UpgradeScore int           `json:"upgrade_score"`
+				Current      []int         `json:"current"`
+				Next         []interface{} `json:"next"`
+				Rank         string        `json:"rank"`
 			} `json:"live_info"`
 			RelationInfo struct {
 				Attention int `json:"attention"`
@@ -72,6 +74,7 @@ type Roominfores struct {
 				MedalID   int    `json:"medal_id"`
 				Fansclub  int    `json:"fansclub"`
 			} `json:"medal_info"`
+			GiftInfo interface{} `json:"gift_info"`
 		} `json:"anchor_info"`
 		NewsInfo struct {
 			UID     int    `json:"uid"`
@@ -87,38 +90,34 @@ type Roominfores struct {
 			Timestamp int    `json:"timestamp"`
 		} `json:"rankdb_info"`
 		AreaRankInfo struct {
-			Arearank struct {
+			AreaRank struct {
 				Index int    `json:"index"`
 				Rank  string `json:"rank"`
 			} `json:"areaRank"`
-			Liverank struct {
+			LiveRank struct {
 				Rank string `json:"rank"`
 			} `json:"liveRank"`
 		} `json:"area_rank_info"`
-		BattleRankEntryInfo struct {
-			FirstRankImgURL string `json:"first_rank_img_url"`
-			RankName        string `json:"rank_name"`
-			ShowStatus      int    `json:"show_status"`
-		} `json:"battle_rank_entry_info"`
-		TabInfo struct {
+		BattleRankEntryInfo interface{} `json:"battle_rank_entry_info"`
+		TabInfo             struct {
 			List []struct {
 				Type      string `json:"type"`
 				Desc      string `json:"desc"`
-				Isfirst   int    `json:"isFirst"`
-				Isevent   int    `json:"isEvent"`
-				Eventtype string `json:"eventType"`
-				Listtype  string `json:"listType"`
-				Apiprefix string `json:"apiPrefix"`
+				IsFirst   int    `json:"isFirst"`
+				IsEvent   int    `json:"isEvent"`
+				EventType string `json:"eventType"`
+				ListType  string `json:"listType"`
+				APIPrefix string `json:"apiPrefix"`
 				RankName  string `json:"rank_name"`
 			} `json:"list"`
 		} `json:"tab_info"`
 		ActivityInitInfo struct {
-			Eventlist []interface{} `json:"eventList"`
-			Weekinfo  struct {
-				Bannerinfo interface{} `json:"bannerInfo"`
-				Giftname   interface{} `json:"giftName"`
+			EventList []interface{} `json:"eventList"`
+			WeekInfo  struct {
+				BannerInfo interface{} `json:"bannerInfo"`
+				GiftName   interface{} `json:"giftName"`
 			} `json:"weekInfo"`
-			Giftname interface{} `json:"giftName"`
+			GiftName interface{} `json:"giftName"`
 			Lego     struct {
 				Timestamp int    `json:"timestamp"`
 				Config    string `json:"config"`
@@ -146,13 +145,22 @@ type Roominfores struct {
 		} `json:"voice_join_info"`
 		AdBannerInfo struct {
 			Data []struct {
-				ID       int    `json:"id"`
-				Title    string `json:"title"`
-				Location string `json:"location"`
-				Position int    `json:"position"`
-				Pic      string `json:"pic"`
-				Link     string `json:"link"`
-				Weight   int    `json:"weight"`
+				ID                   int         `json:"id"`
+				Title                string      `json:"title"`
+				Location             string      `json:"location"`
+				Position             int         `json:"position"`
+				Pic                  string      `json:"pic"`
+				Link                 string      `json:"link"`
+				Weight               int         `json:"weight"`
+				RoomID               int         `json:"room_id"`
+				UpID                 int         `json:"up_id"`
+				ParentAreaID         int         `json:"parent_area_id"`
+				AreaID               int         `json:"area_id"`
+				LiveStatus           int         `json:"live_status"`
+				AvID                 int         `json:"av_id"`
+				IsAd                 bool        `json:"is_ad"`
+				AdTransparentContent interface{} `json:"ad_transparent_content"`
+				ShowAdIcon           bool        `json:"show_ad_icon"`
 			} `json:"data"`
 		} `json:"ad_banner_info"`
 		SkinInfo struct {
@@ -183,20 +191,7 @@ type Roominfores struct {
 			InputBorderColor string `json:"input_border_color"`
 			InputSearchColor string `json:"input_search_color"`
 		} `json:"web_banner_info"`
-		LolInfo struct {
-			LolActivity struct {
-				Status     int    `json:"status"`
-				GuessCover string `json:"guess_cover"`
-				VoteCover  string `json:"vote_cover"`
-				VoteH5URL  string `json:"vote_h5_url"`
-				VoteUseH5  bool   `json:"vote_use_h5"`
-			} `json:"lol_activity"`
-		} `json:"lol_info"`
-		WishListInfo struct {
-			List   []interface{} `json:"list"`
-			Status int           `json:"status"`
-		} `json:"wish_list_info"`
-		ScoreCardInfo  interface{} `json:"score_card_info"`
+		LolInfo        interface{} `json:"lol_info"`
 		PkInfo         interface{} `json:"pk_info"`
 		BattleInfo     interface{} `json:"battle_info"`
 		SilentRoomInfo struct {
@@ -211,10 +206,8 @@ type Roominfores struct {
 			CloseOnline  bool `json:"close_online"`
 			CloseDanmaku bool `json:"close_danmaku"`
 		} `json:"switch_info"`
-		RecordSwitchInfo struct {
-			RecordTab bool `json:"record_tab"`
-		} `json:"record_switch_info"`
-		RoomConfigInfo struct {
+		RecordSwitchInfo interface{} `json:"record_switch_info"`
+		RoomConfigInfo   struct {
 			DmText string `json:"dm_text"`
 		} `json:"room_config_info"`
 		GiftMemoryInfo struct {
@@ -245,46 +238,26 @@ type Roominfores struct {
 			RoomSuperChat        int `json:"room-super-chat"`
 			RoomTab              int `json:"room-tab"`
 			RoomHotRank          int `json:"room-hot-rank"`
+			FansMedalProgress    int `json:"fans-medal-progress"`
+			GiftBayScreen        int `json:"gift-bay-screen"`
+			RoomEnter            int `json:"room-enter"`
+			RoomMyIdol           int `json:"room-my-idol"`
+			RoomTopic            int `json:"room-topic"`
+			FansClub             int `json:"fans-club"`
+			RoomPopularRank      int `json:"room-popular-rank"`
+			MicUserGift          int `json:"mic_user_gift"`
+			NewRoomAreaRank      int `json:"new-room-area-rank"`
 		} `json:"new_switch_info"`
 		SuperChatInfo struct {
-			Status      int    `json:"status"`
-			JumpURL     string `json:"jump_url"`
-			Icon        string `json:"icon"`
-			RankedMark  int    `json:"ranked_mark"`
-			MessageList []struct {
-				ID                    int    `json:"id"`
-				UID                   int    `json:"uid"`
-				Price                 int    `json:"price"`
-				Rate                  int    `json:"rate"`
-				BackgroundImage       string `json:"background_image"`
-				BackgroundColor       string `json:"background_color"`
-				BackgroundIcon        string `json:"background_icon"`
-				BackgroundPriceColor  string `json:"background_price_color"`
-				BackgroundBottomColor string `json:"background_bottom_color"`
-				FontColor             string `json:"font_color"`
-				Time                  int    `json:"time"`
-				StartTime             int    `json:"start_time"`
-				EndTime               int    `json:"end_time"`
-				Message               string `json:"message"`
-				TransMark             int    `json:"trans_mark"`
-				MessageTrans          string `json:"message_trans"`
-				Token                 string `json:"token"`
-				Ts                    int    `json:"ts"`
-				UserInfo              struct {
-					Face       string `json:"face"`
-					FaceFrame  string `json:"face_frame"`
-					Uname      string `json:"uname"`
-					UserLevel  int    `json:"user_level"`
-					GuardLevel int    `json:"guard_level"`
-					IsVip      int    `json:"is_vip"`
-					IsSvip     int    `json:"is_svip"`
-					IsMainVip  int    `json:"is_main_vip"`
-				} `json:"user_info"`
-			} `json:"message_list"`
+			Status      int           `json:"status"`
+			JumpURL     string        `json:"jump_url"`
+			Icon        string        `json:"icon"`
+			RankedMark  int           `json:"ranked_mark"`
+			MessageList []interface{} `json:"message_list"`
 		} `json:"super_chat_info"`
 		OnlineGoldRankInfoV2 struct {
 			List []struct {
-				UID        int    `json:"uid"`
+				UID        int64  `json:"uid"`
 				Face       string `json:"face"`
 				Uname      string `json:"uname"`
 				Score      string `json:"score"`
@@ -292,6 +265,113 @@ type Roominfores struct {
 				GuardLevel int    `json:"guard_level"`
 			} `json:"list"`
 		} `json:"online_gold_rank_info_v2"`
+		DmBrushInfo struct {
+			MinTime     int `json:"min_time"`
+			BrushCount  int `json:"brush_count"`
+			SliceCount  int `json:"slice_count"`
+			StorageTime int `json:"storage_time"`
+		} `json:"dm_brush_info"`
+		DmEmoticonInfo struct {
+			IsOpenEmoticon   int `json:"is_open_emoticon"`
+			IsShieldEmoticon int `json:"is_shield_emoticon"`
+		} `json:"dm_emoticon_info"`
+		DmTagInfo struct {
+			DmTag           int           `json:"dm_tag"`
+			Platform        []interface{} `json:"platform"`
+			Extra           string        `json:"extra"`
+			DmChronosExtra  string        `json:"dm_chronos_extra"`
+			DmMode          []interface{} `json:"dm_mode"`
+			DmSettingSwitch int           `json:"dm_setting_switch"`
+			MaterialConf    interface{}   `json:"material_conf"`
+		} `json:"dm_tag_info"`
+		TopicInfo struct {
+			TopicID   int    `json:"topic_id"`
+			TopicName string `json:"topic_name"`
+		} `json:"topic_info"`
+		GameInfo struct {
+			GameStatus int `json:"game_status"`
+		} `json:"game_info"`
+		WatchedShow struct {
+			Switch       bool   `json:"switch"`
+			Num          int    `json:"num"`
+			TextSmall    string `json:"text_small"`
+			TextLarge    string `json:"text_large"`
+			Icon         string `json:"icon"`
+			IconLocation int    `json:"icon_location"`
+			IconWeb      string `json:"icon_web"`
+		} `json:"watched_show"`
+		TopicRoomInfo struct {
+			InteractiveH5URL string `json:"interactive_h5_url"`
+			Watermark        int    `json:"watermark"`
+		} `json:"topic_room_info"`
+		ShowReserveStatus bool `json:"show_reserve_status"`
+		SecondCreateInfo  struct {
+			ClickPermission  int    `json:"click_permission"`
+			CommonPermission int    `json:"common_permission"`
+			IconName         string `json:"icon_name"`
+			IconURL          string `json:"icon_url"`
+			URL              string `json:"url"`
+		} `json:"second_create_info"`
+		PlayTogetherInfo struct {
+			Switch   int `json:"switch"`
+			IconList []struct {
+				Icon    string `json:"icon"`
+				Title   string `json:"title"`
+				JumpURL string `json:"jump_url"`
+				Status  int    `json:"status"`
+			} `json:"icon_list"`
+		} `json:"play_together_info"`
+		CloudGameInfo struct {
+			IsGaming int `json:"is_gaming"`
+		} `json:"cloud_game_info"`
+		LikeInfoV3 struct {
+			TotalLikes    int      `json:"total_likes"`
+			ClickBlock    bool     `json:"click_block"`
+			CountBlock    bool     `json:"count_block"`
+			GuildEmoText  string   `json:"guild_emo_text"`
+			GuildDmText   string   `json:"guild_dm_text"`
+			LikeDmText    string   `json:"like_dm_text"`
+			HandIcons     []string `json:"hand_icons"`
+			DmIcons       []string `json:"dm_icons"`
+			EggshellsIcon string   `json:"eggshells_icon"`
+			CountShowTime int      `json:"count_show_time"`
+			ProcessIcon   string   `json:"process_icon"`
+			ProcessColor  string   `json:"process_color"`
+		} `json:"like_info_v3"`
+		LivePlayInfo struct {
+			ShowWidgetBanner bool `json:"show_widget_banner"`
+		} `json:"live_play_info"`
+		MultiVoice struct {
+			SwitchStatus int           `json:"switch_status"`
+			Members      []interface{} `json:"members"`
+		} `json:"multi_voice"`
+		PopularRankInfo struct {
+			Rank       int    `json:"rank"`
+			Countdown  int    `json:"countdown"`
+			Timestamp  int    `json:"timestamp"`
+			URL        string `json:"url"`
+			OnRankName string `json:"on_rank_name"`
+			RankName   string `json:"rank_name"`
+		} `json:"popular_rank_info"`
+		NewAreaRankInfo struct {
+			Items []struct {
+				ConfID      int    `json:"conf_id"`
+				RankName    string `json:"rank_name"`
+				UID         int    `json:"uid"`
+				Rank        int    `json:"rank"`
+				IconURLBlue string `json:"icon_url_blue"`
+				IconURLPink string `json:"icon_url_pink"`
+				IconURLGrey string `json:"icon_url_grey"`
+				JumpURLLink string `json:"jump_url_link"`
+				JumpURLPc   string `json:"jump_url_pc"`
+				JumpURLPink string `json:"jump_url_pink"`
+				JumpURLWeb  string `json:"jump_url_web"`
+			} `json:"items"`
+			RotationCycleTimeWeb int `json:"rotation_cycle_time_web"`
+		} `json:"new_area_rank_info"`
+		GiftStar struct {
+			Show bool `json:"show"`
+		} `json:"gift_star"`
 		VideoConnectionInfo interface{} `json:"video_connection_info"`
 		PlayerThrottleInfo  struct {
 			Status              int `json:"status"`
@@ -304,14 +384,6 @@ type Roominfores struct {
 			Count                   int `json:"count"`
 			AnchorGuardAchieveLevel int `json:"anchor_guard_achieve_level"`
 		} `json:"guard_info"`
-		HotRankInfo struct {
-			Rank      int    `json:"rank"`
-			Trend     int    `json:"trend"`
-			Countdown int    `json:"countdown"`
-			Timestamp int    `json:"timestamp"`
-			URL       string `json:"url"`
-			Icon      string `json:"icon"`
-			AreaName  string `json:"area_name"`
-		} `json:"hot_rank_info"`
+		HotRankInfo interface{} `json:"hot_rank_info"`
 	} `json:"data"`
 }

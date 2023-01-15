@@ -6,20 +6,20 @@ type NEPTUNE_IS_MY_WAIFU struct {
 		Message string `json:"message"`
 		TTL     int    `json:"ttl"`
 		Data    struct {
-			RoomID          int   `json:"room_id"`
-			ShortID         int   `json:"short_id"`
-			UID             int   `json:"uid"`
-			IsHidden        bool  `json:"is_hidden"`
-			IsLocked        bool  `json:"is_locked"`
-			IsPortrait      bool  `json:"is_portrait"`
-			LiveStatus      int   `json:"live_status"`
-			HiddenTill      int   `json:"hidden_till"`
-			LockTill        int   `json:"lock_till"`
-			Encrypted       bool  `json:"encrypted"`
-			PwdVerified     bool  `json:"pwd_verified"`
-			LiveTime        int   `json:"live_time"`
-			RoomShield      int   `json:"room_shield"`
-			AllSpecialTypes []int `json:"all_special_types"`
+			RoomID          int           `json:"room_id"`
+			ShortID         int           `json:"short_id"`
+			UID             int           `json:"uid"`
+			IsHidden        bool          `json:"is_hidden"`
+			IsLocked        bool          `json:"is_locked"`
+			IsPortrait      bool          `json:"is_portrait"`
+			LiveStatus      int           `json:"live_status"`
+			HiddenTill      int           `json:"hidden_till"`
+			LockTill        int           `json:"lock_till"`
+			Encrypted       bool          `json:"encrypted"`
+			PwdVerified     bool          `json:"pwd_verified"`
+			LiveTime        int           `json:"live_time"`
+			RoomShield      int           `json:"room_shield"`
+			AllSpecialTypes []interface{} `json:"all_special_types"`
 			PlayurlInfo     struct {
 				ConfJSON string `json:"conf_json"`
 				Playurl  struct {
@@ -51,10 +51,10 @@ type NEPTUNE_IS_MY_WAIFU struct {
 						} `json:"format"`
 					} `json:"stream"`
 					P2PData struct {
-						P2P      bool        `json:"p2p"`
-						P2PType  int         `json:"p2p_type"`
-						MP2P     bool        `json:"m_p2p"`
-						MServers interface{} `json:"m_servers"`
+						P2P      bool     `json:"p2p"`
+						P2PType  int      `json:"p2p_type"`
+						MP2P     bool     `json:"m_p2p"`
+						MServers []string `json:"m_servers"`
 					} `json:"p2p_data"`
 					DolbyQn interface{} `json:"dolby_qn"`
 				} `json:"playurl"`
@@ -101,8 +101,8 @@ type NEPTUNE_IS_MY_WAIFU struct {
 				OnVoiceJoin int `json:"on_voice_join"`
 				Online      int `json:"online"`
 				RoomType    struct {
+					Two3    int `json:"2-3"`
 					Three21 int `json:"3-21"`
-					Three50 int `json:"3-50"`
 				} `json:"room_type"`
 			} `json:"room_info"`
 			AnchorInfo struct {
@@ -135,6 +135,7 @@ type NEPTUNE_IS_MY_WAIFU struct {
 					MedalID   int    `json:"medal_id"`
 					Fansclub  int    `json:"fansclub"`
 				} `json:"medal_info"`
+				GiftInfo interface{} `json:"gift_info"`
 			} `json:"anchor_info"`
 			NewsInfo struct {
 				UID     int    `json:"uid"`
@@ -304,6 +305,9 @@ type NEPTUNE_IS_MY_WAIFU struct {
 				RoomMyIdol           int `json:"room-my-idol"`
 				RoomTopic            int `json:"room-topic"`
 				FansClub             int `json:"fans-club"`
+				RoomPopularRank      int `json:"room-popular-rank"`
+				MicUserGift          int `json:"mic_user_gift"`
+				NewRoomAreaRank      int `json:"new-room-area-rank"`
 			} `json:"new_switch_info"`
 			SuperChatInfo struct {
 				Status      int           `json:"status"`
@@ -314,7 +318,7 @@ type NEPTUNE_IS_MY_WAIFU struct {
 			} `json:"super_chat_info"`
 			OnlineGoldRankInfoV2 struct {
 				List []struct {
-					UID        int    `json:"uid"`
+					UID        int64  `json:"uid"`
 					Face       string `json:"face"`
 					Uname      string `json:"uname"`
 					Score      string `json:"score"`
@@ -370,8 +374,13 @@ type NEPTUNE_IS_MY_WAIFU struct {
 				URL              string `json:"url"`
 			} `json:"second_create_info"`
 			PlayTogetherInfo struct {
-				Switch   int           `json:"switch"`
-				IconList []interface{} `json:"icon_list"`
+				Switch   int `json:"switch"`
+				IconList []struct {
+					Icon    string `json:"icon"`
+					Title   string `json:"title"`
+					JumpURL string `json:"jump_url"`
+					Status  int    `json:"status"`
+				} `json:"icon_list"`
 			} `json:"play_together_info"`
 			CloudGameInfo struct {
 				IsGaming int `json:"is_gaming"`
@@ -397,6 +406,33 @@ type NEPTUNE_IS_MY_WAIFU struct {
 				SwitchStatus int           `json:"switch_status"`
 				Members      []interface{} `json:"members"`
 			} `json:"multi_voice"`
+			PopularRankInfo struct {
+				Rank       int    `json:"rank"`
+				Countdown  int    `json:"countdown"`
+				Timestamp  int    `json:"timestamp"`
+				URL        string `json:"url"`
+				OnRankName string `json:"on_rank_name"`
+				RankName   string `json:"rank_name"`
+			} `json:"popular_rank_info"`
+			NewAreaRankInfo struct {
+				Items []struct {
+					ConfID      int    `json:"conf_id"`
+					RankName    string `json:"rank_name"`
+					UID         int    `json:"uid"`
+					Rank        int    `json:"rank"`
+					IconURLBlue string `json:"icon_url_blue"`
+					IconURLPink string `json:"icon_url_pink"`
+					IconURLGrey string `json:"icon_url_grey"`
+					JumpURLLink string `json:"jump_url_link"`
+					JumpURLPc   string `json:"jump_url_pc"`
+					JumpURLPink string `json:"jump_url_pink"`
+					JumpURLWeb  string `json:"jump_url_web"`
+				} `json:"items"`
+				RotationCycleTimeWeb int `json:"rotation_cycle_time_web"`
+			} `json:"new_area_rank_info"`
+			GiftStar struct {
+				Show bool `json:"show"`
+			} `json:"gift_star"`
 			VideoConnectionInfo interface{} `json:"video_connection_info"`
 			PlayerThrottleInfo  struct {
 				Status              int `json:"status"`
@@ -409,25 +445,7 @@ type NEPTUNE_IS_MY_WAIFU struct {
 				Count                   int `json:"count"`
 				AnchorGuardAchieveLevel int `json:"anchor_guard_achieve_level"`
 			} `json:"guard_info"`
-			HotRankInfo struct {
-				Rank      int    `json:"rank"`
-				Trend     int    `json:"trend"`
-				Countdown int    `json:"countdown"`
-				Timestamp int    `json:"timestamp"`
-				URL       string `json:"url"`
-				Icon      string `json:"icon"`
-				AreaName  string `json:"area_name"`
-				NewData   struct {
-					Rank      int    `json:"rank"`
-					Trend     int    `json:"trend"`
-					Countdown int    `json:"countdown"`
-					Timestamp int    `json:"timestamp"`
-					URL       string `json:"url"`
-					Icon      string `json:"icon"`
-					AreaName  string `json:"area_name"`
-					RankDesc  string `json:"rank_desc"`
-				} `json:"new_data"`
-			} `json:"hot_rank_info"`
+			HotRankInfo interface{} `json:"hot_rank_info"`
 		} `json:"data"`
 	} `json:"roomInfoRes"`
 	UserLabInfo struct {
