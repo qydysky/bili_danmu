@@ -108,7 +108,10 @@ func (t *Fmp4Decoder) Init_fmp4(buf []byte) (b []byte, err error) {
 		return nil, errors.New("未找到任何trak包")
 	}
 
-	return append(buf[ftypI:ftypE], buf[moovI:moovE]...), nil
+	b = make([]byte, ftypE-ftypI+moovE-moovI)
+	copy(b[:ftypE-ftypI], buf[ftypI:ftypE])
+	copy(b[ftypE-ftypI:], buf[moovI:moovE])
+	return b, nil
 }
 
 func (t *Fmp4Decoder) Seach_stream_fmp4(buf []byte, keyframes *bufB) (cu int, err error) {
