@@ -168,7 +168,7 @@ func (t *Common) loadConf(customConf string) error {
 			}
 			if r.Response == nil {
 				return errors.New("无法获取自定义配置文件 响应为空")
-			} else if r.Response.StatusCode != 200 {
+			} else if r.Response.StatusCode&200 != 200 {
 				return fmt.Errorf("无法获取自定义配置文件 %d", r.Response.StatusCode)
 			} else {
 				var tmp map[string]interface{}
