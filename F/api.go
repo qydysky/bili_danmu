@@ -2521,7 +2521,7 @@ func SearchUP(s string) (list []searchresult) {
 		})
 
 		if err := req.Reqf(reqf.Rval{
-			Url:   "https://api.bilibili.com/x/web-interface/search/type?__refresh__=true&_extra=&context=&page=1&page_size=10&order=online&duration=&from_source=&from_spmid=333.337&platform=pc&highlight=1&single_column=0&category_id=&search_type=live_user&dynamic_offset=0&preload=true&com2co=true&keyword=" + url.PathEscape(s),
+			Url:   "https://api.bilibili.com/x/web-interface/wbi/search/type?page=1&page_size=10&order=online&platform=pc&search_type=live_user&keyword=" + url.PathEscape(s),
 			Proxy: c.C.Proxy,
 			Header: map[string]string{
 				`Cookie`: reqf.Map_2_Cookies_String(Cookie),
@@ -2546,7 +2546,7 @@ func SearchUP(s string) (list []searchresult) {
 			}
 		}
 
-		if j.Data.Numresults == 0 {
+		if j.Data.NumResults == 0 {
 			apilog.L(`I: `, `没有匹配`)
 			return
 		}
