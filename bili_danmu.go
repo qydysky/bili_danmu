@@ -89,7 +89,7 @@ func Start() {
 		// 房间初始化
 		if c.C.Roomid == 0 {
 			c.C.Log.Block(1000) //等待所有日志输出完毕
-			fmt.Println("输入房间号或` live`获取正在直播的主播")
+			fmt.Println("回车查看指令")
 		} else {
 			fmt.Print("房间号: ", strconv.Itoa(c.C.Roomid), "\n")
 			go func() { change_room_chan <- struct{}{} }()
@@ -290,6 +290,7 @@ func Start() {
 								IsRec:  true,
 							})
 							go reply.ShowRevf()
+							go F.RoomEntryAction(c.C.Roomid)
 						}
 					}()
 				}

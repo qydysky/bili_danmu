@@ -3,6 +3,7 @@ package F
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
 	"os"
@@ -2307,6 +2308,76 @@ func GetHisStream() (Uplist []UpItem) {
 		})
 	}
 	return
+}
+
+// 进入房间
+func RoomEntryAction(roomId int) {
+	apilog := apilog.Base_add(`进入房间`)
+	//验证cookie
+	if missKey := CookieCheck([]string{
+		`bili_jct`,
+		`DedeUserID`,
+		`LIVE_BUVID`,
+	}); len(missKey) != 0 {
+		apilog.L(`T: `, `Cookie无Key:`, missKey)
+		return
+	}
+	if api_limit.TO() {
+		apilog.L(`E: `, `超时！`)
+		return
+	} //超额请求阻塞，超时将取消
+
+	Cookie := make(map[string]string)
+	c.C.Cookie.Range(func(k, v interface{}) bool {
+		Cookie[k.(string)] = v.(string)
+		return true
+	})
+
+	csrf := Cookie[`bili_jct`]
+	if csrf == `` {
+		apilog.L(`E: `, "Cookie错误,无bili_jct=")
+		return
+	}
+
+	reqi := c.C.ReqPool.Get()
+	defer c.C.ReqPool.Put(reqi)
+
+	req := reqi.Item.(*reqf.Req)
+	if err := req.Reqf(reqf.Rval{
+		Url:     `https://api.live.bilibili.com/xlive/web-room/v1/index/roomEntryAction`,
+		PostStr: fmt.Sprintf("room_id=%d&platform=pc&csrf_token=%s&csrf=%s&visit_id=", roomId, csrf, csrf),
+		Header: map[string]string{
+			`Host`:            `api.live.bilibili.com`,
+			`User-Agent`:      `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0`,
+			`Accept`:          `application/json, text/plain, */*`,
+			`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
+			`Accept-Encoding`: `gzip, deflate, br`,
+			`Origin`:          `https://live.bilibili.com`,
+			`Connection`:      `keep-alive`,
+			`Pragma`:          `no-cache`,
+			`Cache-Control`:   `no-cache`,
+			`Referer`:         fmt.Sprintf("https://live.bilibili.com/%d", roomId),
+			`Cookie`:          reqf.Map_2_Cookies_String(Cookie),
+		},
+		Proxy:   c.C.Proxy,
+		Timeout: 3 * 1000,
+		Retry:   2,
+	}); err != nil {
+		apilog.L(`E: `, err)
+		return
+	}
+
+	var res J.RoomEntryAction
+
+	if e := json.Unmarshal(req.Respon, &res); e != nil {
+		apilog.L(`E: `, e)
+		return
+	}
+
+	if res.Code != 0 {
+		apilog.L(`E: `, res.Message)
+		return
+	}
 }
 
 func Feed_list() (Uplist []J.FollowingDataList) {
