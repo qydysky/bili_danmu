@@ -29,6 +29,7 @@ func Cmd() {
 			if c.C.Roomid == 0 {
 				if _, ok := c.C.Cookie.LoadV(`bili_jct`).(string); ok {
 					fmt.Println("查看直播中主播->输入' live'回车")
+					fmt.Println("查看历史观看主播->输入' his'回车")
 				} else {
 					fmt.Println("登陆->输入' login'回车")
 				}
@@ -96,6 +97,34 @@ func Cmd() {
 					fmt.Printf("%d\t%s(%d)\n\t\t\t%s\n", k, v.Uname, v.Roomid, v.Title)
 				}
 				fmt.Println("回复' live(序号)'进入直播间")
+				fmt.Print("\n")
+				continue
+			}
+			//直播间历史
+			if strings.Contains(inputs, ` his`) {
+				if _, ok := c.C.Cookie.LoadV(`bili_jct`).(string); !ok {
+					cmdlog.L(`W: `, "尚未登陆，未能获取关注主播")
+					continue
+				}
+				fmt.Print("\n")
+				if len(inputs) > 4 {
+					if room, ok := liveList[inputs]; ok {
+						c.C.Roomid = room
+						c.C.Danmu_Main_mq.Push_tag(`change_room`, nil)
+						continue
+					}
+					cmdlog.L(`W: `, "输入错误", inputs)
+					continue
+				}
+				for k, v := range F.GetHisStream() {
+					liveList[` his`+strconv.Itoa(k)] = v.Roomid
+					if v.LiveStatus == 1 {
+						fmt.Printf("%d\t%s\t%s(%d)\n\t\t\t%s\n", k, `☁`, v.Uname, v.Roomid, v.Title)
+					} else {
+						fmt.Printf("%d\t%s\t%s(%d)\n\t\t\t%s\n", k, ` `, v.Uname, v.Roomid, v.Title)
+					}
+				}
+				fmt.Println("回复' his(序号)'进入直播间")
 				fmt.Print("\n")
 				continue
 			}

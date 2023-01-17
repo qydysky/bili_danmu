@@ -2235,6 +2235,80 @@ type UpItem struct {
 	LiveStatus int    `json:"live_status"`
 }
 
+// 获取历史观看 直播
+func GetHisStream() (Uplist []UpItem) {
+	apilog := apilog.Base_add(`历史直播主播`).L(`T: `, `获取中`)
+	defer apilog.L(`T: `, `完成`)
+	//验证cookie
+	if missKey := CookieCheck([]string{
+		`bili_jct`,
+		`DedeUserID`,
+		`LIVE_BUVID`,
+	}); len(missKey) != 0 {
+		apilog.L(`T: `, `Cookie无Key:`, missKey)
+		return
+	}
+	if api_limit.TO() {
+		apilog.L(`E: `, `超时！`)
+		return
+	} //超额请求阻塞，超时将取消
+
+	Cookie := make(map[string]string)
+	c.C.Cookie.Range(func(k, v interface{}) bool {
+		Cookie[k.(string)] = v.(string)
+		return true
+	})
+
+	reqi := c.C.ReqPool.Get()
+	defer c.C.ReqPool.Put(reqi)
+	req := reqi.Item.(*reqf.Req)
+	if err := req.Reqf(reqf.Rval{
+		Url: `https://api.bilibili.com/x/web-interface/history/cursor?type=live&ps=10`,
+		Header: map[string]string{
+			`Host`:            `api.live.bilibili.com`,
+			`User-Agent`:      `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0`,
+			`Accept`:          `application/json, text/plain, */*`,
+			`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
+			`Accept-Encoding`: `gzip, deflate, br`,
+			`Origin`:          `https://t.bilibili.com`,
+			`Connection`:      `keep-alive`,
+			`Pragma`:          `no-cache`,
+			`Cache-Control`:   `no-cache`,
+			`Referer`:         `https://t.bilibili.com/pages/nav/index_new`,
+			`Cookie`:          reqf.Map_2_Cookies_String(Cookie),
+		},
+		Proxy:   c.C.Proxy,
+		Timeout: 3 * 1000,
+		Retry:   2,
+	}); err != nil {
+		apilog.L(`E: `, err)
+		return
+	}
+
+	var res J.History
+
+	if e := json.Unmarshal(req.Respon, &res); e != nil {
+		apilog.L(`E: `, e)
+		return
+	}
+
+	if res.Code != 0 {
+		apilog.L(`E: `, res.Message)
+		return
+	}
+
+	// 提前结束获取，仅获取当前正在直播的主播
+	for _, item := range res.Data.List {
+		Uplist = append(Uplist, UpItem{
+			Uname:      item.AuthorName,
+			Title:      item.Title,
+			Roomid:     item.Kid,
+			LiveStatus: item.LiveStatus,
+		})
+	}
+	return
+}
+
 func Feed_list() (Uplist []J.FollowingDataList) {
 	apilog := apilog.Base_add(`正在直播主播`).L(`T: `, `获取中`)
 	defer apilog.L(`T: `, `完成`)
