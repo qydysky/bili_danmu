@@ -285,10 +285,7 @@ func Start() {
 
 						{ //附加功能 进房间发送弹幕 直播流保存 营收
 							go reply.Entry_danmu()
-							c.C.Danmu_Main_mq.Push_tag(`savestream`, reply.SavestreamO{
-								Roomid: c.C.Roomid,
-								IsRec:  true,
-							})
+							go reply.StreamOStart(c.C.Roomid)
 							go reply.ShowRevf()
 							go F.RoomEntryAction(c.C.Roomid)
 						}

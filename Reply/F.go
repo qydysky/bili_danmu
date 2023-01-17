@@ -335,6 +335,35 @@ func StreamOStatus(roomid int) bool {
 	return ok && (v.(*M4SStream).Status.Islive() || v.(*M4SStream).exitSign.Islive())
 }
 
+// 开始实例
+func StreamOStart(roomid int) {
+	var (
+		tmp    = new(M4SStream)
+		common = c.C
+	)
+	common.Roomid = roomid
+	tmp.LoadConfig(common, c.C.Log)
+	//录制回调，关于ass
+	tmp.Callback_startRec = func(ms *M4SStream) {
+		StartRecDanmu(ms.Current_save_path + "0.csv")
+		Ass_f(ms.Current_save_path, ms.Current_save_path+"0", time.Now()) //开始ass
+	}
+	tmp.Callback_stopRec = func(_ *M4SStream) {
+		StopRecDanmu()
+		Ass_f("", "", time.Now()) //停止ass
+	}
+	//实例回调，避免重复录制
+	tmp.Callback_start = func(ms *M4SStream) {
+		streamO.Store(ms.common.Roomid, tmp) //流服务添加
+	}
+	tmp.Callback_stop = func(ms *M4SStream) {
+		streamO.Delete(ms.common.Roomid) //流服务去除
+	}
+	if tmp.Start() {
+		streamO.Store(roomid, tmp)
+	}
+}
+
 // 停止实例
 func StreamOStop(roomid int) {
 	switch roomid {
