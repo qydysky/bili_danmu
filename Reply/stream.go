@@ -997,7 +997,8 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 				t.last_m4s = &m4s_link_item{}
 			}
 			for i := len(m4s_links) - 1; i > 0; i-- {
-				if !m4s_links[i].isInit() {
+				// fmt.Println("set last m4s", m4s_links[i].Base)
+				if !m4s_links[i].isInit() && len(m4s_links[i].Base) > 0 {
 					m4s_links[i].copyTo(t.last_m4s)
 					break
 				}
