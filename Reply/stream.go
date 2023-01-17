@@ -528,7 +528,7 @@ func (t *M4SStream) saveStream() (e error) {
 	t.Current_save_path = t.config.save_path + "/" + time.Now().Format("2006_01_02_15_04_05_000") + "_" + strconv.Itoa(t.common.Roomid) + `/`
 
 	// 清除初始值
-	t.last_m4s.reset()
+	t.last_m4s = nil
 
 	// 显示保存位置
 	if rel, err := filepath.Rel(t.config.save_path, t.Current_save_path); err == nil {
