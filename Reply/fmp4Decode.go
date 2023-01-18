@@ -6,6 +6,7 @@ import (
 	"io"
 
 	F "github.com/qydysky/bili_danmu/F"
+	slice "github.com/qydysky/part/slice"
 )
 
 var boxs map[string]bool
@@ -57,7 +58,7 @@ func (t *timeStamp) getT() float64 {
 
 type Fmp4Decoder struct {
 	traks map[int]trak
-	buf   bufB
+	buf   *slice.Buf[byte]
 }
 
 func (t *Fmp4Decoder) Init_fmp4(buf []byte) (b []byte, err error) {
@@ -114,16 +115,19 @@ func (t *Fmp4Decoder) Init_fmp4(buf []byte) (b []byte, err error) {
 	return b, nil
 }
 
-func (t *Fmp4Decoder) Seach_stream_fmp4(buf []byte, keyframes *bufB) (cu int, err error) {
+func (t *Fmp4Decoder) Seach_stream_fmp4(buf []byte, keyframes *slice.Buf[byte]) (cu int, err error) {
 	if len(t.traks) == 0 {
 		err = errors.New("未初始化traks")
 		return
 	}
 
-	t.buf.reset()
+	if t.buf == nil {
+		t.buf = slice.New[byte]()
+	}
+	t.buf.Reset()
 	var (
 		haveKeyframe bool
-		bufModified  = t.buf.getModifiedTime()
+		bufModified  = t.buf.GetModified()
 		// maxSequenceNumber int //有时并不是单调增加
 		maxVT float64
 		maxAT float64
@@ -206,7 +210,7 @@ func (t *Fmp4Decoder) Seach_stream_fmp4(buf []byte, keyframes *bufB) (cu int, er
 					if nil != check_set_maxT(ts, func(_ timeStamp) error {
 						return errors.New("skip")
 					}, func(_ timeStamp) error {
-						t.buf.reset()
+						t.buf.Reset()
 						haveKeyframe = false
 						cu = m[0].i
 						return errors.New("skip")
@@ -219,17 +223,17 @@ func (t *Fmp4Decoder) Seach_stream_fmp4(buf []byte, keyframes *bufB) (cu int, er
 
 				//deal frame
 				if keyframeMoof {
-					if t.buf.hadModified(bufModified) && !t.buf.isEmpty() {
-						keyframes.append(t.buf.getPureBuf())
+					if v, e := t.buf.HadModified(bufModified); e == nil && v && !t.buf.IsEmpty() {
+						keyframes.Append(t.buf.GetPureBuf())
 						cu = m[0].i
-						t.buf.reset()
+						t.buf.Reset()
 					}
 					haveKeyframe = true
 				} else if !haveKeyframe {
 					cu = m[6].e
 				}
 				if haveKeyframe {
-					t.buf.append(buf[m[0].i:m[6].e])
+					t.buf.Append(buf[m[0].i:m[6].e])
 				}
 				return false
 			},
@@ -254,7 +258,7 @@ func (t *Fmp4Decoder) Seach_stream_fmp4(buf []byte, keyframes *bufB) (cu int, er
 					if nil != check_set_maxT(ts, func(_ timeStamp) error {
 						return errors.New("skip")
 					}, func(_ timeStamp) error {
-						t.buf.reset()
+						t.buf.Reset()
 						haveKeyframe = false
 						cu = m[0].i
 						return errors.New("skip")
@@ -273,7 +277,7 @@ func (t *Fmp4Decoder) Seach_stream_fmp4(buf []byte, keyframes *bufB) (cu int, er
 					if nil != check_set_maxT(ts, func(_ timeStamp) error {
 						return errors.New("skip")
 					}, func(_ timeStamp) error {
-						t.buf.reset()
+						t.buf.Reset()
 						haveKeyframe = false
 						cu = m[0].i
 						return errors.New("skip")
@@ -290,17 +294,17 @@ func (t *Fmp4Decoder) Seach_stream_fmp4(buf []byte, keyframes *bufB) (cu int, er
 
 				//deal frame
 				if keyframeMoof {
-					if t.buf.hadModified(bufModified) && !t.buf.isEmpty() {
-						keyframes.append(t.buf.getPureBuf())
+					if v, e := t.buf.HadModified(bufModified); e == nil && v && !t.buf.IsEmpty() {
+						keyframes.Append(t.buf.GetPureBuf())
 						cu = m[0].i
-						t.buf.reset()
+						t.buf.Reset()
 					}
 					haveKeyframe = true
 				} else if !haveKeyframe {
 					cu = m[10].e
 				}
 				if haveKeyframe {
-					t.buf.append(buf[m[0].i:m[10].e])
+					t.buf.Append(buf[m[0].i:m[10].e])
 				}
 				return false
 			}})

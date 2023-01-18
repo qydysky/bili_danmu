@@ -13,7 +13,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	c "github.com/qydysky/bili_danmu/CV"
@@ -25,8 +24,10 @@ import (
 	idpool "github.com/qydysky/part/idpool"
 	log "github.com/qydysky/part/log"
 	msgq "github.com/qydysky/part/msgq"
+	pool "github.com/qydysky/part/pool"
 	reqf "github.com/qydysky/part/reqf"
 	signal "github.com/qydysky/part/signal"
+	slice "github.com/qydysky/part/slice"
 	psync "github.com/qydysky/part/sync"
 )
 
@@ -44,16 +45,15 @@ type M4SStream struct {
 	boot_buf          [][]byte   //快速启动缓冲
 	boot_buf_size     int        //快速启动缓冲长度
 	boot_buf_locker   funcCtrl.BlockFunc
-	last_m4s          *m4s_link_item   //最后一个切片
-	m4s_pool          []*m4s_link_item //切片pool
-	m4s_pool_l        sync.Mutex
-	common            c.Common         //通用配置副本
-	Current_save_path string           //明确的直播流保存目录
-	Callback_start    func(*M4SStream) //实例开始的回调
-	Callback_startRec func(*M4SStream) //录制开始的回调
-	Callback_stopRec  func(*M4SStream) //录制结束的回调
-	Callback_stop     func(*M4SStream) //实例结束的回调
-	reqPool           *idpool.Idpool   //请求池
+	last_m4s          *m4s_link_item           //最后一个切片
+	m4s_pool          *pool.Buf[m4s_link_item] //切片pool
+	common            c.Common                 //通用配置副本
+	Current_save_path string                   //明确的直播流保存目录
+	Callback_start    func(*M4SStream)         //实例开始的回调
+	Callback_startRec func(*M4SStream)         //录制开始的回调
+	Callback_stopRec  func(*M4SStream)         //录制结束的回调
+	Callback_stop     func(*M4SStream)         //实例结束的回调
+	reqPool           *idpool.Idpool           //请求池
 }
 
 type M4SStream_Config struct {
@@ -109,55 +109,29 @@ func (t *m4s_link_item) getNo() (int, error) {
 }
 
 func (t *M4SStream) getM4s() (p *m4s_link_item) {
-	t.m4s_pool_l.Lock()
-	defer t.m4s_pool_l.Unlock()
-
-	for i := 0; i < len(t.m4s_pool); i++ {
-		if t.m4s_pool[i].pooledTime.After(t.m4s_pool[i].createdTime) && time.Now().After(t.m4s_pool[i].pooledTime.Add(time.Second*10)) {
-			// fmt.Println("=>", i)
-			return t.m4s_pool[i].reset()
-		}
+	if t.m4s_pool == nil {
+		t.m4s_pool = pool.New(
+			func() *m4s_link_item {
+				return &m4s_link_item{}
+			},
+			func(t *m4s_link_item) bool {
+				return !t.pooledTime.IsZero() || t.createdTime.After(t.pooledTime) || time.Now().Before(t.pooledTime.Add(time.Second*10))
+			},
+			func(t *m4s_link_item) *m4s_link_item {
+				return t.reset()
+			},
+			func(t *m4s_link_item) *m4s_link_item {
+				t.pooledTime = time.Now()
+				return t
+			},
+			50,
+		)
 	}
-	// fmt.Println("=>")
-	return &m4s_link_item{}
+	return t.m4s_pool.Get()
 }
 
 func (t *M4SStream) putM4s(ms ...*m4s_link_item) {
-	t.m4s_pool_l.Lock()
-	defer t.m4s_pool_l.Unlock()
-
-	for i := 0; i < len(ms); i++ {
-		if cap(ms[i].data) == 0 {
-			ms[i] = nil
-			ms = append(ms[:i], ms[i+1:]...)
-			i--
-		} else if len(ms[i].data) != 0 {
-			ms[i].pooledTime = time.Now()
-			if len(t.m4s_pool) < 50 {
-				t.m4s_pool = append(t.m4s_pool, ms[i])
-			}
-		}
-		// else {
-		// fmt.Println("z", cap(ms[i].data))
-		// }
-	}
-
-	for i := 0; i < len(t.m4s_pool); i++ {
-		if t.m4s_pool[i].pooledTime.After(t.m4s_pool[i].createdTime) && time.Now().After(t.m4s_pool[i].pooledTime.Add(time.Second*30)) {
-			t.m4s_pool[i].data = nil
-		}
-	}
-
-	// for i := 0; i < len(ms); i++ {
-	// 	if ms[i].pooledTime.IsZero() {
-	// 		fmt.Println("z", cap(ms[i].data))
-	// 	}
-	// 	ms[i].pooledTime = time.Now()
-	// 	if len(t.m4s_pool) < 50 {
-	// 		t.m4s_pool = append(t.m4s_pool, ms[i])
-	// 	}
-	// }
-	// fmt.Println("size", len(t.m4s_pool))
+	t.m4s_pool.Put(ms...)
 }
 
 func (t *M4SStream) Common() c.Common {
@@ -633,12 +607,12 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 			go func() {
 				var (
 					ticker = time.NewTicker(time.Second)
-					buff   bufB
+					buff   = slice.New[byte]()
 					buf    = make([]byte, 1<<16)
 				)
 				for {
 					n, e := rc.Read(buf)
-					buff.append(buf[:n])
+					buff.Append(buf[:n])
 					if e != nil {
 						out.Close()
 						t.Stream_msg.Push_tag(`close`, nil)
@@ -656,8 +630,8 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 						continue
 					}
 
-					if !buff.isEmpty() {
-						front_buf, keyframe, last_avilable_offset, e := Seach_stream_tag(buff.getCopyBuf())
+					if !buff.IsEmpty() {
+						front_buf, keyframe, last_avilable_offset, e := Seach_stream_tag(buff.GetCopyBuf())
 						if e != nil {
 							if strings.Contains(e.Error(), `no found available tag`) {
 								continue
@@ -679,14 +653,14 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 						}
 						if last_avilable_offset > 1 {
 							// fmt.Println("write Sync")
-							buff.removeFront(last_avilable_offset - 1)
+							buff.RemoveFront(last_avilable_offset - 1)
 							out.Sync()
 						}
 					}
 				}
 
 				buf = nil
-				buff.reset()
+				buff.Reset()
 			}()
 
 			CookieM := make(map[string]string)
@@ -752,8 +726,8 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 
 	//
 	var (
-		buf              bufB
-		fmp4KeyFrames    bufB
+		buf              = slice.New[byte]()
+		fmp4KeyFrames    = slice.New[byte]()
 		fmp4KeyFramesBuf []byte
 		fmp4Decoder      = &Fmp4Decoder{}
 	)
@@ -826,7 +800,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 					}
 					if e := r.Reqf(reqConfig); e != nil && !errors.Is(e, io.EOF) {
 						if !reqf.IsTimeout(e) {
-							t.log.L(`E: `, `hls切片下载失败:`, link.Url, e)
+							t.log.L(`E: `, `hls切片下载失败:`, link.Url, e, string(r.Respon))
 							link.tryDownCount = 4 // 设置切片状态为下载失败
 						} else {
 							link.status = 3 // 设置切片状态为下载失败
@@ -900,12 +874,12 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 				continue
 			}
 
-			buf.append(download_seq[k].data)
+			buf.Append(download_seq[k].data)
 			t.putM4s(download_seq[k])
 			download_seq = append(download_seq[:k], download_seq[k+1:]...)
 			k -= 1
 
-			last_avilable_offset, err := fmp4Decoder.Seach_stream_fmp4(buf.getPureBuf(), &fmp4KeyFrames)
+			last_avilable_offset, err := fmp4Decoder.Seach_stream_fmp4(buf.GetPureBuf(), fmp4KeyFrames)
 			if err != nil {
 				if !errors.Is(err, io.EOF) {
 					t.log.L(`E: `, err)
@@ -919,9 +893,9 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 						return
 					}
 					//丢弃所有数据
-					buf.reset()
+					buf.Reset()
 				} else {
-					fmp4KeyFrames.reset()
+					fmp4KeyFrames.Reset()
 					last_avilable_offset = 0
 				}
 			}
@@ -929,9 +903,9 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 			// no, _ := v.getNo()
 			// fmt.Println(no, "fmp4KeyFrames", fmp4KeyFrames.size(), last_avilable_offset, err)
 
-			if !fmp4KeyFrames.isEmpty() {
-				fmp4KeyFramesBuf = fmp4KeyFrames.getCopyBuf()
-				fmp4KeyFrames.reset()
+			if !fmp4KeyFrames.IsEmpty() {
+				fmp4KeyFramesBuf = fmp4KeyFrames.GetCopyBuf()
+				fmp4KeyFrames.Reset()
 				t.bootBufPush(fmp4KeyFramesBuf)
 				t.Stream_msg.Push_tag(`data`, fmp4KeyFramesBuf)
 				if out != nil {
@@ -940,7 +914,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 				}
 			}
 
-			buf.removeFront(last_avilable_offset)
+			buf.RemoveFront(last_avilable_offset)
 		}
 
 		// 停止录制
@@ -1065,7 +1039,7 @@ func (t *M4SStream) Start() bool {
 		t.reqPool = t.common.ReqPool
 
 		// 初始化切片消息
-		t.Stream_msg = msgq.New(5)
+		t.Stream_msg = msgq.New()
 
 		// 初始化快速启动缓冲
 		if v, ok := t.common.K_v.LoadV(`直播Web缓冲长度`).(float64); ok && v != 0 {

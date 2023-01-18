@@ -1136,7 +1136,7 @@ type Danmu_mq_t struct {
 	m   map[string]string //tts参数替换列表
 }
 
-var Danmu_mq = mq.New(10)
+var Danmu_mq = mq.New()
 
 // 消息显示
 func Gui_show(m ...string) {

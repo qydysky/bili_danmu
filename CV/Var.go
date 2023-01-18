@@ -71,7 +71,7 @@ func (t *Common) Init() Common {
 		80:    "流畅",
 	}
 
-	t.Danmu_Main_mq = mq.New(200)
+	t.Danmu_Main_mq = mq.New()
 
 	t.ReqPool = idpool.New(func() interface{} {
 		return reqf.New()
