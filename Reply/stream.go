@@ -201,15 +201,6 @@ func (t *M4SStream) fetchCheckStream() bool {
 		t.stream_type = "flv"
 	}
 
-	// // 保存流地址过期时间
-	// if m3u8_url, err := url.Parse(t.common.Live[0]); err != nil {
-	// 	t.log.L(`E: `, err.Error())
-	// 	return false
-	// } else {
-	// 	expires, _ := strconv.Atoi(m3u8_url.Query().Get("expires"))
-	// 	t.stream_expires = int64(expires)
-	// }
-
 	// 检查是否可以获取
 	CookieM := make(map[string]string)
 	t.common.Cookie.Range(func(k, v interface{}) bool {
@@ -746,10 +737,21 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 		fmp4KeyFrames    = slice.New[byte]()
 		fmp4KeyFramesBuf []byte
 		fmp4Decoder      = &Fmp4Decoder{}
+		flashingSer      bool
 	)
 
 	// 下载循环
 	for download_seq := []*m4s_link_item{}; ; {
+
+		// 刷新流地址
+		if !flashingSer && int64(t.common.Live[0].Expires)-time.Now().Unix() < 60 {
+			flashingSer = true
+			t.log.L(`T: `, `刷新流地址...`)
+			go func() {
+				t.fetchCheckStream()
+				flashingSer = false
+			}()
+		}
 
 		// 存在待下载切片
 		if len(download_seq) != 0 {
@@ -954,17 +956,6 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 				return
 			}
 		}
-
-		// 刷新流地址
-		// 偶尔刷新后的切片编号与原来不连续，故不再提前检查，直到流获取失败再刷新
-		// if time.Now().Unix()+60 > t.stream_expires {
-		// 	t.stream_expires = time.Now().Add(time.Minute * 2).Unix() // 临时的流链接过期时间
-		// 	go func() {
-		// 		if t.fetchCheckStream() {
-		// 			t.last_m4s = nil
-		// 		}
-		// 	}()
-		// }
 
 		// 获取解析m3u8
 		var m4s_links, m3u8_addon, err = t.fetchParseM3U8()

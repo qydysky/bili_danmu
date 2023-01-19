@@ -362,9 +362,17 @@ func (c *GetFunc) Html() (missKey []string) {
 								//直播流链接
 								c.Live = []cv.LiveQn{}
 								for _, v1 := range v.URLInfo {
-									c.Live = append(c.Live, cv.LiveQn{
+									item := cv.LiveQn{
 										Url: v1.Host + v.BaseURL + v1.Extra,
-									})
+									}
+
+									if query, e := url.ParseQuery(v1.Extra); e == nil {
+										if expires, e := strconv.Atoi(query.Get("expires")); e == nil {
+											item.Expires = expires
+										}
+									}
+
+									c.Live = append(c.Live, item)
 								}
 							}
 						}
@@ -631,7 +639,17 @@ func (c *GetFunc) getRoomPlayInfo() (missKey []string) {
 							//直播流链接
 							c.Live = []cv.LiveQn{}
 							for _, v1 := range v.URLInfo {
-								c.Live = append(c.Live, cv.LiveQn{Url: v1.Host + v.BaseURL + v1.Extra})
+								item := cv.LiveQn{
+									Url: v1.Host + v.BaseURL + v1.Extra,
+								}
+
+								if query, e := url.ParseQuery(v1.Extra); e == nil {
+									if expires, e := strconv.Atoi(query.Get("expires")); e == nil {
+										item.Expires = expires
+									}
+								}
+
+								c.Live = append(c.Live, item)
 							}
 
 							//找到配置格式，跳出
@@ -813,7 +831,17 @@ func (c *GetFunc) getRoomPlayInfoByQn() (missKey []string) {
 							//直播流链接
 							c.Live = []cv.LiveQn{}
 							for _, v1 := range v.URLInfo {
-								c.Live = append(c.Live, cv.LiveQn{Url: v1.Host + v.BaseURL + v1.Extra})
+								item := cv.LiveQn{
+									Url: v1.Host + v.BaseURL + v1.Extra,
+								}
+
+								if query, e := url.ParseQuery(v1.Extra); e == nil {
+									if expires, e := strconv.Atoi(query.Get("expires")); e == nil {
+										item.Expires = expires
+									}
+								}
+
+								c.Live = append(c.Live, item)
 							}
 						}
 					}

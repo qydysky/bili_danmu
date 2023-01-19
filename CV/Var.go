@@ -55,6 +55,7 @@ type Common struct {
 type LiveQn struct {
 	Url      string
 	ReUpTime time.Time
+	Expires  int //流到期时间
 }
 
 func (t *Common) Init() Common {
