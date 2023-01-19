@@ -12,6 +12,7 @@ import (
 	"time"
 
 	c "github.com/qydysky/bili_danmu/CV"
+	cv "github.com/qydysky/bili_danmu/CV"
 	J "github.com/qydysky/bili_danmu/Json"
 	"github.com/skratchdot/open-golang/open"
 
@@ -293,7 +294,7 @@ func (c *GetFunc) Html() (missKey []string) {
 				if !c.Liveing {
 					c.Live_qn = 0
 					c.AcceptQn = c.Qn
-					c.Live = []string{}
+					c.Live = []cv.LiveQn{}
 					return
 				}
 
@@ -359,9 +360,11 @@ func (c *GetFunc) Html() (missKey []string) {
 									c.AcceptQn = tmp
 								}
 								//直播流链接
-								c.Live = []string{}
+								c.Live = []cv.LiveQn{}
 								for _, v1 := range v.URLInfo {
-									c.Live = append(c.Live, v1.Host+v.BaseURL+v1.Extra)
+									c.Live = append(c.Live, cv.LiveQn{
+										Url: v1.Host + v.BaseURL + v1.Extra,
+									})
 								}
 							}
 						}
@@ -547,7 +550,7 @@ func (c *GetFunc) getRoomPlayInfo() (missKey []string) {
 		if !c.Liveing {
 			c.Live_qn = 0
 			c.AcceptQn = c.Qn
-			c.Live = []string{}
+			c.Live = []cv.LiveQn{}
 			return
 		}
 
@@ -626,9 +629,9 @@ func (c *GetFunc) getRoomPlayInfo() (missKey []string) {
 								c.AcceptQn = tmp
 							}
 							//直播流链接
-							c.Live = []string{}
+							c.Live = []cv.LiveQn{}
 							for _, v1 := range v.URLInfo {
-								c.Live = append(c.Live, v1.Host+v.BaseURL+v1.Extra)
+								c.Live = append(c.Live, cv.LiveQn{Url: v1.Host + v.BaseURL + v1.Extra})
 							}
 
 							//找到配置格式，跳出
@@ -738,7 +741,7 @@ func (c *GetFunc) getRoomPlayInfoByQn() (missKey []string) {
 		if !c.Liveing {
 			c.Live_qn = 0
 			c.AcceptQn = c.Qn
-			c.Live = []string{}
+			c.Live = []cv.LiveQn{}
 			return
 		}
 
@@ -808,9 +811,9 @@ func (c *GetFunc) getRoomPlayInfoByQn() (missKey []string) {
 								c.AcceptQn = tmp
 							}
 							//直播流链接
-							c.Live = []string{}
+							c.Live = []cv.LiveQn{}
 							for _, v1 := range v.URLInfo {
-								c.Live = append(c.Live, v1.Host+v.BaseURL+v1.Extra)
+								c.Live = append(c.Live, cv.LiveQn{Url: v1.Host + v.BaseURL + v1.Extra})
 							}
 						}
 					}

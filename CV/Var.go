@@ -20,7 +20,7 @@ import (
 
 type Common struct {
 	Uid               int                //client uid
-	Live              []string           //直播流链接
+	Live              []LiveQn           //直播流链接
 	Live_qn           int                //当前直播流质量
 	Live_want_qn      int                //期望直播流质量
 	Roomid            int                //房间ID
@@ -50,6 +50,11 @@ type Common struct {
 	Log               *log.Log_interface //日志
 	Danmu_Main_mq     *mq.Msgq           //消息
 	ReqPool           *idpool.Idpool     //请求池
+}
+
+type LiveQn struct {
+	Url      string
+	ReUpTime time.Time
 }
 
 func (t *Common) Init() Common {

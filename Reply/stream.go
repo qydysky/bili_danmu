@@ -191,13 +191,13 @@ func (t *M4SStream) fetchCheckStream() bool {
 	}
 
 	// 保存流类型
-	if strings.Contains(t.common.Live[0], `m3u8`) {
+	if strings.Contains(t.common.Live[0].Url, `m3u8`) {
 		if t.config.save_as_mp4 {
 			t.stream_type = "mp4"
 		} else {
 			t.stream_type = "m3u8"
 		}
-	} else if strings.Contains(t.common.Live[0], `flv`) {
+	} else if strings.Contains(t.common.Live[0].Url, `flv`) {
 		t.stream_type = "flv"
 	}
 
@@ -221,7 +221,7 @@ func (t *M4SStream) fetchCheckStream() bool {
 		req := t.reqPool.Get()
 		r := req.Item.(*reqf.Req)
 		if e := r.Reqf(reqf.Rval{
-			Url:       v,
+			Url:       v.Url,
 			Retry:     10,
 			SleepTime: 1000,
 			Proxy:     t.common.Proxy,
@@ -257,9 +257,19 @@ func (t *M4SStream) fetchCheckStream() bool {
 }
 
 func (t *M4SStream) fetchParseM3U8() (m4s_links []*m4s_link_item, m3u8_addon []byte, e error) {
+	// 开始请求
+	req := t.reqPool.Get()
+	defer t.reqPool.Put(req)
+	r := req.Item.(*reqf.Req)
+
 	// 请求解析m3u8内容
-	for _, v := range t.common.Live {
-		m3u8_url, err := url.Parse(v)
+	for k, v := range t.common.Live {
+		// 跳过尚未启用的live地址
+		if time.Now().Before(v.ReUpTime) {
+			continue
+		}
+
+		m3u8_url, err := url.Parse(v.Url)
 		if err != nil {
 			e = err
 			return
@@ -288,10 +298,6 @@ func (t *M4SStream) fetchParseM3U8() (m4s_links []*m4s_link_item, m3u8_addon []b
 			rval.Header[`If-Modified-Since`] = t.stream_last_modified.Add(time.Second).Format("Mon, 02 Jan 2006 15:04:05 CST")
 		}
 
-		// 开始请求
-		req := t.reqPool.Get()
-		defer t.reqPool.Put(req)
-		r := req.Item.(*reqf.Req)
 		if err := r.Reqf(rval); err != nil {
 			e = err
 			continue
@@ -404,7 +410,12 @@ func (t *M4SStream) fetchParseM3U8() (m4s_links []*m4s_link_item, m3u8_addon []b
 			nos, _ := tmp[len(tmp)-1].getNo()
 			noe, _ := t.last_m4s.getNo()
 			if timed > 3 && math.Abs(timed-float64(nos-noe)) > 2 {
-				e = fmt.Errorf("服务器 %s 发生故障 %d 秒产出了 %d 切片", m3u8_url.Host, int(timed), nos-noe)
+				// 1min后重新启用
+				t.common.Live[k].ReUpTime = time.Now().Add(time.Minute)
+				t.log.L("W: ", fmt.Sprintf("服务器 %s 发生故障 %d 秒产出了 %d 切片", m3u8_url.Host, int(timed), nos-noe))
+				if k == len(t.common.Live)-1 {
+					e = errors.New("全部切片服务器发生故障")
+				}
 				continue
 			}
 		}
@@ -541,7 +552,7 @@ func (t *M4SStream) saveStream() (e error) {
 func (t *M4SStream) saveStreamFlv() (e error) {
 	//对每个直播流进行尝试
 	for _, v := range t.common.Live {
-		surl, err := url.Parse(v)
+		surl, err := url.Parse(v.Url)
 		if err != nil {
 			t.log.L(`E: `, err)
 			e = err
@@ -962,6 +973,17 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 				break
 			}
 		}
+
+		// {
+		// 	if t.last_m4s != nil {
+		// 		l, _ := t.last_m4s.getNo()
+		// 		fmt.Println("last", l)
+		// 	}
+		// 	for i := 0; i < len(m4s_links); i++ {
+		// 		fmt.Println(m4s_links[i].getNo())
+		// 	}
+		// }
+
 		if len(m4s_links) == 0 {
 			time.Sleep(time.Second)
 			continue
@@ -970,7 +992,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 			if t.last_m4s == nil {
 				t.last_m4s = &m4s_link_item{}
 			}
-			for i := len(m4s_links) - 1; i > 0; i-- {
+			for i := len(m4s_links) - 1; i >= 0; i-- {
 				// fmt.Println("set last m4s", m4s_links[i].Base)
 				if !m4s_links[i].isInit() && len(m4s_links[i].Base) > 0 {
 					m4s_links[i].copyTo(t.last_m4s)
@@ -1067,7 +1089,7 @@ func (t *M4SStream) Start() bool {
 
 			// 设置全部服务
 			for _, v := range t.common.Live {
-				if url_struct, e := url.Parse(v); e == nil {
+				if url_struct, e := url.Parse(v.Url); e == nil {
 					t.stream_hosts.Store(url_struct.Hostname(), nil)
 				}
 			}
