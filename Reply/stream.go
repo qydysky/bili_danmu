@@ -299,7 +299,12 @@ func (t *M4SStream) fetchParseM3U8() (m4s_links []*m4s_link_item, m3u8_addon []b
 		}
 
 		if err := r.Reqf(rval); err != nil {
-			e = err
+			// 1min后重新启用
+			t.common.Live[k].ReUpTime = time.Now().Add(time.Minute)
+			t.log.L("W: ", fmt.Sprintf("服务器 %s 发生故障 %s", m3u8_url.Host, err.Error()))
+			if k == len(t.common.Live)-1 {
+				e = errors.New("全部切片服务器发生故障")
+			}
 			continue
 		}
 
