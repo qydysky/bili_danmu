@@ -32,6 +32,7 @@ func init() {
 				c.C.Danmu_Main_mq.Push_tag(`new day`, nil)
 				old = now
 			}
+			c.C.Danmu_Main_mq.Push_tag(`every100s`, nil)
 			time.Sleep(time.Second * time.Duration(100))
 		}
 	}()
@@ -100,20 +101,21 @@ func Start() {
 
 		//使用带tag的消息队列在功能间传递消息
 		c.C.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
-			`flash_room`: func(_ interface{}) bool { //房间重进
+			`flash_room`: func(_ any) bool { //房间重进
 				select {
 				case flash_room_chan <- struct{}{}:
 				default:
 				}
 				return false
 			},
-			`change_room`: func(_ interface{}) bool { //房间改变
-				c.C.Rev = 0.0    // 营收
-				c.C.Renqi = 1    // 人气置1
-				c.C.Watched = 0  // 观看人数
-				c.C.GuardNum = 0 // 舰长数
-				c.C.Note = ``    // 分区排行
-				c.C.Uname = ``   // 主播id
+			`change_room`: func(_ any) bool { //房间改变
+				c.C.Rev = 0.0     // 营收
+				c.C.Renqi = 1     // 人气置1
+				c.C.Watched = 0   // 观看人数
+				c.C.OnlineNum = 0 // 在线人数
+				c.C.GuardNum = 0  // 舰长数
+				c.C.Note = ``     // 分区排行
+				c.C.Uname = ``    // 主播id
 				c.C.Title = ``
 				c.C.Wearing_FansMedal = 0
 				for len(change_room_chan) != 0 {
@@ -122,24 +124,24 @@ func Start() {
 				change_room_chan <- struct{}{}
 				return false
 			},
-			`c.Rev_add`: func(data interface{}) bool { //收入
+			`c.Rev_add`: func(data any) bool { //收入
 				c.C.Rev += data.(float64)
 				return false
 			},
-			`c.Renqi`: func(data interface{}) bool { //人气更新
+			`c.Renqi`: func(data any) bool { //人气更新
 				if tmp, ok := data.(int); ok {
 					c.C.Renqi = tmp
 				}
 				return false
 			},
-			`gtk_close`: func(_ interface{}) bool { //gtk关闭信号
+			`gtk_close`: func(_ any) bool { //gtk关闭信号
 				interrupt <- os.Interrupt
 				return false
 			},
 		})
 		//单独，避免队列执行耗时block从而无法接收更多消息
 		c.C.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
-			`pm`: func(data interface{}) bool { //私信
+			`pm`: func(data any) bool { //私信
 				if tmp, ok := data.(send.Pm_item); ok {
 					send.Send_pm(tmp.Uid, tmp.Msg)
 				}
@@ -175,7 +177,7 @@ func Start() {
 			danmulog.L(`I: `, "连接到房间", c.C.Roomid)
 
 			Cookie := make(map[string]string)
-			c.C.Cookie.Range(func(k, v interface{}) bool {
+			c.C.Cookie.Range(func(k, v any) bool {
 				Cookie[k.(string)] = v.(string)
 				return true
 			})
@@ -244,19 +246,28 @@ func Start() {
 
 						//订阅消息，以便刷新舰长数
 						F.Get(&c.C).Get(`GuardNum`)
+						// 在线人数
+						F.Get(&c.C).Get(`getOnlineGoldRank`)
 						//使用带tag的消息队列在功能间传递消息
 						c.C.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
-							`guard_update`: func(_ interface{}) bool { //舰长更新
+							`guard_update`: func(_ any) bool { //舰长更新
 								go F.Get(&c.C).Get(`GuardNum`)
 								return false
 							},
-							`flash_room`: func(data interface{}) bool { //重进房时退出当前房间
+							`flash_room`: func(data any) bool { //重进房时退出当前房间
 								return true
 							},
-							`change_room`: func(data interface{}) bool { //换房时退出当前房间
+							`change_room`: func(data any) bool { //换房时退出当前房间
 								return true
 							},
-							`new day`: func(_ interface{}) bool { //日期更换
+							`every100s`: func(_ any) bool { //每100s
+								if v, ok := c.C.K_v.LoadV("下播后不记录人气观看人数").(bool); ok && v && c.C.Liveing {
+									// 在线人数
+									F.Get(&c.C).Get(`getOnlineGoldRank`)
+								}
+								return false
+							},
+							`new day`: func(_ any) bool { //日期更换
 								//每日签到
 								F.Dosign()
 								// //获取用户版本  不再需要

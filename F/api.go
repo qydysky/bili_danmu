@@ -47,7 +47,7 @@ func (c *GetFunc) Get(key string) {
 	} //超额请求阻塞，超时将取消
 
 	var (
-		api_can_get = map[string][]func() []string{
+		api_can_get = map[string][]func() (missKey []string){
 			`Cookie`: { //Cookie
 				c.Get_cookie,
 			},
@@ -136,8 +136,12 @@ func (c *GetFunc) Get(key string) {
 			`CheckSwitch_FansMedal`: { //切换粉丝牌
 				c.CheckSwitch_FansMedal,
 			},
+			`getOnlineGoldRank`: { //切换粉丝牌
+				c.getOnlineGoldRank,
+			},
 		}
-		check = map[string]func() bool{
+		// 验证是否有效
+		check = map[string]func() (valid bool){
 			`Uid`: func() bool { //用戶uid
 				return c.Uid != 0
 			},
@@ -209,7 +213,7 @@ func (c *GetFunc) Get(key string) {
 
 	if fList, ok := api_can_get[key]; ok {
 		for _, fItem := range fList {
-			apilog.L(`T: `, `Get`, key)
+			apilog.Log_show_control(false).L(`T: `, `Get`, key)
 			missKey := fItem()
 			if len(missKey) > 0 {
 				apilog.L(`T: `, `missKey when get`, key, missKey)
@@ -2409,6 +2413,66 @@ func RoomEntryAction(roomId int) {
 		apilog.L(`E: `, res.Message)
 		return
 	}
+}
+
+// 获取在线人数
+func (c *GetFunc) getOnlineGoldRank() (misskey []string) {
+	apilog := apilog.Base_add(`获取在线人数`)
+	if c.UpUid == 0 {
+		misskey = append(misskey, `UpUid`)
+		return
+	}
+	if c.Roomid == 0 {
+		misskey = append(misskey, `Roomid`)
+		return
+	}
+
+	if api_limit.TO() {
+		apilog.L(`E: `, `超时！`)
+		return
+	} //超额请求阻塞，超时将取消
+
+	reqi := c.ReqPool.Get()
+	defer c.ReqPool.Put(reqi)
+	req := reqi.Item.(*reqf.Req)
+
+	if err := req.Reqf(reqf.Rval{
+		Url: fmt.Sprintf("https://api.live.bilibili.com/xlive/general-interface/v1/rank/getOnlineGoldRank?ruid=%d&roomId=%d&page=1&pageSize=10", c.UpUid, c.Roomid),
+		Header: map[string]string{
+			`Host`:            `api.live.bilibili.com`,
+			`User-Agent`:      `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0`,
+			`Accept`:          `application/json, text/plain, */*`,
+			`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
+			`Accept-Encoding`: `gzip, deflate, br`,
+			`Origin`:          `https://live.bilibili.com`,
+			`Connection`:      `keep-alive`,
+			`Pragma`:          `no-cache`,
+			`Cache-Control`:   `no-cache`,
+			`Referer`:         fmt.Sprintf("https://live.bilibili.com/%d", c.Roomid),
+		},
+		Proxy:   c.Proxy,
+		Timeout: 3 * 1000,
+		Retry:   2,
+	}); err != nil {
+		apilog.L(`E: `, err)
+		return
+	}
+
+	var res J.GetOnlineGoldRank
+
+	if e := json.Unmarshal(req.Respon, &res); e != nil {
+		apilog.L(`E: `, e)
+		return
+	}
+
+	if res.Code != 0 {
+		apilog.L(`E: `, res.Message)
+		return
+	}
+
+	c.OnlineNum = res.Data.OnlineNum
+	apilog.Log_show_control(false).L(`I: `, `在线人数:`, c.OnlineNum)
+	return
 }
 
 func Feed_list() (Uplist []J.FollowingDataList) {

@@ -324,9 +324,13 @@ func (replyF) user_toast_msg(s string) {
 
 // HeartBeat-心跳用来传递人气值
 var (
-	renqi_old  int
-	pperm_old  float64
-	continuity int
+	renqi_last    int
+	renqi_old     int
+	watched_old   float64
+	onlinenum_old int
+	renqi_l       float64
+	watched_l     float64
+	onlinenum_l   float64
 )
 
 func (replyF) heartbeat(s int) {
@@ -337,47 +341,56 @@ func (replyF) heartbeat(s int) {
 	if s == 1 {
 		return
 	} //人气为1,不输出
-	var (
-		tmp  string
-		tmp2 string
-	)
-	if renqi_old != 0 {
-		if s > renqi_old {
-			tmp += `+`
-		}
-		tmp += fmt.Sprintf("%.1f%%", 100*float64(s-renqi_old)/float64(renqi_old))
-		if s > renqi_old {
-			continuity += 1
-			if continuity > 2 {
-				tmp = tmp + ` 连续上升` + strconv.Itoa(continuity)
-			} else if continuity < 0 {
-				continuity = 1
+	if renqi_last != s {
+		var (
+			tmp         string
+			watchPerMin float64 = float64(c.C.Watched) / float64(time.Since(c.C.Live_Start_Time)/time.Minute)
+			tmp1        string
+			tmp2        string
+		)
+		if renqi_old != 0 {
+			renqi_l = (renqi_l + 100*float64(s-renqi_old)/float64(renqi_old)) / 2
+			if renqi_l > 0 {
+				tmp = `+`
+			} else if renqi_l == 0 {
+				tmp = `=`
 			}
-		} else if s < renqi_old {
-			continuity -= 1
-			if continuity < -2 {
-				tmp = tmp + ` 连续下降` + strconv.Itoa(-continuity)
-			} else if continuity > 0 {
-				continuity = -1
+			tmp += fmt.Sprintf("%.1f%%", renqi_l)
+			tmp = `(` + tmp + `)`
+		} else {
+			tmp = "(=0.0%)"
+		}
+		if watched_old != 0 {
+			watched_l = (watched_l + 100*float64(watchPerMin-watched_old)/float64(watched_old)) / 2
+			if watched_l > 0 {
+				tmp1 = `+`
+			} else if watched_l == 0 {
+				tmp1 = `=`
 			}
+			tmp1 += fmt.Sprintf("%.1f%%", watched_l)
+			tmp1 = `(` + tmp1 + `)`
+		} else {
+			tmp1 = "(=0.0%)"
 		}
-		tmp = `(` + tmp + `)`
-	}
-
-	var pperm = float64(c.C.Watched) / float64(time.Since(c.C.Live_Start_Time)/time.Minute)
-	if pperm_old != 0 {
-		tmp2 += fmt.Sprintf("(avg: %.1f人/分 ", pperm)
-		if pperm-pperm_old > 0 {
-			tmp2 += `+`
+		if onlinenum_old != 0 {
+			onlinenum_l = (onlinenum_l + 100*float64(c.C.OnlineNum-onlinenum_old)/float64(onlinenum_old)) / 2
+			if onlinenum_l > 0 {
+				tmp2 = `+`
+			} else if onlinenum_l == 0 {
+				tmp2 = `=`
+			}
+			tmp2 += fmt.Sprintf("%.1f%%", onlinenum_l)
+			tmp2 = `(` + tmp2 + `)`
+		} else {
+			tmp2 = "(=0.0%)"
 		}
-		tmp2 += fmt.Sprintf("%.1f", pperm-pperm_old) + `)`
+		fmt.Printf("+----\n|当前人气:%s%d\n|平均观看:%s%d\n|在线人数:%s%d\n|平均意愿:%.1f\n+----\n", tmp, s, tmp1, int(watchPerMin), tmp2, c.C.OnlineNum, onlinenum_l+watched_l)
+		renqi_old = s
+		watched_old = watchPerMin
+		onlinenum_old = c.C.OnlineNum
 	}
-	if renqi_old != s {
-		fmt.Printf("\t人气:%d %s\n\t观看人数:%d %s\n", s, tmp, c.C.Watched, tmp2)
-		pperm_old = pperm
-	}
+	renqi_last = s
 	reply_log.Base_add(`人气`).Log_show_control(false).L(`I: `, "当前人气", s)
-	renqi_old = s
 }
 
 // Msg-房间特殊活动
