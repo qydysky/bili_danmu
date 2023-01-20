@@ -53,6 +53,7 @@ func Cmd() {
 		} else if inputs[0] == 27 { //屏蔽功能键
 			cmdlog.L(`W: `, "不支持功能键")
 		} else if inputs[0] == 32 { // 开头
+			cmdlog.L(`T: `, "指令("+inputs+")")
 			//录制切换
 			if strings.Contains(inputs, ` rec`) {
 				if len(inputs) > 4 {
@@ -204,24 +205,13 @@ func Cmd() {
 
 				continue
 			}
-			{ //弹幕发送
-				if c.C.Roomid == 0 {
-					continue
-				}
-				if _, ok := c.C.Cookie.LoadV(`bili_jct`).(string); !ok {
-					cmdlog.L(`W: `, "尚未登陆，不能发送弹幕")
-					continue
-				}
-				if len(inputs) < 2 {
-					cmdlog.L(`W: `, "输入长度过短", inputs)
-					continue
-				}
-				send.Danmu_s(inputs[1:], c.C.Roomid)
+			//直接进入房间
+			if room, err := strconv.Atoi(inputs[1:]); err == nil {
+				c.C.Roomid = room
+				cmdlog.L(`I: `, "进入房间", room)
+				c.C.Danmu_Main_mq.Push_tag(`change_room`, nil)
 			}
-		} else if room, err := strconv.Atoi(inputs); err == nil { //直接进入房间
-			c.C.Roomid = room
-			cmdlog.L(`I: `, "进入房间", room)
-			c.C.Danmu_Main_mq.Push_tag(`change_room`, nil)
+			cmdlog.L(`W: `, "无效指令("+inputs+")")
 		} else { //其余字符串
 			if c.C.Roomid == 0 {
 				continue
