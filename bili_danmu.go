@@ -248,16 +248,19 @@ func Start() {
 						F.Get(&c.C).Get(`GuardNum`)
 						// 在线人数
 						F.Get(&c.C).Get(`getOnlineGoldRank`)
-						//使用带tag的消息队列在功能间传递消息
+						//当前ws的消息队列
 						c.C.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
+							`exit_cu_room`: func(_ any) bool { //退出
+								return true
+							},
 							`guard_update`: func(_ any) bool { //舰长更新
 								go F.Get(&c.C).Get(`GuardNum`)
 								return false
 							},
-							`flash_room`: func(data any) bool { //重进房时退出当前房间
+							`flash_room`: func(_ any) bool { //重进房时退出当前房间
 								return true
 							},
-							`change_room`: func(data any) bool { //换房时退出当前房间
+							`change_room`: func(_ any) bool { //换房时退出当前房间
 								return true
 							},
 							`every100s`: func(_ any) bool { //每100s
@@ -330,6 +333,9 @@ func Start() {
 						break_sign = true
 					}
 				}
+
+				// 当前ws链接断开时，取消当前ws的消息队列
+				c.C.Danmu_Main_mq.Push_tag(`exit_cu_room`, nil)
 
 				if break_sign {
 					break
