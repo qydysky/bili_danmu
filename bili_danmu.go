@@ -261,10 +261,11 @@ func Start() {
 								return true
 							},
 							`every100s`: func(_ any) bool { //每100s
-								if v, ok := c.C.K_v.LoadV("下播后不记录人气观看人数").(bool); ok && v && c.C.Liveing {
-									// 在线人数
-									F.Get(&c.C).Get(`getOnlineGoldRank`)
+								if v, ok := c.C.K_v.LoadV("下播后不记录人气观看人数").(bool); ok && v && !c.C.Liveing {
+									return false
 								}
+								// 在线人数
+								F.Get(&c.C).Get(`getOnlineGoldRank`)
 								return false
 							},
 							`new day`: func(_ any) bool { //日期更换
