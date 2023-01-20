@@ -118,12 +118,13 @@ func selfcross2(a []string) (float32, string) {
 }
 
 // 功能区
-// ShowRev 显示h营收
+// ShowRev 显示营收
 var (
 	ShowRev_old   float64
 	ShowRev_start bool
 )
 
+// 显示营收
 func ShowRevf() {
 	if !IsOn("统计营收") {
 		return
@@ -310,9 +311,7 @@ func init() {
 					tmp.Callback_stop = func(ms *M4SStream) {
 						streamO.Delete(ms.common.Roomid) //流服务去除
 					}
-					if tmp.Start() {
-						streamO.Store(item.Roomid, tmp)
-					}
+					tmp.Start()
 				} else if !item.IsRec && ok {
 					if v.(*M4SStream).Status.Islive() {
 						v.(*M4SStream).Stop()
@@ -330,13 +329,16 @@ func init() {
 }
 
 // 获取实例的录制状态
-func StreamOStatus(roomid int) bool {
+func StreamOStatus(roomid int) (Islive bool) {
 	v, ok := streamO.Load(roomid)
 	return ok && (v.(*M4SStream).Status.Islive() || v.(*M4SStream).exitSign.Islive())
 }
 
 // 开始实例
 func StreamOStart(roomid int) {
+	if StreamOStatus(roomid) {
+		return
+	}
 	var (
 		tmp    = new(M4SStream)
 		common = c.C
@@ -359,9 +361,7 @@ func StreamOStart(roomid int) {
 	tmp.Callback_stop = func(ms *M4SStream) {
 		streamO.Delete(ms.common.Roomid) //流服务去除
 	}
-	if tmp.Start() {
-		streamO.Store(roomid, tmp)
-	}
+	tmp.Start()
 }
 
 // 停止实例
