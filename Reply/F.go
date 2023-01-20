@@ -1065,26 +1065,17 @@ func AutoSend_silver_gift() {
 		return
 	}
 
-	flog := flog.Base_add(`自动送礼`).L(`T: `, `开始`)
-
 	if c.C.UpUid == 0 {
 		F.Get(&c.C).Get(`UpUid`)
 	}
 
-	var hasSend bool
-
 	for _, v := range F.Gift_list() {
 		if time.Now().Add(time.Hour*time.Duration(24*int(day))).Unix() > int64(v.Expire_at) {
-			hasSend = true
 			send.Send_gift(v.Gift_id, v.Bag_id, v.Gift_num)
 		}
 	}
 
-	if hasSend {
-		flog.L(`I: `, `完成`)
-	} else {
-		flog.L(`T: `, `完成`)
-	}
+	flog.Base_add(`自动送礼`).L(`I: `, `已完成`)
 }
 
 // 直播Web服务口
