@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math"
 	"net/http"
 	"net/url"
 	"os"
@@ -405,7 +404,7 @@ func (t *M4SStream) fetchParseM3U8() (m4s_links []*m4s_link_item, m3u8_addon []b
 			timed := tmp[len(tmp)-1].createdTime.Sub(t.last_m4s.createdTime).Seconds()
 			nos, _ := tmp[len(tmp)-1].getNo()
 			noe, _ := t.last_m4s.getNo()
-			if timed > 3 && math.Abs(timed-float64(nos-noe)) > 2 {
+			if timed > 5 && nos-noe == 0 {
 				// 1min后重新启用
 				t.common.Live[k].ReUpTime = time.Now().Add(time.Minute)
 				t.log.L("W: ", fmt.Sprintf("服务器 %s 发生故障 %d 秒产出了 %d 切片", m3u8_url.Host, int(timed), nos-noe))
@@ -423,7 +422,7 @@ func (t *M4SStream) fetchParseM3U8() (m4s_links []*m4s_link_item, m3u8_addon []b
 			return
 		}
 
-		// 只返回新增加的
+		// 去掉初始段 及 last之前的切片
 		{
 			last_no, _ := t.last_m4s.getNo()
 			for k := 0; k < len(m4s_links); k++ {
@@ -432,13 +431,16 @@ func (t *M4SStream) fetchParseM3U8() (m4s_links []*m4s_link_item, m3u8_addon []b
 				if m4s_link.isInit() {
 					m4s_links = append(m4s_links[:k], m4s_links[k+1:]...)
 					k--
+					continue
 				}
 				no, _ := m4s_link.getNo()
-				if no == last_no {
-					// 只返回新增加的切片
+				if no < last_no {
+					continue
+				} else if no == last_no {
+					// 只返回新增加的切片,去掉无用切片
 					t.putM4s(m4s_links[:k+1]...)
 					m4s_links = m4s_links[k+1:]
-					// 只返回新增加的m3u8字节
+					// 只返回新增加的m3u8_addon字节
 					if index := bytes.Index(m3u8_addon, []byte(m4s_link.Base)); index != -1 {
 						index += len([]byte(m4s_link.Base))
 						if index == len(m3u8_addon) {
@@ -451,31 +453,22 @@ func (t *M4SStream) fetchParseM3U8() (m4s_links []*m4s_link_item, m3u8_addon []b
 				} else if no == last_no+1 {
 					// 刚刚好承接之前的结尾
 					return
+				} else {
+					break
 				}
 			}
 		}
 
 		// 来到此处说明出现了丢失 尝试补充
-		var (
-			guess_end_no int
-			current_no   int
-		)
-		// 找出不是初始段的第一个切片
-		for _, v := range m4s_links {
-			if v.isInit() {
-				continue
-			}
-			guess_end_no, _ = v.getNo()
-			break
-		}
-		current_no, _ = t.last_m4s.getNo()
+		guess_end_no, _ := m4s_links[0].getNo()
+		current_no, _ := t.last_m4s.getNo()
 
 		if guess_end_no < current_no {
 			return
 		}
 
 		t.log.L(`I: `, `发现`, guess_end_no-current_no-1, `个切片遗漏，重新下载`)
-		for guess_no := guess_end_no - 1; guess_no > current_no; guess_no -= 1 {
+		for guess_no := guess_end_no - 1; guess_no > current_no; guess_no-- {
 			// 补充m3u8
 			m3u8_addon = append([]byte("#EXTINF:1.00\n"+strconv.Itoa(guess_no)+".m4s\n"), m3u8_addon...)
 
@@ -961,9 +954,9 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 		var m4s_links, m3u8_addon, err = t.fetchParseM3U8()
 		if err != nil {
 			t.log.L(`E: `, `获取解析m3u8发生错误`, err)
-			if len(download_seq) != 0 {
-				continue
-			}
+			// if len(download_seq) != 0 {
+			// 	continue
+			// }
 			if !reqf.IsTimeout(err) {
 				e = err
 				break
