@@ -1970,7 +1970,7 @@ func Dosign() {
 
 // LIVE_BUVID
 func (c *GetFunc) Get_LIVE_BUVID() (missKey []string) {
-	apilog := apilog.Base_add(`LIVE_BUVID`).L(`T: `, `获取`)
+	apilog := apilog.Base_add(`LIVE_BUVID`) //.L(`T: `, `获取`)
 
 	if live_buvid, ok := c.Cookie.LoadV(`LIVE_BUVID`).(string); ok && live_buvid != `` {
 		apilog.L(`T: `, `存在`)

@@ -384,7 +384,7 @@ func (replyF) heartbeat(s int) {
 		} else {
 			tmp2 = "(=0.0%)"
 		}
-		fmt.Printf("+----\n|当前人气:%s%d\n|平均观看:%s%d\n|在线人数:%s%d\n|平均意愿:%.1f\n+----\n", tmp, s, tmp1, int(watchPerMin), tmp2, c.C.OnlineNum, onlinenum_l+watched_l)
+		fmt.Printf("+----\n|当前人气:%s%d\n|平均观看:%s%d\n|在线人数:%s%d\n+----\n", tmp, s, tmp1, int(watchPerMin), tmp2, c.C.OnlineNum)
 		renqi_old = s
 		watched_old = watchPerMin
 		onlinenum_old = c.C.OnlineNum
@@ -805,7 +805,7 @@ func (replyF) super_chat_message(s string) {
 		sh = append(sh, message_jpn)
 		logg = append(logg, message_jpn)
 	}
-	fmt.Print("====\n\n")
+	fmt.Print("====\n")
 
 	{ //额外
 		Assf(fmt.Sprintln(sh...))
