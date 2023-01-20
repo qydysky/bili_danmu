@@ -1310,12 +1310,72 @@ func Info(UpUid int) (info J.Info) {
 // 调用记录
 var boot_Get_cookie funcCtrl.FlashFunc //新的替代旧的
 
-// 扫码登录
-func (c *GetFunc) Get_cookie() (missKey []string) {
-	if v, ok := c.K_v.LoadV(`扫码登录`).(bool); !ok || !v {
+// 是否登录
+func (c *GetFunc) IsLogin() (isLogin bool) {
+	apilog := apilog.Base_add(`是否登录`)
+	//验证cookie
+	if missKey := CookieCheck([]string{
+		`bili_jct`,
+		`DedeUserID`,
+		`LIVE_BUVID`,
+	}); len(missKey) != 0 {
+		apilog.L(`T: `, `Cookie无Key:`, missKey)
+		return
+	}
+	if api_limit.TO() {
+		apilog.L(`E: `, `超时！`)
+		return
+	} //超额请求阻塞，超时将取消
+
+	Cookie := make(map[string]string)
+	c.Cookie.Range(func(k, v interface{}) bool {
+		Cookie[k.(string)] = v.(string)
+		return true
+	})
+
+	reqi := c.ReqPool.Get()
+	defer c.ReqPool.Put(reqi)
+	req := reqi.Item.(*reqf.Req)
+	if err := req.Reqf(reqf.Rval{
+		Url: `https://api.bilibili.com/x/web-interface/nav`,
+		Header: map[string]string{
+			`Host`:            `api.bilibili.com`,
+			`User-Agent`:      `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0`,
+			`Accept`:          `application/json, text/plain, */*`,
+			`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
+			`Accept-Encoding`: `gzip, deflate, br`,
+			`Origin`:          `https://t.bilibili.com`,
+			`Connection`:      `keep-alive`,
+			`Pragma`:          `no-cache`,
+			`Cache-Control`:   `no-cache`,
+			`Referer`:         `https://t.bilibili.com/pages/nav/index_new`,
+			`Cookie`:          reqf.Map_2_Cookies_String(Cookie),
+		},
+		Proxy:   c.Proxy,
+		Timeout: 3 * 1000,
+		Retry:   2,
+	}); err != nil {
+		apilog.L(`E: `, err)
 		return
 	}
 
+	var res J.Nav
+
+	if e := json.Unmarshal(req.Respon, &res); e != nil {
+		apilog.L(`E: `, e)
+		return
+	}
+
+	if res.Code != 0 {
+		apilog.L(`E: `, res.Message)
+		return
+	}
+
+	return res.Data.IsLogin
+}
+
+// 扫码登录
+func (c *GetFunc) Get_cookie() (missKey []string) {
 	apilog := apilog.Base_add(`获取Cookie`)
 
 	if p.Checkfile().IsExist("cookie.txt") { //读取cookie文件
@@ -1326,10 +1386,16 @@ func (c *GetFunc) Get_cookie() (missKey []string) {
 			if miss := CookieCheck([]string{
 				`bili_jct`,
 				`DedeUserID`,
-			}); len(miss) == 0 {
+			}); len(miss) == 0 && c.IsLogin() {
+				apilog.L(`I: `, `已登录`)
 				return
 			}
 		}
+	}
+
+	if v, ok := c.K_v.LoadV(`扫码登录`).(bool); !ok || !v {
+		apilog.L(`W: `, `配置文件已禁止扫码登录`)
+		return
 	}
 
 	//获取id

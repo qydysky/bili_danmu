@@ -129,13 +129,8 @@ func Cmd() {
 			}
 			//登陆
 			if strings.Contains(inputs, ` login`) {
-				if _, ok := c.C.Cookie.LoadV(`bili_jct`).(string); ok {
-					cmdlog.L(`W: `, "已登陆")
-					continue
-				}
 				//获取cookie
 				F.Get(&c.C).Get(`Cookie`)
-
 				continue
 			}
 			//搜索主播
