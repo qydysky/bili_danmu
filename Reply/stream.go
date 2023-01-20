@@ -818,7 +818,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 					}
 					if e := r.Reqf(reqConfig); e != nil && !errors.Is(e, io.EOF) {
 						if !reqf.IsTimeout(e) {
-							t.log.L(`E: `, `hls切片下载失败:`, link.Url, e, string(r.Respon))
+							t.log.L(`E: `, `hls切片下载失败:`, link.Url, e)
 							link.tryDownCount = 4 // 设置切片状态为下载失败
 						} else {
 							link.status = 3 // 设置切片状态为下载失败
