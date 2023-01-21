@@ -144,7 +144,7 @@ func (t *M4SStream) LoadConfig(common c.Common, l *log.Log_interface) {
 	//读取配置
 	if path, ok := common.K_v.LoadV("直播流保存位置").(string); ok {
 		if path, err := filepath.Abs(path); err == nil {
-			if _, err := os.Stat(path); err != nil {
+			if fs, err := os.Stat(path); err != nil {
 				if errors.Is(err, os.ErrNotExist) {
 					if err := p.File().NewPath(path); err != nil {
 						t.log.L(`E: `, `直播流保存位置错误`, err)
@@ -154,6 +154,9 @@ func (t *M4SStream) LoadConfig(common c.Common, l *log.Log_interface) {
 					t.log.L(`E: `, `直播流保存位置错误`, err)
 					return
 				}
+			} else if !fs.IsDir() {
+				t.log.L(`E: `, `直播流保存位置不是目录`)
+				return
 			}
 			t.config.save_path = path + "/"
 		} else {
