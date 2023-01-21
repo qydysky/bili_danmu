@@ -210,6 +210,7 @@ func Cmd() {
 				c.C.Roomid = room
 				cmdlog.L(`I: `, "进入房间", room)
 				c.C.Danmu_Main_mq.Push_tag(`change_room`, nil)
+				return
 			}
 			cmdlog.L(`W: `, "无效指令("+inputs+")")
 		} else { //其余字符串
