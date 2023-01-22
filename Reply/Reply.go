@@ -324,6 +324,7 @@ func (replyF) user_toast_msg(s string) {
 
 // HeartBeat-心跳用来传递人气值
 var (
+	cuRoom        int
 	renqi_last    int
 	renqi_old     int
 	watched_old   float64
@@ -341,13 +342,26 @@ func (replyF) heartbeat(s int) {
 	if s == 1 {
 		return
 	} //人气为1,不输出
+	if c.C.Roomid != cuRoom {
+		cuRoom = c.C.Roomid
+		renqi_last = 0
+		renqi_old = 0
+		watched_old = 0
+		onlinenum_old = 0
+		renqi_l = 0
+		watched_l = 0
+		onlinenum_l = 0
+	}
 	if renqi_last != s {
 		var (
 			tmp         string
-			watchPerMin float64 = float64(c.C.Watched) / float64(time.Since(c.C.Live_Start_Time)/time.Minute)
+			watchPerMin float64
 			tmp1        string
 			tmp2        string
 		)
+		if time.Since(c.C.Live_Start_Time) > time.Minute {
+			watchPerMin = float64(c.C.Watched) / float64(time.Since(c.C.Live_Start_Time)/time.Minute)
+		}
 		if renqi_old != 0 {
 			renqi_l = (renqi_l + 100*float64(s-renqi_old)/float64(renqi_old)) / 2
 			if renqi_l > 0 {
