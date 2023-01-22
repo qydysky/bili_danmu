@@ -751,23 +751,20 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 
 		// 存在待下载切片
 		if len(download_seq) != 0 {
-
-			// 设置限制计划
-			download_limit.Plan(int64(len(download_seq)))
-
 			// 下载切片
 			for _, v := range download_seq {
 
 				// 已下载但还未移除的切片
 				if v.status == 2 {
-					download_limit.Block()
-					download_limit.UnBlock()
 					continue
 				}
+				download_limit.Block(func() {
+					time.Sleep(time.Millisecond * 10)
+				})
 
 				go func(link *m4s_link_item, path string) {
+					// t.log.L(`I: `, `下载`, link.Base)
 					defer download_limit.UnBlock()
-					download_limit.Block()
 
 					link.status = 1 // 设置切片状态为正在下载
 					link.tryDownCount += 1
@@ -803,7 +800,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 					r := req.Item.(*reqf.Req)
 					reqConfig := reqf.Rval{
 						Url:     link.Url,
-						Timeout: 2000,
+						Timeout: 3000,
 						Proxy:   t.common.Proxy,
 						Header: map[string]string{
 							`Connection`: `close`,
@@ -815,7 +812,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 					if e := r.Reqf(reqConfig); e != nil && !errors.Is(e, io.EOF) {
 						if !reqf.IsTimeout(e) {
 							t.log.L(`E: `, `hls切片下载失败:`, link.Url, e)
-							link.tryDownCount = 4 // 设置切片状态为下载失败
+							link.tryDownCount = 2 // 设置切片状态为下载失败
 						} else {
 							link.status = 3 // 设置切片状态为下载失败
 						}
@@ -837,9 +834,10 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 			}
 
 			// 等待队列下载完成
-			download_limit.PlanDone(func() {
-				time.Sleep(time.Millisecond * 20)
+			download_limit.BlockAll(func() {
+				time.Sleep(time.Millisecond * 10)
 			})
+			download_limit.UnBlockAll()
 		}
 
 		// 传递已下载切片
@@ -847,8 +845,8 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 			// v := download_seq[k]
 
 			if download_seq[k].status != 2 {
-				if download_seq[k].tryDownCount >= 4 {
-					//下载了4次，任未下载成功，忽略此块
+				if download_seq[k].tryDownCount >= 2 {
+					//下载了2次，任未下载成功，忽略此块
 					t.putM4s(download_seq[k])
 					download_seq = append(download_seq[:k], download_seq[k+1:]...)
 					k -= 1
