@@ -1837,16 +1837,25 @@ func (c *GetFunc) CheckSwitch_FansMedal() (missKey []string) {
 			apilog.L(`E: `, e)
 			return
 		}
-		res := string(r.Respon)
-		if v, ok := p.Json().GetValFromS(res, "code").(float64); ok && v == 0 {
-			apilog.L(`I: `, `自动切换粉丝牌 id:`, medal_id)
-			c.Wearing_FansMedal = medal_id //更新佩戴信息
+
+		var res J.FansMedal
+
+		if e := json.Unmarshal(r.Respon, &res); e != nil {
+			apilog.L(`E: `, e)
+			return
+		} else if res.Code != 0 {
+			apilog.L(`E: `, res.Message)
 			return
 		}
-		if v, ok := p.Json().GetValFromS(res, "message").(string); ok {
-			apilog.L(`E: `, `Get_FansMedal wear message`, v)
-		} else {
-			apilog.L(`E: `, `Get_FansMedal wear message nil`)
+
+		if res.Message == "佩戴成功" {
+			if medal_id == 0 {
+				apilog.L(`I: `, `已取下粉丝牌`)
+			} else {
+				apilog.L(`I: `, `自动切换粉丝牌 id:`, medal_id)
+			}
+			c.Wearing_FansMedal = medal_id //更新佩戴信息
+			return
 		}
 	}
 	return
