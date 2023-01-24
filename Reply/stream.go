@@ -506,7 +506,7 @@ func (t *M4SStream) saveStream() (e error) {
 	t.Current_save_path = t.config.save_path + "/" +
 		time.Now().Format("2006_01_02-15_04_05") + "-" +
 		strconv.Itoa(t.common.Roomid) + "-" +
-		t.common.Title +
+		t.common.Title + "-" +
 		pstring.Rand(2, 3) +
 		`/`
 
@@ -742,21 +742,21 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 		fmp4KeyFrames    = slice.New[byte]()
 		fmp4KeyFramesBuf []byte
 		fmp4Decoder      = &Fmp4Decoder{}
-		flashingSer      bool
+		// flashingSer      bool
 	)
 
 	// 下载循环
 	for download_seq := []*m4s_link_item{}; ; {
 
 		// 刷新流地址
-		if !flashingSer && int64(t.common.Live[0].Expires)-time.Now().Unix() < 60 {
-			flashingSer = true
-			t.log.L(`T: `, `刷新流地址...`)
-			go func() {
-				t.fetchCheckStream()
-				flashingSer = false
-			}()
-		}
+		// if !flashingSer && int64(t.common.Live[0].Expires)-time.Now().Unix() < 60 {
+		// 	flashingSer = true
+		// 	t.log.L(`T: `, `刷新流地址...`)
+		// 	go func() {
+		// 		t.fetchCheckStream()
+		// 		flashingSer = false
+		// 	}()
+		// }
 
 		// 存在待下载切片
 		if len(download_seq) != 0 {
