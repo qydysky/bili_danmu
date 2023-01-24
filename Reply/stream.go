@@ -27,6 +27,7 @@ import (
 	reqf "github.com/qydysky/part/reqf"
 	signal "github.com/qydysky/part/signal"
 	slice "github.com/qydysky/part/slice"
+	pstring "github.com/qydysky/part/strings"
 	psync "github.com/qydysky/part/sync"
 )
 
@@ -48,8 +49,8 @@ type M4SStream struct {
 	m4s_pool          *pool.Buf[m4s_link_item] //切片pool
 	common            c.Common                 //通用配置副本
 	Current_save_path string                   //明确的直播流保存目录
-	Callback_start    func(*M4SStream)         //实例开始的回调
-	Callback_startRec func(*M4SStream)         //录制开始的回调
+	Callback_start    func(*M4SStream) error   //实例开始的回调
+	Callback_startRec func(*M4SStream) error   //录制开始的回调
 	Callback_stopRec  func(*M4SStream)         //录制结束的回调
 	Callback_stop     func(*M4SStream)         //实例结束的回调
 	reqPool           *idpool.Idpool           //请求池
@@ -502,7 +503,12 @@ func (t *M4SStream) fetchParseM3U8() (m4s_links []*m4s_link_item, m3u8_addon []b
 
 func (t *M4SStream) saveStream() (e error) {
 	// 设置保存路径
-	t.Current_save_path = t.config.save_path + "/" + time.Now().Format("2006_01_02_15_04_05_000") + "_" + strconv.Itoa(t.common.Roomid) + `/`
+	t.Current_save_path = t.config.save_path + "/" +
+		time.Now().Format("2006_01_02-15_04_05") + "-" +
+		strconv.Itoa(t.common.Roomid) + "-" +
+		t.common.Title +
+		pstring.Rand(2, 3) +
+		`/`
 
 	// 清除初始值
 	t.last_m4s = nil
@@ -519,7 +525,10 @@ func (t *M4SStream) saveStream() (e error) {
 
 	// 录制回调
 	if t.Callback_startRec != nil {
-		t.Callback_startRec(t)
+		if err := t.Callback_startRec(t); err != nil {
+			t.log.L(`W: `, `开始录制回调错误`, err.Error())
+			return err
+		}
 	}
 	if t.Callback_stopRec != nil {
 		defer t.Callback_stopRec(t)
@@ -1039,7 +1048,9 @@ func (t *M4SStream) Start() bool {
 
 		// 实例回调
 		if t.Callback_start != nil {
-			t.Callback_start(t)
+			if e := t.Callback_start(t); e != nil {
+				t.log.L(`W: `, `开始回调错误`, e.Error())
+			}
 		}
 		if t.Callback_stop != nil {
 			defer t.Callback_stop(t)
