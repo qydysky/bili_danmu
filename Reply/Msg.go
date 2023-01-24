@@ -117,6 +117,7 @@ var Msg_map = map[string]func(replyF, string){
 	"POPULAR_RANK_CHANGED":              nil, //replyF.popular_rank_changed, // Msg-人气排名
 	"AREA_RANK_CHANGED":                 nil,
 	"GIFT_STAR_PROCESS":                 nil,
+	"RECOMMEND_CARD":                    nil, //主播商品营销
 }
 
 // 屏蔽不需要的消息
