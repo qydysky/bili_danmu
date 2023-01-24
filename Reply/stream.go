@@ -1101,21 +1101,22 @@ func (t *M4SStream) Start() bool {
 				t.log.L(`E: `, "saveStream:", err)
 			}
 
+			// Deprecated: 默认总是获取到可用流
 			// 直播流类型故障切换
-			if v, ok := t.common.K_v.LoadV(`直播流类型故障切换`).(bool); v && ok {
-				if err != nil && err.Error() == "未能找到可用流服务器" {
-					if v, ok := t.common.K_v.LoadV(`直播流类型`).(string); ok {
-						switch v {
-						case "hls":
-							t.common.K_v.Store(`直播流类型`, `flv`)
-						case "flv":
-							t.common.K_v.Store(`直播流类型`, `hls`)
-						default:
-							t.log.L(`E: `, `未知的流类型:`+v)
-						}
-					}
-				}
-			}
+			// if v, ok := t.common.K_v.LoadV(`直播流类型故障切换`).(bool); v && ok {
+			// 	if err != nil && err.Error() == "未能找到可用流服务器" {
+			// 		if v, ok := t.common.K_v.LoadV(`直播流类型`).(string); ok {
+			// 			switch v {
+			// 			case "fmp4":
+			// 				t.common.K_v.Store(`直播流类型`, `flv`)
+			// 			case "flv":
+			// 				t.common.K_v.Store(`直播流类型`, `hls`)
+			// 			default:
+			// 				t.log.L(`E: `, `未知的流类型:`+v)
+			// 			}
+			// 		}
+			// 	}
+			// }
 
 		}
 

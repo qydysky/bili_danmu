@@ -258,7 +258,7 @@ func dtos(t time.Duration) string {
 	return fmt.Sprintf("%d:%02d:%02d.%02d", int(math.Floor(t.Hours())), M, S, Ns)
 }
 
-// hls
+// fmp4
 // https://datatracker.ietf.org/doc/html/draft-pantos-http-live-streaming
 var streamO = new(sync.Map)
 

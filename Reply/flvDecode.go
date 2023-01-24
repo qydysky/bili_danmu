@@ -422,6 +422,10 @@ var (
 func Seach_stream_tag(buf []byte) (front_buf []byte, keyframe [][]byte, last_avilable_offset int, err error) {
 	//get flv header(9byte) + FirstTagSize(4byte)
 	if header_offset := bytes.Index(buf, flv_header_sign); header_offset != -1 {
+		if header_offset+flv_header_size+previou_tag_size > len(buf) {
+			err = errors.New(`no found available tag`)
+			return
+		}
 		front_buf = buf[header_offset : header_offset+flv_header_size+previou_tag_size]
 		last_avilable_offset = header_offset + flv_header_size + previou_tag_size
 	}

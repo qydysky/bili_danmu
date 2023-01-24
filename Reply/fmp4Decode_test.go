@@ -1,13 +1,13 @@
 package reply
 
 import (
-	_ "embed"
+	// _ "embed"
 	"testing"
 
 	F "github.com/qydysky/bili_danmu/F"
 )
 
-//go:embed 32320131.m4s
+// go:embed 32320131.m4s
 var buf []byte
 
 func Test_deal(t *testing.T) {
