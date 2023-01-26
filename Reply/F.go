@@ -1176,17 +1176,32 @@ func init() {
 				w.Header().Set("Connection", "keep-alive")
 				w.Header().Set("Content-Transfer-Encoding", "binary")
 
+				var rpath string
 				if referer, e := url.Parse(r.Header.Get(`Referer`)); e != nil {
 					w.Header().Set("Retry-After", "1")
 					w.WriteHeader(http.StatusServiceUnavailable)
 					flog.L(`E: `, e)
 					return
-				} else if referer.Path != `/now/` {
+				} else {
+					rpath = referer.Path
+				}
+
+				if qref := r.URL.Query().Get("ref"); rpath == "" && qref != "" {
+					rpath = "/" + qref + "/"
+				}
+
+				if rpath == "" {
+					w.Header().Set("Retry-After", "1")
+					w.WriteHeader(http.StatusServiceUnavailable)
+					flog.L(`E: `, `无指定路径`)
+				}
+
+				if rpath != `/now/` {
 					if v, ok := c.C.K_v.LoadV(`直播流保存位置`).(string); ok && v != "" {
 						if strings.HasSuffix(v, "/") || strings.HasSuffix(v, "\\") {
-							v += referer.Path[1:]
+							v += rpath[1:]
 						} else {
-							v += referer.Path
+							v += rpath
 						}
 						if file.New(v+"0.flv", 0, true).IsExist() {
 							v += "0.flv"
@@ -1200,6 +1215,7 @@ func init() {
 						}
 
 						var rangeHeaderNum int
+						var e error
 						if rangeHeader := r.Header.Get(`range`); rangeHeader != "" {
 							if strings.Index(rangeHeader, "bytes=") != 0 {
 								w.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
