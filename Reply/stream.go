@@ -1042,16 +1042,18 @@ func (t *M4SStream) Start() bool {
 		return false
 	}
 
+	// 实例回调
+	if t.Callback_start != nil {
+		if e := t.Callback_start(t); e != nil {
+			t.log.L(`W: `, `开始回调错误`, e.Error())
+			return false
+		}
+	}
+
 	t.Status = signal.Init()
 	go func() {
 		defer t.Status.Done()
 
-		// 实例回调
-		if t.Callback_start != nil {
-			if e := t.Callback_start(t); e != nil {
-				t.log.L(`W: `, `开始回调错误`, e.Error())
-			}
-		}
 		if t.Callback_stop != nil {
 			defer t.Callback_stop(t)
 		}
