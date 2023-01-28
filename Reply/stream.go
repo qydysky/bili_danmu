@@ -68,7 +68,8 @@ type m4s_link_item struct {
 	Url          string    // m4s链接
 	Base         string    // m4s文件名
 	status       int       // 下载状态 0:未下载 1:正在下载 2:下载完成 3:下载失败
-	tryDownCount int       // 下载次数 当=4时，不再下载，忽略此块
+	tryDownCount int       // 下载次数 当=2时，不再下载，忽略此块
+	err          error     // 下载中出现的错误
 	data         []byte    // 下载的数据
 	createdTime  time.Time // 创建时间
 	pooledTime   time.Time // 到pool时间
@@ -760,6 +761,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 
 		// 存在待下载切片
 		if len(download_seq) != 0 {
+			var downingCount = 0 //本轮下载数量
 			// 下载切片
 			for _, v := range download_seq {
 
@@ -767,6 +769,14 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 				if v.status == 2 {
 					continue
 				}
+
+				// 每次最多只下载10个切片
+				if downingCount >= 10 {
+					t.log.L(`T: `, `延迟切片下载 数量(`, len(download_seq)-downingCount, `)`)
+					break
+				}
+				downingCount += 1
+
 				download_limit.Block(func() {
 					time.Sleep(time.Millisecond * 10)
 				})
@@ -820,7 +830,8 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 					}
 					if e := r.Reqf(reqConfig); e != nil && !errors.Is(e, io.EOF) {
 						if !reqf.IsTimeout(e) {
-							t.log.L(`E: `, `hls切片下载失败:`, link.Url, e)
+							// 发生非超时错误
+							link.err = e
 							link.tryDownCount = 2 // 设置切片状态为下载失败
 						} else {
 							link.status = 3 // 设置切片状态为下载失败
@@ -854,6 +865,11 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 			// v := download_seq[k]
 
 			if download_seq[k].status != 2 {
+				if err := download_seq[k].err; err != nil {
+					t.log.L(`E: `, `切片下载发生错误:`, err)
+					e = err
+					return
+				}
 				if download_seq[k].tryDownCount >= 2 {
 					//下载了2次，任未下载成功，忽略此块
 					t.putM4s(download_seq[k])
