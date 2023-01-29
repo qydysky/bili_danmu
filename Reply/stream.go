@@ -797,8 +797,8 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 						if vl := t.common.ValidLive(); vl == nil {
 							return errors.New(`全部流服务器故障`)
 						} else {
-							t.log.L(`W: `, `切片下载失败，故障转移`, oldHost, ` -> `, linkUrl.Host)
 							linkUrl.Host = vl.Host()
+							t.log.L(`W: `, `切片下载失败，故障转移`, oldHost, ` -> `, linkUrl.Host)
 						}
 						v.Url = linkUrl.String()
 					}
