@@ -477,6 +477,14 @@ func (replyF) room_change(s string) {
 	Gui_show(Itos(sh), "0room")
 
 	msglog.Base_add("房").L(`I: `, sh...)
+
+	//录制
+	go func() {
+		if v, ok := c.C.K_v.LoadV(`修改标题时重新录制`).(bool); ok && v {
+			StreamOStop(c.C.Roomid) //停止其他房间录制
+		}
+		StreamOStart(c.C.Roomid)
+	}()
 }
 
 // Msg-超管警告
@@ -523,18 +531,18 @@ func (replyF) little_tips(s string) {
 }
 
 // Msg-人气排名
-func (replyF) popular_rank_changed(s string) {
-	var type_item ws_msg.POPULAR_RANK_CHANGED
+// func (replyF) popular_rank_changed(s string) {
+// 	var type_item ws_msg.POPULAR_RANK_CHANGED
 
-	if e := json.Unmarshal([]byte(s), &type_item); e != nil {
-		msglog.L(`E: `, e)
-	}
-	s = fmt.Sprintf("人气排行 %d", type_item.Data.Rank)
+// 	if e := json.Unmarshal([]byte(s), &type_item); e != nil {
+// 		msglog.L(`E: `, e)
+// 	}
+// 	s = fmt.Sprintf("人气排行 %d", type_item.Data.Rank)
 
-	Gui_show(s, "0room")
+// 	Gui_show(s, "0room")
 
-	msglog.Base_add("房").L(`I: `, s)
-}
+// 	msglog.Base_add("房").L(`I: `, s)
+// }
 
 // Msg-开始了视频连线
 func (replyF) video_connection_join_start(s string) {
