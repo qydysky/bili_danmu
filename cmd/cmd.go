@@ -25,7 +25,7 @@ func Cmd() {
 	for scanner.Scan() {
 		if inputs := scanner.Text(); inputs == `` { //帮助
 			fmt.Print("\n")
-			fmt.Println("切换房间->输入数字回车")
+			fmt.Println("切换房间->输入' 数字'回车")
 			if c.C.Roomid == 0 {
 				if _, ok := c.C.Cookie.LoadV(`bili_jct`).(string); ok {
 					fmt.Println("查看直播中主播->输入' liv'回车")
