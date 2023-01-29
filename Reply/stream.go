@@ -506,7 +506,7 @@ func (t *M4SStream) saveStream() (e error) {
 	t.Current_save_path = t.config.save_path + "/" +
 		time.Now().Format("2006_01_02-15_04_05") + "-" +
 		strconv.Itoa(t.common.Roomid) + "-" +
-		t.common.Title + "-" +
+		strings.NewReplacer("\\", "", "\\/", "", ":", "", "*", "", "?", "", "\"", "", "<", "", ">", "", "|", "").Replace(t.common.Title) + "-" +
 		pstring.Rand(2, 3) +
 		`/`
 
