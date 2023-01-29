@@ -282,57 +282,6 @@ type SavestreamO struct {
 	IsRec  bool
 }
 
-// 实例操作
-func init() {
-	//使用带tag的消息队列在功能间传递消息
-	c.C.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
-		`savestream`: func(data interface{}) bool {
-			if item, ok := data.(SavestreamO); ok {
-				if v, ok := streamO.Load(item.Roomid); item.IsRec && !ok {
-					var (
-						tmp    = new(M4SStream)
-						common = c.C
-					)
-					common.Roomid = item.Roomid
-					tmp.LoadConfig(common, c.C.Log)
-					//录制回调，关于ass
-					tmp.Callback_startRec = func(ms *M4SStream) error {
-						StartRecDanmu(ms.Current_save_path + "0.csv")
-						Ass_f(ms.Current_save_path, ms.Current_save_path+"0", time.Now()) //开始ass
-						return nil
-					}
-					tmp.Callback_stopRec = func(_ *M4SStream) {
-						StopRecDanmu()
-						Ass_f("", "", time.Now()) //停止ass
-					}
-					//实例回调，避免重复录制
-					tmp.Callback_start = func(ms *M4SStream) error {
-						//流服务添加
-						if _, ok := streamO.LoadOrStore(ms.common.Roomid, tmp); ok {
-							return fmt.Errorf("已存在此直播间(%d)录制", ms.common.Roomid)
-						}
-						return nil
-					}
-					tmp.Callback_stop = func(ms *M4SStream) {
-						streamO.Delete(ms.common.Roomid) //流服务去除
-					}
-					tmp.Start()
-				} else if !item.IsRec && ok {
-					if v.(*M4SStream).Status.Islive() {
-						v.(*M4SStream).Stop()
-						streamO.Delete(item.Roomid)
-					}
-				} else if !ok {
-					flog.L(`W: `, `未录制 `+strconv.Itoa(item.Roomid)+` 不能停止`)
-				} else {
-					flog.L(`W: `, `已录制 `+strconv.Itoa(item.Roomid)+` 不能重复录制`)
-				}
-			}
-			return false
-		},
-	})
-}
-
 // 获取实例的录制状态
 func StreamOStatus(roomid int) (Islive bool) {
 	v, ok := streamO.Load(roomid)
@@ -342,6 +291,7 @@ func StreamOStatus(roomid int) (Islive bool) {
 // 开始实例
 func StreamOStart(roomid int) {
 	if StreamOStatus(roomid) {
+		flog.L(`W: `, `已录制 `+strconv.Itoa(roomid)+` 不能重复录制`)
 		return
 	}
 	var (
@@ -375,6 +325,10 @@ func StreamOStart(roomid int) {
 }
 
 // 停止实例
+//
+// -2 其他房间
+// -1 所有房间
+// 针对某房间
 func StreamOStop(roomid int) {
 	switch roomid {
 	case -2: // 其他房间

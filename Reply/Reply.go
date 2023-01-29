@@ -700,7 +700,7 @@ func (replyF) preparing(s string) {
 		msglog.L(`E: `, err)
 		return
 	} else {
-		{ //附加功能 obs结束 `savestream`结束
+		{ //附加功能 obs结束 savestream结束
 			Obs_R(false)
 			Obsf(false)
 			go ShowRevf()
@@ -737,10 +737,7 @@ func (replyF) live(s string) {
 			if v, ok := c.C.K_v.LoadV(`仅保存当前直播间流`).(bool); ok && v {
 				StreamOStop(-2) //停止其他房间录制
 			}
-			c.C.Danmu_Main_mq.Push_tag(`savestream`, SavestreamO{
-				Roomid: type_item.Roomid,
-				IsRec:  true,
-			})
+			StreamOStart(c.C.Roomid)
 		}()
 
 		Gui_show(Itos([]interface{}{"房间", type_item.Roomid, "开播了"}), "0room")

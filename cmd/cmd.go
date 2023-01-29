@@ -62,18 +62,20 @@ func Cmd() {
 						continue
 					}
 					if room, err := strconv.Atoi(inputs[4:]); err == nil {
-						c.C.Danmu_Main_mq.Push_tag(`savestream`, reply.SavestreamO{
-							Roomid: room,
-							IsRec:  !reply.StreamOStatus(room),
-						})
+						if reply.StreamOStatus(room) {
+							reply.StreamOStop(room)
+						} else {
+							reply.StreamOStart(room)
+						}
 						continue
 					}
 					cmdlog.L(`W: `, "输入错误", inputs)
 				} else {
-					c.C.Danmu_Main_mq.Push_tag(`savestream`, reply.SavestreamO{
-						Roomid: c.C.Roomid,
-						IsRec:  !reply.StreamOStatus(c.C.Roomid),
-					})
+					if reply.StreamOStatus(c.C.Roomid) {
+						reply.StreamOStop(c.C.Roomid)
+					} else {
+						reply.StreamOStart(c.C.Roomid)
+					}
 				}
 				continue
 			}
