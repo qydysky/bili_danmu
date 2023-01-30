@@ -19,6 +19,7 @@ import (
 
 	// "runtime"
 
+	humanize "github.com/dustin/go-humanize"
 	"golang.org/x/text/encoding/simplifiedchinese"
 
 	c "github.com/qydysky/bili_danmu/CV"
@@ -1191,7 +1192,17 @@ func init() {
 						f := file.New(v, int64(rangeHeaderNum), false)
 						defer f.Close()
 
-						if e := f.CopyToIoWriter(w, 1000000, true); e != nil {
+						// 直播流回放速率
+						var speed, _ = humanize.ParseBytes("1 M")
+						if rc, ok := c.C.K_v.LoadV(`直播流回放速率`).(string); ok {
+							if s, e := humanize.ParseBytes(rc); e != nil {
+								flog.L(`W: `, `直播流回放速率不合法:`, e)
+							} else {
+								speed = s
+							}
+						}
+
+						if e := f.CopyToIoWriter(w, int64(speed), true); e != nil {
 							flog.L(`E: `, e)
 						}
 					} else {

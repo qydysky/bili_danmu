@@ -7,6 +7,7 @@ require github.com/qydysky/bili_danmu v0.5.9
 require (
 	github.com/andybalholm/brotli v1.0.4 // indirect
 	github.com/christopher-dG/go-obs-websocket v0.0.0-20200720193653-c4fed10356a5 // indirect
+	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/gofrs/uuid v4.3.0+incompatible // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
