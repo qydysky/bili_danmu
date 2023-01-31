@@ -709,8 +709,8 @@ func (replyF) preparing(s string) {
 		return
 	} else {
 		{ //附加功能 obs结束 savestream结束
-			Obs_R(false)
-			Obsf(false)
+			// Obs_R(false)
+			// Obsf(false)
 			go ShowRevf()
 			c.C.Liveing = false
 			// 停止此房间录制
@@ -732,8 +732,8 @@ func (replyF) live(s string) {
 		return
 	} else {
 		{ //附加功能 obs录播
-			Obsf(true)
-			Obs_R(true)
+			// Obsf(true)
+			// Obs_R(true)
 		}
 		{
 			c.C.Rev = 0.0                    //营收
