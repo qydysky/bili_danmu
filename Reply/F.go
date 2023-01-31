@@ -10,7 +10,6 @@ import (
 	"math"
 	"net/http"
 	"net/url"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -36,7 +35,6 @@ import (
 	web "github.com/qydysky/part/web"
 	websocket "github.com/qydysky/part/websocket"
 
-	obsws "github.com/christopher-dG/go-obs-websocket"
 	encoder "golang.org/x/text/encoding"
 )
 
@@ -361,99 +359,99 @@ func StreamOStop(roomid int) {
 	}
 }
 
-type Obs struct {
-	c    obsws.Client
-	Prog string //程序路径
-}
+// type Obs struct {
+// 	c    obsws.Client
+// 	Prog string //程序路径
+// }
 
-var obs = Obs{
-	c:    obsws.Client{Host: "127.0.0.1", Port: 4444},
-	Prog: "obs",
-}
+// var obs = Obs{
+// 	c:    obsws.Client{Host: "127.0.0.1", Port: 4444},
+// 	Prog: "obs",
+// }
 
-func Obsf(on bool) {
-	if !IsOn("调用obs") {
-		return
-	}
-	l := c.C.Log.Base(`obs`)
+// func Obsf(on bool) {
+// 	if !IsOn("调用obs") {
+// 		return
+// 	}
+// 	l := c.C.Log.Base(`obs`)
 
-	if on {
-		if sys.Sys().CheckProgram("obs")[0] != 0 {
-			l.L(`W: `, "obs已经启动")
-			return
-		}
-		if sys.Sys().CheckProgram("obs")[0] == 0 {
-			if obs.Prog == "" {
-				l.L(`E: `, "未知的obs程序位置")
-				return
-			}
-			l.L(`I: `, "启动obs")
-			p.Exec().Start(exec.Command(obs.Prog))
-			sys.Sys().Timeoutf(3)
-		}
+// 	if on {
+// 		if sys.Sys().CheckProgram("obs")[0] != 0 {
+// 			l.L(`W: `, "obs已经启动")
+// 			return
+// 		}
+// 		if sys.Sys().CheckProgram("obs")[0] == 0 {
+// 			if obs.Prog == "" {
+// 				l.L(`E: `, "未知的obs程序位置")
+// 				return
+// 			}
+// 			l.L(`I: `, "启动obs")
+// 			p.Exec().Start(exec.Command(obs.Prog))
+// 			sys.Sys().Timeoutf(3)
+// 		}
 
-		// Connect a client.
-		if err := obs.c.Connect(); err != nil {
-			l.L(`E: `, err)
-			return
-		}
-	} else {
-		if sys.Sys().CheckProgram("obs")[0] == 0 {
-			l.L(`W: `, "obs未启动")
-			return
-		}
-		obs.c.Disconnect()
-	}
-}
+// 		// Connect a client.
+// 		if err := obs.c.Connect(); err != nil {
+// 			l.L(`E: `, err)
+// 			return
+// 		}
+// 	} else {
+// 		if sys.Sys().CheckProgram("obs")[0] == 0 {
+// 			l.L(`W: `, "obs未启动")
+// 			return
+// 		}
+// 		obs.c.Disconnect()
+// 	}
+// }
 
-func Obs_R(on bool) {
-	if !IsOn("调用obs") {
-		return
-	}
+// func Obs_R(on bool) {
+// 	if !IsOn("调用obs") {
+// 		return
+// 	}
 
-	l := c.C.Log.Base("obs_R")
+// 	l := c.C.Log.Base("obs_R")
 
-	if sys.Sys().CheckProgram("obs")[0] == 0 {
-		l.L(`W: `, "obs未启动")
-		return
-	} else {
-		if err := obs.c.Connect(); err != nil {
-			l.L(`E: `, err)
-			return
-		}
-	}
-	//录
-	if on {
-		req := obsws.NewStartRecordingRequest()
-		if err := req.Send(obs.c); err != nil {
-			l.L(`E: `, err)
-			return
-		}
-		resp, err := req.Receive()
-		if err != nil {
-			l.L(`E: `, err)
-			return
-		}
-		if resp.Status() == "ok" {
-			l.L(`I: `, "开始录制")
-		}
-	} else {
-		req := obsws.NewStopRecordingRequest()
-		if err := req.Send(obs.c); err != nil {
-			l.L(`E: `, err)
-			return
-		}
-		resp, err := req.Receive()
-		if err != nil {
-			l.L(`E: `, err)
-			return
-		}
-		if resp.Status() == "ok" {
-			l.L(`I: `, "停止录制")
-		}
-		sys.Sys().Timeoutf(3)
-	}
-}
+// 	if sys.Sys().CheckProgram("obs")[0] == 0 {
+// 		l.L(`W: `, "obs未启动")
+// 		return
+// 	} else {
+// 		if err := obs.c.Connect(); err != nil {
+// 			l.L(`E: `, err)
+// 			return
+// 		}
+// 	}
+// 	//录
+// 	if on {
+// 		req := obsws.NewStartRecordingRequest()
+// 		if err := req.Send(obs.c); err != nil {
+// 			l.L(`E: `, err)
+// 			return
+// 		}
+// 		resp, err := req.Receive()
+// 		if err != nil {
+// 			l.L(`E: `, err)
+// 			return
+// 		}
+// 		if resp.Status() == "ok" {
+// 			l.L(`I: `, "开始录制")
+// 		}
+// 	} else {
+// 		req := obsws.NewStopRecordingRequest()
+// 		if err := req.Send(obs.c); err != nil {
+// 			l.L(`E: `, err)
+// 			return
+// 		}
+// 		resp, err := req.Receive()
+// 		if err != nil {
+// 			l.L(`E: `, err)
+// 			return
+// 		}
+// 		if resp.Status() == "ok" {
+// 			l.L(`I: `, "停止录制")
+// 		}
+// 		sys.Sys().Timeoutf(3)
+// 	}
+// }
 
 type Autoban struct {
 	Banbuf []string
