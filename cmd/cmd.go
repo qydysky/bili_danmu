@@ -39,7 +39,7 @@ func Cmd() {
 				continue
 			}
 			if _, ok := c.C.Cookie.LoadV(`bili_jct`).(string); ok {
-				fmt.Println("发送弹幕->输入' 字符串'回车")
+				fmt.Println("发送弹幕->输入'字符串'回车")
 				fmt.Println("查看直播中主播->输入' liv'回车")
 			} else {
 				fmt.Println("登陆->输入' login'回车")
