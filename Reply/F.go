@@ -1056,7 +1056,9 @@ func SendStreamWs(item Danmu_item) {
 	msg = strings.ReplaceAll(msg, "\\", "\\\\")
 
 	type DataStyle struct {
-		Color string `json:"color"`
+		Color  string `json:"color"`
+		Border bool   `json:"border"`
+		Mode   int    `json:"mode"`
 	}
 
 	type Data struct {
@@ -1068,7 +1070,9 @@ func SendStreamWs(item Danmu_item) {
 	var data, err = json.Marshal(Data{
 		Text: msg,
 		Style: DataStyle{
-			Color: item.color,
+			Color:  item.color,
+			Border: item.border,
+			Mode:   item.mode,
 		},
 	})
 

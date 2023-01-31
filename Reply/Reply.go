@@ -832,8 +832,10 @@ func (replyF) super_chat_message(s string) {
 		Gui_show(Itos(sh), "0superchat")
 		//直播流服务弹幕
 		SendStreamWs(Danmu_item{
-			auth: uname,
-			msg:  "SC: " + message,
+			auth:   uname,
+			border: true,
+			color:  "#FF0000",
+			msg:    "SC: " + message,
 		})
 	}
 	msglog.Log_show_control(false).L(`I: `, logg...)
@@ -1026,6 +1028,8 @@ func (replyF) roomsilent(s string) {
 type Danmu_item struct {
 	msg    string
 	color  string
+	border bool
+	mode   int
 	auth   interface{}
 	uid    string
 	roomid int //to avoid danmu show when room has changed

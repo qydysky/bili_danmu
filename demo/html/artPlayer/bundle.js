@@ -318,6 +318,7 @@ __webpack_require__.r(__webpack_exports__);
             plugins: [
                 artplayer_plugin_danmuku__WEBPACK_IMPORTED_MODULE_2___default()({
                     danmuku: [],
+                    speed: 7,
                     opacity: 0.7,
                     mount: danmuEmit,
                 }),
@@ -377,6 +378,8 @@ __webpack_require__.r(__webpack_exports__);
                     player.plugins.artplayerPluginDanmuku.emit({
                         text: data.text,
                         color: data.style.color,
+                        border: data.style.border,
+                        mode: data.style.mode,
                     });
                 } catch (e) {
                     console.log(e)
