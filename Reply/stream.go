@@ -337,7 +337,7 @@ func (t *M4SStream) fetchParseM3U8() (m4s_links []*m4s_link_item, m3u8_addon []b
 				continue
 			}
 
-			var m4s_link = "" //切片文件名
+			var m4s_link string //切片文件名
 
 			//获取附加的m3u8字节 忽略bili定制拓展
 			if !bytes.Contains(line, []byte(`#EXT-X-BILI`)) {
@@ -702,7 +702,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 					`Cookie`:          reqf.Map_2_Cookies_String(CookieM),
 				},
 			})
-			if e := r.Wait(); e != nil && !errors.Is(err, io.EOF) {
+			if err := r.Wait(); err != nil && !errors.Is(err, io.EOF) {
 				if reqf.IsCancel(err) {
 					t.log.L(`I: `, `flv下载停止`)
 				} else if err != nil && !reqf.IsTimeout(err) {
