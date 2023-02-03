@@ -32,4 +32,4 @@ type GetHistory struct {
 	} `json:"data"`
 	Message string `json:"message"`
 	Msg     string `json:"msg"`
-} 
+}

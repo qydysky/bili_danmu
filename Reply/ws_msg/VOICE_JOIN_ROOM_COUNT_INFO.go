@@ -12,4 +12,5 @@ type VOICE_JOIN_ROOM_COUNT_INFO struct {
 	} `json:"data"`
 	Roomid int `json:"roomid"`
 }
+
 //{"cmd":"VOICE_JOIN_ROOM_COUNT_INFO","data":{"room_id":1017,"root_status":1,"room_status":1,"apply_count":62,"notify_count":0,"red_point":0},"roomid":1017}

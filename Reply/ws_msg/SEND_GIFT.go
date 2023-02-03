@@ -1,5 +1,5 @@
 package part
- 
+
 type SEND_GIFT struct {
 	Cmd  string `json:"cmd"`
 	Data struct {
@@ -34,23 +34,23 @@ type SEND_GIFT struct {
 			UID        int         `json:"uid"`
 			Uname      string      `json:"uname"`
 		} `json:"combo_send"`
-		ComboStayTime  int    `json:"combo_stay_time"`
-		ComboTotalCoin int    `json:"combo_total_coin"`
-		CritProb       int    `json:"crit_prob"`
-		Demarcation    int    `json:"demarcation"`
-		Dmscore        int    `json:"dmscore"`
-		Draw           int    `json:"draw"`
-		Effect         int    `json:"effect"`
-		EffectBlock    int    `json:"effect_block"`
-		Face           string `json:"face"`
-		Giftid         int    `json:"giftId"`
-		Giftname       string `json:"giftName"`
-		Gifttype       int    `json:"giftType"`
-		Gold           int    `json:"gold"`
-		GuardLevel     int    `json:"guard_level"`
-		IsFirst        bool   `json:"is_first"`
-		IsSpecialBatch int    `json:"is_special_batch"`
-		Magnification  float64    `json:"magnification"`
+		ComboStayTime  int     `json:"combo_stay_time"`
+		ComboTotalCoin int     `json:"combo_total_coin"`
+		CritProb       int     `json:"crit_prob"`
+		Demarcation    int     `json:"demarcation"`
+		Dmscore        int     `json:"dmscore"`
+		Draw           int     `json:"draw"`
+		Effect         int     `json:"effect"`
+		EffectBlock    int     `json:"effect_block"`
+		Face           string  `json:"face"`
+		Giftid         int     `json:"giftId"`
+		Giftname       string  `json:"giftName"`
+		Gifttype       int     `json:"giftType"`
+		Gold           int     `json:"gold"`
+		GuardLevel     int     `json:"guard_level"`
+		IsFirst        bool    `json:"is_first"`
+		IsSpecialBatch int     `json:"is_special_batch"`
+		Magnification  float64 `json:"magnification"`
 		MedalInfo      struct {
 			AnchorRoomid     int    `json:"anchor_roomid"`
 			AnchorUname      string `json:"anchor_uname"`

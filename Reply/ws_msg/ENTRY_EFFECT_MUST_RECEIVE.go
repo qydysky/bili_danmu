@@ -1,31 +1,32 @@
 package part
 
 type ENTRY_EFFECT_MUST_RECEIVE struct {
-	Cmd string `json:"cmd"`
+	Cmd  string `json:"cmd"`
 	Data struct {
-		Id int `json:"id"`
-		Uid int `json:"uid"`
-		Target_id int `json:"target_id"`
-		Mock_effect int `json:"mock_effect"`
-		Face string `json:"face"`
-        Privilege_type int `json:"privilege_type"`
-        Copy_writing string `json:"copy_writing"`
-        Copy_color string `json:"copy_color"`
-        Highlight_color string `json:"highlight_color"`
-        Priority int `json:"priority"`
-        Basemap_url string `json:"basemap_url"`
-        Show_avatar int `json:"show_avatar"`
-        Effective_time int `json:"effective_time"`
-        Web_basemap_url string `json:"web_basemap_url"`
-        Web_effective_time int `json:"web_effective_time"`
-        Web_effect_close int `json:"web_effect_close"`
-        Web_close_time int `json:"web_close_time"`
-        Business int `json:"business"`
-        Copy_writing_v2 string `json:"copy_writing_v2"`
-        Icon_list []int `json:"icon_list"`
-        Max_delay_time int `json:"max_delay_time"`
+		Id                 int    `json:"id"`
+		Uid                int    `json:"uid"`
+		Target_id          int    `json:"target_id"`
+		Mock_effect        int    `json:"mock_effect"`
+		Face               string `json:"face"`
+		Privilege_type     int    `json:"privilege_type"`
+		Copy_writing       string `json:"copy_writing"`
+		Copy_color         string `json:"copy_color"`
+		Highlight_color    string `json:"highlight_color"`
+		Priority           int    `json:"priority"`
+		Basemap_url        string `json:"basemap_url"`
+		Show_avatar        int    `json:"show_avatar"`
+		Effective_time     int    `json:"effective_time"`
+		Web_basemap_url    string `json:"web_basemap_url"`
+		Web_effective_time int    `json:"web_effective_time"`
+		Web_effect_close   int    `json:"web_effect_close"`
+		Web_close_time     int    `json:"web_close_time"`
+		Business           int    `json:"business"`
+		Copy_writing_v2    string `json:"copy_writing_v2"`
+		Icon_list          []int  `json:"icon_list"`
+		Max_delay_time     int    `json:"max_delay_time"`
 	} `json:"data"`
 }
+
 /*
 {
     "cmd": "ENTRY_EFFECT_MUST_RECEIVE",

@@ -14,6 +14,7 @@ type VTR_GIFT_LOTTERY struct {
 		LotteryID        string `json:"lottery_id"`
 	} `json:"data"`
 }
+
 /*
 {
     "cmd": "VTR_GIFT_LOTTERY",

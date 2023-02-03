@@ -518,7 +518,7 @@ func Gtk_danmu() {
 				}
 				var buf map[string]interface{}
 				json.Unmarshal(bb, &buf)
-				for k, _ := range keep_key {
+				for k := range keep_key {
 					delete(keep_key, k)
 				}
 				for k, v := range buf {
@@ -739,7 +739,7 @@ func show(s, img_src string, to_grid ...int) {
 				if e == nil {
 					imgbuf.Lock()
 					if v, ok := c.C.K_v.LoadV(`gtk_内存头像数量`).(float64); ok && len(imgbuf.b) > int(v)+10 {
-						for k, _ := range imgbuf.b {
+						for k := range imgbuf.b {
 							delete(imgbuf.b, k)
 							if len(imgbuf.b) <= int(v) {
 								break

@@ -24,6 +24,7 @@ type USER_TOAST_MSG struct {
 		Username         string `json:"username"`
 	} `json:"data"`
 }
+
 /*
 {"cmd":"USER_TOAST_MSG","data":{"anchor_show":true,"color":"#00D1F1","dmscore":90,"end_time":1623612866,"guard_level":3,"is_show":0,"num":1,
 "op_type":3,"payflow_id":"2106140334131392145517282","price":138000,"role_name":"舰长","start_time":1623612866,"svga_block":0,"target_guard_

@@ -11,4 +11,5 @@ type VOICE_JOIN_LIST struct {
 	} `json:"data"`
 	Roomid int `json:"roomid"`
 }
+
 //{"cmd":"VOICE_JOIN_LIST","data":{"room_id":1017,"category":1,"apply_count":62,"red_point":1,"refresh":0},"roomid":1017}
