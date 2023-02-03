@@ -115,7 +115,7 @@ func (t *Fmp4Decoder) Init_fmp4(buf []byte) (b []byte, err error) {
 	return b, nil
 }
 
-func (t *Fmp4Decoder) Seach_stream_fmp4(buf []byte, keyframes *slice.Buf[byte]) (cu int, err error) {
+func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframes *slice.Buf[byte]) (cu int, err error) {
 	if len(t.traks) == 0 {
 		err = errors.New("未初始化traks")
 		return

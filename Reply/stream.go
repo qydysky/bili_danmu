@@ -643,7 +643,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 					}
 
 					if !buff.IsEmpty() {
-						front_buf, keyframe, last_avilable_offset, e := Seach_stream_tag(buff.GetCopyBuf())
+						front_buf, keyframe, last_available_offset, e := Search_stream_tag(buff.GetCopyBuf())
 						if e != nil {
 							if strings.Contains(e.Error(), `no found available tag`) {
 								continue
@@ -663,9 +663,9 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 								t.Stream_msg.Push_tag(`data`, frame)
 							}
 						}
-						if last_avilable_offset > 1 {
+						if last_available_offset > 1 {
 							// fmt.Println("write Sync")
-							buff.RemoveFront(last_avilable_offset - 1)
+							buff.RemoveFront(last_available_offset - 1)
 							out.Sync()
 						}
 					}
@@ -900,7 +900,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 			download_seq = append(download_seq[:k], download_seq[k+1:]...)
 			k -= 1
 
-			last_avilable_offset, err := fmp4Decoder.Seach_stream_fmp4(buf.GetPureBuf(), fmp4KeyFrames)
+			last_available_offset, err := fmp4Decoder.Search_stream_fmp4(buf.GetPureBuf(), fmp4KeyFrames)
 			if err != nil {
 				if !errors.Is(err, io.EOF) {
 					t.log.L(`E: `, err)
@@ -917,12 +917,12 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 					buf.Reset()
 				} else {
 					fmp4KeyFrames.Reset()
-					last_avilable_offset = 0
+					last_available_offset = 0
 				}
 			}
 
 			// no, _ := v.getNo()
-			// fmt.Println(no, "fmp4KeyFrames", fmp4KeyFrames.size(), last_avilable_offset, err)
+			// fmt.Println(no, "fmp4KeyFrames", fmp4KeyFrames.size(), last_available_offset, err)
 
 			if !fmp4KeyFrames.IsEmpty() {
 				fmp4KeyFramesBuf = fmp4KeyFrames.GetCopyBuf()
@@ -935,7 +935,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 				}
 			}
 
-			buf.RemoveFront(last_avilable_offset)
+			buf.RemoveFront(last_available_offset)
 		}
 
 		// 停止录制
