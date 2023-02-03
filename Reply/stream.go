@@ -28,7 +28,6 @@ import (
 	signal "github.com/qydysky/part/signal"
 	slice "github.com/qydysky/part/slice"
 	pstring "github.com/qydysky/part/strings"
-	psync "github.com/qydysky/part/sync"
 )
 
 type M4SStream struct {
@@ -38,7 +37,7 @@ type M4SStream struct {
 	config               M4SStream_Config   //配置
 	stream_last_modified time.Time          //流地址更新时间
 	// stream_expires       int64              //流到期时间
-	stream_hosts      psync.Map  //使用的流服务器
+	// stream_hosts      psync.Map  //使用的流服务器
 	stream_type       string     //流类型
 	Stream_msg        *msgq.Msgq //流数据消息 tag:data
 	first_buf         []byte     //m4s起始块 or flv起始块
@@ -68,7 +67,8 @@ type m4s_link_item struct {
 	Url          string    // m4s链接
 	Base         string    // m4s文件名
 	status       int       // 下载状态 0:未下载 1:正在下载 2:下载完成 3:下载失败
-	tryDownCount int       // 下载次数 当=4时，不再下载，忽略此块
+	tryDownCount int       // 下载次数 当=3时，不再下载，忽略此块
+	err          error     // 下载中出现的错误
 	data         []byte    // 下载的数据
 	createdTime  time.Time // 创建时间
 	pooledTime   time.Time // 到pool时间
@@ -251,6 +251,11 @@ func (t *M4SStream) fetchCheckStream() bool {
 }
 
 func (t *M4SStream) fetchParseM3U8() (m4s_links []*m4s_link_item, m3u8_addon []byte, e error) {
+	if t.common.ValidLive() == nil {
+		e = errors.New("全部流服务器发生故障")
+		return
+	}
+
 	// 开始请求
 	req := t.reqPool.Get()
 	defer t.reqPool.Put(req)
@@ -259,7 +264,7 @@ func (t *M4SStream) fetchParseM3U8() (m4s_links []*m4s_link_item, m3u8_addon []b
 	// 请求解析m3u8内容
 	for k, v := range t.common.Live {
 		// 跳过尚未启用的live地址
-		if time.Now().Before(v.ReUpTime) {
+		if !v.Valid() {
 			continue
 		}
 
@@ -294,10 +299,11 @@ func (t *M4SStream) fetchParseM3U8() (m4s_links []*m4s_link_item, m3u8_addon []b
 
 		if err := r.Reqf(rval); err != nil {
 			// 1min后重新启用
-			t.common.Live[k].ReUpTime = time.Now().Add(time.Minute)
+			t.common.Live[k].Disable(time.Now().Add(time.Minute))
 			t.log.L("W: ", fmt.Sprintf("服务器 %s 发生故障 %s", m3u8_url.Host, err.Error()))
-			if k == len(t.common.Live)-1 {
-				e = errors.New("全部切片服务器发生故障")
+			if t.common.ValidLive() == nil {
+				e = errors.New("全部流服务器发生故障")
+				break
 			}
 			continue
 		}
@@ -410,10 +416,11 @@ func (t *M4SStream) fetchParseM3U8() (m4s_links []*m4s_link_item, m3u8_addon []b
 			noe, _ := t.last_m4s.getNo()
 			if timed > 5 && nos-noe == 0 {
 				// 1min后重新启用
-				t.common.Live[k].ReUpTime = time.Now().Add(time.Minute)
+				t.common.Live[k].Disable(time.Now().Add(time.Minute))
 				t.log.L("W: ", fmt.Sprintf("服务器 %s 发生故障 %d 秒产出了 %d 切片", m3u8_url.Host, int(timed), nos-noe))
-				if k == len(t.common.Live)-1 {
+				if t.common.ValidLive() == nil {
 					e = errors.New("全部切片服务器发生故障")
+					break
 				}
 				continue
 			}
@@ -506,7 +513,7 @@ func (t *M4SStream) saveStream() (e error) {
 	t.Current_save_path = t.config.save_path + "/" +
 		time.Now().Format("2006_01_02-15_04_05") + "-" +
 		strconv.Itoa(t.common.Roomid) + "-" +
-		t.common.Title + "-" +
+		strings.NewReplacer("\\", "", "\\/", "", ":", "", "*", "", "?", "", "\"", "", "<", "", ">", "", "|", "").Replace(t.common.Title) + "-" +
 		pstring.Rand(2, 3) +
 		`/`
 
@@ -760,6 +767,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 
 		// 存在待下载切片
 		if len(download_seq) != 0 {
+			var downingCount = 0 //本轮下载数量
 			// 下载切片
 			for _, v := range download_seq {
 
@@ -767,41 +775,40 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 				if v.status == 2 {
 					continue
 				}
+
+				// 每次最多只下载10个切片
+				if downingCount >= 10 {
+					t.log.L(`T: `, `延迟切片下载 数量(`, len(download_seq)-downingCount, `)`)
+					break
+				}
+				downingCount += 1
+
 				download_limit.Block(func() {
 					time.Sleep(time.Millisecond * 10)
 				})
 
+				// 故障转移
+				if v.status == 3 {
+					if linkUrl, e := url.Parse(v.Url); e == nil {
+						oldHost := linkUrl.Host
+						// 将此切片服务器设置1min停用
+						t.common.DisableLive(oldHost, time.Now().Add(time.Minute))
+						// 从其他服务器获取此切片
+						if vl := t.common.ValidLive(); vl == nil {
+							return errors.New(`全部流服务器故障`)
+						} else {
+							linkUrl.Host = vl.Host()
+							t.log.L(`W: `, `切片下载失败，故障转移`, oldHost, ` -> `, linkUrl.Host)
+						}
+						v.Url = linkUrl.String()
+					}
+				}
+
 				go func(link *m4s_link_item, path string) {
-					// t.log.L(`I: `, `下载`, link.Base)
 					defer download_limit.UnBlock()
 
 					link.status = 1 // 设置切片状态为正在下载
 					link.tryDownCount += 1
-
-					// 故障转移
-					if link_url, e := url.Parse(link.Url); e == nil {
-						if t.stream_hosts.Len() != 1 {
-							t.stream_hosts.Range(func(key, v interface{}) bool {
-								if link.status == 3 {
-									if link_url.Host == key.(string) {
-										t.stream_hosts.Store(key, false)
-										return true
-									} else if v != nil {
-										return true
-									} else {
-										link_url.Host = key.(string)
-										return false
-									}
-								}
-
-								if v != nil {
-									t.stream_hosts.Store(key, nil)
-								}
-								return false
-							})
-						}
-						link.Url = link_url.String()
-					}
 
 					req := t.reqPool.Get()
 					defer t.reqPool.Put(req)
@@ -818,13 +825,18 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 					if !t.config.save_as_mp4 {
 						reqConfig.SaveToPath = path + link.Base
 					}
+
+					// t.log.L(`T: `, `下载`, link.Base)
+					// defer t.log.L(`T: `, `下载完成`, link.Base, link.status, link.err)
+
 					if e := r.Reqf(reqConfig); e != nil && !errors.Is(e, io.EOF) {
+						// t.log.L(`T: `, `下载错误`, link.Base, e)
 						if !reqf.IsTimeout(e) {
-							t.log.L(`E: `, `hls切片下载失败:`, link.Url, e)
-							link.tryDownCount = 2 // 设置切片状态为下载失败
-						} else {
-							link.status = 3 // 设置切片状态为下载失败
+							// 发生非超时错误
+							link.err = e
+							link.tryDownCount = 3 // 设置切片状态为下载失败
 						}
+						link.status = 3 // 设置切片状态为下载失败
 					} else {
 						// if usedt := r.UsedTime.Seconds(); usedt > 700 {
 						// 	t.log.L(`I: `, `hls切片下载慢`, usedt, `ms`)
@@ -854,7 +866,12 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 			// v := download_seq[k]
 
 			if download_seq[k].status != 2 {
-				if download_seq[k].tryDownCount >= 2 {
+				if err := download_seq[k].err; err != nil {
+					t.log.L(`E: `, `切片下载发生错误:`, err)
+					e = err
+					return
+				}
+				if download_seq[k].tryDownCount >= 3 {
 					//下载了2次，任未下载成功，忽略此块
 					t.putM4s(download_seq[k])
 					download_seq = append(download_seq[:k], download_seq[k+1:]...)
@@ -1090,12 +1107,12 @@ func (t *M4SStream) Start() bool {
 				continue
 			}
 
-			// 设置全部服务
-			for _, v := range t.common.Live {
-				if url_struct, e := url.Parse(v.Url); e == nil {
-					t.stream_hosts.Store(url_struct.Hostname(), nil)
-				}
-			}
+			// // 设置全部服务
+			// for _, v := range t.common.Live {
+			// 	if url_struct, e := url.Parse(v.Url); e == nil {
+			// 		t.stream_hosts.Store(url_struct.Hostname(), v.)
+			// 	}
+			// }
 
 			// 保存流
 			err := t.saveStream()

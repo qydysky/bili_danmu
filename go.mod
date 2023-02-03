@@ -7,7 +7,7 @@ require (
 	github.com/gofrs/uuid v4.3.0+incompatible
 	github.com/gotk3/gotk3 v0.6.1
 	github.com/mdp/qrterminal/v3 v3.0.0
-	github.com/qydysky/part v0.21.12
+	github.com/qydysky/part v0.21.13
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966
 	golang.org/x/text v0.3.8
@@ -16,6 +16,7 @@ require (
 require (
 	github.com/andybalholm/brotli v1.0.4 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/dustin/go-humanize v1.0.1
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/klauspost/compress v1.15.11 // indirect

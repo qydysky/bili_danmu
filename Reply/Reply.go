@@ -477,6 +477,14 @@ func (replyF) room_change(s string) {
 	Gui_show(Itos(sh), "0room")
 
 	msglog.Base_add("房").L(`I: `, sh...)
+
+	//录制
+	go func() {
+		if v, ok := c.C.K_v.LoadV(`修改标题时重新录制`).(bool); ok && v {
+			StreamOStop(c.C.Roomid) //停止其他房间录制
+		}
+		StreamOStart(c.C.Roomid)
+	}()
 }
 
 // Msg-超管警告
@@ -523,18 +531,18 @@ func (replyF) little_tips(s string) {
 }
 
 // Msg-人气排名
-func (replyF) popular_rank_changed(s string) {
-	var type_item ws_msg.POPULAR_RANK_CHANGED
+// func (replyF) popular_rank_changed(s string) {
+// 	var type_item ws_msg.POPULAR_RANK_CHANGED
 
-	if e := json.Unmarshal([]byte(s), &type_item); e != nil {
-		msglog.L(`E: `, e)
-	}
-	s = fmt.Sprintf("人气排行 %d", type_item.Data.Rank)
+// 	if e := json.Unmarshal([]byte(s), &type_item); e != nil {
+// 		msglog.L(`E: `, e)
+// 	}
+// 	s = fmt.Sprintf("人气排行 %d", type_item.Data.Rank)
 
-	Gui_show(s, "0room")
+// 	Gui_show(s, "0room")
 
-	msglog.Base_add("房").L(`I: `, s)
-}
+// 	msglog.Base_add("房").L(`I: `, s)
+// }
 
 // Msg-开始了视频连线
 func (replyF) video_connection_join_start(s string) {
@@ -700,9 +708,9 @@ func (replyF) preparing(s string) {
 		msglog.L(`E: `, err)
 		return
 	} else {
-		{ //附加功能 obs结束 `savestream`结束
-			Obs_R(false)
-			Obsf(false)
+		{ //附加功能 obs结束 savestream结束
+			// Obs_R(false)
+			// Obsf(false)
 			go ShowRevf()
 			c.C.Liveing = false
 			// 停止此房间录制
@@ -724,8 +732,8 @@ func (replyF) live(s string) {
 		return
 	} else {
 		{ //附加功能 obs录播
-			Obsf(true)
-			Obs_R(true)
+			// Obsf(true)
+			// Obs_R(true)
 		}
 		{
 			c.C.Rev = 0.0                    //营收
@@ -737,10 +745,7 @@ func (replyF) live(s string) {
 			if v, ok := c.C.K_v.LoadV(`仅保存当前直播间流`).(bool); ok && v {
 				StreamOStop(-2) //停止其他房间录制
 			}
-			c.C.Danmu_Main_mq.Push_tag(`savestream`, SavestreamO{
-				Roomid: type_item.Roomid,
-				IsRec:  true,
-			})
+			StreamOStart(c.C.Roomid)
 		}()
 
 		Gui_show(Itos([]interface{}{"房间", type_item.Roomid, "开播了"}), "0room")
@@ -827,8 +832,10 @@ func (replyF) super_chat_message(s string) {
 		Gui_show(Itos(sh), "0superchat")
 		//直播流服务弹幕
 		SendStreamWs(Danmu_item{
-			auth: uname,
-			msg:  "SC: " + message,
+			auth:   uname,
+			border: true,
+			color:  "#FF0000",
+			msg:    "SC: " + message,
 		})
 	}
 	msglog.Log_show_control(false).L(`I: `, logg...)
@@ -1021,6 +1028,8 @@ func (replyF) roomsilent(s string) {
 type Danmu_item struct {
 	msg    string
 	color  string
+	border bool
+	mode   int
 	auth   interface{}
 	uid    string
 	roomid int //to avoid danmu show when room has changed

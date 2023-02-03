@@ -25,7 +25,7 @@ func Cmd() {
 	for scanner.Scan() {
 		if inputs := scanner.Text(); inputs == `` { //帮助
 			fmt.Print("\n")
-			fmt.Println("切换房间->输入数字回车")
+			fmt.Println("切换房间->输入' 数字'回车")
 			if c.C.Roomid == 0 {
 				if _, ok := c.C.Cookie.LoadV(`bili_jct`).(string); ok {
 					fmt.Println("查看直播中主播->输入' liv'回车")
@@ -39,7 +39,7 @@ func Cmd() {
 				continue
 			}
 			if _, ok := c.C.Cookie.LoadV(`bili_jct`).(string); ok {
-				fmt.Println("发送弹幕->输入' 字符串'回车")
+				fmt.Println("发送弹幕->输入'字符串'回车")
 				fmt.Println("查看直播中主播->输入' liv'回车")
 			} else {
 				fmt.Println("登陆->输入' login'回车")
@@ -62,18 +62,20 @@ func Cmd() {
 						continue
 					}
 					if room, err := strconv.Atoi(inputs[4:]); err == nil {
-						c.C.Danmu_Main_mq.Push_tag(`savestream`, reply.SavestreamO{
-							Roomid: room,
-							IsRec:  !reply.StreamOStatus(room),
-						})
+						if reply.StreamOStatus(room) {
+							reply.StreamOStop(room)
+						} else {
+							reply.StreamOStart(room)
+						}
 						continue
 					}
 					cmdlog.L(`W: `, "输入错误", inputs)
 				} else {
-					c.C.Danmu_Main_mq.Push_tag(`savestream`, reply.SavestreamO{
-						Roomid: c.C.Roomid,
-						IsRec:  !reply.StreamOStatus(c.C.Roomid),
-					})
+					if reply.StreamOStatus(c.C.Roomid) {
+						reply.StreamOStop(c.C.Roomid)
+					} else {
+						reply.StreamOStart(c.C.Roomid)
+					}
 				}
 				continue
 			}

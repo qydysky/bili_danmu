@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -59,6 +60,43 @@ type LiveQn struct {
 	Url      string
 	ReUpTime time.Time
 	Expires  int //流到期时间
+}
+
+func (t *LiveQn) Host() string {
+	if liveUrl, e := url.Parse(t.Url); e == nil {
+		return liveUrl.Host
+	} else {
+		panic(e)
+	}
+}
+
+func (t *LiveQn) Valid() bool {
+	return time.Now().After(t.ReUpTime)
+}
+
+func (t *LiveQn) Disable(reUpTime time.Time) {
+	t.ReUpTime = reUpTime
+}
+
+func (t *Common) DisableLive(host string, reUpTime time.Time) {
+	for i := 0; i < len(t.Live); i++ {
+		if liveUrl, e := url.Parse(t.Live[i].Url); e == nil {
+			if host == liveUrl.Host {
+				t.Live[i].ReUpTime = reUpTime
+				break
+			}
+		}
+	}
+}
+
+func (t *Common) ValidLive() *LiveQn {
+	for i := 0; i < len(t.Live); i++ {
+		if time.Now().Before(t.Live[i].ReUpTime) {
+			continue
+		}
+		return &t.Live[i]
+	}
+	return nil
 }
 
 type StreamType struct {
