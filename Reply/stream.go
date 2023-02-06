@@ -299,7 +299,7 @@ func (t *M4SStream) fetchParseM3U8() (m4s_links []*m4s_link_item, m3u8_addon []b
 
 		if err := r.Reqf(rval); err != nil {
 			// 1min后重新启用
-			t.common.Live[k].Disable(time.Now().Add(time.Minute))
+			t.common.Live[k].DisableAuto()
 			t.log.L("W: ", fmt.Sprintf("服务器 %s 发生故障 %s", m3u8_url.Host, err.Error()))
 			if t.common.ValidLive() == nil {
 				e = errors.New("全部流服务器发生故障")
@@ -416,7 +416,7 @@ func (t *M4SStream) fetchParseM3U8() (m4s_links []*m4s_link_item, m3u8_addon []b
 			noe, _ := t.last_m4s.getNo()
 			if timed > 5 && nos-noe == 0 {
 				// 1min后重新启用
-				t.common.Live[k].Disable(time.Now().Add(time.Minute))
+				t.common.Live[k].DisableAuto()
 				t.log.L("W: ", fmt.Sprintf("服务器 %s 发生故障 %d 秒产出了 %d 切片", m3u8_url.Host, int(timed), nos-noe))
 				if t.common.ValidLive() == nil {
 					e = errors.New("全部切片服务器发生故障")
@@ -791,8 +791,8 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 				if v.status == 3 {
 					if linkUrl, e := url.Parse(v.Url); e == nil {
 						oldHost := linkUrl.Host
-						// 将此切片服务器设置1min停用
-						t.common.DisableLive(oldHost, time.Now().Add(time.Minute))
+						// 将此切片服务器设置停用
+						t.common.DisableLiveAuto(oldHost)
 						// 从其他服务器获取此切片
 						if vl := t.common.ValidLive(); vl == nil {
 							return errors.New(`全部流服务器故障`)
@@ -831,11 +831,11 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 
 					if e := r.Reqf(reqConfig); e != nil && !errors.Is(e, io.EOF) {
 						// t.log.L(`T: `, `下载错误`, link.Base, e)
-						if !reqf.IsTimeout(e) {
-							// 发生非超时错误
-							link.err = e
-							link.tryDownCount = 3 // 设置切片状态为下载失败
-						}
+						// if !reqf.IsTimeout(e) {
+						// 	// 发生非超时错误
+						// 	link.err = e
+						// 	link.tryDownCount = 3 // 设置切片状态为下载失败
+						// }
 						link.status = 3 // 设置切片状态为下载失败
 					} else {
 						// if usedt := r.UsedTime.Seconds(); usedt > 700 {

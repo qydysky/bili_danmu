@@ -57,9 +57,10 @@ type Common struct {
 }
 
 type LiveQn struct {
-	Url      string
-	ReUpTime time.Time
-	Expires  int //流到期时间
+	Url          string
+	ReUpTime     time.Time
+	disableCount int
+	Expires      int //流到期时间
 }
 
 func (t *LiveQn) Host() string {
@@ -74,8 +75,29 @@ func (t *LiveQn) Valid() bool {
 	return time.Now().After(t.ReUpTime)
 }
 
+// 自动停用机制
+func (t *LiveQn) DisableAuto() {
+	if time.Now().After(t.ReUpTime.Add(time.Minute).Add(time.Second * time.Duration(10*t.disableCount))) {
+		t.disableCount = 0
+	}
+	t.disableCount += 1
+	t.ReUpTime = time.Now().Add(time.Minute).Add(time.Second * time.Duration(10*t.disableCount))
+}
+
 func (t *LiveQn) Disable(reUpTime time.Time) {
 	t.ReUpTime = reUpTime
+}
+
+// 自动停用机制
+func (t *Common) DisableLiveAuto(host string) {
+	for i := 0; i < len(t.Live); i++ {
+		if liveUrl, e := url.Parse(t.Live[i].Url); e == nil {
+			if host == liveUrl.Host {
+				t.Live[i].DisableAuto()
+				break
+			}
+		}
+	}
 }
 
 func (t *Common) DisableLive(host string, reUpTime time.Time) {
