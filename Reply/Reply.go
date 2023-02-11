@@ -87,6 +87,28 @@ func (replyF) defaultMsg(s string) {
 	msglog.Base_add("Unknow").L(`E: `, s)
 }
 
+// 超管切直播
+func (replyF) cut_off(s string) {
+	msglog := msglog.Base_add("超管切直播")
+	var j ws_msg.CUT_OFF
+	if e := json.Unmarshal([]byte(s), &j); e != nil {
+		msglog.L(`E: `, e)
+		return
+	}
+
+	j.Msg = fmt.Sprint(j.Msg)
+
+	//直播流服务弹幕
+	SendStreamWs(Danmu_item{
+		auth:   "超管",
+		border: true,
+		color:  "#FF0000",
+		msg:    j.Msg,
+	})
+	Gui_show(j.Msg, `0room`)
+	msglog.L(`I: `, "超管切断了直播，理由:"+j.Msg)
+}
+
 // 大乱斗pk开始
 func (replyF) pk_lottery_start(s string) {
 	msglog := msglog.Base_add("大乱斗")
