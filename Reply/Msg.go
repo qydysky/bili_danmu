@@ -120,6 +120,7 @@ var Msg_map = map[string]func(replyF, string){
 	"RECOMMEND_CARD":                    nil, //主播商品营销
 	"GOTO_BUY_FLOW":                     nil,
 	"CUT_OFF":                           replyF.cut_off, // 超管切直播
+	"SHOPPING_CART_SHOW":                nil,
 }
 
 // 屏蔽不需要的消息
