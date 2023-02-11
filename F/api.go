@@ -12,7 +12,6 @@ import (
 
 	"github.com/dustin/go-humanize"
 	c "github.com/qydysky/bili_danmu/CV"
-	cv "github.com/qydysky/bili_danmu/CV"
 	J "github.com/qydysky/bili_danmu/Json"
 	"github.com/skratchdot/open-golang/open"
 
@@ -251,21 +250,21 @@ func (c *GetFunc) GetUid() (missKey []string) {
 	return
 }
 
-func (c *GetFunc) Html() (missKey []string) {
+func (t *GetFunc) Html() (missKey []string) {
 	apilog := apilog.Base_add(`html`)
 
-	if c.Roomid == 0 {
+	if t.Roomid == 0 {
 		missKey = append(missKey, `Roomid`)
 		return
 	}
 
-	Roomid := strconv.Itoa(c.Roomid)
+	Roomid := strconv.Itoa(t.Roomid)
 
 	//html
 	{
 		r := g.Get(reqf.Rval{
 			Url:   "https://live.bilibili.com/" + Roomid,
-			Proxy: c.Proxy,
+			Proxy: t.Proxy,
 		})
 
 		if tmp := r.S(`<script>window.__NEPTUNE_IS_MY_WAIFU__=`, `</script>`, 0, 0); tmp.Err != nil {
@@ -284,51 +283,51 @@ func (c *GetFunc) Html() (missKey []string) {
 			//Roominitres
 			{
 				//主播uid
-				c.UpUid = j.RoomInitRes.Data.UID
+				t.UpUid = j.RoomInitRes.Data.UID
 				//房间号（完整）
 				if j.RoomInitRes.Data.RoomID != 0 {
-					c.Roomid = j.RoomInitRes.Data.RoomID
+					t.Roomid = j.RoomInitRes.Data.RoomID
 				}
 				//直播开始时间
-				c.Live_Start_Time = time.Unix(int64(j.RoomInitRes.Data.LiveTime), 0)
+				t.Live_Start_Time = time.Unix(int64(j.RoomInitRes.Data.LiveTime), 0)
 				//是否在直播
-				c.Liveing = j.RoomInitRes.Data.LiveStatus == 1
+				t.Liveing = j.RoomInitRes.Data.LiveStatus == 1
 
 				//未在直播，不获取直播流
-				if !c.Liveing {
-					c.Live_qn = 0
-					c.AcceptQn = c.Qn
-					c.Live = []cv.LiveQn{}
+				if !t.Liveing {
+					t.Live_qn = 0
+					t.AcceptQn = t.Qn
+					t.Live = []c.LiveQn{}
 					return
 				}
 
 				//当前直播流
-				c.configStreamType(j.RoomInitRes.Data.PlayurlInfo.Playurl.Stream)
+				t.configStreamType(j.RoomInitRes.Data.PlayurlInfo.Playurl.Stream)
 			}
 
 			//Roominfores
 			{
 				//直播间标题
-				c.Title = j.RoomInfoRes.Data.RoomInfo.Title
+				t.Title = j.RoomInfoRes.Data.RoomInfo.Title
 				//主播名
-				c.Uname = j.RoomInfoRes.Data.AnchorInfo.BaseInfo.Uname
+				t.Uname = j.RoomInfoRes.Data.AnchorInfo.BaseInfo.Uname
 				//分区
-				c.ParentAreaID = j.RoomInfoRes.Data.RoomInfo.ParentAreaID
+				t.ParentAreaID = j.RoomInfoRes.Data.RoomInfo.ParentAreaID
 				//子分区
-				c.AreaID = j.RoomInfoRes.Data.RoomInfo.AreaID
+				t.AreaID = j.RoomInfoRes.Data.RoomInfo.AreaID
 				//舰长数
-				c.GuardNum = j.RoomInfoRes.Data.GuardInfo.Count
+				t.GuardNum = j.RoomInfoRes.Data.GuardInfo.Count
 				//分区排行
-				c.Note = j.RoomInfoRes.Data.PopularRankInfo.RankName + " "
+				t.Note = j.RoomInfoRes.Data.PopularRankInfo.RankName + " "
 				if rank := j.RoomInfoRes.Data.PopularRankInfo.Rank; rank > 50 || rank == 0 {
-					c.Note += "100+"
+					t.Note += "100+"
 				} else {
-					c.Note += strconv.Itoa(rank)
+					t.Note += strconv.Itoa(rank)
 				}
 				//直播间是否被封禁
 				if j.RoomInfoRes.Data.RoomInfo.LockStatus == 1 {
 					apilog.L(`W: `, "直播间封禁中")
-					c.Locked = true
+					t.Locked = true
 					return
 				}
 			}
@@ -338,50 +337,50 @@ func (c *GetFunc) Html() (missKey []string) {
 }
 
 // 配置直播流
-func (c *GetFunc) configStreamType(sts []J.StreamType) {
-	defer apilog.Base_add(`configStreamType`).L(`T: `, fmt.Sprintf("使用直播流 %s %s %s", c.Qn[c.Live_qn], c.StreamType.Format_name, c.StreamType.Codec_name))
+func (t *GetFunc) configStreamType(sts []J.StreamType) {
+	defer apilog.Base_add(`configStreamType`).L(`T: `, fmt.Sprintf("使用直播流 %s %s %s", t.Qn[t.Live_qn], t.StreamType.Format_name, t.StreamType.Codec_name))
 
-	if v, ok := c.Common.K_v.LoadV(`直播流类型`).(string); ok {
-		if st, ok := c.AllStreamType[v]; ok {
-			c.StreamType = st
+	if v, ok := t.Common.K_v.LoadV(`直播流类型`).(string); ok {
+		if st, ok := t.AllStreamType[v]; ok {
+			t.StreamType = st
 		}
 	}
 
 	// 查找配置类型是否存在
 	for _, v := range sts {
-		if v.ProtocolName != c.StreamType.Protocol_name {
+		if v.ProtocolName != t.StreamType.Protocol_name {
 			continue
 		}
 
 		for _, v := range v.Format {
-			if v.FormatName != c.StreamType.Format_name {
+			if v.FormatName != t.StreamType.Format_name {
 				continue
 			}
 
 			for _, v := range v.Codec {
-				if v.CodecName != c.StreamType.Codec_name {
+				if v.CodecName != t.StreamType.Codec_name {
 					continue
 				}
 
 				//当前直播流质量
-				c.Live_qn = v.CurrentQn
-				if c.Live_want_qn == 0 {
-					c.Live_want_qn = v.CurrentQn
+				t.Live_qn = v.CurrentQn
+				if t.Live_want_qn == 0 {
+					t.Live_want_qn = v.CurrentQn
 				}
 				//允许的清晰度
 				{
 					var tmp = make(map[int]string)
 					for _, v := range v.AcceptQn {
-						if s, ok := c.Qn[v]; ok {
+						if s, ok := t.Qn[v]; ok {
 							tmp[v] = s
 						}
 					}
-					c.AcceptQn = tmp
+					t.AcceptQn = tmp
 				}
 				//直播流链接
-				c.Live = []cv.LiveQn{}
+				t.Live = []c.LiveQn{}
 				for _, v1 := range v.URLInfo {
-					item := cv.LiveQn{
+					item := c.LiveQn{
 						Url: v1.Host + v.BaseURL + v1.Extra,
 					}
 
@@ -391,7 +390,7 @@ func (c *GetFunc) configStreamType(sts []J.StreamType) {
 						}
 					}
 
-					c.Live = append(c.Live, item)
+					t.Live = append(t.Live, item)
 				}
 
 				return
@@ -402,9 +401,9 @@ func (c *GetFunc) configStreamType(sts []J.StreamType) {
 	apilog.Base_add(`configStreamType`).L(`W: `, "未找到配置的直播流类型，使用默认flv、fmp4")
 
 	// 默认使用flv、fmp4
-	for _, streamType := range []cv.StreamType{
-		c.AllStreamType[`flv`],
-		c.AllStreamType[`fmp4`],
+	for _, streamType := range []c.StreamType{
+		t.AllStreamType[`flv`],
+		t.AllStreamType[`fmp4`],
 	} {
 
 		for _, v := range sts {
@@ -423,24 +422,24 @@ func (c *GetFunc) configStreamType(sts []J.StreamType) {
 					}
 
 					//当前直播流质量
-					c.Live_qn = v.CurrentQn
-					if c.Live_want_qn == 0 {
-						c.Live_want_qn = v.CurrentQn
+					t.Live_qn = v.CurrentQn
+					if t.Live_want_qn == 0 {
+						t.Live_want_qn = v.CurrentQn
 					}
 					//允许的清晰度
 					{
 						var tmp = make(map[int]string)
 						for _, v := range v.AcceptQn {
-							if s, ok := c.Qn[v]; ok {
+							if s, ok := t.Qn[v]; ok {
 								tmp[v] = s
 							}
 						}
-						c.AcceptQn = tmp
+						t.AcceptQn = tmp
 					}
 					//直播流链接
-					c.Live = []cv.LiveQn{}
+					t.Live = []c.LiveQn{}
 					for _, v1 := range v.URLInfo {
-						item := cv.LiveQn{
+						item := c.LiveQn{
 							Url: v1.Host + v.BaseURL + v1.Extra,
 						}
 
@@ -450,7 +449,7 @@ func (c *GetFunc) configStreamType(sts []J.StreamType) {
 							}
 						}
 
-						c.Live = append(c.Live, item)
+						t.Live = append(t.Live, item)
 					}
 				}
 			}
@@ -540,31 +539,31 @@ func (c *GetFunc) getInfoByRoom() (missKey []string) {
 	return
 }
 
-func (c *GetFunc) getRoomPlayInfo() (missKey []string) {
+func (t *GetFunc) getRoomPlayInfo() (missKey []string) {
 	apilog := apilog.Base_add(`getRoomPlayInfo`)
 
-	if c.Roomid == 0 {
+	if t.Roomid == 0 {
 		missKey = append(missKey, `Roomid`)
 	}
-	if !c.LIVE_BUVID {
+	if !t.LIVE_BUVID {
 		missKey = append(missKey, `LIVE_BUVID`)
 	}
 	if len(missKey) > 0 {
 		return
 	}
 
-	Roomid := strconv.Itoa(c.Roomid)
+	Roomid := strconv.Itoa(t.Roomid)
 
 	//Roominitres
 	{
 		Cookie := make(map[string]string)
-		c.Cookie.Range(func(k, v interface{}) bool {
+		t.Cookie.Range(func(k, v interface{}) bool {
 			Cookie[k.(string)] = v.(string)
 			return true
 		})
 
-		reqi := c.Common.ReqPool.Get()
-		defer c.Common.ReqPool.Put(reqi)
+		reqi := t.Common.ReqPool.Get()
+		defer t.Common.ReqPool.Put(reqi)
 		req := reqi.Item.(*reqf.Req)
 		if err := req.Reqf(reqf.Rval{
 			Url: "https://api.live.bilibili.com/xlive/web-room/v2/index/getRoomPlayInfo?no_playurl=0&mask=1&qn=0&platform=web&protocol=0,1&format=0,2&codec=0,1&room_id=" + Roomid,
@@ -572,7 +571,7 @@ func (c *GetFunc) getRoomPlayInfo() (missKey []string) {
 				`Referer`: "https://live.bilibili.com/" + Roomid,
 				`Cookie`:  reqf.Map_2_Cookies_String(Cookie),
 			},
-			Proxy:   c.Proxy,
+			Proxy:   t.Proxy,
 			Timeout: 10 * 1000,
 			Retry:   2,
 		}); err != nil {
@@ -591,37 +590,37 @@ func (c *GetFunc) getRoomPlayInfo() (missKey []string) {
 		}
 
 		//主播uid
-		c.UpUid = j.Data.UID
+		t.UpUid = j.Data.UID
 		//房间号（完整）
 		if j.Data.RoomID != 0 {
-			c.Roomid = j.Data.RoomID
+			t.Roomid = j.Data.RoomID
 		}
 		//直播开始时间
-		c.Live_Start_Time = time.Unix(int64(j.Data.LiveTime), 0)
+		t.Live_Start_Time = time.Unix(int64(j.Data.LiveTime), 0)
 		//是否在直播
-		c.Liveing = j.Data.LiveStatus == 1
+		t.Liveing = j.Data.LiveStatus == 1
 
 		//未在直播，不获取直播流
-		if !c.Liveing {
-			c.Live_qn = 0
-			c.AcceptQn = c.Qn
-			c.Live = []cv.LiveQn{}
+		if !t.Liveing {
+			t.Live_qn = 0
+			t.AcceptQn = t.Qn
+			t.Live = []c.LiveQn{}
 			return
 		}
 
 		//当前直播流
-		c.configStreamType(j.Data.PlayurlInfo.Playurl.Stream)
+		t.configStreamType(j.Data.PlayurlInfo.Playurl.Stream)
 	}
 	return
 }
 
-func (c *GetFunc) getRoomPlayInfoByQn() (missKey []string) {
+func (t *GetFunc) getRoomPlayInfoByQn() (missKey []string) {
 	apilog := apilog.Base_add(`getRoomPlayInfoByQn`)
 
-	if c.Roomid == 0 {
+	if t.Roomid == 0 {
 		missKey = append(missKey, `Roomid`)
 	}
-	if !c.LIVE_BUVID {
+	if !t.LIVE_BUVID {
 		missKey = append(missKey, `LIVE_BUVID`)
 	}
 	if len(missKey) > 0 {
@@ -630,8 +629,8 @@ func (c *GetFunc) getRoomPlayInfoByQn() (missKey []string) {
 
 	{
 		AcceptQn := []int{}
-		for k := range c.AcceptQn {
-			if k <= c.Live_want_qn {
+		for k := range t.AcceptQn {
+			if k <= t.Live_want_qn {
 				AcceptQn = append(AcceptQn, k)
 			}
 		}
@@ -644,29 +643,29 @@ func (c *GetFunc) getRoomPlayInfoByQn() (missKey []string) {
 		if MaxQn == 0 {
 			apilog.L(`W: `, "使用默认")
 		}
-		c.Live_qn = MaxQn
+		t.Live_qn = MaxQn
 	}
 
-	Roomid := strconv.Itoa(c.Roomid)
+	Roomid := strconv.Itoa(t.Roomid)
 
 	//Roominitres
 	{
 		Cookie := make(map[string]string)
-		c.Cookie.Range(func(k, v interface{}) bool {
+		t.Cookie.Range(func(k, v interface{}) bool {
 			Cookie[k.(string)] = v.(string)
 			return true
 		})
 
-		reqi := c.Common.ReqPool.Get()
-		defer c.Common.ReqPool.Put(reqi)
+		reqi := t.Common.ReqPool.Get()
+		defer t.Common.ReqPool.Put(reqi)
 		req := reqi.Item.(*reqf.Req)
 		if err := req.Reqf(reqf.Rval{
-			Url: "https://api.live.bilibili.com/xlive/web-room/v2/index/getRoomPlayInfo?no_playurl=0&mask=1&qn=" + strconv.Itoa(c.Live_qn) + "&platform=web&protocol=0,1&format=0,2&codec=0,1&room_id=" + Roomid,
+			Url: "https://api.live.bilibili.com/xlive/web-room/v2/index/getRoomPlayInfo?no_playurl=0&mask=1&qn=" + strconv.Itoa(t.Live_qn) + "&platform=web&protocol=0,1&format=0,2&codec=0,1&room_id=" + Roomid,
 			Header: map[string]string{
 				`Referer`: "https://live.bilibili.com/" + Roomid,
 				`Cookie`:  reqf.Map_2_Cookies_String(Cookie),
 			},
-			Proxy:   c.Proxy,
+			Proxy:   t.Proxy,
 			Timeout: 10 * 1000,
 			Retry:   2,
 		}); err != nil {
@@ -685,26 +684,26 @@ func (c *GetFunc) getRoomPlayInfoByQn() (missKey []string) {
 		}
 
 		//主播uid
-		c.UpUid = j.Data.UID
+		t.UpUid = j.Data.UID
 		//房间号（完整）
 		if j.Data.RoomID != 0 {
-			c.Roomid = j.Data.RoomID
+			t.Roomid = j.Data.RoomID
 		}
 		//直播开始时间
-		c.Live_Start_Time = time.Unix(int64(j.Data.LiveTime), 0)
+		t.Live_Start_Time = time.Unix(int64(j.Data.LiveTime), 0)
 		//是否在直播
-		c.Liveing = j.Data.LiveStatus == 1
+		t.Liveing = j.Data.LiveStatus == 1
 
 		//未在直播，不获取直播流
-		if !c.Liveing {
-			c.Live_qn = 0
-			c.AcceptQn = c.Qn
-			c.Live = []cv.LiveQn{}
+		if !t.Liveing {
+			t.Live_qn = 0
+			t.AcceptQn = t.Qn
+			t.Live = []c.LiveQn{}
 			return
 		}
 
 		//当前直播流
-		c.configStreamType(j.Data.PlayurlInfo.Playurl.Stream)
+		t.configStreamType(j.Data.PlayurlInfo.Playurl.Stream)
 	}
 	return
 }
