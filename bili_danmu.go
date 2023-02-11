@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"time"
 
 	c "github.com/qydysky/bili_danmu/CV"
@@ -45,7 +46,7 @@ func Start() {
 	var stop = sys.Sys().PreventSleep()
 	defer stop.Done()
 
-	danmulog.L(`I: `, "version: ", version)
+	danmulog.L(`I: `, "version: ", strings.TrimSpace(version))
 
 	//ctrl+c退出
 	interrupt := make(chan os.Signal, 2)

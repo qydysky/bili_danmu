@@ -526,8 +526,8 @@ func (t *M4SStream) saveStream() (e error) {
 	} else {
 		t.log.L(`W: `, err)
 	}
-	for _, v := range t.common.Stream_url {
-		t.log.L(`I: `, "流地址:", v)
+	if s, ok := t.common.K_v.LoadV("直播Web服务路径").(string); ok && s != "" {
+		t.log.L(`I: `, "Web服务地址:", t.common.Stream_url.String()+s)
 	}
 
 	// 录制回调

@@ -3,7 +3,6 @@ module github.com/qydysky/bili_danmu
 go 1.19
 
 require (
-	github.com/christopher-dG/go-obs-websocket v0.0.0-20200720193653-c4fed10356a5
 	github.com/gofrs/uuid v4.3.0+incompatible
 	github.com/gotk3/gotk3 v0.6.1
 	github.com/mdp/qrterminal/v3 v3.0.0
@@ -21,10 +20,8 @@ require (
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/klauspost/compress v1.15.11 // indirect
 	github.com/miekg/dns v1.1.50 // indirect
-	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
-	github.com/stretchr/testify v1.8.1 // indirect
 	github.com/thedevsaddam/gojsonq/v2 v2.5.2 // indirect
 	github.com/tklauser/go-sysconf v0.3.10 // indirect
 	github.com/tklauser/numcpus v0.5.0 // indirect

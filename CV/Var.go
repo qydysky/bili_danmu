@@ -48,7 +48,7 @@ type Common struct {
 	Token             string                //弹幕钥
 	WSURL             []string              //弹幕链接
 	LIVE_BUVID        bool                  //cookies含LIVE_BUVID
-	Stream_url        []string              //直播Web服务
+	Stream_url        *url.URL              //直播Web服务
 	Proxy             string                //全局代理
 	AcceptQn          map[int]string        //允许的直播流质量
 	Qn                map[int]string        //全部直播流质量
@@ -220,7 +220,7 @@ func (t *Common) Init() Common {
 			Addr: serUrl.Host,
 		}, t.SerF)
 
-		t.SerF.Store("/", func(w http.ResponseWriter, r *http.Request) {
+		t.SerF.Store("/", func(w http.ResponseWriter, _ *http.Request) {
 			var memStats runtime.MemStats
 			runtime.ReadMemStats(&memStats)
 
@@ -244,8 +244,7 @@ func (t *Common) Init() Common {
 			}.Write(w)
 		})
 
-		t.Stream_url = []string{}
-		t.Stream_url = append(t.Stream_url, `http://`+serAdress)
+		t.Stream_url, _ = url.Parse(`http://` + serAdress)
 	}
 
 	if val, exist := t.K_v.Load("http代理地址"); exist {

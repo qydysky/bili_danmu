@@ -1368,7 +1368,9 @@ func init() {
 			<-conn
 		})
 
-		flog.L(`I: `, `启动于 `+path)
+		if s, ok := c.C.K_v.LoadV("直播Web服务路径").(string); ok && s != "" {
+			flog.L(`I: `, `启动于 `+c.C.Stream_url.String()+s)
+		}
 	}
 }
 

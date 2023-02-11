@@ -1,7 +1,6 @@
 package F
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -11,18 +10,19 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dustin/go-humanize"
 	c "github.com/qydysky/bili_danmu/CV"
 	cv "github.com/qydysky/bili_danmu/CV"
 	J "github.com/qydysky/bili_danmu/Json"
 	"github.com/skratchdot/open-golang/open"
 
 	p "github.com/qydysky/part"
+	file "github.com/qydysky/part/file"
 	funcCtrl "github.com/qydysky/part/funcCtrl"
 	g "github.com/qydysky/part/get"
 	limit "github.com/qydysky/part/limit"
 	reqf "github.com/qydysky/part/reqf"
 	sys "github.com/qydysky/part/sys"
-	web "github.com/qydysky/part/web"
 
 	"github.com/mdp/qrterminal/v3"
 	qr "github.com/skip2/go-qrcode"
@@ -1293,14 +1293,6 @@ func (c *GetFunc) Get_cookie() (missKey []string) {
 		return
 	}
 
-	scanPort := int(c.K_v.LoadV("扫码登录端口").(float64))
-	if scanPort <= 0 {
-		scanPort = sys.Sys().GetFreePort()
-	}
-	var server = &http.Server{
-		Addr: "0.0.0.0:" + strconv.Itoa(scanPort),
-	}
-
 	{ //生成二维码
 		qr.WriteFile(img_url, qr.Medium, 256, `qr.png`)
 		if !p.Checkfile().IsExist(`qr.png`) {
@@ -1308,24 +1300,16 @@ func (c *GetFunc) Get_cookie() (missKey []string) {
 			return
 		}
 		//启动web
-		s := web.New(server)
-		s.Handle(map[string]func(http.ResponseWriter, *http.Request){
-			`/`: func(w http.ResponseWriter, r *http.Request) {
-				var path string = r.URL.Path[1:]
-				if path == `` {
-					path = `index.html`
-				}
-				http.ServeFile(w, r, path)
-			},
-			`/exit`: func(_ http.ResponseWriter, _ *http.Request) {
-				s.Server.Shutdown(context.Background())
-			},
-		})
-		defer server.Shutdown(context.Background())
-
-		if c.K_v.LoadV(`扫码登录自动打开标签页`).(bool) {
-			open.Run(`http://` + server.Addr + `/qr.png`)
+		if scanPath, ok := c.K_v.LoadV("扫码登录路径").(string); ok && scanPath != "" {
+			c.SerF.Store(scanPath, func(w http.ResponseWriter, _ *http.Request) {
+				file.New("qr.png", 0, true).CopyToIoWriter(w, humanize.MByte, true)
+			})
+			if c.K_v.LoadV(`扫码登录自动打开标签页`).(bool) {
+				open.Run(`http://127.0.0.1:` + c.Stream_url.Port() + scanPath)
+			}
+			apilog.L(`W: `, `或打开链接扫码登录：`+c.Stream_url.String()+scanPath)
 		}
+
 		apilog.Block(1000)
 		//show qr code in cmd
 		qrterminal.GenerateWithConfig(img_url, qrterminal.Config{
@@ -1335,7 +1319,6 @@ func (c *GetFunc) Get_cookie() (missKey []string) {
 			WhiteChar: `OO`,
 		})
 		apilog.L(`W: `, `手机扫命令行二维码登录`)
-		apilog.L(`W: `, `或打开链接扫码登录： http://`+s.Server.Addr+`/qr.png`)
 		sys.Sys().Timeoutf(1)
 	}
 
