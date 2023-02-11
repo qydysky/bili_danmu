@@ -118,6 +118,7 @@ var Msg_map = map[string]func(replyF, string){
 	"AREA_RANK_CHANGED":                 nil,
 	"GIFT_STAR_PROCESS":                 nil,
 	"RECOMMEND_CARD":                    nil, //主播商品营销
+	"GOTO_BUY_FLOW":                     nil,
 }
 
 // 屏蔽不需要的消息
