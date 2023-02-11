@@ -6,17 +6,21 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net/http"
 	"net/url"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/dustin/go-humanize"
 	file "github.com/qydysky/part/file"
 	idpool "github.com/qydysky/part/idpool"
 	log "github.com/qydysky/part/log"
 	mq "github.com/qydysky/part/msgq"
 	reqf "github.com/qydysky/part/reqf"
 	syncmap "github.com/qydysky/part/sync"
+	web "github.com/qydysky/part/web"
 )
 
 type Common struct {
@@ -54,6 +58,7 @@ type Common struct {
 	Log               *log.Log_interface    //日志
 	Danmu_Main_mq     *mq.Msgq              //消息
 	ReqPool           *idpool.Idpool        //请求池
+	SerF              *web.WebPath          //web服务处理
 }
 
 type LiveQn struct {
@@ -203,6 +208,46 @@ func (t *Common) Init() Common {
 		}
 	}()
 
+	if serAdress, ok := t.K_v.LoadV("Web服务地址").(string); ok {
+		serUrl, e := url.Parse("http://" + serAdress)
+		if e != nil {
+			panic(e)
+		}
+
+		t.SerF = new(web.WebPath)
+
+		web.NewSyncMap(&http.Server{
+			Addr: serUrl.Host,
+		}, t.SerF)
+
+		t.SerF.Store("/", func(w http.ResponseWriter, r *http.Request) {
+			var memStats runtime.MemStats
+			runtime.ReadMemStats(&memStats)
+
+			type s struct {
+				MenInUse     string `json:"menInUse"`
+				NumGoroutine int    `json:"numGoroutine"`
+				GoVersion    string `json:"goVersion"`
+			}
+			type j struct {
+				Stats s `json:"stats"`
+			}
+
+			ResStruct{0, "ok",
+				j{
+					s{
+						humanize.Bytes(memStats.HeapInuse + memStats.StackInuse),
+						runtime.NumGoroutine(),
+						runtime.Version(),
+					},
+				},
+			}.Write(w)
+		})
+
+		t.Stream_url = []string{}
+		t.Stream_url = append(t.Stream_url, `http://`+serAdress)
+	}
+
 	if val, exist := t.K_v.Load("http代理地址"); exist {
 		t.Proxy = val.(string)
 	}
@@ -314,4 +359,23 @@ var C = new(Common).Init()
 type Danmu_Main_mq_item struct {
 	Class string
 	Data  interface{}
+}
+
+// Web服务响应格式
+type ResStruct struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+	Data    any    `json:"data"`
+}
+
+func (t ResStruct) Write(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "application/json")
+	data, e := json.Marshal(t)
+	if e != nil {
+		t.Code = -1
+		t.Data = nil
+		t.Message = e.Error()
+		data, _ = json.Marshal(t)
+	}
+	w.Write(data)
 }

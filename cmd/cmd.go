@@ -190,7 +190,7 @@ func Cmd() {
 				fmt.Println(`舰长数:`, c.C.GuardNum)
 				fmt.Println(`分区排行:`, c.C.Note, `人气：`, c.C.Renqi, `观看人数：`, c.C.Watched, `在线人数：`, c.C.OnlineNum)
 				for _, v := range c.C.Stream_url {
-					fmt.Println(`直播Web服务:`, v)
+					fmt.Println(`Web服务地址:`, v)
 				}
 				var array = reply.StreamOCommon(-1)
 				fmt.Println(`正在录制的房间：`)

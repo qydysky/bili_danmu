@@ -2,15 +2,15 @@ package reply
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"math"
 	"net/http"
-	"net/url"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -18,9 +18,9 @@ import (
 
 	// "runtime"
 
-	humanize "github.com/dustin/go-humanize"
 	"golang.org/x/text/encoding/simplifiedchinese"
 
+	"github.com/dustin/go-humanize"
 	c "github.com/qydysky/bili_danmu/CV"
 	F "github.com/qydysky/bili_danmu/F"
 	J "github.com/qydysky/bili_danmu/Json"
@@ -32,7 +32,6 @@ import (
 	msgq "github.com/qydysky/part/msgq"
 	psync "github.com/qydysky/part/sync"
 	sys "github.com/qydysky/part/sys"
-	web "github.com/qydysky/part/web"
 	websocket "github.com/qydysky/part/websocket"
 
 	encoder "golang.org/x/text/encoding"
@@ -1086,224 +1085,290 @@ func SendStreamWs(item Danmu_item) {
 
 func init() {
 	flog := flog.Base_add(`直播Web服务`)
-	if port_f, ok := c.C.K_v.LoadV(`直播Web服务口`).(float64); ok && port_f >= 0 {
-		port := int(port_f)
-
-		addr := "0.0.0.0:"
-		if port == 0 {
-			addr += strconv.Itoa(sys.Sys().GetFreePort())
-		} else {
-			addr += strconv.Itoa(port)
+	if path, ok := c.C.K_v.LoadV(`直播Web服务路径`).(string); ok {
+		if path[0] != '/' {
+			flog.L(`E: `, `直播Web服务路径错误`)
+			return
 		}
 
-		s := web.New(&http.Server{
-			Addr: addr,
+		// 直播流主页
+		c.C.SerF.Store(path, func(w http.ResponseWriter, r *http.Request) {
+			p := strings.TrimPrefix(r.URL.Path, path)
+			if len(p) == 0 || p[len(p)-1] == '/' {
+				p += "index.html"
+			}
+			f := file.New("html/streamList/"+p, 0, true)
+			if !f.IsExist() || f.IsDir() {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+
+			if strings.HasSuffix(p, ".js") {
+				w.Header().Set("content-type", "application/javascript")
+			} else if strings.HasSuffix(p, ".css") {
+				w.Header().Set("content-type", "text/css")
+			} else if strings.HasSuffix(p, ".html") {
+				w.Header().Set("content-type", "text/html")
+			}
+			f.CopyToIoWriter(w, humanize.MByte, true)
 		})
 
-		s.Handle(map[string]func(http.ResponseWriter, *http.Request){
-			`/`: func(w http.ResponseWriter, r *http.Request) {
-				if r.URL.Path != `/` {
-					paths := strings.Split(r.URL.Path, "/")
-					var path string = paths[len(paths)-1]
-					if paths[len(paths)-1] == `` {
-						path = `index.html`
-					}
-					http.ServeFile(w, r, "html/artPlayer/"+path)
+		// 直播流文件列表api
+		c.C.SerF.Store(path+"filePath", func(w http.ResponseWriter, _ *http.Request) {
+			if v, ok := c.C.K_v.LoadV(`直播流保存位置`).(string); ok && v != "" {
+				type dirEntryDirs []fs.DirEntry
+				var list dirEntryDirs
+				var err error
+				f, err := http.Dir(v).Open("/")
+				if err != nil {
+					c.ResStruct{Code: -1, Message: err.Error(), Data: nil}.Write(w)
 					return
 				}
-				if v, ok := c.C.K_v.LoadV(`直播流保存位置`).(string); ok && v != "" {
-					http.FileServer(http.Dir(v)).ServeHTTP(w, r)
-				} else {
-					flog.L(`W: `, `直播流保存位置无效`)
-				}
-			},
-			`/now/`: func(w http.ResponseWriter, r *http.Request) {
-				var path string = r.URL.Path[4:]
-				if path == `` {
-					path = `index.html`
-				}
-				http.ServeFile(w, r, "html/artPlayer/"+path)
-			},
-			`/stream`: func(w http.ResponseWriter, r *http.Request) {
-				//header
-				w.Header().Set("Access-Control-Allow-Credentials", "true")
-				w.Header().Set("Access-Control-Allow-Headers", "*")
-				w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
-				w.Header().Set("Access-Control-Allow-Origin", "*")
-				w.Header().Set("Connection", "keep-alive")
-				w.Header().Set("Content-Transfer-Encoding", "binary")
+				defer f.Close()
 
-				var rpath string
-				if referer, e := url.Parse(r.Header.Get(`Referer`)); e != nil {
-					w.Header().Set("Retry-After", "1")
-					w.WriteHeader(http.StatusServiceUnavailable)
-					flog.L(`E: `, e)
+				_, err = f.Stat()
+				if err != nil {
+					c.ResStruct{Code: -1, Message: err.Error(), Data: nil}.Write(w)
 					return
-				} else {
-					rpath = referer.Path
+				}
+				if d, ok := f.(fs.ReadDirFile); ok {
+					list, err = d.ReadDir(-1)
 				}
 
-				if qref := r.URL.Query().Get("ref"); rpath == "" && qref != "" {
-					rpath = "/" + qref + "/"
-				}
-
-				if rpath == "" {
-					w.Header().Set("Retry-After", "1")
-					w.WriteHeader(http.StatusServiceUnavailable)
-					flog.L(`E: `, `无指定路径`)
-				}
-
-				if rpath != `/now/` {
-					if v, ok := c.C.K_v.LoadV(`直播流保存位置`).(string); ok && v != "" {
-						if strings.HasSuffix(v, "/") || strings.HasSuffix(v, "\\") {
-							v += rpath[1:]
-						} else {
-							v += rpath
-						}
-						if file.New(v+"0.flv", 0, true).IsExist() {
-							v += "0.flv"
-						} else if file.New(v+"0.mp4", 0, true).IsExist() {
-							v += "0.mp4"
-						} else {
-							w.Header().Set("Retry-After", "1")
-							w.WriteHeader(http.StatusServiceUnavailable)
-							flog.L(`I: `, "未找到流文件", v)
-							return
-						}
-
-						var rangeHeaderNum int
-						var e error
-						if rangeHeader := r.Header.Get(`range`); rangeHeader != "" {
-							if strings.Index(rangeHeader, "bytes=") != 0 {
-								w.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
-								flog.L(`W: `, `请求的范围不合法:仅支持bytes`)
-								return
-							} else if strings.Contains(rangeHeader, ",") && strings.Index(rangeHeader, "-") != len(rangeHeader)-1 {
-								w.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
-								flog.L(`W: `, `请求的范围不合法:仅支持向后范围`)
-								return
-							} else if rangeHeaderNum, e = strconv.Atoi(string(rangeHeader[6 : len(rangeHeader)-1])); e != nil {
-								w.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
-								flog.L(`W: `, `请求的范围不合法:`, e)
-								return
-							} else if rangeHeaderNum != 0 {
-								w.WriteHeader(http.StatusPartialContent)
-							}
-						}
-
-						f := file.New(v, int64(rangeHeaderNum), false)
-						defer f.Close()
-
-						// 直播流回放速率
-						var speed, _ = humanize.ParseBytes("1 M")
-						if rc, ok := c.C.K_v.LoadV(`直播流回放速率`).(string); ok {
-							if s, e := humanize.ParseBytes(rc); e != nil {
-								flog.L(`W: `, `直播流回放速率不合法:`, e)
-							} else {
-								speed = s
-							}
-						}
-
-						if e := f.CopyToIoWriter(w, int64(speed), true); e != nil {
-							flog.L(`E: `, e)
-						}
-					} else {
-						w.Header().Set("Retry-After", "1")
-						w.WriteHeader(http.StatusServiceUnavailable)
-						flog.L(`W: `, `直播流保存位置无效`)
-					}
+				if err != nil {
+					c.ResStruct{Code: -1, Message: err.Error(), Data: nil}.Write(w)
 					return
 				}
 
-				// 获取当前房间的
-				var currentStreamO *M4SStream
-				streamO.Range(func(key, value interface{}) bool {
-					if key != nil && c.C.Roomid == key.(int) {
-						currentStreamO = value.(*M4SStream)
-						return false
+				type paf struct {
+					Name   string `json:"name"`
+					StartT string `json:"start"`
+					Path   string `json:"path"`
+				}
+
+				var filePaths []paf
+				for i, n := 0, len(list); i < n; i++ {
+					if list[i].IsDir() {
+						filePaths = append(filePaths, paf{list[i].Name()[20:], list[i].Name()[:19], list[i].Name()})
 					}
-					return true
+				}
+
+				sort.Slice(filePaths, func(i, j int) bool {
+					return filePaths[i].StartT > filePaths[j].StartT
 				})
 
-				// 未准备好
-				if currentStreamO == nil || !currentStreamO.Status.Islive() {
-					w.Header().Set("Retry-After", "1")
-					w.WriteHeader(http.StatusServiceUnavailable)
-					return
-				}
+				c.ResStruct{Code: 0, Message: "ok", Data: filePaths}.Write(w)
+			} else {
+				c.ResStruct{Code: -1, Message: "直播流保存位置无效", Data: nil}.Write(w)
+				flog.L(`W: `, `直播流保存位置无效`)
+			}
+		})
 
-				w.WriteHeader(http.StatusOK)
+		// 直播流播放器
+		c.C.SerF.Store(path+"player/", func(w http.ResponseWriter, r *http.Request) {
+			p := strings.TrimPrefix(r.URL.Path, path+"player/")
+			if len(p) == 0 || p[len(p)-1] == '/' {
+				p += "index.html"
+			}
+			f := file.New("html/artPlayer/"+p, 0, true)
+			if !f.IsExist() {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
 
-				// 推送数据
-				currentStreamO.Pusher(w, r)
-			},
-			`/ws`: func(w http.ResponseWriter, r *http.Request) {
-				if p, e := url.Parse(r.URL.Query().Get("p")); e != nil {
-					w.Header().Set("Retry-After", "1")
-					w.WriteHeader(http.StatusServiceUnavailable)
-					flog.L(`E: `, e)
-					return
-				} else if p.Path != `/now/` {
-					if v, ok := c.C.K_v.LoadV(`直播流保存位置`).(string); ok && v != "" {
-						if strings.HasSuffix(v, "/") || strings.HasSuffix(v, "\\") {
-							v += p.Path[1:]
-						} else {
-							v += p.Path
-						}
+			if strings.HasSuffix(p, ".js") {
+				w.Header().Set("content-type", "application/javascript")
+			} else if strings.HasSuffix(p, ".css") {
+				w.Header().Set("content-type", "text/css")
+			} else if strings.HasSuffix(p, ".html") {
+				w.Header().Set("content-type", "text/html")
+			}
+			f.CopyToIoWriter(w, humanize.MByte, true)
+		})
 
-						if !file.New(v+"0.csv", 0, true).IsExist() {
-							w.WriteHeader(http.StatusNotFound)
-							return
-						}
+		// 流地址
+		c.C.SerF.Store(path+"stream", func(w http.ResponseWriter, r *http.Request) {
+			//header
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+			w.Header().Set("Access-Control-Allow-Headers", "*")
+			w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Connection", "keep-alive")
+			w.Header().Set("Content-Transfer-Encoding", "binary")
 
-						if s, closeF := PlayRecDanmu(v + "0.csv"); s == nil {
-							w.WriteHeader(http.StatusNotFound)
-							return
-						} else {
-							defer closeF()
-							//获取通道
-							conn := s.WS(w, r)
-							//由通道获取本次会话id，并测试 提示
-							<-conn
-							//等待会话结束，通道释放
-							<-conn
-						}
+			var rpath string
+			// if referer, e := url.Parse(r.Header.Get(`Referer`)); e != nil {
+			// 	w.Header().Set("Retry-After", "1")
+			// 	w.WriteHeader(http.StatusServiceUnavailable)
+			// 	flog.L(`E: `, e)
+			// 	return
+			// } else {
+			// 	rpath = referer.Path
+			// }
+
+			if qref := r.URL.Query().Get("ref"); rpath == "" && qref != "" {
+				rpath = "/" + qref + "/"
+			}
+
+			if rpath == "" {
+				w.Header().Set("Retry-After", "1")
+				w.WriteHeader(http.StatusServiceUnavailable)
+				flog.L(`E: `, `无指定路径`)
+			}
+
+			if rpath != `/now/` {
+				if v, ok := c.C.K_v.LoadV(`直播流保存位置`).(string); ok && v != "" {
+					if strings.HasSuffix(v, "/") || strings.HasSuffix(v, "\\") {
+						v += rpath[1:]
+					} else {
+						v += rpath
+					}
+					if file.New(v+"0.flv", 0, true).IsExist() {
+						v += "0.flv"
+					} else if file.New(v+"0.mp4", 0, true).IsExist() {
+						v += "0.mp4"
 					} else {
 						w.Header().Set("Retry-After", "1")
 						w.WriteHeader(http.StatusServiceUnavailable)
-						flog.L(`W: `, `直播流保存位置无效`)
+						flog.L(`I: `, "未找到流文件", v)
+						return
 					}
-					return
-				} else if IsOn("直播Web可以发送弹幕") {
-					StreamWs.Interface().Pull_tag(map[string](func(interface{}) bool){
-						`recv`: func(i interface{}) bool {
-							if u, ok := i.(websocket.Uinterface); ok {
-								if !bytes.Equal(u.Data, []byte("test")) && len(u.Data) > 0 {
-									flog.Base_add(`流服务弹幕`).L(`I: `, string(u.Data))
-									Msg_senddanmu(string(u.Data))
-								}
-							}
-							return false
-						},
-						`close`: func(i interface{}) bool { return true },
-					})
-				}
 
-				//获取通道
-				conn := StreamWs.WS(w, r)
-				//由通道获取本次会话id，并测试 提示
-				<-conn
-				//等待会话结束，通道释放
-				<-conn
-			},
-			`/exit`: func(_ http.ResponseWriter, _ *http.Request) {
-				s.Server.Shutdown(context.Background())
-			},
+					var rangeHeaderNum int
+					var e error
+					if rangeHeader := r.Header.Get(`range`); rangeHeader != "" {
+						if strings.Index(rangeHeader, "bytes=") != 0 {
+							w.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
+							flog.L(`W: `, `请求的范围不合法:仅支持bytes`)
+							return
+						} else if strings.Contains(rangeHeader, ",") && strings.Index(rangeHeader, "-") != len(rangeHeader)-1 {
+							w.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
+							flog.L(`W: `, `请求的范围不合法:仅支持向后范围`)
+							return
+						} else if rangeHeaderNum, e = strconv.Atoi(string(rangeHeader[6 : len(rangeHeader)-1])); e != nil {
+							w.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
+							flog.L(`W: `, `请求的范围不合法:`, e)
+							return
+						} else if rangeHeaderNum != 0 {
+							w.WriteHeader(http.StatusPartialContent)
+						}
+					}
+
+					f := file.New(v, int64(rangeHeaderNum), false)
+					defer f.Close()
+
+					// 直播流回放速率
+					var speed, _ = humanize.ParseBytes("1 M")
+					if rc, ok := c.C.K_v.LoadV(`直播流回放速率`).(string); ok {
+						if s, e := humanize.ParseBytes(rc); e != nil {
+							flog.L(`W: `, `直播流回放速率不合法:`, e)
+						} else {
+							speed = s
+						}
+					}
+
+					if e := f.CopyToIoWriter(w, int64(speed), true); e != nil {
+						flog.L(`E: `, e)
+					}
+				} else {
+					w.Header().Set("Retry-After", "1")
+					w.WriteHeader(http.StatusServiceUnavailable)
+					flog.L(`W: `, `直播流保存位置无效`)
+				}
+				return
+			}
+
+			// 获取当前房间的
+			var currentStreamO *M4SStream
+			streamO.Range(func(key, value interface{}) bool {
+				if key != nil && c.C.Roomid == key.(int) {
+					currentStreamO = value.(*M4SStream)
+					return false
+				}
+				return true
+			})
+
+			// 未准备好
+			if currentStreamO == nil || !currentStreamO.Status.Islive() {
+				w.Header().Set("Retry-After", "1")
+				w.WriteHeader(http.StatusServiceUnavailable)
+				return
+			}
+
+			w.WriteHeader(http.StatusOK)
+
+			// 推送数据
+			currentStreamO.Pusher(w, r)
 		})
 
-		c.C.Stream_url = []string{}
-		c.C.Stream_url = append(c.C.Stream_url, `http://`+s.Server.Addr)
-		flog.L(`I: `, `启动于 http://`+s.Server.Addr)
+		// 弹幕回放
+		c.C.SerF.Store(path+"player/ws", func(w http.ResponseWriter, r *http.Request) {
+			var rpath string
+
+			if qref := r.URL.Query().Get("ref"); rpath == "" && qref != "" {
+				rpath = "/" + qref + "/"
+			}
+
+			if rpath == "" {
+				w.Header().Set("Retry-After", "1")
+				w.WriteHeader(http.StatusServiceUnavailable)
+				return
+			}
+			if rpath != `/now/` {
+				if v, ok := c.C.K_v.LoadV(`直播流保存位置`).(string); ok && v != "" {
+					if strings.HasSuffix(v, "/") || strings.HasSuffix(v, "\\") {
+						v += rpath[1:]
+					} else {
+						v += rpath
+					}
+
+					if !file.New(v+"0.csv", 0, true).IsExist() {
+						w.WriteHeader(http.StatusNotFound)
+						return
+					}
+
+					if s, closeF := PlayRecDanmu(v + "0.csv"); s == nil {
+						w.WriteHeader(http.StatusNotFound)
+						return
+					} else {
+						defer closeF()
+						//获取通道
+						conn := s.WS(w, r)
+						//由通道获取本次会话id，并测试 提示
+						<-conn
+						//等待会话结束，通道释放
+						<-conn
+					}
+				} else {
+					w.Header().Set("Retry-After", "1")
+					w.WriteHeader(http.StatusServiceUnavailable)
+					flog.L(`W: `, `直播流保存位置无效`)
+				}
+				return
+			} else if IsOn("直播Web可以发送弹幕") {
+				StreamWs.Interface().Pull_tag(map[string](func(interface{}) bool){
+					`recv`: func(i interface{}) bool {
+						if u, ok := i.(websocket.Uinterface); ok {
+							if !bytes.Equal(u.Data, []byte("test")) && len(u.Data) > 0 {
+								flog.Base_add(`流服务弹幕`).L(`I: `, string(u.Data))
+								Msg_senddanmu(string(u.Data))
+							}
+						}
+						return false
+					},
+					`close`: func(i interface{}) bool { return true },
+				})
+			}
+
+			//获取通道
+			conn := StreamWs.WS(w, r)
+			//由通道获取本次会话id，并测试 提示
+			<-conn
+			//等待会话结束，通道释放
+			<-conn
+		})
+
+		flog.L(`I: `, `启动于 `+path)
 	}
 }
 

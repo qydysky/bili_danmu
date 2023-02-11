@@ -240,7 +240,7 @@ __webpack_require__.r(__webpack_exports__);
         conn,
         config = {
             container: '.artplayer-app',
-            url: "/stream?_=" + new Date().getTime(),
+            url: "../stream?_=" + new Date().getTime()+"&ref="+new URL(window.location.href).searchParams.get("ref"),
             title: "" + new Date().getTime(),
             type: "flv",
             volume: 0.5,
@@ -368,7 +368,7 @@ __webpack_require__.r(__webpack_exports__);
                 conn.close();
             }
             var interval_handle = 0
-            conn = new WebSocket("ws://" + window.location.host + "/ws?p="+window.location.href);
+            conn = new WebSocket("ws://" + window.location.host + window.location.pathname+"ws?&ref="+new URL(window.location.href).searchParams.get("ref"));
             conn.onclose = function (evt) {
                 clearInterval(interval_handle)
             };
@@ -397,7 +397,7 @@ __webpack_require__.r(__webpack_exports__);
         player = new (artplayer__WEBPACK_IMPORTED_MODULE_0___default())(config);
         player.on('play', (...args) => {
             if (hadPause) {
-                player.switchUrl("/stream?_=" + new Date().getTime(), new Date().getTime());
+                player.switchUrl("../stream?_=" + new Date().getTime()+"&ref="+new URL(window.location.href).searchParams.get("ref"), new Date().getTime());
             }
             ws();
             hadPause = false;
