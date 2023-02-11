@@ -1148,7 +1148,7 @@ func init() {
 
 				var filePaths []paf
 				for i, n := 0, len(list); i < n; i++ {
-					if list[i].IsDir() {
+					if list[i].IsDir() && len(list[i].Name()) > 20 {
 						filePaths = append(filePaths, paf{list[i].Name()[20:], list[i].Name()[:19], list[i].Name()})
 					}
 				}
