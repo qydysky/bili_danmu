@@ -514,6 +514,7 @@ func (t *M4SStream) saveStream() (e error) {
 		time.Now().Format("2006_01_02-15_04_05") + "-" +
 		strconv.Itoa(t.common.Roomid) + "-" +
 		strings.NewReplacer("\\", "", "\\/", "", ":", "", "*", "", "?", "", "\"", "", "<", "", ">", "", "|", "").Replace(t.common.Title) + "-" +
+		t.common.Qn[t.common.Live_qn] + "-" +
 		pstring.Rand(2, 3) +
 		`/`
 
