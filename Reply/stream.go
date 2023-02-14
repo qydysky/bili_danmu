@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
 	"net/url"
 	"os"
@@ -508,6 +509,53 @@ func (t *M4SStream) fetchParseM3U8() (m4s_links []*m4s_link_item, m3u8_addon []b
 	return
 }
 
+// 移除历史流
+func (t *M4SStream) removeStream() (e error) {
+	if d, ok := t.common.K_v.LoadV("直播流保存天数").(float64); ok && d >= 1 {
+		if v, ok := t.common.K_v.LoadV(`直播流保存位置`).(string); ok && v != "" {
+			type dirEntryDirs []fs.DirEntry
+			var list dirEntryDirs
+			f, err := http.Dir(v).Open("/")
+			if err != nil {
+				return err
+			}
+			defer f.Close()
+
+			if _, err = f.Stat(); err != nil {
+				return err
+			}
+			if d, ok := f.(fs.ReadDirFile); ok {
+				list, err = d.ReadDir(-1)
+			}
+
+			if err != nil {
+				return err
+			}
+
+			var (
+				oldest   float64
+				oldIndex int = -1
+			)
+			for i, n := 0, len(list); i < n; i++ {
+				if list[i].IsDir() && len(list[i].Name()) > 20 {
+					if tt, err := time.Parse("2006_01_02-15_04_05", list[i].Name()[:19]); err == nil {
+						if ts := time.Since(tt).Seconds(); ts > d*24*60*60 && ts > oldest {
+							oldest = ts
+							oldIndex = i
+						}
+					}
+				}
+			}
+
+			if oldIndex != -1 {
+				t.log.L(`I: `, "移除历史流", v+"/"+list[oldIndex].Name())
+				return os.RemoveAll(v + "/" + list[oldIndex].Name())
+			}
+		}
+	}
+	return nil
+}
+
 func (t *M4SStream) saveStream() (e error) {
 	// 设置保存路径
 	t.Current_save_path = t.config.save_path + "/" +
@@ -540,6 +588,11 @@ func (t *M4SStream) saveStream() (e error) {
 	}
 	if t.Callback_stopRec != nil {
 		defer t.Callback_stopRec(t)
+	}
+
+	// 移除历史流
+	if err := t.removeStream(); err != nil {
+		t.log.L(`W: `, err)
 	}
 
 	// 获取流
