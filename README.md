@@ -2,42 +2,6 @@
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/qydysky/bili_danmu)](https://goreportcard.com/report/github.com/qydysky/bili_danmu)
 
----
-### 目录释义
-|目录|说明|
-|-|-|
-|./|项目根|
-|CV/|全局变常量|
-|F/|项目小工具(ws消息生成、api、整数字节转换)|
-|Replay/|接收的数据处理区|
-|Json/|json的golang struct表述|
-|Send/|发送数据区|
-|_Screenshot/|截图保存目录|
-|_msg_sample/|ws接收数据示例|
-|_source/|bilijs文件示例|
-|demo/|运行目录|
-|.gitignore|项目忽略文件|
-|7za.exe|githubAction的windows打包程序|
-|LICENSE|许可|
-|VERSION|项目版本|
-|bili_danmu.go|主运行文件|
-|go.mod|goMod文件|
----
-
----
-### LICENSE
-使用了下述的项目，十分感谢
-- [golang](https://golang.org/) under [BSD](https://golang.org/LICENSE)
-- [github.com/gotk3/gotk3](https://github.com/gotk3/gotk3) under [ISC](https://raw.githubusercontent.com/gotk3/gotk3/master/LICENSE)
-- [github.com/qydysky/part](https://github.com/qydysky/part) under [MIT](https://raw.githubusercontent.com/qydysky/part/master/LICENSE)
-- [github.com/christopher-dG/go-obs-websocket](https://github.com/christopher-dG/go-obs-websocket) under [MIT](https://raw.githubusercontent.com/christopher-dG/go-obs-websocket/master/LICENSE)
-- [github.com/gorilla/websocket](https://github.com/gorilla/websocket) under [BSD 2-Clause](https://raw.githubusercontent.com/gorilla/websocket/master/LICENSE)
-- [github.com/skip2/go-qrcode](https://github.com/skip2/go-qrcode) under [MIT](https://github.com/skip2/go-qrcode/blob/master/LICENSE)
-- [github.com/gofrs/uuid](https://github.com/gofrs/uuid) under [MIT](https://github.com/gofrs/uuid/blob/master/LICENSE)
-- [github.com/skratchdot/open-golang/open](https://github.com/skratchdot/open-golang) under [MIT](https://raw.githubusercontent.com/skratchdot/open-golang/master/LICENSE)
-- [7z](https://www.7-zip.org/) under [LICENSE](https://www.7-zip.org/license.txt)
-- [github.com/mdp/qrterminal/v3](github.com/mdp/qrterminal/v3) under [MIT](https://github.com/mdp/qrterminal/blob/master/LICENSE)
----
 
 ### 当前支持显示/功能
 
@@ -78,7 +42,6 @@
 - [x] 舰长数统计
 - [x] 直播流、弹幕保存
 - [x] ASS字幕生成
-- [x] ~~OBS调用~~
 - [x] 节奏提示
 - [x] 反射型弹幕机
 - [x] 自动型弹幕机
@@ -92,10 +55,8 @@
 - [x] 使用http代理
 - [x] cookie加密
 - [x] 弹幕自动重连（30s无响应）
-- [x] 直播流开播自动下载
-- [x] 直播流断流再保存
-- [x] 直播fmp4流均衡负载
-- [x] 多房间直播流保存
+- [x] 直播流开播自动下载、断流再保存、故障转移、移除历史
+- [x] ~~多房间直播流保存~~
 - [x] 命令行支持房间切换、弹幕发送、表情发送、启停录制、重载弹幕、查看历史记录、查看正在直播的主播
 - [x] GTK信息窗支持房间切换、弹幕格式化发送、时长统计
 - [x] GTK弹幕窗支持自定义人/事件消息停留
@@ -180,7 +141,11 @@ ass编码GB18030支持中文
 
 直接进入直播Web服务路径，`http://127.0.0.1:10000/web/`，将进入由[Vue](https://vuejs.org/)，[element-plus](https://element-plus.org/)创建的简易web目录。
 
+![](_Screenshot/Snipaste_2023-02-15_22-10-17.png)
+
 点击目录项，将进入由[artplayer](https://artplayer.org/)、[mpegts](https://github.com/xqq/mpegts.js)创建的简易回放界面
+
+![](_Screenshot/Snipaste_2023-02-15_22-13-40.png)
 
 **特殊**
 - 路径为`http://127.0.0.1:10000/web/stream?ref=now`
