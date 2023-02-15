@@ -121,6 +121,7 @@ var Msg_map = map[string]func(replyF, string){
 	"GOTO_BUY_FLOW":                     nil,
 	"CUT_OFF":                           replyF.cut_off, // 超管切直播
 	"SHOPPING_CART_SHOW":                nil,
+	"WIDGET_GIFT_STAR_PROCESS":          nil,
 }
 
 // 屏蔽不需要的消息
