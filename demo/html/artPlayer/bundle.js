@@ -237,11 +237,13 @@ __webpack_require__.r(__webpack_exports__);
         flvPlayer,
         danmuEmit = document.createElement("div"),
         config = {
+            conn: undefined,
             container: '.artplayer-app',
             url: "../stream?_=" + new Date().getTime()+"&ref="+new URL(window.location.href).searchParams.get("ref"),
             title: "" + new Date().getTime(),
             type: "flv",
             volume: 0.5,
+            hotkey: false,
             isLive: true,
             muted: false,
             autoplay: true,
@@ -360,8 +362,7 @@ __webpack_require__.r(__webpack_exports__);
     /**
      * ws 收发
      */
-     function ws(conn) {
-        if(conn != undefined)return conn;
+     function ws() {
         if (window["WebSocket"]) {
             var interval_handle = 0
             var conn = new WebSocket("ws://" + window.location.host + window.location.pathname+"ws?&ref="+new URL(window.location.href).searchParams.get("ref"));
@@ -382,35 +383,39 @@ __webpack_require__.r(__webpack_exports__);
                     console.log(evt.data)
                 }
             };
+            conn.onopen = function () {
+                conn.send(`pause`);
+                config.conn = conn
+                initPlay(config);
+            };
             interval_handle = setInterval(()=>{
                 if(player.currentTime != undefined)conn.send(player.currentTime);
             },3000);
-            return conn;
         }
     }
+
+    ws();
 
     function initPlay(config) {
         if(player != undefined && player.destroy != undefined)player.destroy();
         player = new (artplayer__WEBPACK_IMPORTED_MODULE_0___default())(config);
-        var conn;
         player.on('play', (...args) => {
-            conn = ws(conn);
-            conn.send(`play`);
+            config.conn.send(`play`);
         });
         player.on('pause', (...args) => {
-            conn.send(`pause`);
+            config.conn.send(`pause`);
         });
         player.on('video:ended', (...args) => {
-            if(conn != undefined){
-                conn.close();
-                conn = undefined;
+            if(config.conn != undefined){
+                config.conn.close();
+                config.conn = undefined;
             }
             if(flvPlayer)flvPlayer.unload();
         });
         player.on('artplayerPluginDanmuku:emit', (danmu) => {
-            conn.send(danmu.text);
+            config.conn.send("%S"+danmu.text);
         });
-    }initPlay(config);
+    }
 })();
 
 })();

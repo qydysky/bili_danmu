@@ -1349,9 +1349,9 @@ func init() {
 				StreamWs.Interface().Pull_tag(map[string](func(interface{}) bool){
 					`recv`: func(i interface{}) bool {
 						if u, ok := i.(websocket.Uinterface); ok {
-							if !bytes.Equal(u.Data, []byte("test")) && len(u.Data) > 0 {
-								flog.Base_add(`流服务弹幕`).L(`I: `, string(u.Data))
-								Msg_senddanmu(string(u.Data))
+							if bytes.Equal(u.Data[:2], []byte("%S")) && len(u.Data) > 0 {
+								flog.Base_add(`流服务弹幕`).L(`I: `, string(u.Data[2:]))
+								Msg_senddanmu(string(u.Data[2:]))
 							}
 						}
 						return false
@@ -1395,7 +1395,7 @@ func PlayRecDanmu(filePath string) (*websocket.Server, func()) {
 	if !IsOn(`仅保存当前直播间流`) || !IsOn("弹幕回放") {
 		return nil, nil
 	}
-	return websocket.Play(filePath, 70, 1000)
+	return websocket.Play(filePath)
 }
 
 func StopRecDanmu() {
