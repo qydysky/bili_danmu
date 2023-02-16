@@ -2,7 +2,7 @@ module github.com/qydysky/bili_danmu/demo
 
 go 1.19
 
-require github.com/qydysky/bili_danmu v0.5.9
+require github.com/qydysky/bili_danmu v0.6.1
 
 require (
 	github.com/andybalholm/brotli v1.0.4 // indirect
