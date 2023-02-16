@@ -157,6 +157,18 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframes *slice.Buf[byte])
 			return
 		}
 
+		//is SampleEntries error?
+		checkSampleEntries = func(trun, mdat int) error {
+			if buf[trun+11] == 'b' {
+				for i := trun + 24; i < mdat; i += 12 {
+					if F.Btoi(buf, i+4, 4) < 1000 {
+						return errors.New("find sample size less then 1000")
+					}
+				}
+			}
+			return nil
+		}
+
 		//is t error?
 		check_set_maxT = func(ts timeStamp, equal func(ts timeStamp) error, larger func(ts timeStamp) error) (err error) {
 			switch ts.handlerType {
@@ -205,6 +217,14 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframes *slice.Buf[byte])
 					// moofSN       = int(F.Btoi(buf, m[1].i+12, 4))
 				)
 
+				if e := checkSampleEntries(m[5].i, m[6].i); e != nil {
+					//skip
+					t.buf.Reset()
+					haveKeyframe = false
+					cu = m[0].i
+					return false
+				}
+
 				{
 					ts, _ := get_track_type(m[3].i, m[4].i)
 					if nil != check_set_maxT(ts, func(_ timeStamp) error {
@@ -246,6 +266,14 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframes *slice.Buf[byte])
 				)
 
 				// fmt.Println(moofSN, "frame1", keyframeMoof, t.buf.size(), m[0].i, m[10].n, m[10].e)
+
+				if e := checkSampleEntries(m[5].i, m[6].i); e != nil {
+					//skip
+					t.buf.Reset()
+					haveKeyframe = false
+					cu = m[0].i
+					return false
+				}
 
 				{
 					ts, handlerType := get_track_type(m[3].i, m[4].i)
