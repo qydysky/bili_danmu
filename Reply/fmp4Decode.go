@@ -217,16 +217,17 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframes *slice.Buf[byte])
 					// moofSN       = int(F.Btoi(buf, m[1].i+12, 4))
 				)
 
-				if e := checkSampleEntries(m[5].i, m[6].i); e != nil {
-					//skip
-					t.buf.Reset()
-					haveKeyframe = false
-					cu = m[0].i
-					return false
-				}
-
 				{
 					ts, _ := get_track_type(m[3].i, m[4].i)
+					if ts.handlerType == 'v' {
+						if e := checkSampleEntries(m[5].i, m[6].i); e != nil {
+							//skip
+							t.buf.Reset()
+							haveKeyframe = false
+							cu = m[0].i
+							return false
+						}
+					}
 					if nil != check_set_maxT(ts, func(_ timeStamp) error {
 						return errors.New("skip")
 					}, func(_ timeStamp) error {
@@ -267,16 +268,17 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframes *slice.Buf[byte])
 
 				// fmt.Println(moofSN, "frame1", keyframeMoof, t.buf.size(), m[0].i, m[10].n, m[10].e)
 
-				if e := checkSampleEntries(m[5].i, m[6].i); e != nil {
-					//skip
-					t.buf.Reset()
-					haveKeyframe = false
-					cu = m[0].i
-					return false
-				}
-
 				{
 					ts, handlerType := get_track_type(m[3].i, m[4].i)
+					if handlerType == 'v' {
+						if e := checkSampleEntries(m[5].i, m[6].i); e != nil {
+							//skip
+							t.buf.Reset()
+							haveKeyframe = false
+							cu = m[0].i
+							return false
+						}
+					}
 					switch handlerType {
 					case 'v':
 						video = ts
@@ -296,6 +298,15 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframes *slice.Buf[byte])
 				}
 				{
 					ts, handlerType := get_track_type(m[7].i, m[8].i)
+					if handlerType == 'v' {
+						if e := checkSampleEntries(m[9].i, m[10].i); e != nil {
+							//skip
+							t.buf.Reset()
+							haveKeyframe = false
+							cu = m[0].i
+							return false
+						}
+					}
 					switch handlerType {
 					case 'v':
 						video = ts
