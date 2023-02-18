@@ -299,7 +299,8 @@ func Start() {
 							reply.Danmuji_auto()
 						}
 
-						{ //附加功能 进房间发送弹幕 直播流保存 营收
+						{ //附加功能 进房间发送弹幕 直播流保存 营收 每日签到
+							go F.Dosign()
 							go reply.Entry_danmu()
 							go reply.StreamOStart(c.C.Roomid)
 							go reply.ShowRevf()
