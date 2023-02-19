@@ -8,28 +8,8 @@ on:
     - 'VERSION'
 
 jobs:
-
-  Release_Drafter:
-    name: Release_Drafter
-    runs-on: ubuntu-latest
-    steps:
-
-    - name: Release Drafter
-      # You may pin to the exact commit or the version.
-      # uses: release-drafter/release-drafter@06d4616a80cd7c09ea3cf12214165ad6c1859e67
-      id: create_release
-      uses: release-drafter/release-drafter@v5.11.0
-      env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: set upload_url
-      id: set_upload_url
-      run: |
-        echo "release_url=${{ steps.create_release.outputs.upload_url }}" >> $GITHUB_ENV
-
   u-build:
     name: build_ubuntu_go${{ matrix.go }}
-    needs: Release_Drafter
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -56,22 +36,14 @@ jobs:
       run: zip -q -r ubuntu_go${{ matrix.go }}.zip *
 
     - name: Upload a Release Asset
-      uses: actions/upload-release-asset@v1.0.2
-      env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: softprops/action-gh-release@v1
       with:
-        # The URL for uploading assets to the release
-        upload_url: ${{ env.release_url }}
-        # The path to the asset you want to upload
-        asset_path: ./ubuntu_go${{ matrix.go }}.zip
-        # The name of the asset you want to upload
-        asset_name: ubuntu_go${{ matrix.go }}.zip
-        # The content-type of the asset you want to upload. See the supported Media Types here: https://www.iana.org/assignments/media-types/media-types.xhtml for more information
-        asset_content_type: application/zip
+        draft: true
+        files: |
+          ./ubuntu_go${{ matrix.go }}.zip
 
   w-build:
     name: build_windows_go${{ matrix.go }}
-    needs: Release_Drafter
     runs-on: windows-latest
     strategy:
       matrix:
@@ -95,15 +67,8 @@ jobs:
       run: .\7za.exe a -r .\windows_go${{ matrix.go }}.zip ./
 
     - name: Upload a Release Asset
-      uses: actions/upload-release-asset@v1.0.2
-      env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: softprops/action-gh-release@v1
       with:
-        # The URL for uploading assets to the release
-        upload_url: ${{ env.release_url }}
-        # The path to the asset you want to upload
-        asset_path: ./windows_go${{ matrix.go }}.zip
-        # The name of the asset you want to upload
-        asset_name: windows_go${{ matrix.go }}.zip
-        # The content-type of the asset you want to upload. See the supported Media Types here: https://www.iana.org/assignments/media-types/media-types.xhtml for more information
-        asset_content_type: application/zip
+        draft: true
+        files: |
+          ./windows_go${{ matrix.go }}.zip
