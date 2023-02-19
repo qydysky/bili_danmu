@@ -27,7 +27,8 @@ jobs:
         sudo apt-get install libgtk-3-dev libcairo2-dev libglib2.0-dev
         cd demo
         go get .
-        go build -v -buildmode=exe -tags 'gtk gtk_3_24' -o demo.run -i main.go
+        go build -v -buildmode=exe -tags 'gtk gtk_3_24' -o demo.gtk.run -i main.go
+        go build -v -buildmode=exe -o demo.run -i main.go
       
     - name: zip
       run: zip -q -r ubuntu_go${{ matrix.go }}.zip *
