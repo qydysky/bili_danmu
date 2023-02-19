@@ -712,6 +712,11 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 						}
 						if len(front_buf)+len(keyframe) != 0 {
 							if len(front_buf) != 0 {
+								if len(t.first_buf) != 0 {
+									t.log.L(`E: `, `flv重复接收到起始段，退出`)
+									r.Cancel()
+									break
+								}
 								t.first_buf = front_buf
 								// fmt.Println("write front_buf")
 								out.Write(front_buf)

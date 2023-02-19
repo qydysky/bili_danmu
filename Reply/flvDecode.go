@@ -63,7 +63,7 @@ func Search_stream_tag(buf []byte) (front_buf []byte, keyframe [][]byte, last_av
 			return //no found available video,audio,script tag
 		}
 		if tag_offset+tag_header_size > len(buf) {
-			err = errors.New(`reach end when get tag header`)
+			// err = errors.New(`reach end when get tag header`)
 			// fmt.Printf("last %x\n",buf[tag_offset:tag_offset+tag_header_size])
 			return //buf end
 		}
@@ -78,7 +78,7 @@ func Search_stream_tag(buf []byte) (front_buf []byte, keyframe [][]byte, last_av
 
 		tag_size := int(F.Btoi32([]byte{0x00, buf[tag_offset+1], buf[tag_offset+2], buf[tag_offset+3]}, 0))
 		if tag_offset+tag_header_size+tag_size+previou_tag_size > len(buf) {
-			err = errors.New(`reach end when get tag body`)
+			// err = errors.New(`reach end when get tag body`)
 			// fmt.Printf("last %x\n",buf[tag_offset:tag_offset+tag_header_size])
 			return //buf end
 		}
