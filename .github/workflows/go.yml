@@ -24,12 +24,8 @@ jobs:
 
     - name: set upload_url
       id: set_upload_url
-      uses: noobly314/share-data@v1
-      with:
-        share-id: release_url
-        mode: set
-        key: url
-        value: ${{ steps.create_release.outputs.upload_url }}
+      run: |
+        echo "release_url=${{ steps.create_release.outputs.upload_url }}" >> $GITHUB_ENV
 
   u-build:
     name: build_ubuntu_go${{ matrix.go }}
@@ -45,7 +41,7 @@ jobs:
         go-version: ${{ matrix.go }}
 
     - name: Check out code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
             
     - name: Build
       run: |
@@ -58,14 +54,6 @@ jobs:
       
     - name: zip
       run: zip -q -r ubuntu_go${{ matrix.go }}.zip *
-    
-    - name: get upload_url
-      id: get_upload_url
-      uses: noobly314/share-data@v1
-      with:
-        share-id: release_url
-        mode: get
-        key: url
 
     - name: Upload a Release Asset
       uses: actions/upload-release-asset@v1.0.2
@@ -73,7 +61,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         # The URL for uploading assets to the release
-        upload_url: ${{ steps.get_upload_url.outputs.data }}
+        upload_url: ${{ env.release_url }}
         # The path to the asset you want to upload
         asset_path: ./ubuntu_go${{ matrix.go }}.zip
         # The name of the asset you want to upload
@@ -95,7 +83,7 @@ jobs:
         go-version: ${{ matrix.go }}
 
     - name: Check out code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Build
       run: |
@@ -106,22 +94,13 @@ jobs:
     - name: zip
       run: .\7za.exe a -r .\windows_go${{ matrix.go }}.zip ./
 
-
-    - name: get upload_url
-      id: get_upload_url
-      uses: noobly314/share-data@v1
-      with:
-        share-id: release_url
-        mode: get
-        key: url
-
     - name: Upload a Release Asset
       uses: actions/upload-release-asset@v1.0.2
       env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         # The URL for uploading assets to the release
-        upload_url: ${{ steps.get_upload_url.outputs.data }}
+        upload_url: ${{ env.release_url }}
         # The path to the asset you want to upload
         asset_path: ./windows_go${{ matrix.go }}.zip
         # The name of the asset you want to upload

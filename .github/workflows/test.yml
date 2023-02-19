@@ -19,7 +19,7 @@ jobs:
         go-version: ${{ matrix.go }}
 
     - name: Check out code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
     
     - name: Build
       run: |
@@ -34,7 +34,7 @@ jobs:
       run: zip -q -r ubuntu_go${{ matrix.go }}.zip *
       
     - name: Upload a Build Artifact
-      uses: actions/upload-artifact@v2.2.0
+      uses: actions/upload-artifact@v3
       with:
         path: ./ubuntu_go${{ matrix.go }}.zip
         
@@ -51,7 +51,7 @@ jobs:
         go-version: ${{ matrix.go }}
 
     - name: Check out code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
             
     - name: Build
       run: |
@@ -63,6 +63,6 @@ jobs:
       run: .\7za.exe a -r .\windows_go${{ matrix.go }}.zip ./
       
     - name: Upload a Build Artifact
-      uses: actions/upload-artifact@v2.2.0
+      uses: actions/upload-artifact@v3
       with:
         path: ./windows_go${{ matrix.go }}.zip
