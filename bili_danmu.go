@@ -59,6 +59,8 @@ func Start() {
 		os.Exit(1)
 	}()
 
+	danmulog.L(`I: `, `当前PID:`, c.C.PID)
+
 	//启动时显示ip
 	{
 		if v, ok := c.C.K_v.LoadV("启动时显示ip").(bool); ok && v {

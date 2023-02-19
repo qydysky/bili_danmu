@@ -1,14 +1,9 @@
 package main
 
-import (
-	// "runtime"
+import ( // "runtime"
 	// "runtime/pprof"
-	"os"
-	// "log"
-	"fmt"
 	// "net/http"
 	// _ "net/http/pprof"
-
 	// "github.com/skratchdot/open-golang/open"
 	q "github.com/qydysky/bili_danmu"
 )
@@ -22,7 +17,6 @@ func main() {
 	// 	time.Sleep(time.Duration(3)*time.Second)
 	// }()
 	// go func() {
-	fmt.Printf("PID:%d\n", os.Getpid())
 	// for {
 	// 	View()
 	// 	time.Sleep(time.Duration(60) * time.Second)

@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"runtime"
 	"strings"
 	"testing"
@@ -24,6 +25,7 @@ import (
 )
 
 type Common struct {
+	PID               int                   //进程id
 	Uid               int                   //client uid
 	Live              []LiveQn              //直播流链接
 	Live_qn           int                   //当前直播流质量
@@ -133,6 +135,8 @@ type StreamType struct {
 }
 
 func (t *Common) Init() Common {
+	t.PID = os.Getpid()
+
 	t.AllStreamType = map[string]StreamType{
 		`fmp4`: {
 			Protocol_name: "http_hls",
