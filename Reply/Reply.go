@@ -768,6 +768,8 @@ func (replyF) live(s string) {
 				StreamOStop(-2) //停止其他房间录制
 			}
 			StreamOStart(c.C.Roomid)
+			//有时不返回弹幕 开播刷新弹幕
+			c.C.Danmu_Main_mq.Push_tag(`flash_room`, nil)
 		}()
 
 		Gui_show(Itos([]interface{}{"房间", type_item.Roomid, "开播了"}), "0room")
