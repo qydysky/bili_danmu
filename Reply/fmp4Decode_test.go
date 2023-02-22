@@ -1,38 +1,63 @@
 package reply
 
 import (
-	// _ "embed"
+	"errors"
+	"fmt"
+	"io"
 	"testing"
 
-	F "github.com/qydysky/bili_danmu/F"
+	"github.com/dustin/go-humanize"
+	file "github.com/qydysky/part/file"
+	slice "github.com/qydysky/part/slice"
 )
 
-// go:embed 32320131.m4s
-var buf []byte
-
 func Test_deal(t *testing.T) {
-	ies, _ := decode(buf, "moof")
-	err := deal(ies,
-		[]string{"moof", "mfhd",
-			"traf", "tfhd", "tfdt", "trun",
-			"mdat"},
-		func(m []ie) bool {
-			moofSN := int(F.Btoi(buf, m[1].i+12, 4))
-			keyframeMoof := buf[m[5].i+20] == byte(0x02)
-			t.Log(moofSN, "frame", keyframeMoof, m[0].i, m[6].n, m[6].e)
-			return false
-		})
-	t.Log("err", err)
-	err = deal(ies,
-		[]string{"moof", "mfhd",
-			"traf", "tfhd", "tfdt", "trun",
-			"traf", "tfhd", "tfdt", "trun",
-			"mdat"},
-		func(m []ie) bool {
-			moofSN := int(F.Btoi(buf, m[1].i+12, 4))
-			keyframeMoof := buf[m[5].i+20] == byte(0x02) || buf[m[9].i+20] == byte(0x02)
-			t.Log(moofSN, "frame", keyframeMoof, m[0].i, m[10].n, m[10].e)
-			return false
-		})
-	t.Log("err", err)
+	flog := file.New("E:\\test\\0.flv.log", 0, false)
+	flog.Delete()
+	defer flog.Close()
+	f := file.New("E:\\test\\0.mp4", 0, false)
+	defer f.Close()
+
+	if f.IsDir() || !f.IsExist() {
+		t.Fatal("file not support")
+	}
+
+	buf := make([]byte, humanize.MByte)
+	buff := slice.New[byte]()
+	max := 0
+	fmp4Decoder := new(Fmp4Decoder)
+	fmp4KeyFrames := slice.New[byte]()
+
+	for c := 0; true; c++ {
+		n, e := f.Read(buf)
+		if n == 0 && errors.Is(e, io.EOF) {
+			t.Log("reach end")
+			break
+		}
+		buff.Append(buf[:n])
+		if s := buff.Size(); max < s {
+			max = s
+		}
+		if max > humanize.MByte*100 {
+			t.Log("reach max")
+			break
+		}
+
+		front_buf, e := fmp4Decoder.Init_fmp4(buff.GetCopyBuf())
+		if e != nil {
+			t.Fatal(e)
+		}
+		last_available_offset, e := fmp4Decoder.Search_stream_fmp4(buff.GetPureBuf(), fmp4KeyFrames)
+		if e != nil && e.Error() != "未初始化traks" {
+			t.Fatal(e)
+		}
+		if len(front_buf) != 0 {
+			t.Log("front_buf")
+			break
+		}
+		flog.Write([]byte(fmt.Sprintf("%d %d\n", c, len(front_buf))), true)
+		t.Log(c, len(front_buf))
+		buff.RemoveFront(last_available_offset)
+	}
+	t.Log("max", humanize.Bytes(uint64(max)))
 }

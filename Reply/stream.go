@@ -709,6 +709,8 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 							if strings.Contains(e.Error(), `no found available tag`) {
 								continue
 							}
+							//丢弃所有数据
+							buff.Reset()
 						}
 						if len(front_buf)+len(keyframe) != 0 {
 							if len(front_buf) != 0 {

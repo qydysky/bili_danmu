@@ -6,6 +6,7 @@ import (
 
 	// "math"
 
+	"github.com/dustin/go-humanize"
 	F "github.com/qydysky/bili_danmu/F"
 )
 
@@ -26,6 +27,10 @@ var (
 // this fuction read []byte and return flv header and all complete keyframe if possible.
 // complete keyframe means the video and audio tags between two video key frames tag
 func Search_stream_tag(buf []byte) (front_buf []byte, keyframe [][]byte, last_available_offset int, err error) {
+	if len(buf) > humanize.MByte*100 {
+		err = errors.New("buf too large")
+		return
+	}
 	//get flv header(9byte) + FirstTagSize(4byte)
 	if header_offset := bytes.Index(buf, flv_header_sign); header_offset != -1 {
 		if header_offset+flv_header_size+previou_tag_size > len(buf) {

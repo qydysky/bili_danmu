@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 
+	"github.com/dustin/go-humanize"
 	F "github.com/qydysky/bili_danmu/F"
 	slice "github.com/qydysky/part/slice"
 )
@@ -65,9 +66,6 @@ func (t *Fmp4Decoder) Init_fmp4(buf []byte) (b []byte, err error) {
 	var ftypI, ftypE, moovI, moovE int
 
 	ies, e := decode(buf, "ftyp")
-	if len(ies) == 0 {
-		err = errors.New("未找到box")
-	}
 	if e != nil {
 		return
 	}
@@ -116,11 +114,14 @@ func (t *Fmp4Decoder) Init_fmp4(buf []byte) (b []byte, err error) {
 }
 
 func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframes *slice.Buf[byte]) (cu int, err error) {
+	if len(buf) > humanize.MByte*100 {
+		err = errors.New("buf too large")
+		return
+	}
 	if len(t.traks) == 0 {
 		err = errors.New("未初始化traks")
 		return
 	}
-
 	if t.buf == nil {
 		t.buf = slice.New[byte]()
 	}
@@ -199,9 +200,6 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframes *slice.Buf[byte])
 	)
 
 	ies, e := decode(buf, "moof")
-	if len(ies) == 0 {
-		err = errors.New("未找到box")
-	}
 	if e != nil {
 		return
 	}
@@ -383,9 +381,15 @@ func deals(ies []ie, boxNames [][]string, fs []func([]ie) (breakloop bool)) (err
 func decode(buf []byte, reSyncboxName string) (m []ie, err error) {
 	var cu int
 
-	for cu < len(buf) {
+	for cu < len(buf)-3 {
 		boxName, i, e, E := searchBox(buf, &cu)
 		if E != nil {
+			if errors.Is(E, io.EOF) {
+				if len(m) == 0 {
+					err = errors.New("未找到box")
+				}
+				return
+			}
 			err = E
 			if reSyncI := bytes.Index(buf[cu:], []byte(reSyncboxName)); reSyncI != -1 {
 				cu += reSyncI - 4
