@@ -760,12 +760,14 @@ func (c *GetFunc) getDanmuInfo() (missKey []string) {
 		//弹幕钥
 		c.Token = j.Data.Token
 		//弹幕链接
+		var tmp []string
 		for _, v := range j.Data.HostList {
 			if v.WssPort != 443 {
-				c.WSURL = append(c.WSURL, "wss://"+v.Host+":"+strconv.Itoa(v.WssPort)+"/sub")
+				tmp = append(tmp, "wss://"+v.Host+":"+strconv.Itoa(v.WssPort)+"/sub")
 			}
-			c.WSURL = append(c.WSURL, "wss://"+v.Host+"/sub")
+			tmp = append(tmp, "wss://"+v.Host+"/sub")
 		}
+		c.WSURL = tmp
 	}
 	return
 }

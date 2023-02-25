@@ -105,6 +105,7 @@ func Start() {
 		//使用带tag的消息队列在功能间传递消息
 		c.C.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
 			`flash_room`: func(_ any) bool { //房间重进
+				F.Get(&c.C).Get(`WSURL`)
 				select {
 				case flash_room_chan <- struct{}{}:
 				default:
