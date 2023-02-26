@@ -489,6 +489,16 @@ func (replyF) room_change(s string) {
 
 	var sh = []interface{}{"房间改变"}
 
+	if c.C.Title != title.(string) {
+		//录制
+		go func() {
+			if v, ok := c.C.K_v.LoadV(`修改标题时重新录制`).(bool); ok && v {
+				StreamOStop(c.C.Roomid) //停止其他房间录制
+			}
+			StreamOStart(c.C.Roomid)
+		}()
+	}
+
 	if title != nil {
 		sh = append(sh, title)
 		c.C.Title = title.(string)
@@ -499,14 +509,6 @@ func (replyF) room_change(s string) {
 	Gui_show(Itos(sh), "0room")
 
 	msglog.Base_add("房").L(`I: `, sh...)
-
-	//录制
-	go func() {
-		if v, ok := c.C.K_v.LoadV(`修改标题时重新录制`).(bool); ok && v {
-			StreamOStop(c.C.Roomid) //停止其他房间录制
-		}
-		StreamOStart(c.C.Roomid)
-	}()
 }
 
 // Msg-超管警告
