@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"math"
 	"net/http"
+	"net/http/pprof"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -297,7 +298,10 @@ func StreamOStart(roomid int) {
 		common = c.C
 	)
 	common.Roomid = roomid
-	tmp.LoadConfig(common, c.C.Log)
+	if e := tmp.LoadConfig(common); e != nil {
+		flog.L(`E: `, e)
+		return
+	}
 	//录制回调，关于ass
 	tmp.Callback_startRec = func(ms *M4SStream) error {
 		StartRecDanmu(ms.Current_save_path + "0.csv")
@@ -1089,6 +1093,15 @@ func init() {
 		if path[0] != '/' {
 			flog.L(`E: `, `直播Web服务路径错误`)
 			return
+		}
+
+		// debug模式
+		if de, ok := c.C.K_v.LoadV(`debug模式`).(bool); ok && de {
+			c.C.SerF.Store("/debug/pprof/", pprof.Index)
+			c.C.SerF.Store("/debug/pprof/cmdline", pprof.Cmdline)
+			c.C.SerF.Store("/debug/pprof/profile", pprof.Profile)
+			c.C.SerF.Store("/debug/pprof/symbol", pprof.Symbol)
+			c.C.SerF.Store("/debug/pprof/trace", pprof.Trace)
 		}
 
 		// 直播流主页

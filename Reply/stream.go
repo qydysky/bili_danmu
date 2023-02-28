@@ -139,9 +139,9 @@ func (t *M4SStream) Common() c.Common {
 	return t.common
 }
 
-func (t *M4SStream) LoadConfig(common c.Common, l *log.Log_interface) {
+func (t *M4SStream) LoadConfig(common c.Common) (e error) {
 	t.common = common
-	t.log = l.Base(`直播流保存`)
+	t.log = common.Log.Base(`直播流保存`)
 
 	//读取配置
 	if path, ok := common.K_v.LoadV("直播流保存位置").(string); ok {
@@ -149,22 +149,20 @@ func (t *M4SStream) LoadConfig(common c.Common, l *log.Log_interface) {
 			if fs, err := os.Stat(path); err != nil {
 				if errors.Is(err, os.ErrNotExist) {
 					if err := p.File().NewPath(path); err != nil {
-						t.log.L(`E: `, `直播流保存位置错误`, err)
-						return
+						return errors.New(`直播流保存位置错误` + err.Error())
 					}
 				} else {
-					t.log.L(`E: `, `直播流保存位置错误`, err)
-					return
+					return errors.New(`直播流保存位置错误` + err.Error())
 				}
 			} else if !fs.IsDir() {
-				t.log.L(`E: `, `直播流保存位置不是目录`)
-				return
+				return errors.New(`直播流保存位置不是目录`)
 			}
 			t.config.save_path = path + "/"
 		} else {
-			t.log.L(`E: `, `直播流保存位置错误`, err)
-			return
+			return errors.New(`直播流保存位置错误` + err.Error())
 		}
+	} else {
+		return errors.New(`未配置直播流保存位置`)
 	}
 	if v, ok := common.K_v.LoadV(`直播hls流保存为MP4`).(bool); ok {
 		t.config.save_as_mp4 = v
@@ -178,6 +176,7 @@ func (t *M4SStream) LoadConfig(common c.Common, l *log.Log_interface) {
 	if v, ok := common.K_v.LoadV(`直播流类型`).(string); ok {
 		t.config.want_type = v
 	}
+	return
 }
 
 func (t *M4SStream) getFirstBuf() []byte {
