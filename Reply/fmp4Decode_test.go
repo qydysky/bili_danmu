@@ -26,7 +26,6 @@ func Test_deal(t *testing.T) {
 	buff := slice.New[byte]()
 	max := 0
 	fmp4Decoder := new(Fmp4Decoder)
-	fmp4KeyFrames := slice.New[byte]()
 
 	for c := 0; true; c++ {
 		n, e := f.Read(buf)
@@ -47,7 +46,7 @@ func Test_deal(t *testing.T) {
 		if e != nil {
 			t.Fatal(e)
 		}
-		last_available_offset, e := fmp4Decoder.Search_stream_fmp4(buff.GetPureBuf(), fmp4KeyFrames)
+		last_available_offset, _, e := fmp4Decoder.Search_stream_fmp4(buff.GetPureBuf())
 		if e != nil && e.Error() != "未初始化traks" {
 			t.Fatal(e)
 		}

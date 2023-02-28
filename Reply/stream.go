@@ -682,6 +682,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 					buff   = slice.New[byte]()
 					buf    = make([]byte, 1<<16)
 				)
+				defer ticker.Stop()
 				for {
 					n, e := rc.Read(buf)
 					buff.Append(buf[:n])
@@ -716,6 +717,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 								if len(t.first_buf) != 0 {
 									t.log.L(`E: `, `flv重复接收到起始段，退出`)
 									r.Cancel()
+									s.Done()
 									break
 								}
 								t.first_buf = front_buf
