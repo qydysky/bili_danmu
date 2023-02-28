@@ -113,7 +113,7 @@ func (t *Fmp4Decoder) Init_fmp4(buf []byte) (b []byte, err error) {
 	return b, nil
 }
 
-func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframes *slice.Buf[byte]) (cu int, err error) {
+func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte) (cu int, keyframes [][]byte, err error) {
 	if len(buf) > humanize.MByte*100 {
 		err = errors.New("buf too large")
 		return
@@ -243,7 +243,7 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframes *slice.Buf[byte])
 				//deal frame
 				if keyframeMoof {
 					if v, e := t.buf.HadModified(bufModified); e == nil && v && !t.buf.IsEmpty() {
-						keyframes.Append(t.buf.GetPureBuf())
+						keyframes = append(keyframes, t.buf.GetCopyBuf())
 						cu = m[0].i
 						t.buf.Reset()
 					}
@@ -332,7 +332,7 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframes *slice.Buf[byte])
 				//deal frame
 				if keyframeMoof {
 					if v, e := t.buf.HadModified(bufModified); e == nil && v && !t.buf.IsEmpty() {
-						keyframes.Append(t.buf.GetPureBuf())
+						keyframes = append(keyframes, t.buf.GetCopyBuf())
 						cu = m[0].i
 						t.buf.Reset()
 					}

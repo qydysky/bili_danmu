@@ -116,7 +116,7 @@ func (t *M4SStream) getM4s() (p *m4s_link_item) {
 				return &m4s_link_item{}
 			},
 			func(t *m4s_link_item) bool {
-				return !t.pooledTime.IsZero() || t.createdTime.After(t.pooledTime) || time.Now().Before(t.pooledTime.Add(time.Second*10))
+				return t.createdTime.After(t.pooledTime) || time.Now().Before(t.pooledTime.Add(time.Second*10))
 			},
 			func(t *m4s_link_item) *m4s_link_item {
 				return t.reset()
@@ -805,10 +805,8 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 
 	//
 	var (
-		buf              = slice.New[byte]()
-		fmp4KeyFrames    = slice.New[byte]()
-		fmp4KeyFramesBuf []byte
-		fmp4Decoder      = &Fmp4Decoder{}
+		buf         = slice.New[byte]()
+		fmp4Decoder = &Fmp4Decoder{}
 		// flashingSer      bool
 	)
 
@@ -977,7 +975,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 			download_seq = append(download_seq[:k], download_seq[k+1:]...)
 			k -= 1
 
-			last_available_offset, err := fmp4Decoder.Search_stream_fmp4(buf.GetPureBuf(), fmp4KeyFrames)
+			last_available_offset, keyframes, err := fmp4Decoder.Search_stream_fmp4(buf.GetPureBuf())
 			if err != nil {
 				if !errors.Is(err, io.EOF) {
 					t.log.L(`E: `, err)
@@ -993,7 +991,6 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 					//丢弃所有数据
 					buf.Reset()
 				} else {
-					fmp4KeyFrames.Reset()
 					last_available_offset = 0
 				}
 			}
@@ -1001,13 +998,11 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 			// no, _ := v.getNo()
 			// fmt.Println(no, "fmp4KeyFrames", fmp4KeyFrames.size(), last_available_offset, err)
 
-			if !fmp4KeyFrames.IsEmpty() {
-				fmp4KeyFramesBuf = fmp4KeyFrames.GetCopyBuf()
-				fmp4KeyFrames.Reset()
-				t.bootBufPush(fmp4KeyFramesBuf)
-				t.Stream_msg.Push_tag(`data`, fmp4KeyFramesBuf)
+			for _, keyframe := range keyframes {
+				t.bootBufPush(keyframe)
+				t.Stream_msg.Push_tag(`data`, keyframe)
 				if out != nil {
-					out.Write(fmp4KeyFramesBuf, true)
+					out.Write(keyframe, true)
 					out.Sync()
 				}
 			}
