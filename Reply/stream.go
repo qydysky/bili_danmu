@@ -21,7 +21,6 @@ import (
 	p "github.com/qydysky/part"
 	file "github.com/qydysky/part/file"
 	funcCtrl "github.com/qydysky/part/funcCtrl"
-	idpool "github.com/qydysky/part/idpool"
 	log "github.com/qydysky/part/log"
 	msgq "github.com/qydysky/part/msgq"
 	pool "github.com/qydysky/part/pool"
@@ -53,7 +52,7 @@ type M4SStream struct {
 	Callback_startRec func(*M4SStream) error   //录制开始的回调
 	Callback_stopRec  func(*M4SStream)         //录制结束的回调
 	Callback_stop     func(*M4SStream)         //实例结束的回调
-	reqPool           *idpool.Idpool           //请求池
+	reqPool           *pool.Buf[reqf.Req]      //请求池
 }
 
 type M4SStream_Config struct {
@@ -212,8 +211,7 @@ func (t *M4SStream) fetchCheckStream() bool {
 	})
 
 	for _, v := range t.common.Live {
-		req := t.reqPool.Get()
-		r := req.Item.(*reqf.Req)
+		r := t.reqPool.Get()
 		if e := r.Reqf(reqf.Rval{
 			Url:       v.Url,
 			Retry:     10,
@@ -244,7 +242,7 @@ func (t *M4SStream) fetchCheckStream() bool {
 			t.log.L(`W: `, `live响应错误`, r.Response.Status, string(r.Respon))
 			t.common.Live = t.common.Live[1:]
 		}
-		t.reqPool.Put(req)
+		t.reqPool.Put(r)
 	}
 
 	return len(t.common.Live) != 0
@@ -257,9 +255,8 @@ func (t *M4SStream) fetchParseM3U8() (m4s_links []*m4s_link_item, m3u8_addon []b
 	}
 
 	// 开始请求
-	req := t.reqPool.Get()
-	defer t.reqPool.Put(req)
-	r := req.Item.(*reqf.Req)
+	r := t.reqPool.Get()
+	defer t.reqPool.Put(r)
 
 	// 请求解析m3u8内容
 	for k, v := range t.common.Live {
@@ -629,10 +626,8 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 		s := signal.Init()
 
 		//开始获取
-		req := t.reqPool.Get()
+		r := t.reqPool.Get()
 		{
-			r := req.Item.(*reqf.Req)
-
 			go func() {
 				select {
 				//停止录制
@@ -780,7 +775,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 				}
 			}
 		}
-		t.reqPool.Put(req)
+		t.reqPool.Put(r)
 
 		if s.Islive() {
 			s.Done()
@@ -870,10 +865,8 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 					link.status = 1 // 设置切片状态为正在下载
 					link.tryDownCount += 1
 
-					req := t.reqPool.Get()
-					defer t.reqPool.Put(req)
-
-					r := req.Item.(*reqf.Req)
+					r := t.reqPool.Get()
+					defer t.reqPool.Put(r)
 					reqConfig := reqf.Rval{
 						Url:     link.Url,
 						Timeout: 3000,

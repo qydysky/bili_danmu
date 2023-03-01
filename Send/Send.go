@@ -101,9 +101,8 @@ func Danmu_s2(data map[string]string) {
 	postStr, contentType := reqf.ToForm(data)
 	l.L(`I: `, "发送", data[`msg`], "至", data[`roomid`])
 
-	reqi := c.C.ReqPool.Get()
-	defer c.C.ReqPool.Put(reqi)
-	r := reqi.Item.(*reqf.Req)
+	r := c.C.ReqPool.Get()
+	defer c.C.ReqPool.Put(r)
 	err := r.Reqf(reqf.Rval{
 		Url:     "https://api.live.bilibili.com/msg/send",
 		PostStr: postStr,

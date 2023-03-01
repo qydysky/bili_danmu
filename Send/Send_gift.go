@@ -58,9 +58,8 @@ func Send_gift(gift_id, bag_id, gift_num int) {
 			return true
 		})
 
-		reqi := c.C.ReqPool.Get()
-		defer c.C.ReqPool.Put(reqi)
-		req := reqi.Item.(*reqf.Req)
+		req := c.C.ReqPool.Get()
+		defer c.C.ReqPool.Put(req)
 		if e := req.Reqf(reqf.Rval{
 			Url:     `https://api.live.bilibili.com/gift/v2/live/bag_send`,
 			PostStr: url.PathEscape(sendStr),

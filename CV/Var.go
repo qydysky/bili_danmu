@@ -16,9 +16,9 @@ import (
 
 	"github.com/dustin/go-humanize"
 	file "github.com/qydysky/part/file"
-	idpool "github.com/qydysky/part/idpool"
 	log "github.com/qydysky/part/log"
 	mq "github.com/qydysky/part/msgq"
+	pool "github.com/qydysky/part/pool"
 	reqf "github.com/qydysky/part/reqf"
 	syncmap "github.com/qydysky/part/sync"
 	web "github.com/qydysky/part/web"
@@ -59,7 +59,7 @@ type Common struct {
 	K_v               syncmap.Map           //配置文件
 	Log               *log.Log_interface    //日志
 	Danmu_Main_mq     *mq.Msgq              //消息
-	ReqPool           *idpool.Idpool        //请求池
+	ReqPool           *pool.Buf[reqf.Req]   //请求池
 	SerF              *web.WebPath          //web服务处理
 }
 
@@ -180,9 +180,20 @@ func (t *Common) Init() Common {
 
 	t.Danmu_Main_mq = mq.New()
 
-	t.ReqPool = idpool.New(func() interface{} {
-		return reqf.New()
-	})
+	t.ReqPool = pool.New(
+		func() *reqf.Req {
+			return reqf.New()
+		},
+		func(t *reqf.Req) bool {
+			return t.IsLive()
+		},
+		func(t *reqf.Req) *reqf.Req {
+			return t
+		},
+		func(t *reqf.Req) *reqf.Req {
+			return t
+		}, 100,
+	)
 
 	var (
 		ckv     = flag.String("ckv", "", "自定义配置KV文件，将会覆盖config_K_v配置")
@@ -305,8 +316,7 @@ func (t *Common) loadConf(customConf string) error {
 		if strings.Contains(customConf, "http:") || strings.Contains(customConf, "https:") {
 			//从网址读取
 			req := t.ReqPool.Get()
-			r := req.Item.(*reqf.Req)
-			if e := r.Reqf(reqf.Rval{
+			if e := req.Reqf(reqf.Rval{
 				Url: customConf,
 				Header: map[string]string{
 					`User-Agent`:      `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0`,
@@ -321,13 +331,13 @@ func (t *Common) loadConf(customConf string) error {
 			}); e != nil {
 				return errors.New("无法获取自定义配置文件 " + e.Error())
 			}
-			if r.Response == nil {
+			if req.Response == nil {
 				return errors.New("无法获取自定义配置文件 响应为空")
-			} else if r.Response.StatusCode&200 != 200 {
-				return fmt.Errorf("无法获取自定义配置文件 %d", r.Response.StatusCode)
+			} else if req.Response.StatusCode&200 != 200 {
+				return fmt.Errorf("无法获取自定义配置文件 %d", req.Response.StatusCode)
 			} else {
 				var tmp map[string]interface{}
-				json.Unmarshal(r.Respon, &tmp)
+				json.Unmarshal(req.Respon, &tmp)
 				for k, v := range tmp {
 					data[k] = v
 				}

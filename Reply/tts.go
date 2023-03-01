@@ -183,9 +183,8 @@ func play() {
 }
 
 func baidu(msg string) error {
-	reqi := c.C.ReqPool.Get()
-	defer c.C.ReqPool.Put(reqi)
-	req := reqi.Item.(*reqf.Req)
+	req := c.C.ReqPool.Get()
+	defer c.C.ReqPool.Put(req)
 	if err := req.Reqf(reqf.Rval{
 		Url:        `https://fanyi.baidu.com/gettts?lan=zh&text=` + url.PathEscape(msg) + `&spd=5&source=web`,
 		SaveToPath: sys.Sys().Cdir() + `/tts.mp3`,
@@ -240,9 +239,8 @@ func youdao(msg string) error {
 		postS += k + `=` + v
 	}
 
-	reqi := c.C.ReqPool.Get()
-	defer c.C.ReqPool.Put(reqi)
-	req := reqi.Item.(*reqf.Req)
+	req := c.C.ReqPool.Get()
+	defer c.C.ReqPool.Put(req)
 	if err := req.Reqf(reqf.Rval{
 		Url:        `https://openapi.youdao.com/ttsapi`,
 		PostStr:    url.PathEscape(postS),
