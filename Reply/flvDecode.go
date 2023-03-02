@@ -8,6 +8,7 @@ import (
 
 	"github.com/dustin/go-humanize"
 	F "github.com/qydysky/bili_danmu/F"
+	slice "github.com/qydysky/part/slice"
 )
 
 const (
@@ -26,7 +27,7 @@ var (
 
 // this fuction read []byte and return flv header and all complete keyframe if possible.
 // complete keyframe means the video and audio tags between two video key frames tag
-func Search_stream_tag(buf []byte) (front_buf []byte, keyframe [][]byte, last_available_offset int, err error) {
+func Search_stream_tag(buf []byte, keyframe *slice.Buf[byte]) (front_buf []byte, last_available_offset int, err error) {
 	if len(buf) > humanize.MByte*100 {
 		err = errors.New("buf too large")
 		return
@@ -44,6 +45,7 @@ func Search_stream_tag(buf []byte) (front_buf []byte, keyframe [][]byte, last_av
 	var (
 		sign         = 0x00
 		keyframe_num = -1
+		confirm_num  = -1
 		tag_num      = 0
 	)
 
@@ -54,8 +56,8 @@ func Search_stream_tag(buf []byte) (front_buf []byte, keyframe [][]byte, last_av
 			// }
 			front_buf = []byte{}
 		}
-		if len(keyframe) > 0 {
-			keyframe = keyframe[:len(keyframe)-1]
+		if bufl := keyframe.Size(); confirm_num != bufl {
+			keyframe.RemoveBack(bufl - confirm_num)
 		}
 	}()
 
@@ -134,16 +136,16 @@ func Search_stream_tag(buf []byte) (front_buf []byte, keyframe [][]byte, last_av
 		if buf[tag_offset] == video_tag {
 			if buf[tag_offset+11]&0xf0 == 0x10 { //key frame
 				keyframe_num += 1
-				keyframe = append(keyframe, []byte{})
+				confirm_num = keyframe.Size()
 				last_available_offset = tag_offset
 			}
 
 			if keyframe_num >= 0 {
-				keyframe[keyframe_num] = append(keyframe[keyframe_num], buf[tag_offset:tag_offset+tag_size_check+previou_tag_size]...)
+				keyframe.Append(buf[tag_offset : tag_offset+tag_size_check+previou_tag_size])
 			}
 		} else if buf[tag_offset] == audio_tag {
 			if keyframe_num >= 0 {
-				keyframe[keyframe_num] = append(keyframe[keyframe_num], buf[tag_offset:tag_offset+tag_size_check+previou_tag_size]...)
+				keyframe.Append(buf[tag_offset : tag_offset+tag_size_check+previou_tag_size])
 			}
 		}
 

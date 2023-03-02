@@ -41,8 +41,7 @@ type M4SStream struct {
 	stream_type       string     //流类型
 	Stream_msg        *msgq.Msgq //流数据消息 tag:data
 	first_buf         []byte     //m4s起始块 or flv起始块
-	boot_buf          [][]byte   //快速启动缓冲
-	boot_buf_size     int        //快速启动缓冲长度
+	boot_buf          []byte     //快速启动缓冲
 	boot_buf_locker   funcCtrl.BlockFunc
 	last_m4s          *m4s_link_item           //最后一个切片
 	m4s_pool          *pool.Buf[m4s_link_item] //切片pool
@@ -673,9 +672,10 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 			// read
 			go func() {
 				var (
-					ticker = time.NewTicker(time.Second)
-					buff   = slice.New[byte]()
-					buf    = make([]byte, 1<<16)
+					ticker   = time.NewTicker(time.Second)
+					buff     = slice.New[byte]()
+					keyframe = slice.New[byte]()
+					buf      = make([]byte, 1<<16)
 				)
 				defer ticker.Stop()
 				for {
@@ -699,7 +699,8 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 					}
 
 					if !buff.IsEmpty() {
-						front_buf, keyframe, last_available_offset, e := Search_stream_tag(buff.GetCopyBuf())
+						keyframe.Reset()
+						front_buf, last_available_offset, e := Search_stream_tag(buff.GetPureBuf(), keyframe)
 						if e != nil {
 							if strings.Contains(e.Error(), `no found available tag`) {
 								continue
@@ -707,25 +708,24 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 							//丢弃所有数据
 							buff.Reset()
 						}
-						if len(front_buf)+len(keyframe) != 0 {
-							if len(front_buf) != 0 {
-								if len(t.first_buf) != 0 {
-									t.log.L(`E: `, `flv重复接收到起始段，退出`)
-									r.Cancel()
-									s.Done()
-									break
-								}
-								t.first_buf = front_buf
-								// fmt.Println("write front_buf")
-								out.Write(front_buf)
-								t.Stream_msg.Push_tag(`data`, front_buf)
+						if len(front_buf) != 0 {
+							if len(t.first_buf) != 0 {
+								t.log.L(`E: `, `flv重复接收到起始段，退出`)
+								r.Cancel()
+								s.Done()
+								break
 							}
-							for _, frame := range keyframe {
-								// fmt.Println("write frame")
-								out.Write(frame)
-								t.bootBufPush(frame)
-								t.Stream_msg.Push_tag(`data`, frame)
-							}
+							t.first_buf = make([]byte, len(front_buf))
+							copy(t.first_buf, front_buf)
+							// fmt.Println("write front_buf")
+							out.Write(t.first_buf)
+							t.Stream_msg.Push_tag(`data`, t.first_buf)
+						}
+						if keyframe.Size() != 0 {
+							t.bootBufPush(keyframe.GetPureBuf())
+							keyframe.Reset()
+							out.Write(t.boot_buf)
+							t.Stream_msg.Push_tag(`data`, t.boot_buf)
 						}
 						if last_available_offset > 1 {
 							// fmt.Println("write Sync")
@@ -1133,15 +1133,6 @@ func (t *M4SStream) Start() bool {
 		// 初始化切片消息
 		t.Stream_msg = msgq.New()
 
-		// 初始化快速启动缓冲
-		if v, ok := t.common.K_v.LoadV(`直播Web缓冲长度`).(float64); ok && v != 0 {
-			t.boot_buf_size = int(v)
-			t.boot_buf = make([][]byte, t.boot_buf_size)
-			defer func() {
-				t.boot_buf = nil
-			}()
-		}
-
 		// 主循环
 		for t.Status.Islive() {
 			// 是否在直播
@@ -1235,13 +1226,13 @@ func (t *M4SStream) pusherM4s(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//写入快速启动缓冲
-	for i := 0; i < len(t.boot_buf); i++ {
-		if _, err := w.Write(t.boot_buf[i]); err != nil {
+	if len(t.boot_buf) != 0 {
+		if _, err := w.Write(t.boot_buf); err != nil {
 			return
 		}
-	}
-	if len(t.boot_buf) != 0 && flushSupport {
-		flusher.Flush()
+		if flushSupport {
+			flusher.Flush()
+		}
 	}
 
 	cancel := make(chan struct{})
@@ -1288,13 +1279,13 @@ func (t *M4SStream) pusherFlv(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//写入快速启动缓冲
-	for i := 0; i < len(t.boot_buf); i++ {
-		if _, err := w.Write(t.boot_buf[i]); err != nil {
+	if len(t.boot_buf) != 0 {
+		if _, err := w.Write(t.boot_buf); err != nil {
 			return
 		}
-	}
-	if len(t.boot_buf) != 0 && flushSupport {
-		flusher.Flush()
+		if flushSupport {
+			flusher.Flush()
+		}
 	}
 
 	cancel := make(chan struct{})
@@ -1326,16 +1317,12 @@ func (t *M4SStream) pusherFlv(w http.ResponseWriter, r *http.Request) {
 }
 
 func (t *M4SStream) bootBufPush(buf []byte) {
-	if t.boot_buf != nil {
-		t.boot_buf_locker.Block()
-		defer t.boot_buf_locker.UnBlock()
-
-		if len(t.boot_buf) == t.boot_buf_size {
-			for i := 0; i < len(t.boot_buf)-1; i++ {
-				t.boot_buf[i] = t.boot_buf[i+1]
-			}
-			t.boot_buf = t.boot_buf[:len(t.boot_buf)-1]
-		}
-		t.boot_buf = append(t.boot_buf, buf)
+	t.boot_buf_locker.Block()
+	defer t.boot_buf_locker.UnBlock()
+	if len(t.boot_buf) < len(buf) {
+		t.boot_buf = append(t.boot_buf, make([]byte, len(buf)-len(t.boot_buf))...)
+	} else {
+		t.boot_buf = t.boot_buf[:len(buf)]
 	}
+	copy(t.boot_buf, buf)
 }
