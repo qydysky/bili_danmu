@@ -46,7 +46,7 @@ func Test_deal(t *testing.T) {
 		if e != nil {
 			t.Fatal(e)
 		}
-		last_available_offset, _, e := fmp4Decoder.Search_stream_fmp4(buff.GetPureBuf())
+		last_available_offset, e := fmp4Decoder.Search_stream_fmp4(buff.GetPureBuf(), slice.New[byte]())
 		if e != nil && e.Error() != "未初始化traks" {
 			t.Fatal(e)
 		}

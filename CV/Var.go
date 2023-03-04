@@ -241,6 +241,8 @@ func (t *Common) Init() Common {
 
 			type s struct {
 				MenInUse     string `json:"menInUse"`
+				ReqPoolInUse int    `json:"reqPoolInUse"`
+				ReqPoolSum   int    `json:"reqPoolSum"`
 				NumGoroutine int    `json:"numGoroutine"`
 				GoVersion    string `json:"goVersion"`
 			}
@@ -252,6 +254,8 @@ func (t *Common) Init() Common {
 				j{
 					s{
 						humanize.Bytes(memStats.HeapInuse + memStats.StackInuse),
+						t.ReqPool.PoolInUse(),
+						t.ReqPool.PoolSum(),
 						runtime.NumGoroutine(),
 						runtime.Version(),
 					},

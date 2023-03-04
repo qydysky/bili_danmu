@@ -36,12 +36,13 @@ func Test_FLVdeal(t *testing.T) {
 		if s := buff.Size(); max < s {
 			max = s
 		}
-		front_buf, keyframe, last_available_offset, e := Search_stream_tag(buff.GetPureBuf())
+		keyframe := slice.New[byte]()
+		front_buf, last_available_offset, e := Search_stream_tag(buff.GetPureBuf(), keyframe)
 		if e != nil {
 			t.Fatal(e)
 		}
-		flog.Write([]byte(fmt.Sprintf("%d %d %d %d\n", c, len(front_buf), len(keyframe), last_available_offset)), true)
-		t.Log(c, len(front_buf), len(keyframe))
+		flog.Write([]byte(fmt.Sprintf("%d %d %d %d\n", c, len(front_buf), keyframe.Size(), last_available_offset)), true)
+		t.Log(c, len(front_buf), keyframe.Size())
 		buff.RemoveFront(last_available_offset)
 	}
 	t.Log("max", humanize.Bytes(uint64(max)))
