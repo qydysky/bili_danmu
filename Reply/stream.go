@@ -563,6 +563,7 @@ func (t *M4SStream) saveStream() (e error) {
 
 	// 清除初始值
 	t.last_m4s = nil
+	t.first_buf = nil
 
 	// 显示保存位置
 	if rel, err := filepath.Rel(t.config.save_path, t.Current_save_path); err == nil {
