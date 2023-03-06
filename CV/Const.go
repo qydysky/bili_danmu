@@ -1,6 +1,5 @@
 package cv
 
-//from source/player-loader-2.0.11.min.js
 const (
 	WS_OP_HEARTBEAT                  = 2
 	WS_OP_HEARTBEAT_REPLY            = 3
@@ -15,6 +14,7 @@ const (
 	WS_SEQUENCE_OFFSET               = 12
 	WS_BODY_PROTOCOL_VERSION_NORMAL  = 0
 	WS_BODY_PROTOCOL_VERSION_DEFLATE = 2
+	WS_BODY_PROTOCOL_VERSION_BROTLI  = 3
 	WS_HEADER_DEFAULT_VERSION        = 1
 	WS_HEADER_DEFAULT_OPERATION      = 1
 	WS_HEADER_DEFAULT_SEQUENCE       = 1
@@ -22,12 +22,8 @@ const (
 	WS_AUTH_TOKEN_ERROR              = -101
 )
 
-//from player-loader-2.0.11.min.js
-/*
-	customAuthParam
-*/
 const (
-	Protover = 2
+	Protover = 3
 	Platform = "web"
 	Type     = 2
 )

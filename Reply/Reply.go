@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	brotli "github.com/andybalholm/brotli"
 	c "github.com/qydysky/bili_danmu/CV"
 	F "github.com/qydysky/bili_danmu/F"
 	ws_msg "github.com/qydysky/bili_danmu/Reply/ws_msg"
@@ -37,7 +38,10 @@ func Reply(b []byte) {
 		return
 	}
 
-	if head.BodyV == c.WS_BODY_PROTOCOL_VERSION_DEFLATE {
+	switch head.BodyV {
+	case 1: // 心跳
+	case c.WS_BODY_PROTOCOL_VERSION_NORMAL: // 无加密
+	case c.WS_BODY_PROTOCOL_VERSION_DEFLATE: // DEFLATE
 		readc, err := zlib.NewReader(bytes.NewReader(b[16:]))
 		if err != nil {
 			reply_log.L(`E: `, "解压错误")
@@ -51,6 +55,17 @@ func Reply(b []byte) {
 			return
 		}
 		b = buf.Bytes()
+	case c.WS_BODY_PROTOCOL_VERSION_BROTLI: // BROTLI
+		readc := brotli.NewReader(bytes.NewReader(b[16:]))
+
+		buf := bytes.NewBuffer(nil)
+		if _, err := buf.ReadFrom(readc); err != nil {
+			reply_log.L(`E: `, "解压错误")
+			return
+		}
+		b = buf.Bytes()
+	default:
+		reply_log.L(`E: `, "未知的编码方式", head.BodyV)
 	}
 
 	for len(b) != 0 {
