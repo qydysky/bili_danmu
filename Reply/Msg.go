@@ -86,8 +86,8 @@ var Msg_map = map[string]func(replyF, string){
 	"LIVE":                              replyF.live,               //开播
 	"SUPER_CHAT_ENTRANCE":               nil,                       //SC入口
 	"SUPER_CHAT_MESSAGE_DELETE":         nil,                       //SC删除
-	"SUPER_CHAT_MESSAGE":                nil,                       //replyF.super_chat_message,//SC
-	"SUPER_CHAT_MESSAGE_JPN":            replyF.super_chat_message, //SC
+	"SUPER_CHAT_MESSAGE":                replyF.super_chat_message, //SC
+	"SUPER_CHAT_MESSAGE_JPN":            nil,                       //replyF.super_chat_message, //SC
 	"PANEL":                             nil,                       //replyF.panel,//排行榜 被HOT_RANK_CHANGED替代
 	"ENTRY_EFFECT":                      replyF.entry_effect,       //进入特效
 	"ROOM_REAL_TIME_MESSAGE_UPDATE":     nil,                       //replyF.roominfo,//粉丝数

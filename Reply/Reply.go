@@ -795,18 +795,18 @@ func (replyF) live(s string) {
 }
 
 // Msg-超级留言处理
-var sc_buf = make(map[string]struct{})
+var sc_buf = make(map[int]struct{})
 
 func (replyF) super_chat_message(s string) {
 	msglog := msglog.Base_add("礼")
 
-	var j ws_msg.SUPER_CHAT_MESSAGE_JPN
+	var j ws_msg.SUPER_CHAT_MESSAGE
 	if e := json.Unmarshal([]byte(s), &j); e != nil {
 		msglog.L(`E: `, e)
 	}
 
 	id := j.Data.ID
-	if id != "" {
+	if id != 0 {
 		if _, ok := sc_buf[id]; ok {
 			return
 		}
@@ -816,7 +816,7 @@ func (replyF) super_chat_message(s string) {
 				break
 			}
 			{ //copy map
-				tmp := make(map[string]struct{})
+				tmp := make(map[int]struct{})
 				for k, v := range sc_buf {
 					tmp[k] = v
 				}
@@ -828,7 +828,6 @@ func (replyF) super_chat_message(s string) {
 	uname := j.Data.UserInfo.Uname
 	price := j.Data.Price
 	message := j.Data.Message
-	message_jpn := j.Data.MessageJpn
 
 	var sh = []interface{}{"SC: "}
 
@@ -852,24 +851,21 @@ func (replyF) super_chat_message(s string) {
 		c.C.Danmu_Main_mq.Push_tag(`tts`, Danmu_mq_t{ //传入消息队列
 			uid: `0superchat`,
 			m: map[string]string{
-				`{uname}`:       uname,
-				`{price}`:       strconv.Itoa(price),
-				`{message}`:     message,
-				`{message_jpn}`: message_jpn,
+				`{uname}`:   uname,
+				`{price}`:   strconv.Itoa(price),
+				`{message}`: message,
 			},
 		})
 	}
-	if message != message_jpn && message_jpn != "" {
-		fmt.Println(message_jpn)
-		// Gui_show(message_jpn.(string))
-		sh = append(sh, message_jpn)
-		logg = append(logg, message_jpn)
+	if message != "" {
+		fmt.Println(message)
+		sh = append(sh, message)
+		logg = append(logg, message)
 	}
 	fmt.Print("====\n")
 
 	{ //额外
 		Assf(fmt.Sprintln(sh...))
-		// Gui_show("====\n")
 		Gui_show(Itos(sh), "0superchat")
 		//直播流服务弹幕
 		SendStreamWs(Danmu_item{
