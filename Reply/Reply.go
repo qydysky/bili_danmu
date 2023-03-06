@@ -840,10 +840,8 @@ func (replyF) super_chat_message(s string) {
 	}
 	fmt.Println("====")
 	fmt.Println(sh...)
-	// Gui_show("\n====")
 	if message != "" {
 		fmt.Println(message)
-		// Gui_show(message.(string))
 		sh = append(sh, message)
 		logg = append(logg, message)
 	}
@@ -856,11 +854,6 @@ func (replyF) super_chat_message(s string) {
 				`{message}`: message,
 			},
 		})
-	}
-	if message != "" {
-		fmt.Println(message)
-		sh = append(sh, message)
-		logg = append(logg, message)
 	}
 	fmt.Print("====\n")
 
