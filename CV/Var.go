@@ -61,6 +61,7 @@ type Common struct {
 	Danmu_Main_mq     *mq.Msgq              //消息
 	ReqPool           *pool.Buf[reqf.Req]   //请求池
 	SerF              *web.WebPath          //web服务处理
+	StartT            time.Time             //启动时间
 }
 
 type LiveQn struct {
@@ -136,6 +137,7 @@ type StreamType struct {
 
 func (t *Common) Init() Common {
 	t.PID = os.Getpid()
+	t.StartT = time.Now()
 
 	t.AllStreamType = map[string]StreamType{
 		`fmp4`: {
@@ -236,33 +238,41 @@ func (t *Common) Init() Common {
 			Addr: serUrl.Host,
 		}, t.SerF)
 
-		t.SerF.Store("/", func(w http.ResponseWriter, _ *http.Request) {
-			var memStats runtime.MemStats
-			runtime.ReadMemStats(&memStats)
+		if val, ok := t.K_v.LoadV("性能路径").(string); ok && val != "" {
+			t.SerF.Store(val, func(w http.ResponseWriter, _ *http.Request) {
+				var memStats runtime.MemStats
+				runtime.ReadMemStats(&memStats)
 
-			type s struct {
-				MenInUse     string `json:"menInUse"`
-				ReqPoolInUse int    `json:"reqPoolInUse"`
-				ReqPoolSum   int    `json:"reqPoolSum"`
-				NumGoroutine int    `json:"numGoroutine"`
-				GoVersion    string `json:"goVersion"`
-			}
-			type j struct {
-				Stats s `json:"stats"`
-			}
+				var gcAvgS float64
 
-			ResStruct{0, "ok",
-				j{
-					s{
-						humanize.Bytes(memStats.HeapInuse + memStats.StackInuse),
-						t.ReqPool.PoolInUse(),
-						t.ReqPool.PoolSum(),
-						runtime.NumGoroutine(),
-						runtime.Version(),
+				if memStats.NumGC != 0 {
+					gcAvgS = time.Since(t.StartT).Seconds() / float64(memStats.NumGC)
+				}
+
+				ResStruct{0, "ok", map[string]any{
+					"startTime":   t.StartT.Format(time.DateTime),
+					"currentTime": time.Now().Format(time.DateTime),
+					"state": map[string]any{
+						"base": map[string]any{
+							"reqPoolInUse": t.ReqPool.PoolInUse(),
+							"reqPoolSum":   t.ReqPool.PoolSum(),
+							"numGoroutine": runtime.NumGoroutine(),
+							"goVersion":    runtime.Version(),
+						},
+						"mem": map[string]any{
+							"memInUse": humanize.Bytes(memStats.HeapInuse + memStats.StackInuse),
+						},
+						"gc": map[string]any{
+							"numGC":            memStats.NumGC,
+							"lastGC":           time.UnixMicro(int64(memStats.LastGC / 1000)).Format(time.DateTime),
+							"gcCPUFractionPpm": float64(int(memStats.GCCPUFraction*100000000)) / 100,
+							"gcAvgS":           float64(int(gcAvgS*100)) / 100,
+						},
 					},
 				},
-			}.Write(w)
-		})
+				}.Write(w)
+			})
+		}
 
 		t.Stream_url, _ = url.Parse(`http://` + serAdress)
 	}

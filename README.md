@@ -64,6 +64,49 @@
 ### 说明
 本项目使用github action自动构建，构建过程详见[yml](https://github.com/qydysky/bili_danmu/blob/master/.github/workflows/go.yml)
 
+#### 性能检查
+当配置了`Web服务地址`及`性能路径`时，运行中的性能信息将可以通过http获取。  
+例如有如下配置:  
+config_K_v.json
+```json
+{
+  ...
+  "Web服务地址":"0.0.0.0:10000",
+  "性能路径":"/state"
+  ...
+}
+```
+
+此时GET http://127.0.0.1:10000/state
+```json
+{
+  "code": 0,
+  "message": "ok",
+  "data": {
+    "currentTime": "2023-03-11 15:49:06", //当前时间
+    "startTime": "2023-03-11 15:48:26",   //启动时间
+    "state": {
+      "base": {
+        "goVersion": "go1.20.1",          //编译使用的golang版本
+        "numGoroutine": 53,               //goroutine数量
+        "reqPoolInUse": 0,                //全局请求池-正在使用数量
+        "reqPoolSum": 2                   //全局请求池-总数量
+      },
+      "gc": {
+        "gcAvgS": 6.73,                   //平均gc间隔 单位秒
+        "gcCPUFractionPpm": 4.74,         //gc的STC耗时占总CPU时间比值 单位百万分之
+        "lastGC": "2023-03-11 15:49:01",  //最后gc时间
+        "numGC": 6                        //总gc数量
+      },
+      "mem": { "memInUse": "7.2 MB" }     //总使用内存
+    }
+  }
+}
+```
+
+另外，当配置文件中的`debug模式`为`true`时，标准包[net/http/pprof](https://pkg.go.dev/net/http/pprof)将在`/debug/pprof/`路径可用，从而可以使用`go tool pprof`工具进行性能调试。
+
+
 #### 自定义config_K_v.json
 当启动时使用`-ckv 路径`，将从此路径(或http地址)加载config_K_v.json并覆盖默认config_K_v.json中的配置项。
 使用此配置，可以在有新配置项时，默认使用新配置项而保持之前其他的配置。
