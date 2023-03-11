@@ -223,13 +223,14 @@ func (t *Common) Init() Common {
 		}
 	}()
 
-	if serAdress, ok := t.K_v.LoadV("Web服务地址").(string); ok {
+	t.SerF = new(web.WebPath)
+	t.Stream_url = &url.URL{}
+
+	if serAdress, ok := t.K_v.LoadV("Web服务地址").(string); ok && serAdress != "" {
 		serUrl, e := url.Parse("http://" + serAdress)
 		if e != nil {
 			panic(e)
 		}
-
-		t.SerF = new(web.WebPath)
 
 		web.NewSyncMap(&http.Server{
 			Addr: serUrl.Host,
