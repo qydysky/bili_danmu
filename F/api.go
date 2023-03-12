@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/dustin/go-humanize"
@@ -28,14 +29,15 @@ import (
 )
 
 var apilog = c.C.Log.Base(`api`)
-var api_limit = limit.New(2, 1000, 30000) //频率限制2次/s，最大等待时间30s
+var api_limit = limit.New(2, "1s", "30s") //频率限制2次/s，最大等待时间30s
 
 type GetFunc struct {
 	*c.Common
+	l sync.RWMutex
 }
 
 func Get(c *c.Common) *GetFunc {
-	return &GetFunc{c}
+	return &GetFunc{Common: c}
 }
 
 func (c *GetFunc) Get(key string) {
@@ -213,12 +215,21 @@ func (c *GetFunc) Get(key string) {
 	if fList, ok := api_can_get[key]; ok {
 		for _, fItem := range fList {
 			apilog.Log_show_control(false).L(`T: `, `Get`, key)
+
+			c.l.Lock()
 			missKey := fItem()
+			c.l.Unlock()
+
 			if len(missKey) > 0 {
 				apilog.L(`T: `, `missKey when get`, key, missKey)
 				for _, misskeyitem := range missKey {
-					if checkf, ok := check[misskeyitem]; ok && checkf() {
-						continue
+					if checkf, ok := check[misskeyitem]; ok {
+						c.l.RLock()
+						if checkf() {
+							c.l.RUnlock()
+							continue
+						}
+						c.l.RUnlock()
 					}
 					if misskeyitem == key {
 						apilog.L(`W: `, `missKey equrt key`, key, missKey)
@@ -226,14 +237,23 @@ func (c *GetFunc) Get(key string) {
 					}
 					c.Get(misskeyitem)
 				}
+
+				c.l.Lock()
 				missKey := fItem()
+				c.l.Unlock()
+
 				if len(missKey) > 0 {
 					apilog.L(`W: `, `missKey when get`, key, missKey)
 					continue
 				}
 			}
-			if checkf, ok := check[key]; ok && checkf() {
-				break
+			if checkf, ok := check[key]; ok {
+				c.l.RLock()
+				if checkf() {
+					c.l.RUnlock()
+					break
+				}
+				c.l.RUnlock()
 			}
 		}
 	}

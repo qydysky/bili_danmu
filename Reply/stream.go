@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	c "github.com/qydysky/bili_danmu/CV"
@@ -631,29 +632,40 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 		r := t.reqPool.Get()
 		{
 			go func() {
+				tsc, tscf := t.Status.WaitC()
+				defer tscf()
+				sc, scf := s.WaitC()
+				defer scf()
+
 				select {
 				//停止录制
-				case <-t.Status.WaitC():
+				case <-tsc:
 					r.Cancel()
 				//当前连接终止
-				case <-s.WaitC():
+				case <-sc:
 				}
 			}()
 
 			out := file.New(t.Current_save_path+`0.flv`, -1, true).File()
 
 			rc, rw := io.Pipe()
-			var leastReadUnix = time.Now().Unix()
+			var leastReadUnix atomic.Int64
+			leastReadUnix.Store(time.Now().Unix())
+
 			// read timeout
 			go func() {
 				timer := time.NewTicker(5 * time.Second)
 				defer timer.Stop()
+
+				sc, scf := s.WaitC()
+				defer scf()
+
 				for {
 					select {
-					case <-s.WaitC():
+					case <-sc:
 						return
 					case curT := <-timer.C:
-						if curT.Unix()-leastReadUnix > 5 {
+						if curT.Unix()-leastReadUnix.Load() > 5 {
 							t.log.L(`W: `, "5s未接收到任何数据")
 							// 5s未接收到任何数据
 							r.Cancel()
@@ -689,7 +701,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 						t.Stream_msg.Push_tag(`close`, nil)
 						break
 					}
-					leastReadUnix = time.Now().Unix()
+					leastReadUnix.Store(time.Now().Unix())
 
 					skip := true
 					select {

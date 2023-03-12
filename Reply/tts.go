@@ -38,7 +38,7 @@ var (
 )
 var tts_List = make(chan string, 20)
 
-var tts_limit = limit.New(1, 5000, 15000) //频率限制1次/5s，最大等待时间15s
+var tts_limit = limit.New(1, "5s", "15s") //频率限制1次/5s，最大等待时间15s
 
 var tts_log = c.C.Log.Base_add(`TTS`)
 

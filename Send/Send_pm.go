@@ -22,7 +22,7 @@ type Pm_item struct {
 }
 
 // 每5s一个令牌，最多等10秒
-var pm_limit = limit.New(1, 5000, 10000)
+var pm_limit = limit.New(1, "5s", "10s")
 
 func Send_pm(uid int, msg string) error {
 	if msg == `` || uid == 0 {

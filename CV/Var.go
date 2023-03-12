@@ -24,6 +24,12 @@ import (
 	web "github.com/qydysky/part/web"
 )
 
+type StreamType struct {
+	Protocol_name string
+	Format_name   string
+	Codec_name    string
+}
+
 type Common struct {
 	PID               int                   //进程id
 	Uid               int                   //client uid
@@ -96,6 +102,55 @@ func (t *LiveQn) Disable(reUpTime time.Time) {
 	t.ReUpTime = reUpTime
 }
 
+func (t *Common) IsOn(key string) bool {
+	v, ok := t.K_v.LoadV(key).(bool)
+	return ok && v
+}
+
+func (t *Common) Copy() *Common {
+	var c = Common{
+		PID:               t.PID,
+		Uid:               t.Uid,
+		Live:              t.Live,
+		Live_qn:           t.Live_qn,
+		Live_want_qn:      t.Live_want_qn,
+		Roomid:            t.Roomid,
+		Cookie:            t.Cookie.Copy(),
+		Title:             t.Title,
+		Uname:             t.Uname,
+		UpUid:             t.UpUid,
+		Rev:               t.Rev,
+		Renqi:             t.Renqi,
+		Watched:           t.Watched,
+		OnlineNum:         t.OnlineNum,
+		GuardNum:          t.GuardNum,
+		ParentAreaID:      t.ParentAreaID,
+		AreaID:            t.AreaID,
+		Locked:            t.Locked,
+		Note:              t.Note,
+		Live_Start_Time:   t.Live_Start_Time,
+		Liveing:           t.Liveing,
+		Wearing_FansMedal: t.Wearing_FansMedal,
+		Token:             t.Token,
+		WSURL:             t.WSURL,
+		LIVE_BUVID:        t.LIVE_BUVID,
+		Stream_url:        t.Stream_url,
+		Proxy:             t.Proxy,
+		AcceptQn:          syncmap.Copy(t.AcceptQn),
+		Qn:                syncmap.Copy(t.Qn),
+		StreamType:        t.StreamType,
+		AllStreamType:     syncmap.Copy(t.AllStreamType),
+		K_v:               t.K_v.Copy(),
+		Log:               t.Log,
+		Danmu_Main_mq:     t.Danmu_Main_mq,
+		ReqPool:           t.ReqPool,
+		SerF:              t.SerF,
+		StartT:            t.StartT,
+	}
+
+	return &c
+}
+
 // 自动停用机制
 func (t *Common) DisableLiveAuto(host string) {
 	for i := 0; i < len(t.Live); i++ {
@@ -127,12 +182,6 @@ func (t *Common) ValidLive() *LiveQn {
 		return &t.Live[i]
 	}
 	return nil
-}
-
-type StreamType struct {
-	Protocol_name string
-	Format_name   string
-	Codec_name    string
 }
 
 func (t *Common) Init() Common {

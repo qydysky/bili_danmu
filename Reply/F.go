@@ -45,8 +45,7 @@ var flog = c.C.Log.Base(`功能`)
 
 // 功能开关选取函数
 func IsOn(s string) bool {
-	v, ok := c.C.K_v.LoadV(s).(bool)
-	return ok && v
+	return c.C.IsOn(s)
 }
 
 // 字符重复度检查
@@ -135,8 +134,11 @@ func ShowRevf() {
 	ShowRev_start = true
 	for {
 		c.C.Log.Base(`功能`).L(`I: `, fmt.Sprintf("营收 ￥%.2f", c.C.Rev))
-		for c.C.Rev == ShowRev_old {
-			sys.Sys().Timeoutf(60)
+		for {
+			if c.C.Rev != ShowRev_old {
+				break
+			}
+			time.Sleep(time.Minute)
 		}
 		ShowRev_old = c.C.Rev
 	}
@@ -293,15 +295,15 @@ func StreamOStart(roomid int) {
 		flog.L(`W: `, `已录制 `+strconv.Itoa(roomid)+` 不能重复录制`)
 		return
 	}
-	var (
-		tmp    = new(M4SStream)
-		common = c.C
-	)
-	common.Roomid = roomid
-	if e := tmp.LoadConfig(common); e != nil {
+
+	var tmp = new(M4SStream)
+
+	if e := tmp.LoadConfig(*c.C.Copy()); e != nil {
 		flog.L(`E: `, e)
 		return
 	}
+	tmp.common.Roomid = roomid
+
 	//录制回调，关于ass
 	tmp.Callback_startRec = func(ms *M4SStream) error {
 		StartRecDanmu(ms.Current_save_path + "0.csv")
@@ -345,13 +347,13 @@ func StreamOStop(roomid int) {
 			return true
 		})
 	case -1: // 所有房间
-		streamO.Range(func(_, v interface{}) bool {
+		streamO.Range(func(k, v interface{}) bool {
 			if v.(*M4SStream).Status.Islive() {
 				v.(*M4SStream).Stop()
 			}
+			streamO.Delete(k)
 			return true
 		})
-		streamO = new(sync.Map)
 	default: // 针对某房间
 		if v, ok := streamO.Load(roomid); ok {
 			if v.(*M4SStream).Status.Islive() {
@@ -535,7 +537,7 @@ var danmuji = Danmuji{
 	Buf: map[string]string{
 		"弹幕机在么": "在",
 	},
-	reflect_limit: limit.New(1, 4000, 8000),
+	reflect_limit: limit.New(1, "4s", "8s"),
 }
 
 func init() { //初始化反射型弹幕机
@@ -624,11 +626,12 @@ func init() {
 	go func() {
 		for {
 			<-autoskip.ticker.C
+			autoskip.Lock()
 			if len(autoskip.buf) == 0 {
+				autoskip.Unlock()
 				continue
 			}
 			autoskip.now += 1
-			autoskip.Lock()
 			if autoskip.roomid != c.C.Roomid {
 				autoskip.buf = make(map[string]Autoskip_item)
 				autoskip.roomid = c.C.Roomid
@@ -721,7 +724,7 @@ func init() {
 	if max_num, ok := c.C.K_v.LoadV(`每秒显示弹幕数`).(float64); ok && int(max_num) >= 1 {
 		flog.Base_add(`更少弹幕`).L(`T: `, `每秒弹幕数:`, int(max_num))
 		lessdanmu.max_num = int(max_num)
-		lessdanmu.limit = limit.New(int(max_num), 1000, 0) //timeout right now
+		lessdanmu.limit = limit.New(int(max_num), "1s", "0s") //timeout right now
 	}
 }
 
@@ -813,6 +816,7 @@ func Lessdanmuf(s string) (show bool) {
 
 type Shortdanmu struct {
 	lastdanmu []rune
+	l         sync.Mutex
 }
 
 var shortdanmu = Shortdanmu{}
@@ -821,6 +825,10 @@ func Shortdanmuf(s string) string {
 	if !IsOn("精简弹幕") {
 		return s
 	}
+
+	shortdanmu.l.Lock()
+	defer shortdanmu.l.Unlock()
+
 	if len(shortdanmu.lastdanmu) == 0 {
 		shortdanmu.lastdanmu = []rune(s)
 		return s

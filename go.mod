@@ -6,7 +6,7 @@ require (
 	github.com/gofrs/uuid v4.3.0+incompatible
 	github.com/gotk3/gotk3 v0.6.1
 	github.com/mdp/qrterminal/v3 v3.0.0
-	github.com/qydysky/part v0.23.17
+	github.com/qydysky/part v0.24.3
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966
 	golang.org/x/text v0.8.0
@@ -33,3 +33,5 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	rsc.io/qr v0.2.0 // indirect
 )
+
+replace github.com/qydysky/part => ../part

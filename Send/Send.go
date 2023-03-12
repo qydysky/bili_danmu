@@ -15,7 +15,7 @@ import (
 )
 
 // 每5s一个令牌，最多等20秒
-var danmu_s_limit = limit.New(1, 5000, 20000)
+var danmu_s_limit = limit.New(1, "5s", "20s")
 var damnu_official = make(map[string]string)
 
 // 初始化表情代码

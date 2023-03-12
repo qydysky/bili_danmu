@@ -358,7 +358,7 @@ func Start() {
 		{ //附加功能 直播流停止
 			reply.StreamOStop(-1)
 		}
-		close(interrupt)
+		// close(interrupt)
 		danmulog.L(`I: `, "结束退出")
 	}
 }

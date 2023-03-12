@@ -13,7 +13,7 @@ import (
 )
 
 // 每2s一个令牌，最多等10秒
-var gift_limit = limit.New(1, 2000, 10000)
+var gift_limit = limit.New(1, "2s", "10s")
 
 func Send_gift(gift_id, bag_id, gift_num int) {
 	log := c.C.Log.Base_add(`发送礼物`)
