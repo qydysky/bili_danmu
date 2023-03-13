@@ -385,16 +385,13 @@ __webpack_require__.r(__webpack_exports__);
             };
             conn.onopen = function () {
                 conn.send(`pause`);
-                config.conn = conn
-                initPlay(config);
+                config.conn = conn;
             };
             interval_handle = setInterval(()=>{
                 if(player.currentTime != undefined)conn.send(player.currentTime);
             },3000);
         }
     }
-
-    ws();
 
     function initPlay(config) {
         if(player != undefined && player.destroy != undefined)player.destroy();
@@ -416,6 +413,9 @@ __webpack_require__.r(__webpack_exports__);
             config.conn.send("%S"+danmu.text);
         });
     }
+    
+    ws();
+    initPlay(config);
 })();
 
 })();
