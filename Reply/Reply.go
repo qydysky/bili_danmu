@@ -1122,6 +1122,9 @@ func (replyF) danmu(s string) {
 		} else {
 			item.msg = _msg
 		}
+		//对指定弹幕重新录制
+		danmuReLiveTriger.Init(&c.C)
+		danmuReLiveTriger.Check(item.uid, item.msg)
 	}
 	Msg_showdanmu(item)
 }

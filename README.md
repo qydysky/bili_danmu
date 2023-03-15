@@ -56,7 +56,7 @@
 - [x] cookie加密
 - [x] 弹幕自动重连（30s无响应）
 - [x] 直播流开播自动下载、断流再保存、故障转移、移除历史
-- [x] ~~多房间直播流保存~~
+- [x] 指定弹幕、标题切换重启录制
 - [x] 命令行支持房间切换、弹幕发送、表情发送、启停录制、重载弹幕、查看历史记录、查看正在直播的主播
 - [x] GTK信息窗支持房间切换、弹幕格式化发送、时长统计
 - [x] GTK弹幕窗支持自定义人/事件消息停留
@@ -466,7 +466,8 @@ go build main.go
 
 前往[releases](https://github.com/qydysky/bili_danmu/releases)页下载对应系统版本。解压后进入`demo`目录(文件夹)，运行`demo.run`(`demo.exe`)。
 ```
-./demo.run [-r 房间ID]
+./demo.run [-r 房间ID] [-ckv 自定义config_K_v.json]
+./demo.exe [-r 房间ID] [-ckv 自定义config_K_v.json]
 ```
 
 #### 注意事项
