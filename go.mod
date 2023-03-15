@@ -1,6 +1,6 @@
 module github.com/qydysky/bili_danmu
 
-go 1.19
+go 1.20
 
 require (
 	github.com/gofrs/uuid v4.3.0+incompatible
@@ -13,7 +13,7 @@ require (
 )
 
 require (
-	github.com/andybalholm/brotli v1.0.5 // indirect
+	github.com/andybalholm/brotli v1.0.5
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.1
 	github.com/go-ole/go-ole v1.2.6 // indirect
