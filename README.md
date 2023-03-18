@@ -64,6 +64,29 @@
 ### 说明
 本项目使用github action自动构建，构建过程详见[yml](https://github.com/qydysky/bili_danmu/blob/master/.github/workflows/go.yml)
 
+#### 指定房间录制回调
+配置文件添加了如下配置
+```json
+{
+    "指定房间录制回调-help":"当指定roomid的房间结束录制后触发对应的命令，命令执行目录为录播目录，占位符({type}:视频类型)，durationS：录制时长超过指定秒数才触发",
+    "指定房间录制回调":[
+        {
+            "roomid":0,
+            "durationS":60,
+            "after":["cmd","/c","ffmpeg","-i","0.{type}","-y","-c","copy","1.{type}","1>1.log","2>&1"]
+        },
+        {
+            "roomid":0,
+            "durationS":60,
+            "after":["ffmpeg","-i","0.{type}","-y","-c","copy","1.{type}"]
+        }
+    ]
+}
+```
+上述例子中演示了windows下使用[ffmpeg](https://ffmpeg.org/)，这将使得保存的流文件`0.mp4 or 0.flv`转为正常的视频`1.mp4 or 1.flv`。
+
+注意：命令运行是异步的，如同步执行多个命令，应使用脚本。
+
 #### 性能检查
 当配置了`Web服务地址`及`性能路径`时，运行中的性能信息将可以通过http获取。  
 例如有如下配置:  
