@@ -726,20 +726,14 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 							//丢弃所有数据
 							buff.Reset()
 						}
-						if len(front_buf) != 0 {
-							if len(t.first_buf) != 0 {
-								t.log.L(`E: `, `flv重复接收到起始段，退出`)
-								r.Cancel()
-								s.Done()
-								break
-							}
+						if len(front_buf) != 0 && len(t.first_buf) == 0 {
 							t.first_buf = make([]byte, len(front_buf))
 							copy(t.first_buf, front_buf)
 							// fmt.Println("write front_buf")
 							out.Write(t.first_buf)
 							t.Stream_msg.Push_tag(`data`, t.first_buf)
 						}
-						if keyframe.Size() != 0 {
+						if len(t.first_buf) != 0 && keyframe.Size() != 0 {
 							t.bootBufPush(keyframe.GetPureBuf())
 							keyframe.Reset()
 							out.Write(t.boot_buf)
