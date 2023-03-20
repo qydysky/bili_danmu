@@ -55,7 +55,7 @@ type Common struct {
 	Wearing_FansMedal int                   //当前佩戴的粉丝牌
 	Token             string                //弹幕钥
 	WSURL             []string              //弹幕链接
-	LIVE_BUVID        bool                  //cookies含LIVE_BUVID
+	LiveBuvidUpdated  time.Time             //LIVE_BUVID更新时间
 	Stream_url        *url.URL              //直播Web服务
 	Proxy             string                //全局代理
 	AcceptQn          map[int]string        //允许的直播流质量
@@ -133,7 +133,7 @@ func (t *Common) Copy() *Common {
 		Wearing_FansMedal: t.Wearing_FansMedal,
 		Token:             t.Token,
 		WSURL:             t.WSURL,
-		LIVE_BUVID:        t.LIVE_BUVID,
+		LiveBuvidUpdated:  t.LiveBuvidUpdated,
 		Stream_url:        t.Stream_url,
 		Proxy:             t.Proxy,
 		AcceptQn:          syncmap.Copy(t.AcceptQn),

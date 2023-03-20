@@ -198,7 +198,7 @@ func (c *GetFunc) Get(key string) {
 			// 	return c.VERSION != `2.0.11`
 			// },
 			`LIVE_BUVID`: func() bool { //LIVE_BUVID
-				return c.LIVE_BUVID
+				return c.LiveBuvidUpdated.After(time.Now().Add(-time.Hour))
 			},
 			`Silver_2_coin`: func() bool { //银瓜子2硬币
 				return true
@@ -564,7 +564,7 @@ func (t *GetFunc) getRoomPlayInfo() (missKey []string) {
 	if t.Roomid == 0 {
 		missKey = append(missKey, `Roomid`)
 	}
-	if !t.LIVE_BUVID {
+	if t.LiveBuvidUpdated.Before(time.Now().Add(-time.Hour)) {
 		missKey = append(missKey, `LIVE_BUVID`)
 	}
 	if len(missKey) > 0 {
@@ -638,7 +638,7 @@ func (t *GetFunc) getRoomPlayInfoByQn() (missKey []string) {
 	if t.Roomid == 0 {
 		missKey = append(missKey, `Roomid`)
 	}
-	if !t.LIVE_BUVID {
+	if t.LiveBuvidUpdated.Before(time.Now().Add(-time.Hour)) {
 		missKey = append(missKey, `LIVE_BUVID`)
 	}
 	if len(missKey) > 0 {
@@ -731,7 +731,7 @@ func (c *GetFunc) getDanmuInfo() (missKey []string) {
 	if c.Roomid == 0 {
 		missKey = append(missKey, `Roomid`)
 	}
-	if !c.LIVE_BUVID {
+	if c.LiveBuvidUpdated.Before(time.Now().Add(-time.Hour)) {
 		missKey = append(missKey, `LIVE_BUVID`)
 	}
 	if len(missKey) > 0 {
@@ -992,7 +992,7 @@ func (c *GetFunc) Get_guardNum() (missKey []string) {
 	if c.Roomid == 0 {
 		missKey = append(missKey, `Roomid`)
 	}
-	if !c.LIVE_BUVID {
+	if c.LiveBuvidUpdated.Before(time.Now().Add(-time.Hour)) {
 		missKey = append(missKey, `LIVE_BUVID`)
 	}
 	if len(missKey) > 0 {
@@ -1572,7 +1572,7 @@ func Get_weared_medal() (item J.GetWearedMedal_Data) {
 
 func (c *GetFunc) CheckSwitch_FansMedal() (missKey []string) {
 
-	if !c.LIVE_BUVID {
+	if c.LiveBuvidUpdated.Before(time.Now().Add(-time.Hour)) {
 		missKey = append(missKey, `LIVE_BUVID`)
 	}
 	if c.UpUid == 0 {
@@ -1805,11 +1805,11 @@ func Dosign() {
 func (c *GetFunc) Get_LIVE_BUVID() (missKey []string) {
 	apilog := apilog.Base_add(`LIVE_BUVID`) //.L(`T: `, `获取`)
 
-	if live_buvid, ok := c.Cookie.LoadV(`LIVE_BUVID`).(string); ok && live_buvid != `` {
-		apilog.L(`T: `, `存在`)
-		c.LIVE_BUVID = true
-		return
-	}
+	// if live_buvid, ok := c.Cookie.LoadV(`LIVE_BUVID`).(string); ok && live_buvid != `` {
+	// 	apilog.L(`T: `, `存在`)
+	// 	c.LIVE_BUVID = true
+	// 	return
+	// }
 
 	//当房间处于特殊活动状态时，将会获取不到，此处使用了若干著名up主房间进行尝试
 	roomIdList := []string{
@@ -1868,7 +1868,7 @@ func (c *GetFunc) Get_LIVE_BUVID() (missKey []string) {
 
 	CookieSet([]byte(reqf.Map_2_Cookies_String(Cookie)))
 
-	c.LIVE_BUVID = true
+	c.LiveBuvidUpdated = time.Now()
 
 	return
 }
@@ -1963,7 +1963,7 @@ func Gift_list() (list []Gift_list_type_Data_List) {
 func (c *GetFunc) Silver_2_coin() (missKey []string) {
 	apilog := apilog.Base_add(`银瓜子=>硬币`)
 
-	if !c.LIVE_BUVID {
+	if c.LiveBuvidUpdated.Before(time.Now().Add(-time.Hour)) {
 		missKey = append(missKey, `LIVE_BUVID`)
 	}
 	if len(missKey) > 0 {
