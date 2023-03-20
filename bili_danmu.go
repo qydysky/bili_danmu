@@ -330,6 +330,9 @@ func Start() {
 					case <-flash_room_chan:
 						ws_c.Close()
 						danmulog.L(`I: `, "停止，等待服务器断开连接")
+						//刷新LIVE_BUVID
+						F.Get(&c.C).Get(`LIVE_BUVID`)
+						//刷新WSURL
 						F.Get(&c.C).Get(`WSURL`)
 						i = 0
 					case <-change_room_chan:

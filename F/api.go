@@ -1803,13 +1803,7 @@ func Dosign() {
 
 // LIVE_BUVID
 func (c *GetFunc) Get_LIVE_BUVID() (missKey []string) {
-	apilog := apilog.Base_add(`LIVE_BUVID`) //.L(`T: `, `获取`)
-
-	// if live_buvid, ok := c.Cookie.LoadV(`LIVE_BUVID`).(string); ok && live_buvid != `` {
-	// 	apilog.L(`T: `, `存在`)
-	// 	c.LIVE_BUVID = true
-	// 	return
-	// }
+	apilog := apilog.Base_add(`LIVE_BUVID`)
 
 	//当房间处于特殊活动状态时，将会获取不到，此处使用了若干著名up主房间进行尝试
 	roomIdList := []string{
