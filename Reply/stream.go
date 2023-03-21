@@ -628,11 +628,40 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 			return
 		}
 
-		// 如果被主动关闭，则退出saveStreamFlv，否则继续尝试其他live
-		s := signal.Init()
+		CookieM := make(map[string]string)
+		t.common.Cookie.Range(func(k, v interface{}) bool {
+			CookieM[k.(string)] = v.(string)
+			return true
+		})
 
 		//开始获取
 		r := t.reqPool.Get()
+		//检查
+		if e := r.Reqf(reqf.Rval{
+			Url:              surl.String(),
+			NoResponse:       true,
+			JustResponseCode: true,
+			Proxy:            t.common.Proxy,
+			Timeout:          5000,
+			Header: map[string]string{
+				`Host`:            surl.Host,
+				`User-Agent`:      `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0`,
+				`Accept`:          `*/*`,
+				`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
+				`Origin`:          `https://live.bilibili.com`,
+				`Connection`:      `keep-alive`,
+				`Pragma`:          `no-cache`,
+				`Cache-Control`:   `no-cache`,
+				`Referer`:         "https://live.bilibili.com/",
+				`Cookie`:          reqf.Map_2_Cookies_String(CookieM),
+			},
+		}); e != nil && reqf.IsTimeout(e) {
+			t.reqPool.Put(r)
+			continue
+		}
+
+		// 如果被主动关闭，则退出saveStreamFlv，否则继续尝试其他live
+		s := signal.Init()
 		{
 			go func() {
 				tsc, tscf := t.Status.WaitC()
@@ -701,7 +730,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 					buff.Append(buf[:n])
 					if e != nil {
 						out.Close()
-						t.Stream_msg.Push_tag(`close`, nil)
+						t.Stream_msg.PushLock_tag(`close`, nil)
 						break
 					}
 					leastReadUnix.Store(time.Now().Unix())
@@ -731,13 +760,13 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 							copy(t.first_buf, front_buf)
 							// fmt.Println("write front_buf")
 							out.Write(t.first_buf)
-							t.Stream_msg.Push_tag(`data`, t.first_buf)
+							t.Stream_msg.PushLock_tag(`data`, t.first_buf)
 						}
 						if len(t.first_buf) != 0 && keyframe.Size() != 0 {
 							t.bootBufPush(keyframe.GetPureBuf())
 							keyframe.Reset()
 							out.Write(t.boot_buf)
-							t.Stream_msg.Push_tag(`data`, t.boot_buf)
+							t.Stream_msg.PushLock_tag(`data`, t.boot_buf)
 						}
 						if last_available_offset > 1 {
 							// fmt.Println("write Sync")
@@ -750,12 +779,6 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 				buf = nil
 				buff.Reset()
 			}()
-
-			CookieM := make(map[string]string)
-			t.common.Cookie.Range(func(k, v interface{}) bool {
-				CookieM[k.(string)] = v.(string)
-				return true
-			})
 
 			t.log.L(`I: `, `flv下载开始`)
 
@@ -1002,7 +1025,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 			if !keyframe.IsEmpty() {
 				t.bootBufPush(keyframe.GetPureBuf())
 				keyframe.Reset()
-				t.Stream_msg.Push_tag(`data`, t.boot_buf)
+				t.Stream_msg.PushLock_tag(`data`, t.boot_buf)
 				if out != nil {
 					out.Write(t.boot_buf, true)
 					out.Sync()
@@ -1084,7 +1107,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 	}
 
 	// 发送空字节会导致流服务终止
-	t.Stream_msg.Push_tag(`data`, []byte{})
+	t.Stream_msg.PushLock_tag(`data`, []byte{})
 
 	if !t.config.save_as_mp4 {
 		// 结束
