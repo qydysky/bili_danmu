@@ -780,8 +780,9 @@ func (c *GetFunc) getDanmuInfo() (missKey []string) {
 		for _, v := range j.Data.HostList {
 			if v.WssPort != 443 {
 				tmp = append(tmp, "wss://"+v.Host+":"+strconv.Itoa(v.WssPort)+"/sub")
+			} else {
+				tmp = append(tmp, "wss://"+v.Host+"/sub")
 			}
-			tmp = append(tmp, "wss://"+v.Host+"/sub")
 		}
 		c.WSURL = tmp
 	}
