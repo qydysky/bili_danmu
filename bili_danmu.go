@@ -165,6 +165,8 @@ func Start() {
 		F.Dosign()
 		// //客户版本 不再需要
 		// F.Get(`VERSION`)
+		// 附加功能 savetojson
+		reply.SaveToJson.Init()
 		//附加功能 保持牌子点亮
 		go reply.Keep_medal_light()
 		//附加功能 自动发送即将过期礼物
@@ -347,8 +349,7 @@ func Start() {
 					break
 				}
 			}
-			{ //附加功能 ws信息保存
-				reply.Save_to_json(-1, []byte("{}]"))
+			{ //附加功能
 				if v, ok := c.C.K_v.LoadV(`仅保存当前直播间流`).(bool); ok && v {
 					reply.StreamOStop(-2) //停止其他房间录制
 				}
@@ -356,7 +357,8 @@ func Start() {
 			sys.Sys().Timeoutf(1)
 		}
 
-		{ //附加功能 直播流停止
+		{ //附加功能 直播流停止 ws信息保存
+			reply.SaveToJson.Close()
 			reply.StreamOStop(-1)
 		}
 		// close(interrupt)

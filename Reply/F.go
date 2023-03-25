@@ -910,25 +910,53 @@ func Jiezouf(s []string) bool {
 }
 
 // 保存所有消息到json
-func init() {
-	Save_to_json(0, []byte{'['})
-	c.C.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
-		`change_room`: func(_ interface{}) bool { //房间改变
-			Save_to_json(0, []byte{'['})
-			return false
-		},
-		`flash_room`: func(_ interface{}) bool { //房间改变
-			Save_to_json(0, []byte{'['})
-			return false
-		},
+type saveToJson struct {
+	msg  *msgq.MsgType[[]byte]
+	once sync.Once
+}
+
+func (t *saveToJson) Init() {
+	t.once.Do(func() {
+		if path, ok := c.C.K_v.LoadV(`save_to_json`).(string); ok && path != `` {
+			f := file.New(path, 0, false)
+			f.Delete()
+			f.Write([]byte("["), true)
+			f.Close()
+
+			t.msg = msgq.NewType[[]byte]()
+			t.msg.Pull_tag(map[string]func([]byte) (disable bool){
+				`data`: func(b []byte) (disable bool) {
+					f := file.New(path, -1, false)
+					f.Write(b, true)
+					f.Write([]byte(","), true)
+					f.Close()
+					return false
+				},
+				`stop`: func(_ []byte) (disable bool) {
+					f := file.New(path, -1, false)
+					f.Seed(-1, 2)
+					f.Write([]byte("]"), true)
+					f.Close()
+					return true
+				},
+			})
+		}
 	})
 }
 
-func Save_to_json(Loc int, context []byte) {
-	if path, ok := c.C.K_v.LoadV(`save_to_json`).(string); ok && path != `` {
-		file.New(path, int64(Loc), true).Write(context, true)
+func (t *saveToJson) Write(data []byte) {
+	if t.msg != nil {
+		t.msg.PushLock_tag(`data`, data)
 	}
 }
+
+func (t *saveToJson) Close() {
+	if t.msg != nil {
+		t.msg.PushLock_tag(`stop`, nil)
+	}
+}
+
+var SaveToJson saveToJson
 
 // 进入房间发送弹幕
 func Entry_danmu() {
