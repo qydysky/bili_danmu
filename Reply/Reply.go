@@ -1099,12 +1099,12 @@ func (replyF) danmu(s string) {
 
 	{ //附加功能 弹幕机 封禁 弹幕合并
 		go Danmujif(item.msg)
-		if Autobanf(item.msg) {
-			Gui_show(Itos([]interface{}{"风险", item.auth, ":", item.msg}))
-			fmt.Println("风险", item.auth, ":", item.msg)
-			msglog.Base_add("风险").L(`I: `, item.auth, ":", item.msg)
-			return
-		}
+		// if Autobanf(item.msg) {
+		// 	Gui_show(Itos([]interface{}{"风险", item.auth, ":", item.msg}))
+		// 	fmt.Println("风险", item.auth, ":", item.msg)
+		// 	msglog.Base_add("风险").L(`I: `, item.auth, ":", item.msg)
+		// 	return
+		// }
 		if i := Autoskipf(item.msg); i > 0 {
 			msglog.L(`I: `, item.auth, ":", item.msg)
 			return

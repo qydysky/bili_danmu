@@ -459,71 +459,71 @@ func StreamOStop(roomid int) {
 // 	}
 // }
 
-type Autoban struct {
-	Banbuf []string
-	buf    []string
-}
+// type Autoban struct {
+// 	Banbuf []string
+// 	buf    []string
+// }
 
-var autoban = Autoban{}
+// var autoban = Autoban{}
 
-func Autobanf(s string) bool {
-	if !IsOn("Autoban") {
-		return false
-	}
+// func Autobanf(s string) bool {
+// 	if !IsOn("Autoban") {
+// 		return false
+// 	}
 
-	l := c.C.Log.Base("autoban")
+// 	l := c.C.Log.Base("autoban")
 
-	if len(autoban.Banbuf) == 0 {
-		f := file.New("Autoban.txt", -1, false)
-		for {
-			if data, e := f.ReadUntil('\n', 50, 5000); e != nil {
-				if !errors.Is(e, io.EOF) {
-					l.L(`E: `, e)
-				}
-				break
-			} else {
-				autoban.Banbuf = append(autoban.Banbuf, string(data))
-			}
-		}
-	}
+// 	if len(autoban.Banbuf) == 0 {
+// 		f := file.New("Autoban.txt", -1, false)
+// 		for {
+// 			if data, e := f.ReadUntil('\n', 50, 5000); e != nil {
+// 				if !errors.Is(e, io.EOF) {
+// 					l.L(`E: `, e)
+// 				}
+// 				break
+// 			} else {
+// 				autoban.Banbuf = append(autoban.Banbuf, string(data))
+// 			}
+// 		}
+// 	}
 
-	if len(autoban.buf) < 10 {
-		autoban.buf = append(autoban.buf, s)
-		return false
-	}
-	defer func() {
-		autoban.buf = append(autoban.buf[1:], s)
-	}()
+// 	if len(autoban.buf) < 10 {
+// 		autoban.buf = append(autoban.buf, s)
+// 		return false
+// 	}
+// 	defer func() {
+// 		autoban.buf = append(autoban.buf[1:], s)
+// 	}()
 
-	var res []float32
-	{
-		pt := float32(len([]rune(s)))
-		if pt <= 5 {
-			return false
-		} //字数过少去除
-		res = append(res, pt)
-	}
-	{
-		pt := selfcross(s)
-		// if pt > 0.5 {return false}//自身重复高去除
-		// res = append(res, pt)
+// 	var res []float32
+// 	{
+// 		pt := float32(len([]rune(s)))
+// 		if pt <= 5 {
+// 			return false
+// 		} //字数过少去除
+// 		res = append(res, pt)
+// 	}
+// 	{
+// 		pt := selfcross(s)
+// 		// if pt > 0.5 {return false}//自身重复高去除
+// 		// res = append(res, pt)
 
-		pt1 := cross(s, autoban.buf)
-		if pt+pt1 > 0.3 {
-			return false
-		} //历史重复高去除
-		res = append(res, pt, pt1)
-	}
-	{
-		pt := cross(s, autoban.Banbuf)
-		if pt < 0.8 {
-			return false
-		} //ban字符重复低去除
-		res = append(res, pt)
-	}
-	l.L(`W: `, res)
-	return true
-}
+// 		pt1 := cross(s, autoban.buf)
+// 		if pt+pt1 > 0.3 {
+// 			return false
+// 		} //历史重复高去除
+// 		res = append(res, pt, pt1)
+// 	}
+// 	{
+// 		pt := cross(s, autoban.Banbuf)
+// 		if pt < 0.8 {
+// 			return false
+// 		} //ban字符重复低去除
+// 		res = append(res, pt)
+// 	}
+// 	l.L(`W: `, res)
+// 	return true
+// }
 
 type Danmuji struct {
 	Buf           map[string]string

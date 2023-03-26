@@ -661,12 +661,12 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 		}
 
 		// 如果被主动关闭，则退出saveStreamFlv，否则继续尝试其他live
-		s := signal.Init()
+		needStop := signal.Init()
 		{
 			go func() {
 				tsc, tscf := t.Status.WaitC()
 				defer tscf()
-				sc, scf := s.WaitC()
+				sc, scf := needStop.WaitC()
 				defer scf()
 
 				select {
@@ -689,7 +689,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 				timer := time.NewTicker(5 * time.Second)
 				defer timer.Stop()
 
-				sc, scf := s.WaitC()
+				sc, scf := needStop.WaitC()
 				defer scf()
 
 				for {
@@ -707,7 +707,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 							if t.config.want_qn != int(v) {
 								t.log.L(`I: `, "直播流清晰度改变:", t.common.Qn[t.config.want_qn], "=>", t.common.Qn[int(v)])
 								t.config.want_qn = int(v)
-								s.Done()
+								needStop.Done()
 								r.Cancel()
 								return
 							}
@@ -812,8 +812,8 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 		}
 		t.reqPool.Put(r)
 
-		if s.Islive() {
-			s.Done()
+		if needStop.Islive() {
+			needStop.Done()
 		} else {
 			return
 		}
