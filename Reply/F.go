@@ -75,15 +75,15 @@ func cross(a string, buf []string) float32 {
 }
 
 // 在a中仅出现一次出现的字符占a的百分数
-func selfcross(a string) float32 {
-	buf := make(map[rune]bool)
-	for _, v := range a {
-		if _, ok := buf[v]; !ok {
-			buf[v] = true
-		}
-	}
-	return 1 - float32(len(buf))/float32(len([]rune(a)))
-}
+// func selfcross(a string) float32 {
+// 	buf := make(map[rune]bool)
+// 	for _, v := range a {
+// 		if _, ok := buf[v]; !ok {
+// 			buf[v] = true
+// 		}
+// 	}
+// 	return 1 - float32(len(buf))/float32(len([]rune(a)))
+// }
 
 // 在a的每个字符串中
 // 出现的字符次数最多的
@@ -1348,7 +1348,19 @@ func init() {
 			w.WriteHeader(http.StatusOK)
 
 			// 推送数据
-			currentStreamO.Pusher(w, r)
+			{
+				startFunc := func(_ *M4SStream) error {
+					flog.L(`T: `, r.RemoteAddr, `接入直播流`)
+					return nil
+				}
+				stopFunc := func(_ *M4SStream) error {
+					flog.L(`T: `, r.RemoteAddr, `断开直播流`)
+					return nil
+				}
+				if e := currentStreamO.PusherToHttp(w, r, startFunc, stopFunc); e != nil {
+					flog.L(`W: `, e)
+				}
+			}
 		})
 
 		// 弹幕回放
