@@ -764,6 +764,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 							// fmt.Println("write front_buf")
 							out.Write(t.first_buf)
 							t.Stream_msg.PushLock_tag(`data`, t.first_buf)
+							t.msg.Push_tag(`load`, t)
 						}
 						if len(t.first_buf) != 0 && keyframe.Size() != 0 {
 							t.bootBufPush(keyframe.GetPureBuf())
@@ -977,6 +978,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 						out.Write(t.first_buf, true)
 						out.Sync()
 					}
+					t.msg.Push_tag(`load`, t)
 				}
 				t.putM4s(download_seq[k])
 				download_seq = append(download_seq[:k], download_seq[k+1:]...)
