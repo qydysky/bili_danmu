@@ -1255,7 +1255,7 @@ func (t *M4SStream) Stop() {
 
 // 保存到文件
 // filepath: 不包含后缀，会自动添加后缀
-func (t *M4SStream) PusherToFile(filepath string, startFunc func(*M4SStream) error, stopFunc func(*M4SStream) error) error {
+func (t *M4SStream) PusherToFile(cont context.Context, filepath string, startFunc func(*M4SStream) error, stopFunc func(*M4SStream) error) error {
 	f := file.New(filepath+"."+t.stream_type, 0, true)
 	if e := f.Delete(); e != nil {
 		return e
@@ -1269,9 +1269,14 @@ func (t *M4SStream) PusherToFile(filepath string, startFunc func(*M4SStream) err
 	if len(t.boot_buf) != 0 {
 		f.Write(t.boot_buf, true)
 	}
-	contextC, cancel := context.WithCancel(context.Background())
+	contextC, cancel := context.WithCancel(cont)
 	t.Stream_msg.Pull_tag(map[string]func([]byte) bool{
 		`data`: func(b []byte) bool {
+			select {
+			case <-contextC.Done():
+				return true
+			default:
+			}
 			if len(b) == 0 {
 				cancel()
 				return true
