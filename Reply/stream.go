@@ -65,7 +65,6 @@ type M4SStream_Config struct {
 	save_path     string //直播流保存目录
 	want_qn       int    //直播流清晰度
 	want_type     string //直播流类型
-	save_as_mp4   bool   //直播hls流保存为MP4
 	banlance_host bool   //直播hls流故障转移
 }
 
@@ -171,9 +170,6 @@ func (t *M4SStream) LoadConfig(common c.Common) (e error) {
 	} else {
 		return errors.New(`未配置直播流保存位置`)
 	}
-	if v, ok := common.K_v.LoadV(`直播hls流保存为MP4`).(bool); ok {
-		t.config.save_as_mp4 = v
-	}
 	if v, ok := common.K_v.LoadV(`直播hls流故障转移`).(bool); ok {
 		t.config.banlance_host = v
 	}
@@ -202,11 +198,7 @@ func (t *M4SStream) fetchCheckStream() bool {
 
 	// 保存流类型
 	if strings.Contains(t.common.Live[0].Url, `m3u8`) {
-		if t.config.save_as_mp4 {
-			t.stream_type = "mp4"
-		} else {
-			t.stream_type = "m3u8"
-		}
+		t.stream_type = "mp4"
 	} else if strings.Contains(t.common.Live[0].Url, `flv`) {
 		t.stream_type = "flv"
 	}
@@ -826,11 +818,8 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 		Max: 3,
 	}
 
-	var out *file.File
-	if t.config.save_as_mp4 {
-		out = file.New(t.Current_save_path+`0.mp4`, 0, false)
-		defer out.Close()
-	}
+	var out = file.New(t.Current_save_path+`0.mp4`, 0, false)
+	defer out.Close()
 
 	//
 	var (
@@ -907,9 +896,6 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 						Header: map[string]string{
 							`Connection`: `close`,
 						},
-					}
-					if !t.config.save_as_mp4 {
-						reqConfig.SaveToPath = path + link.Base
 					}
 
 					// t.log.L(`T: `, `下载`, link.Base)
@@ -1056,7 +1042,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 		}
 
 		// 获取解析m3u8
-		var m4s_links, m3u8_addon, err = t.fetchParseM3U8()
+		var m4s_links, _, err = t.fetchParseM3U8()
 		if err != nil {
 			t.log.L(`E: `, `获取解析m3u8发生错误`, err)
 			// if len(download_seq) != 0 {
@@ -1097,23 +1083,10 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 
 		// 添加新切片到下载队列
 		download_seq = append(download_seq, m4s_links...)
-
-		if !t.config.save_as_mp4 {
-			// 添加m3u8字节
-			file.New(t.Current_save_path+"0.m3u8.dtmp", -1, true).Write(m3u8_addon, true)
-		}
 	}
 
 	// 发送空字节会导致流服务终止
 	t.Stream_msg.PushLock_tag(`data`, []byte{})
-
-	if !t.config.save_as_mp4 {
-		// 结束
-		if p.Checkfile().IsExist(t.Current_save_path + "0.m3u8.dtmp") {
-			file.New(t.Current_save_path+"0.m3u8.dtmp", -1, true).Write([]byte("#EXT-X-ENDLIST"), true)
-			p.FileMove(t.Current_save_path+"0.m3u8.dtmp", t.Current_save_path+"0.m3u8")
-		}
-	}
 
 	return
 }
