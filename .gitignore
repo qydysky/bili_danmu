@@ -24,3 +24,4 @@ demo/main.exe
 *.m3u8
 *.flv
 demo/build.bat
+demo/build.sh
