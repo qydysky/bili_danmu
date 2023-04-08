@@ -555,8 +555,8 @@ func (t *M4SStream) removeStream() (e error) {
 	return nil
 }
 
-func (t *M4SStream) saveStream() (e error) {
-	// 设置保存路径
+// 设置保存路径
+func (t *M4SStream) getSavepath() {
 	t.Current_save_path = t.config.save_path + "/" +
 		time.Now().Format("2006_01_02-15_04_05") + "-" +
 		strconv.Itoa(t.common.Roomid) + "-" +
@@ -564,17 +564,19 @@ func (t *M4SStream) saveStream() (e error) {
 		t.common.Qn[t.common.Live_qn] + "-" +
 		pstring.Rand(2, 3) +
 		`/`
-
-	// 清除初始值
-	t.last_m4s = nil
-	t.first_buf = nil
-
 	// 显示保存位置
 	if rel, err := filepath.Rel(t.config.save_path, t.Current_save_path); err == nil {
 		t.log.L(`I: `, "保存到", rel+`/0.`+t.stream_type)
 	} else {
 		t.log.L(`W: `, err)
 	}
+}
+
+func (t *M4SStream) saveStream() (e error) {
+	// 清除初始值
+	t.last_m4s = nil
+	t.first_buf = nil
+
 	if s, ok := t.common.K_v.LoadV("直播Web服务路径").(string); ok && s != "" {
 		t.log.L(`I: `, "Web服务地址:", t.common.Stream_url.String()+s)
 	}
@@ -596,37 +598,6 @@ func (t *M4SStream) saveStream() (e error) {
 
 	// 保存到文件
 	if t.config.save_to_file {
-		var (
-			contextC context.Context
-			cancle   context.CancelFunc
-		)
-		t.msg.Pull_tag_async(map[string]func(*M4SStream) (disable bool){
-			`cut`: func(ms *M4SStream) (disable bool) {
-				select {
-				case <-contextC.Done():
-					
-				}
-				if contextC != nil {
-					cancle()
-				}
-				contextC, cancle = context.WithCancel(context.Background())
-				defer cancle()
-
-				l := ms.log.Base_add(`文件`)
-				startf := func(_ *M4SStream) error {
-					l.L(`T: `, `start`)
-					return nil
-				}
-				stopf := func(_ *M4SStream) error {
-					l.L(`T: `, `stop`)
-					return nil
-				}
-				if e := ms.PusherToFile(contextC, ms.Current_save_path+`0.`+ms.stream_type, startf, stopf); e != nil {
-					l.L(`E: `, e)
-				}
-				return false
-			},
-		})
 		t.msg.Pull_tag_only(`load`, func(ms *M4SStream) (disable bool) {
 			ms.msg.Push_tag(`cut`, ms)
 			return true
@@ -912,7 +883,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 					}
 				}
 
-				go func(link *m4s_link_item, path string) {
+				go func(link *m4s_link_item) {
 					defer download_limit.UnBlock()
 
 					link.status = 1 // 设置切片状态为正在下载
@@ -945,7 +916,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 						link.data.Append(r.Respon)
 						link.status = 2 // 设置切片状态为下载完成
 					}
-				}(v, t.Current_save_path)
+				}(v)
 			}
 
 			// 等待队列下载完成
@@ -1156,19 +1127,43 @@ func (t *M4SStream) Start() bool {
 		t.Stream_msg = msgq.NewType[[]byte]()
 
 		// 设置事件
+		if t.config.save_to_file {
+			var fc funcCtrl.FlashFunc
+			t.msg.Pull_tag_async(map[string]func(*M4SStream) (disable bool){
+				`cut`: func(ms *M4SStream) (disable bool) {
+					contextC, cancle := context.WithCancel(context.Background())
+					fc.FlashWithCallback(cancle)
+
+					l := ms.log.Base_add(`文件`)
+					startf := func(_ *M4SStream) error {
+						l.L(`T: `, `start`)
+						return nil
+					}
+					stopf := func(_ *M4SStream) error {
+						l.L(`T: `, `stop`)
+						return nil
+					}
+					ms.getSavepath()
+					go StartRecDanmu(contextC, ms.Current_save_path+"0.csv")                       //保存弹幕
+					go Ass_f(contextC, ms.Current_save_path, ms.Current_save_path+"0", time.Now()) //开始ass
+					if e := ms.PusherToFile(contextC, ms.Current_save_path+`0.`+ms.stream_type, startf, stopf); e != nil {
+						l.L(`E: `, e)
+					}
+					return false
+				},
+			})
+		}
 		if t.Callback_stopRec != nil {
 			t.msg.Pull_tag_only("stopRec", func(ms *M4SStream) (disable bool) {
 				ms.Callback_stopRec(ms)
 				return false
 			})
 		}
-		if t.Callback_stop != nil {
-			t.msg.Pull_tag_only("stop", func(ms *M4SStream) (disable bool) {
+		t.msg.Pull_tag_only("stop", func(ms *M4SStream) (disable bool) {
+			if ms.Callback_stop != nil {
 				ms.Callback_stop(ms)
-				return false
-			})
-		}
-		t.msg.Pull_tag_only("stop", func(_ *M4SStream) (disable bool) {
+			}
+			t.msg.ClearAll()
 			return true
 		})
 
@@ -1250,7 +1245,7 @@ func (t *M4SStream) Stop() {
 }
 
 // 保存到文件
-func (t *M4SStream) PusherToFile(cont context.Context, filepath string, startFunc func(*M4SStream) error, stopFunc func(*M4SStream) error) error {
+func (t *M4SStream) PusherToFile(contextC context.Context, filepath string, startFunc func(*M4SStream) error, stopFunc func(*M4SStream) error) error {
 	f := file.New(filepath, 0, false)
 	defer f.Close()
 	f.Delete()
@@ -1263,7 +1258,6 @@ func (t *M4SStream) PusherToFile(cont context.Context, filepath string, startFun
 	if len(t.boot_buf) != 0 {
 		f.Write(t.boot_buf, true)
 	}
-	contextC, cancel := context.WithCancel(cont)
 	t.Stream_msg.Pull_tag(map[string]func([]byte) bool{
 		`data`: func(b []byte) bool {
 			select {
@@ -1272,14 +1266,12 @@ func (t *M4SStream) PusherToFile(cont context.Context, filepath string, startFun
 			default:
 			}
 			if len(b) == 0 {
-				cancel()
 				return true
 			}
 			f.Write(b, true)
 			return false
 		},
 		`close`: func(_ []byte) bool {
-			cancel()
 			return true
 		},
 	})

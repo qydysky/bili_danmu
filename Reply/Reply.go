@@ -503,13 +503,7 @@ func (replyF) room_change(s string) {
 	var sh = []interface{}{"房间改变"}
 
 	if c.C.Title != title.(string) {
-		//录制
-		go func() {
-			if v, ok := c.C.K_v.LoadV(`修改标题时重新录制`).(bool); ok && v {
-				StreamOStop(c.C.Roomid) //停止其他房间录制
-			}
-			StreamOStart(c.C.Roomid)
-		}()
+		StreamOCut(c.C.Roomid)
 	}
 
 	if title != nil {
@@ -1098,6 +1092,9 @@ func (replyF) danmu(s string) {
 	msglog := msglog.Log_show_control(false)
 
 	{ //附加功能 弹幕机 封禁 弹幕合并
+		//对指定弹幕重新录制
+		danmuReLiveTriger.Init(&c.C)
+		danmuReLiveTriger.Check(item.uid, item.msg)
 		go Danmujif(item.msg)
 		// if Autobanf(item.msg) {
 		// 	Gui_show(Itos([]interface{}{"风险", item.auth, ":", item.msg}))
@@ -1120,9 +1117,6 @@ func (replyF) danmu(s string) {
 		} else {
 			item.msg = _msg
 		}
-		//对指定弹幕重新录制
-		danmuReLiveTriger.Init(&c.C)
-		danmuReLiveTriger.Check(item.uid, item.msg)
 	}
 	Msg_showdanmu(item)
 }

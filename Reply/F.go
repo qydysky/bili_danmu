@@ -2,6 +2,7 @@ package reply
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -196,7 +197,7 @@ func init() {
 }
 
 // 设定字幕文件名，为""时停止输出
-func Ass_f(save_path string, filePath string, st time.Time) {
+func Ass_f(contextC context.Context, save_path string, filePath string, st time.Time) {
 	if !IsOn(`仅保存当前直播间流`) {
 		return
 	}
@@ -220,6 +221,9 @@ func Ass_f(save_path string, filePath string, st time.Time) {
 	}
 	f.Write([]byte(ass.header), true)
 	ass.startT = st
+
+	<-contextC.Done()
+	ass.file = ""
 }
 
 // 传入要显示的单条字幕
@@ -304,17 +308,6 @@ func StreamOStart(roomid int) {
 		return
 	}
 	tmp.common.Roomid = roomid
-
-	//录制回调，关于ass
-	tmp.Callback_startRec = func(ms *M4SStream) error {
-		StartRecDanmu(ms.Current_save_path + "0.csv")
-		Ass_f(ms.Current_save_path, ms.Current_save_path+"0", time.Now()) //开始ass
-		return nil
-	}
-	tmp.Callback_stopRec = func(_ *M4SStream) {
-		StopRecDanmu()
-		Ass_f("", "", time.Now()) //停止ass
-	}
 	//实例回调，避免重复录制
 	tmp.Callback_start = func(ms *M4SStream) error {
 		//流服务添加
@@ -361,6 +354,16 @@ func StreamOStop(roomid int) {
 				v.(*M4SStream).Stop()
 			}
 			streamO.Delete(roomid)
+		}
+	}
+}
+
+// 实例切断
+func StreamOCut(roomid int) {
+	if v, ok := streamO.Load(roomid); ok {
+		if v.(*M4SStream).Status.Islive() {
+			v.(*M4SStream).msg.PushLock_tag(`cut`, v.(*M4SStream))
+			flog.L(`I: `, `已切片 `+strconv.Itoa(roomid))
 		}
 	}
 }
@@ -1441,7 +1444,7 @@ var Recoder = websocket.Recorder{
 	Server: StreamWs,
 }
 
-func StartRecDanmu(filePath string) {
+func StartRecDanmu(c context.Context, filePath string) {
 	if !IsOn(`仅保存当前直播间流`) || !IsOn("弹幕回放") {
 		return
 	}
@@ -1451,6 +1454,9 @@ func StartRecDanmu(filePath string) {
 	} else {
 		f.L(`E: `, e)
 	}
+	<-c.Done()
+	flog.Base("弹幕回放").L(`T: `, `停止`)
+	Recoder.Stop()
 }
 
 func PlayRecDanmu(filePath string) (*websocket.Server, func()) {
@@ -1458,14 +1464,6 @@ func PlayRecDanmu(filePath string) (*websocket.Server, func()) {
 		return nil, nil
 	}
 	return websocket.Play(filePath)
-}
-
-func StopRecDanmu() {
-	if !IsOn(`仅保存当前直播间流`) || !IsOn("弹幕回放") {
-		return
-	}
-	flog.Base("弹幕回放").L(`T: `, `停止`)
-	Recoder.Stop()
 }
 
 // 此次直播的交互人数
@@ -1534,10 +1532,7 @@ func (t *DanmuReLiveTriger) Check(uid, msg string) {
 		if t.reload.CompareAndSwap(false, true) {
 			flog.Base_add("指定弹幕重启录制").L(`I: `, uid, msg, "请求重启录制")
 			go func() {
-				if v, ok := c.C.K_v.LoadV(`仅保存当前直播间流`).(bool); ok && v {
-					StreamOStop(c.C.Roomid) //停止其他房间录制
-				}
-				StreamOStart(c.C.Roomid)
+				StreamOCut(c.C.Roomid)
 				time.Sleep(time.Minute)
 				t.reload.Store(false)
 			}()
