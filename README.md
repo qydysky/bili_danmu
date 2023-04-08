@@ -453,7 +453,8 @@ go build -v -tags `gtk` -o demo.exe -i main.go
 
 clone/下载本项目。进入`demo`目录(文件夹)，运行：
 ```
-CGO_ENABLED=0 go build [-tags "gtk"] .
+linux: CGO_ENABLED=0 go build [-tags "gtk"] .
+windows: set CGO_ENABLED=0;go build [-tags "gtk"] .
 ```
 再运行生成的`demo.exe`或`demo`
 
@@ -463,7 +464,8 @@ CGO_ENABLED=0 go build [-tags "gtk"] .
 
 clone/下载本项目。进入`demo`目录(文件夹)，运行：
 ```
-CGO_ENABLED=0 go run [-tags "gtk"] . [-r 房间ID] [-ckv 自定义config_K_v.json]
+linux: CGO_ENABLED=0 go run [-tags "gtk"] . [-r 房间ID] [-ckv 自定义config_K_v.json]
+windows: set CGO_ENABLED=0;go run [-tags "gtk"] . [-r 房间ID] [-ckv 自定义config_K_v.json]
 ```
 
 3. docker部署
@@ -480,7 +482,8 @@ apt-get update && apt-get install -y ca-certificates openssl
 clone/下载本项目。进入`demo`目录(文件夹)，运行：
 ```
 set GOOS=linux
-CGO_ENABLED=0 go build .
+set CGO_ENABLED=0
+go build .
 ```
 
 注意实际使用时，在`config_K_v.json`关闭`tts`等需要关闭界面及音频的功能，配置好录播存放位置，做好直播流服务的端口映射

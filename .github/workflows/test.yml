@@ -56,7 +56,8 @@ jobs:
       run: |
         cd demo
         go get .
-        CGO_ENABLED=0 go build -v -buildmode=exe -o demo.exe main.go
+        set CGO_ENABLED=0
+        go build -v -buildmode=exe -o demo.exe main.go
         
     - name: zip
       run: .\7za.exe a -r .\windows_go${{ matrix.go }}.zip ./
