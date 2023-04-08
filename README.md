@@ -453,9 +453,9 @@ go build -v -tags `gtk` -o demo.exe -i main.go
 
 clone/下载本项目。进入`demo`目录(文件夹)，运行：
 ```
-go build [-tags "gtk"] main.go
+CGO_ENABLED=0 go build [-tags "gtk"] .
 ```
-再运行生成的`main.exe`或`main`
+再运行生成的`demo.exe`或`demo`
 
 2. 即时编译
 
@@ -463,7 +463,7 @@ go build [-tags "gtk"] main.go
 
 clone/下载本项目。进入`demo`目录(文件夹)，运行：
 ```
-go run [-tags "gtk"] main.go [-r 房间ID] [-ckv 自定义config_K_v.json]
+CGO_ENABLED=0 go run [-tags "gtk"] . [-r 房间ID] [-ckv 自定义config_K_v.json]
 ```
 
 3. docker部署
@@ -480,7 +480,7 @@ apt-get update && apt-get install -y ca-certificates openssl
 clone/下载本项目。进入`demo`目录(文件夹)，运行：
 ```
 set GOOS=linux
-go build main.go
+CGO_ENABLED=0 go build .
 ```
 
 注意实际使用时，在`config_K_v.json`关闭`tts`等需要关闭界面及音频的功能，配置好录播存放位置，做好直播流服务的端口映射
@@ -498,6 +498,7 @@ go build main.go
 * 法1，2，3建议使用最新提交
 * 弹幕及礼物会记录于danmu.log中
 * 部分功能(如签到、发送弹幕、获取原画等)**需要在`demo`目录(文件夹)下放置`cookie.txt`才可用** 或 **运行时按提示使用扫码登录成功后才可用(登录信息会保存在`demo/cookie.txt`中)**
+* 在golang1.20+，由于某些[原因](https://github.com/golang/go/issues/57328#issuecomment-1353413399)，你可能需要在构建时添加`CGO_ENABLED=0`
 * 由于通常是发现功能不正常时，才会检查b站是否更新，又因日常录播并不会使用到全部功能，所以并不能确保全部功能都能正常运行
 
 ### 效果展示
