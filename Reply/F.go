@@ -359,9 +359,12 @@ func StreamOStop(roomid int) {
 }
 
 // 实例切断
-func StreamOCut(roomid int) {
+func StreamOCut(roomid int, title ...string) {
 	if v, ok := streamO.Load(roomid); ok {
 		if v.(*M4SStream).Status.Islive() {
+			if len(title) != 0 {
+				v.(*M4SStream).common.Title = title[0]
+			}
 			v.(*M4SStream).msg.PushLock_tag(`cut`, v.(*M4SStream))
 			flog.L(`I: `, `已切片 `+strconv.Itoa(roomid))
 		}

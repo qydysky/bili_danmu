@@ -503,7 +503,7 @@ func (replyF) room_change(s string) {
 	var sh = []interface{}{"房间改变"}
 
 	if c.C.Title != title.(string) {
-		StreamOCut(c.C.Roomid)
+		StreamOCut(c.C.Roomid, title.(string))
 	}
 
 	if title != nil {
