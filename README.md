@@ -418,7 +418,7 @@ release默认编译tts
 
 #### 弹幕窗
 构建gtk需要gtk3,先行安装[gtk](https://www.gtk.org/)
-release Linux默认编译gtk界面 Windows默认不编译
+release 由于某些[原因](https://github.com/golang/go/issues/57328#issuecomment-1353413399)，Linux默认不编译gtk界面 Windows默认不编译
 ```
 编译命令
 cd demo
