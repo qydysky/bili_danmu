@@ -453,8 +453,8 @@ go build -v -tags `gtk` -o demo.exe -i main.go
 
 clone/下载本项目。进入`demo`目录(文件夹)，运行：
 ```
-linux: CGO_ENABLED=0 go build [-tags "gtk"] .
-windows: set CGO_ENABLED=0;go build [-tags "gtk"] .
+linux: CGO_ENABLED=0 go build .
+windows: set CGO_ENABLED=0;go build .
 ```
 再运行生成的`demo.exe`或`demo`
 
@@ -464,8 +464,8 @@ windows: set CGO_ENABLED=0;go build [-tags "gtk"] .
 
 clone/下载本项目。进入`demo`目录(文件夹)，运行：
 ```
-linux: CGO_ENABLED=0 go run [-tags "gtk"] . [-r 房间ID] [-ckv 自定义config_K_v.json]
-windows: set CGO_ENABLED=0;go run [-tags "gtk"] . [-r 房间ID] [-ckv 自定义config_K_v.json]
+linux: CGO_ENABLED=0 go run . [-r 房间ID] [-ckv 自定义config_K_v.json]
+windows: set CGO_ENABLED=0;go run . [-r 房间ID] [-ckv 自定义config_K_v.json]
 ```
 
 3. docker部署
