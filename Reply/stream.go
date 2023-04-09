@@ -21,7 +21,6 @@ import (
 	c "github.com/qydysky/bili_danmu/CV"
 	F "github.com/qydysky/bili_danmu/F"
 
-	p "github.com/qydysky/part"
 	file "github.com/qydysky/part/file"
 	funcCtrl "github.com/qydysky/part/funcCtrl"
 	log "github.com/qydysky/part/log"
@@ -153,7 +152,7 @@ func (t *M4SStream) LoadConfig(common c.Common) (e error) {
 		if path, err := filepath.Abs(path); err == nil {
 			if fs, err := os.Stat(path); err != nil {
 				if errors.Is(err, os.ErrNotExist) {
-					if err := p.File().NewPath(path); err != nil {
+					if err := os.Mkdir(path, os.ModePerm); err != nil {
 						return errors.New(`直播流保存位置错误` + err.Error())
 					}
 				} else {
