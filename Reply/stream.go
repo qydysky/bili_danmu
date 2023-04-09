@@ -1151,6 +1151,12 @@ func (t *M4SStream) Start() bool {
 					contextC, cancle := context.WithCancel(mainContextC)
 					fc.FlashWithCallback(cancle)
 
+					// 当stopRec时，取消录制
+					ms.msg.Pull_tag_only("stopRec", func(_ *M4SStream) (disable bool) {
+						cancle()
+						return true
+					})
+
 					l := ms.log.Base_add(`文件`)
 					startf := func(_ *M4SStream) error {
 						l.L(`T: `, `start`)
