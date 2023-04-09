@@ -1130,11 +1130,26 @@ func (t *M4SStream) Start() bool {
 		t.Stream_msg = msgq.NewType[[]byte]()
 
 		// 设置事件
+		mainContextC, mainCancle := context.WithCancel(context.Background())
+		if t.Callback_stopRec != nil {
+			t.msg.Pull_tag_only("stopRec", func(ms *M4SStream) (disable bool) {
+				ms.Callback_stopRec(ms)
+				return false
+			})
+		}
+		t.msg.Pull_tag_only("stop", func(ms *M4SStream) (disable bool) {
+			if ms.Callback_stop != nil {
+				ms.Callback_stop(ms)
+			}
+			mainCancle()
+			t.msg.ClearAll()
+			return true
+		})
 		if t.config.save_to_file {
 			var fc funcCtrl.FlashFunc
 			t.msg.Pull_tag_async(map[string]func(*M4SStream) (disable bool){
 				`cut`: func(ms *M4SStream) (disable bool) {
-					contextC, cancle := context.WithCancel(context.Background())
+					contextC, cancle := context.WithCancel(mainContextC)
 					fc.FlashWithCallback(cancle)
 
 					l := ms.log.Base_add(`文件`)
@@ -1156,19 +1171,6 @@ func (t *M4SStream) Start() bool {
 				},
 			})
 		}
-		if t.Callback_stopRec != nil {
-			t.msg.Pull_tag_only("stopRec", func(ms *M4SStream) (disable bool) {
-				ms.Callback_stopRec(ms)
-				return false
-			})
-		}
-		t.msg.Pull_tag_only("stop", func(ms *M4SStream) (disable bool) {
-			if ms.Callback_stop != nil {
-				ms.Callback_stop(ms)
-			}
-			t.msg.ClearAll()
-			return true
-		})
 
 		defer t.msg.Push_tag(`stop`, t)
 

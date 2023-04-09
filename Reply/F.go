@@ -205,12 +205,11 @@ func Ass_f(contextC context.Context, save_path string, filePath string, st time.
 	if filePath == "" {
 		return
 	}
-
+	fl := c.C.Log.Base(`Ass`)
 	if rel, err := filepath.Rel(save_path, ass.file); err == nil {
-		c.C.Log.Base(`Ass`).L(`I: `, "保存到", rel+".ass")
+		fl.L(`I: `, "保存到", rel+".ass")
 	} else {
-		c.C.Log.Base(`Ass`).L(`I: `, "保存到", ass.file+".ass")
-		c.C.Log.Base(`Ass`).L(`W: `, err)
+		fl.L(`W: `, err)
 	}
 	f := &file.File{
 		Config: file.Config{
@@ -224,6 +223,7 @@ func Ass_f(contextC context.Context, save_path string, filePath string, st time.
 
 	<-contextC.Done()
 	ass.file = ""
+	fl.L(`I: `, "结束")
 }
 
 // 传入要显示的单条字幕
@@ -1443,15 +1443,14 @@ func init() {
 }
 
 // 弹幕回放
-var Recoder = websocket.Recorder{
-	Server: StreamWs,
-}
-
 func StartRecDanmu(c context.Context, filePath string) {
 	if !IsOn(`仅保存当前直播间流`) || !IsOn("弹幕回放") {
 		return
 	}
 	f := flog.Base("弹幕回放")
+	var Recoder = websocket.Recorder{
+		Server: StreamWs,
+	}
 	if e := Recoder.Start(filePath); e == nil {
 		f.L(`T: `, `开始`)
 	} else {

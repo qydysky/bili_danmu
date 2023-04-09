@@ -142,9 +142,6 @@ func Start() {
 				interrupt <- os.Interrupt
 				return false
 			},
-		})
-		//单独，避免队列执行耗时block从而无法接收更多消息
-		c.C.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
 			`pm`: func(data any) bool { //私信
 				if tmp, ok := data.(send.Pm_item); ok {
 					send.Send_pm(tmp.Uid, tmp.Msg)
