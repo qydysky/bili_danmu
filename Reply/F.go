@@ -11,7 +11,6 @@ import (
 	"math"
 	"net/http"
 	"net/http/pprof"
-	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -205,12 +204,8 @@ func Ass_f(contextC context.Context, save_path string, filePath string, st time.
 	if filePath == "" {
 		return
 	}
-	fl := c.C.Log.Base(`Ass`)
-	if rel, err := filepath.Rel(save_path, ass.file); err == nil {
-		fl.L(`I: `, "保存到", rel+".ass")
-	} else {
-		fl.L(`W: `, err)
-	}
+	fl := flog.Base_add(`Ass`)
+	fl.L(`I: `, `开始`)
 	f := &file.File{
 		Config: file.Config{
 			FilePath:  ass.file + ".ass",
@@ -1447,17 +1442,17 @@ func StartRecDanmu(c context.Context, filePath string) {
 	if !IsOn(`仅保存当前直播间流`) || !IsOn("弹幕回放") {
 		return
 	}
-	f := flog.Base("弹幕回放")
+	f := flog.Base_add("弹幕回放")
 	var Recoder = websocket.Recorder{
 		Server: StreamWs,
 	}
 	if e := Recoder.Start(filePath); e == nil {
-		f.L(`T: `, `开始`)
+		f.L(`I: `, `开始`)
 	} else {
 		f.L(`E: `, e)
 	}
 	<-c.Done()
-	flog.Base("弹幕回放").L(`T: `, `停止`)
+	f.L(`I: `, `结束`)
 	Recoder.Stop()
 }
 

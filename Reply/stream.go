@@ -1157,13 +1157,13 @@ func (t *M4SStream) Start() bool {
 						return true
 					})
 
-					l := ms.log.Base_add(`文件`)
+					l := ms.log.Base_add(`文件保存`)
 					startf := func(_ *M4SStream) error {
-						l.L(`T: `, `start`)
+						l.L(`T: `, `开始`)
 						return nil
 					}
 					stopf := func(_ *M4SStream) error {
-						l.L(`T: `, `stop`)
+						l.L(`T: `, `结束`)
 						return nil
 					}
 					ms.getSavepath()
