@@ -57,7 +57,6 @@ type M4SStream struct {
 	Callback_stopRec  func(*M4SStream)          //录制结束的回调
 	Callback_stop     func(*M4SStream)          //实例结束的回调
 	reqPool           *pool.Buf[reqf.Req]       //请求池
-	duration          time.Duration             //录制时长
 }
 
 type M4SStream_Config struct {
@@ -608,7 +607,6 @@ func (t *M4SStream) saveStream() (e error) {
 	}
 
 	// 获取流
-	startT := time.Now()
 	switch t.stream_type {
 	case `mp4`:
 		e = t.saveStreamM4s()
@@ -618,7 +616,6 @@ func (t *M4SStream) saveStream() (e error) {
 		e = errors.New("undefind stream type")
 		t.log.L(`E: `, e)
 	}
-	t.duration = time.Since(startT)
 
 	return
 }
@@ -1130,6 +1127,7 @@ func (t *M4SStream) Start() bool {
 		t.Stream_msg = msgq.NewType[[]byte]()
 
 		// 设置事件
+		// 当录制停止时，取消全部录制
 		mainContextC, mainCancle := context.WithCancel(context.Background())
 		if t.Callback_stopRec != nil {
 			t.msg.Pull_tag_only("stopRec", func(ms *M4SStream) (disable bool) {
@@ -1145,10 +1143,12 @@ func (t *M4SStream) Start() bool {
 			t.msg.ClearAll()
 			return true
 		})
+
 		if t.config.save_to_file {
 			var fc funcCtrl.FlashFunc
 			t.msg.Pull_tag_async(map[string]func(*M4SStream) (disable bool){
 				`cut`: func(ms *M4SStream) (disable bool) {
+					// 当cut时，取消上次录制
 					contextC, cancle := context.WithCancel(mainContextC)
 					fc.FlashWithCallback(cancle)
 
@@ -1162,54 +1162,58 @@ func (t *M4SStream) Start() bool {
 						return nil
 					}
 					ms.getSavepath()
-					go StartRecDanmu(contextC, ms.Current_save_path+"0.csv")                       //保存弹幕
-					go Ass_f(contextC, ms.Current_save_path, ms.Current_save_path+"0", time.Now()) //开始ass
-					if e := ms.PusherToFile(contextC, ms.Current_save_path+`0.`+ms.stream_type, startf, stopf); e != nil {
+
+					var (
+						cp = ms.Current_save_path
+						st = ms.stream_type
+						cr = ms.common.Roomid
+					)
+
+					go StartRecDanmu(contextC, cp+"0.csv")     //保存弹幕
+					go Ass_f(contextC, cp, cp+"0", time.Now()) //开始ass
+					startT := time.Now()
+					if e := ms.PusherToFile(contextC, cp+`0.`+st, startf, stopf); e != nil {
 						l.L(`E: `, e)
 					}
+					duration := time.Since(startT)
+
+					//指定房间录制回调
+					if v, ok := ms.common.K_v.LoadV("指定房间录制回调").([]any); ok && len(v) > 0 {
+						l := l.Base(`录制回调`)
+						for i := 0; i < len(v); i++ {
+							if vm, ok := v[i].(map[string]any); ok {
+								if roomid, ok := vm["roomid"].(float64); ok && int(roomid) == cr {
+									var (
+										durationS, _ = vm["durationS"].(float64)
+										after, _     = vm["after"].([]any)
+									)
+									if len(after) >= 2 && durationS >= 0 && duration.Seconds() > durationS {
+										var cmds []string
+										for i := 0; i < len(after); i++ {
+											if cmd, ok := after[i].(string); ok && cmd != "" {
+												cmds = append(cmds, strings.ReplaceAll(cmd, "{type}", st))
+											}
+										}
+
+										cmd := exec.Command(cmds[0], cmds[1:]...)
+										cmd.Dir = cp
+										l.L(`I: `, "启动", cmd.Args)
+										if e := cmd.Run(); e != nil {
+											l.L(`E: `, e)
+										}
+										l.L(`I: `, "结束")
+									}
+								}
+							}
+						}
+					}
+
 					return false
 				},
 			})
 		}
 
 		defer t.msg.Push_tag(`stop`, t)
-
-		//指定房间录制回调
-		if v, ok := t.common.K_v.LoadV("指定房间录制回调").([]any); ok && len(v) > 0 {
-			for i := 0; i < len(v); i++ {
-				if vm, ok := v[i].(map[string]any); ok {
-					if roomid, ok := vm["roomid"].(float64); ok && int(roomid) == t.common.Roomid {
-						var (
-							durationS, _ = vm["durationS"].(float64)
-							after, _     = vm["after"].([]any)
-						)
-
-						if len(after) > 2 {
-							t.msg.Pull_tag_async_only("stopRec", func(ms *M4SStream) (disable bool) {
-								if durationS >= 0 && ms.duration.Seconds() > durationS {
-									var cmds []string
-									for i := 0; i < len(after); i++ {
-										if cmd, ok := after[i].(string); ok && cmd != "" {
-											cmds = append(cmds, strings.ReplaceAll(cmd, "{type}", ms.stream_type))
-										}
-									}
-
-									l := t.log.Base_add(`指定房间录制回调`)
-									cmd := exec.Command(cmds[0], cmds[1:]...)
-									cmd.Dir = ms.Current_save_path
-									l.L(`I: `, "启动", cmd.Args)
-									if e := cmd.Run(); e != nil {
-										l.L(`E: `, e)
-									}
-									l.L(`I: `, "结束")
-								}
-								return false
-							})
-						}
-					}
-				}
-			}
-		}
 
 		// 主循环
 		for t.Status.Islive() {
@@ -1233,7 +1237,7 @@ func (t *M4SStream) Start() bool {
 			}
 		}
 
-		t.log.L(`I: `, `结束录制(`+strconv.Itoa(t.common.Roomid)+`) 时长(`+t.duration.String()+`)`)
+		t.log.L(`I: `, `结束录制(`+strconv.Itoa(t.common.Roomid)+`)`)
 		t.exitSign.Done()
 	}()
 	return true
