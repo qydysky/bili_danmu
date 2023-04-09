@@ -161,7 +161,7 @@ func (t *M4SStream) LoadConfig(common c.Common) (e error) {
 			} else if !fs.IsDir() {
 				return errors.New(`直播流保存位置不是目录`)
 			}
-			t.config.save_path = path + "/"
+			t.config.save_path = path
 		} else {
 			return errors.New(`直播流保存位置错误` + err.Error())
 		}
