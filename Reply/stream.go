@@ -1269,9 +1269,6 @@ func (t *M4SStream) PusherToFile(contextC context.Context, filepath string, star
 	}
 
 	f.Write(t.getFirstBuf(), true)
-	if len(t.boot_buf) != 0 {
-		f.Write(t.boot_buf, true)
-	}
 	t.Stream_msg.Pull_tag(map[string]func([]byte) bool{
 		`data`: func(b []byte) bool {
 			select {
