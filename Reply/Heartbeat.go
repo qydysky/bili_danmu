@@ -12,7 +12,7 @@ var Heart_map = map[string]func(replyF, int){
 	"heartbeat": replyF.heartbeat, //人气
 }
 
-//HeartBeat类型，将人气4位byte转为字符串，并送到上述map指定的方法
+// HeartBeat类型，将人气4位byte转为字符串，并送到上述map指定的方法
 func Heart(b []byte) {
 	s := int(F.Btoi32(b, 0))
 	if F, ok := Heart_map["heartbeat"]; ok {

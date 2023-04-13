@@ -9,8 +9,8 @@ import (
 
 var flog = c.C.Log.Base(`F/F.go`)
 
-//base on source/player-loader-2.0.7.min.js L3313
-//base on source/player-loader-2.0.7.min.js L3455
+// base on source/player-loader-2.0.7.min.js L3313
+// base on source/player-loader-2.0.7.min.js L3455
 type header struct {
 	PackL int32
 	HeadL int16
@@ -19,7 +19,7 @@ type header struct {
 	Seque int32
 }
 
-//头部生成与检查
+// 头部生成与检查
 func HeadGen(datalenght, Opeation, Sequence int) []byte {
 	var buffer bytes.Buffer //Buffer是一个实现了读写方法的可变大小的字节缓冲
 
@@ -54,7 +54,7 @@ func HeadChe(head []byte) header {
 	}
 }
 
-//认证生成与检查
+// 认证生成与检查
 func HelloGen(roomid int, key string) []byte {
 	flog := flog.Base_add("认证生成")
 
@@ -107,7 +107,7 @@ func HelloChe(r []byte) bool {
 	return true
 }
 
-//获取人气生成
+// 获取人气生成
 func Heartbeat() ([]byte, int) {
 	//from player-loader-2.0.4.min.js
 	const heartBeatInterval = 30
@@ -124,7 +124,7 @@ func Heartbeat() ([]byte, int) {
 
 }
 
-//cookie检查
+// cookie检查
 func CookieCheck(key []string) (missKey []string) {
 	for _, tk := range key {
 		if tk == `` {
