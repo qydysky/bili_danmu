@@ -2,6 +2,7 @@ package F
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -1236,6 +1237,10 @@ func (c *GetFunc) Get_cookie() (missKey []string) {
 				`bili_jct`,
 				`DedeUserID`,
 			}); len(miss) == 0 && c.IsLogin() {
+
+				//获取其他Cookie
+				c.Get_other_cookie()
+
 				apilog.L(`I: `, `已登录`)
 				return
 			}
@@ -1311,6 +1316,7 @@ func (c *GetFunc) Get_cookie() (missKey []string) {
 			apilog.L(`E: `, `qr error`)
 			return
 		}
+		defer os.RemoveAll(`qr.png`)
 		//启动web
 		if scanPath, ok := c.K_v.LoadV("扫码登录路径").(string); ok && scanPath != "" {
 			c.SerF.Store(scanPath, func(w http.ResponseWriter, _ *http.Request) {
@@ -1339,7 +1345,6 @@ func (c *GetFunc) Get_cookie() (missKey []string) {
 		return
 	}
 
-	var cookie string
 	{ //循环查看是否通过
 		Cookie := make(map[string]string)
 		c.Cookie.Range(func(k, v interface{}) bool {
@@ -1390,60 +1395,48 @@ func (c *GetFunc) Get_cookie() (missKey []string) {
 				}
 			} else {
 				apilog.L(`W: `, `登录，并保存了cookie`)
-				if v := r.Response.Cookies(); len(v) == 0 {
-					apilog.L(`E: `, `getLoginInfo cookies len == 0`)
-					return
-				} else {
-					cookie = reqf.Map_2_Cookies_String(reqf.Cookies_List_2_Map(v)) //cookie to string
+				if e := save_cookie(r.Response.Cookies()); e != nil {
+					apilog.L(`E: `, e)
 				}
-				if cookie == `` {
-					apilog.L(`E: `, `getLoginInfo cookies ""`)
-					return
-				} else {
-					break
-				}
+
+				//获取其他Cookie
+				c.Get_other_cookie()
+				break
 			}
-		}
-		if len(cookie) == 0 {
-			return
-		}
-	}
-
-	//有新实例，退出
-	if boot_Get_cookie.NeedExit(id) {
-		return
-	}
-
-	{ //写入cookie.txt
-		for k, v := range reqf.Cookies_String_2_Map(cookie) {
-			c.Cookie.Store(k, v)
-		}
-		//生成cookieString
-		cookieString := ``
-		{
-			c.Cookie.Range(func(k, v interface{}) bool {
-				cookieString += k.(string) + `=` + v.(string) + `; `
-				return true
-			})
-			t := []rune(cookieString)
-			cookieString = string(t[:len(t)-2])
-		}
-
-		CookieSet([]byte(cookieString))
-	}
-
-	//有新实例，退出
-	if boot_Get_cookie.NeedExit(id) {
-		return
-	}
-
-	{ //清理
-		if p.Checkfile().IsExist(`qr.png`) {
-			os.RemoveAll(`qr.png`)
-			return
 		}
 	}
 	return
+}
+
+// 获取其他Cookie
+func (c *GetFunc) Get_other_cookie() {
+	apilog := apilog.Base_add(`获取其他Cookie`)
+
+	r := c.ReqPool.Get()
+	defer c.ReqPool.Put(r)
+
+	Cookie := make(map[string]string)
+	c.Cookie.Range(func(k, v interface{}) bool {
+		Cookie[k.(string)] = v.(string)
+		return true
+	})
+
+	if e := r.Reqf(reqf.Rval{
+		Url: `https://www.bilibili.com/`,
+		Header: map[string]string{
+			`Cookie`: reqf.Map_2_Cookies_String(Cookie),
+		},
+		Proxy:   c.Proxy,
+		Timeout: 10 * 1000,
+		Retry:   2,
+	}); e != nil {
+		apilog.L(`E: `, e)
+		return
+	}
+
+	if e := save_cookie(r.Response.Cookies()); e != nil {
+		apilog.L(`E: `, e)
+	}
 }
 
 // 短信登录
@@ -1839,9 +1832,9 @@ func (c *GetFunc) Get_LIVE_BUVID() (missKey []string) {
 		}
 
 		//cookie
+		save_cookie(req.Response.Cookies())
 		var has bool
-		for k, v := range reqf.Cookies_List_2_Map(req.Response.Cookies()) {
-			c.Cookie.Store(k, v)
+		for k := range reqf.Cookies_List_2_Map(req.Response.Cookies()) {
 			if k == `LIVE_BUVID` {
 				has = true
 			}
@@ -1854,14 +1847,6 @@ func (c *GetFunc) Get_LIVE_BUVID() (missKey []string) {
 			time.Sleep(time.Second)
 		}
 	}
-
-	Cookie := make(map[string]string)
-	c.Cookie.Range(func(k, v interface{}) bool {
-		Cookie[k.(string)] = v.(string)
-		return true
-	})
-
-	CookieSet([]byte(reqf.Map_2_Cookies_String(Cookie)))
 
 	c.LiveBuvidUpdated = time.Now()
 
@@ -2139,7 +2124,11 @@ func (c *GetFunc) Silver_2_coin() (missKey []string) {
 	return
 }
 
-func save_cookie(Cookies []*http.Cookie) {
+func save_cookie(Cookies []*http.Cookie) error {
+	if len(Cookies) == 0 {
+		return errors.New("no cookie")
+	}
+
 	for k, v := range reqf.Cookies_List_2_Map(Cookies) {
 		c.C.Cookie.Store(k, v)
 	}
@@ -2150,6 +2139,7 @@ func save_cookie(Cookies []*http.Cookie) {
 		return true
 	})
 	CookieSet([]byte(reqf.Map_2_Cookies_String(Cookie)))
+	return nil
 }
 
 // 正在直播主播
