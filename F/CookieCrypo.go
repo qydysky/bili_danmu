@@ -71,7 +71,9 @@ func CookieSet(source []byte) {
 				pub = d
 			}
 		} else {
-			file.New(`cookie.txt`, 0, true).Write(append([]byte("nol"), source...), true)
+			f := file.New(`cookie.txt`, 0, true)
+			f.Delete()
+			f.Write(append([]byte("nol"), source...), true)
 			return
 		}
 	}
@@ -79,6 +81,8 @@ func CookieSet(source []byte) {
 		clog.L(`E: `, e)
 		return
 	} else {
-		file.New(`cookie.txt`, 0, true).Write(append([]byte("pem"), source...), true)
+		f := file.New(`cookie.txt`, 0, true)
+		f.Delete()
+		f.Write(append([]byte("pem"), source...), true)
 	}
 }
