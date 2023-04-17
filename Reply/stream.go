@@ -59,11 +59,10 @@ type M4SStream struct {
 }
 
 type M4SStream_Config struct {
-	save_path     string //直播流保存目录
-	want_qn       int    //直播流清晰度
-	want_type     string //直播流类型
-	banlance_host bool   //直播hls流故障转移
-	save_to_file  bool   //保存到文件
+	save_path    string //直播流保存目录
+	want_qn      int    //直播流清晰度
+	want_type    string //直播流类型
+	save_to_file bool   //保存到文件
 }
 
 type m4s_link_item struct {
@@ -167,9 +166,6 @@ func (t *M4SStream) LoadConfig(common c.Common) (e error) {
 		}
 	} else {
 		return errors.New(`未配置直播流保存位置`)
-	}
-	if v, ok := common.K_v.LoadV(`直播hls流故障转移`).(bool); ok {
-		t.config.banlance_host = v
 	}
 	if v, ok := common.K_v.LoadV(`直播流保存到文件`).(bool); ok {
 		t.config.save_to_file = v
