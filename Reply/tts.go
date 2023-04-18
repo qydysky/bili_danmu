@@ -83,7 +83,7 @@ func init() {
 			return
 		}
 		var buf map[string]interface{}
-		json.Unmarshal(bb, &buf)
+		_ = json.Unmarshal(bb, &buf)
 		if onoff, ok := buf[`onoff`]; ok {
 			for k, v := range onoff.(map[string]interface{}) {
 				tts_setting_string[k] = v.(string)
@@ -404,7 +404,7 @@ func init() {
 					}
 				}
 				if len(buf) != 0 {
-					file.New(sys.Sys().Cdir()+`/tts.mp3`, 0, true).Write(buf, true)
+					_, _ = file.New(sys.Sys().Cdir()+`/tts.mp3`, 0, true).Write(buf, true)
 					play()
 				}
 				xfwsClient.Close()

@@ -13,7 +13,7 @@ import (
 
 func Test_FLVdeal(t *testing.T) {
 	flog := file.New("E:\\test\\0.flv.log", 0, false)
-	flog.Delete()
+	_ = flog.Delete()
 	defer flog.Close()
 	f := file.New("E:\\test\\0.flv", 0, false)
 	defer f.Close()
@@ -32,7 +32,7 @@ func Test_FLVdeal(t *testing.T) {
 			t.Log("reach end")
 			break
 		}
-		buff.Append(buf[:n])
+		_ = buff.Append(buf[:n])
 		if s := buff.Size(); max < s {
 			max = s
 		}
@@ -41,9 +41,9 @@ func Test_FLVdeal(t *testing.T) {
 		if e != nil {
 			t.Fatal(e)
 		}
-		flog.Write([]byte(fmt.Sprintf("%d %d %d %d\n", c, len(front_buf), keyframe.Size(), last_available_offset)), true)
+		_, _ = flog.Write([]byte(fmt.Sprintf("%d %d %d %d\n", c, len(front_buf), keyframe.Size(), last_available_offset)), true)
 		t.Log(c, len(front_buf), keyframe.Size())
-		buff.RemoveFront(last_available_offset)
+		_ = buff.RemoveFront(last_available_offset)
 	}
 	t.Log("max", humanize.Bytes(uint64(max)))
 }

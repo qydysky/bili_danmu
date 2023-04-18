@@ -456,7 +456,7 @@ func (replyF) watched_change(s string) {
 		return
 	}
 	var data ws_msg.WATCHED_CHANGE
-	json.Unmarshal([]byte(s), &data)
+	_ = json.Unmarshal([]byte(s), &data)
 	// fmt.Printf("\t观看人数:%d\n", watched)
 	if data.Data.Num == c.C.Watched {
 		return
@@ -1093,7 +1093,7 @@ func (replyF) danmu(s string) {
 
 	{ //附加功能 弹幕机 封禁 弹幕合并
 		//对指定弹幕重新录制
-		danmuReLiveTriger.Init(&c.C)
+		danmuReLiveTriger.Init(c.C)
 		danmuReLiveTriger.Check(item.uid, item.msg)
 		go Danmujif(item.msg)
 		// if Autobanf(item.msg) {

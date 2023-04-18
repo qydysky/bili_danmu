@@ -25,7 +25,7 @@ func init() {
 		return
 	}
 	var buf map[string]interface{}
-	json.Unmarshal(bb, &buf)
+	_ = json.Unmarshal(bb, &buf)
 	for k, v := range buf {
 		if k == v {
 			continue

@@ -132,7 +132,7 @@ func init() {
 			return
 		}
 		var buf map[string]interface{}
-		json.Unmarshal(bb, &buf)
+		_ = json.Unmarshal(bb, &buf)
 		for k, v := range buf {
 			if able, ok := v.(bool); ok { //设置为true时，使用默认显示
 				if able {

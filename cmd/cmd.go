@@ -133,7 +133,7 @@ func Cmd() {
 			//登陆
 			if strings.Contains(inputs, ` login`) {
 				//获取cookie
-				F.Get(&c.C).Get(`Cookie`)
+				F.Get(c.C).Get(`Cookie`)
 				continue
 			}
 			//搜索主播
@@ -192,8 +192,8 @@ func Cmd() {
 				fmt.Println(`Web服务地址:`, c.C.Stream_url.String())
 				var array = reply.StreamOCommon(-1)
 				fmt.Println(`正在录制的房间：`)
-				for _, v := range array {
-					fmt.Println("\t" + v.Uname + "(" + strconv.Itoa(v.Roomid) + ") " + v.Title)
+				for i := 0; i < len(array); i++ {
+					fmt.Println("\t" + array[i].Uname + "(" + strconv.Itoa(array[i].Roomid) + ") " + array[i].Title)
 				}
 				fmt.Print("输入` rec` 来启停当前房间录制")
 
