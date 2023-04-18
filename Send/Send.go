@@ -20,12 +20,16 @@ var damnu_official = make(map[string]string)
 
 // 初始化表情代码
 func init() {
-	bb, err := file.New("config/config_danmu_official.json", 0, true).ReadAll(1000, 1<<16)
+	f := file.New("config/config_danmu_official.json", 0, true)
+	if !f.IsExist() {
+		return
+	}
+	bb, err := f.ReadAll(1000, 1<<16)
 	if !errors.Is(err, io.EOF) {
 		return
 	}
 	var buf map[string]interface{}
-	json.Unmarshal(bb, &buf)
+	_ = json.Unmarshal(bb, &buf)
 	for k, v := range buf {
 		if k == v {
 			continue

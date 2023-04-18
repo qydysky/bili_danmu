@@ -57,7 +57,7 @@ func Search_stream_tag(buf []byte, keyframe *slice.Buf[byte]) (front_buf []byte,
 			front_buf = []byte{}
 		}
 		if bufl := keyframe.Size(); confirm_num != bufl {
-			keyframe.RemoveBack(bufl - confirm_num)
+			_ = keyframe.RemoveBack(bufl - confirm_num)
 		}
 	}()
 
@@ -141,11 +141,11 @@ func Search_stream_tag(buf []byte, keyframe *slice.Buf[byte]) (front_buf []byte,
 			}
 
 			if keyframe_num >= 0 {
-				keyframe.Append(buf[tag_offset : tag_offset+tag_size_check+previou_tag_size])
+				_ = keyframe.Append(buf[tag_offset : tag_offset+tag_size_check+previou_tag_size])
 			}
 		} else if buf[tag_offset] == audio_tag {
 			if keyframe_num >= 0 {
-				keyframe.Append(buf[tag_offset : tag_offset+tag_size_check+previou_tag_size])
+				_ = keyframe.Append(buf[tag_offset : tag_offset+tag_size_check+previou_tag_size])
 			}
 		}
 

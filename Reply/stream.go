@@ -47,7 +47,7 @@ type M4SStream struct {
 	boot_buf_locker   funcCtrl.BlockFunc
 	last_m4s          *m4s_link_item           //最后一个切片
 	m4s_pool          *pool.Buf[m4s_link_item] //切片pool
-	common            c.Common                 //通用配置副本
+	common            *c.Common                //通用配置副本
 	Current_save_path string                   //明确的直播流保存目录
 	// 事件周期 start: 开始实例 startRec：开始录制 load：接收到视频头 cut：切 stopRec：结束录制 stop：结束实例
 	msg               *msgq.MsgType[*M4SStream] //实例的各种事件回调
@@ -138,11 +138,11 @@ func (t *M4SStream) putM4s(ms ...*m4s_link_item) {
 	t.m4s_pool.Put(ms...)
 }
 
-func (t *M4SStream) Common() c.Common {
+func (t *M4SStream) Common() *c.Common {
 	return t.common
 }
 
-func (t *M4SStream) LoadConfig(common c.Common) (e error) {
+func (t *M4SStream) LoadConfig(common *c.Common) (e error) {
 	t.common = common
 	t.log = common.Log.Base(`直播流保存`)
 
@@ -189,7 +189,7 @@ func (t *M4SStream) getFirstBuf() []byte {
 func (t *M4SStream) fetchCheckStream() bool {
 	// 获取流地址
 	t.common.Live_want_qn = t.config.want_qn
-	if F.Get(&t.common).Get(`Live`); len(t.common.Live) == 0 {
+	if F.Get(t.common).Get(`Live`); len(t.common.Live) == 0 {
 		return false
 	}
 
@@ -563,7 +563,7 @@ func (t *M4SStream) getSavepath() {
 		t.log.L(`I: `, "保存到", rel+`/0.`+t.stream_type)
 		f := file.New(t.config.save_path+"tmp.create", 0, true)
 		f.Create()
-		f.Delete()
+		_ = f.Delete()
 	} else {
 		t.log.L(`W: `, err)
 	}
@@ -726,7 +726,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 				defer ticker.Stop()
 				for {
 					n, e := rc.Read(buf)
-					buff.Append(buf[:n])
+					_ = buff.Append(buf[:n])
 					if e != nil {
 						t.Stream_msg.PushLock_tag(`close`, nil)
 						break
@@ -767,7 +767,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 						}
 						if last_available_offset > 1 {
 							// fmt.Println("write Sync")
-							buff.RemoveFront(last_available_offset - 1)
+							_ = buff.RemoveFront(last_available_offset - 1)
 						}
 					}
 				}
@@ -778,7 +778,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 
 			t.log.L(`I: `, `flv下载开始`)
 
-			r.Reqf(reqf.Rval{
+			_ = r.Reqf(reqf.Rval{
 				Url:              surl.String(),
 				SaveToPipeWriter: rw,
 				NoResponse:       true,
@@ -908,7 +908,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 						link.status = 3 // 设置切片状态为下载失败
 					} else {
 						link.data.Reset()
-						link.data.Append(r.Respon)
+						_ = link.data.Append(r.Respon)
 						link.status = 2 // 设置切片状态为下载完成
 					}
 				}(v)
@@ -970,7 +970,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 				continue
 			}
 
-			buf.Append(download_seq[k].data.GetPureBuf())
+			_ = buf.Append(download_seq[k].data.GetPureBuf())
 			t.putM4s(download_seq[k])
 			download_seq = append(download_seq[:k], download_seq[k+1:]...)
 			k -= 1
@@ -1005,7 +1005,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 				t.Stream_msg.PushLock_tag(`data`, t.boot_buf)
 			}
 
-			buf.RemoveFront(last_available_offset)
+			_ = buf.RemoveFront(last_available_offset)
 		}
 
 		// 停止录制
@@ -1093,7 +1093,7 @@ func (t *M4SStream) Start() bool {
 	}
 
 	// 是否在直播
-	F.Get(&t.common).Get(`Liveing`)
+	F.Get(t.common).Get(`Liveing`)
 	if !t.common.Liveing {
 		t.log.L(`W: `, `未直播`)
 		return false
@@ -1219,7 +1219,7 @@ func (t *M4SStream) Start() bool {
 		// 主循环
 		for t.Status.Islive() {
 			// 是否在直播
-			F.Get(&t.common).Get(`Liveing`)
+			F.Get(t.common).Get(`Liveing`)
 			if !t.common.Liveing {
 				t.log.L(`W: `, `未直播`)
 				break
@@ -1258,13 +1258,13 @@ func (t *M4SStream) Stop() {
 func (t *M4SStream) PusherToFile(contextC context.Context, filepath string, startFunc func(*M4SStream) error, stopFunc func(*M4SStream) error) error {
 	f := file.New(filepath, 0, false)
 	defer f.Close()
-	f.Delete()
+	_ = f.Delete()
 
 	if e := startFunc(t); e != nil {
 		return e
 	}
 
-	f.Write(t.getFirstBuf(), true)
+	_, _ = f.Write(t.getFirstBuf(), true)
 	t.Stream_msg.Pull_tag(map[string]func([]byte) bool{
 		`data`: func(b []byte) bool {
 			select {
@@ -1275,7 +1275,7 @@ func (t *M4SStream) PusherToFile(contextC context.Context, filepath string, star
 			if len(b) == 0 {
 				return true
 			}
-			f.Write(b, true)
+			_, _ = f.Write(b, true)
 			return false
 		},
 		`close`: func(_ []byte) bool {

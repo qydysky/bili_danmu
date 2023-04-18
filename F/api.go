@@ -1311,8 +1311,7 @@ func (c *GetFunc) Get_cookie() (missKey []string) {
 	}
 
 	{ //生成二维码
-		qr.WriteFile(img_url, qr.Medium, 256, `qr.png`)
-		if !p.Checkfile().IsExist(`qr.png`) {
+		if e := qr.WriteFile(img_url, qr.Medium, 256, `qr.png`); e != nil || !p.Checkfile().IsExist(`qr.png`) {
 			apilog.L(`E: `, `qr error`)
 			return
 		}
@@ -1320,10 +1319,10 @@ func (c *GetFunc) Get_cookie() (missKey []string) {
 		//启动web
 		if scanPath, ok := c.K_v.LoadV("扫码登录路径").(string); ok && scanPath != "" {
 			c.SerF.Store(scanPath, func(w http.ResponseWriter, _ *http.Request) {
-				file.New("qr.png", 0, true).CopyToIoWriter(w, humanize.MByte, true)
+				_ = file.New("qr.png", 0, true).CopyToIoWriter(w, humanize.MByte, true)
 			})
 			if c.K_v.LoadV(`扫码登录自动打开标签页`).(bool) {
-				open.Run(`http://127.0.0.1:` + c.Stream_url.Port() + scanPath)
+				_ = open.Run(`http://127.0.0.1:` + c.Stream_url.Port() + scanPath)
 			}
 			apilog.L(`W: `, `或打开链接扫码登录：`+c.Stream_url.String()+scanPath)
 		}
@@ -1555,7 +1554,7 @@ func Get_weared_medal() (item J.GetWearedMedal_Data) {
 		case []interface{}:
 		default:
 			if data, err := json.Marshal(res.Data); err == nil {
-				json.Unmarshal(data, &item)
+				_ = json.Unmarshal(data, &item)
 			}
 		}
 
@@ -1832,7 +1831,7 @@ func (c *GetFunc) Get_LIVE_BUVID() (missKey []string) {
 		}
 
 		//cookie
-		save_cookie(req.Response.Cookies())
+		_ = save_cookie(req.Response.Cookies())
 		var has bool
 		for k := range reqf.Cookies_List_2_Map(req.Response.Cookies()) {
 			if k == `LIVE_BUVID` {
@@ -2102,7 +2101,7 @@ func (c *GetFunc) Silver_2_coin() (missKey []string) {
 			return
 		}
 
-		save_cookie(req.Response.Cookies())
+		_ = save_cookie(req.Response.Cookies())
 
 		var res struct {
 			Code    int    `json:"code"`

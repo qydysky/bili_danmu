@@ -5,6 +5,7 @@ on:
     branches:
       - '**'
     paths:
+      - '**.yml'
       - '**.go'
       - '**.mod'
       - '**.sum'
@@ -24,12 +25,30 @@ jobs:
 
     - name: Check out code
       uses: actions/checkout@v3
-    
-    - name: Build
+
+    - name: golangci-lint
+      uses: golangci/golangci-lint-action@v3
+      with:
+        args: --timeout 3m --verbose
+
+    - name: Test
       run: |
         sudo apt-get update
         sudo apt-get install libgtk-3-dev libcairo2-dev libglib2.0-dev
+        go get .
+        CGO_ENABLED=0 go test -v --cover -coverprofile=coverage ./...
+
+    - name: Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        token: ${{secrets.CODECOV_TOKEN}}
+        file: coverage
+      
+    - name: Build
+      run: |
         cd demo
+        sudo apt-get update
+        sudo apt-get install libgtk-3-dev libcairo2-dev libglib2.0-dev
         go get .
         CGO_ENABLED=0 go build -v -buildmode=exe -o demo.run main.go
       
@@ -55,7 +74,24 @@ jobs:
 
     - name: Check out code
       uses: actions/checkout@v3
-            
+
+    - name: golangci-lint
+      uses: golangci/golangci-lint-action@v3
+      with:
+        args: --timeout 3m --verbose
+
+    - name: Test
+      run: |
+        set CGO_ENABLED=0
+        go get .
+        go test -v --cover -coverprofile=coverage ./...
+
+    - name: Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        token: ${{secrets.CODECOV_TOKEN}}
+        file: coverage
+        
     - name: Build
       run: |
         cd demo

@@ -127,12 +127,16 @@ var Msg_map = map[string]func(replyF, string){
 // 屏蔽不需要的消息
 func init() {
 	{ //加载不需要的消息
-		bb, err := file.New("config/config_disable_msg.json", 0, true).ReadAll(100, 1<<16)
+		f := file.New("config/config_disable_msg.json", 0, true)
+		if !f.IsExist() {
+			return
+		}
+		bb, err := f.ReadAll(100, 1<<16)
 		if !errors.Is(err, io.EOF) {
 			return
 		}
 		var buf map[string]interface{}
-		json.Unmarshal(bb, &buf)
+		_ = json.Unmarshal(bb, &buf)
 		for k, v := range buf {
 			if able, ok := v.(bool); ok { //设置为true时，使用默认显示
 				if able {

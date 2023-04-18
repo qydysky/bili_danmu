@@ -184,7 +184,7 @@ func (t *Common) ValidLive() *LiveQn {
 	return nil
 }
 
-func (t *Common) Init() Common {
+func (t *Common) Init() *Common {
 	t.PID = os.Getpid()
 	t.StartT = time.Now()
 
@@ -255,7 +255,11 @@ func (t *Common) Init() Common {
 	t.Roomid = *roomIdP
 
 	if e := t.loadConf(*ckv); e != nil {
-		panic(e)
+		if os.IsNotExist(e) {
+			fmt.Println("未能加载配置文件")
+		} else {
+			panic(e)
+		}
 	}
 
 	go func() {
@@ -361,18 +365,22 @@ func (t *Common) Init() Common {
 		t.Log = t.Log.Level(logmap)
 	}
 
-	return *t
+	return t
 }
 
 func (t *Common) loadConf(customConf string) error {
 	var data map[string]interface{}
 
 	// 64k
-	if bb, e := file.New("config/config_K_v.json", 0, true).ReadAll(100, 1<<16); e != nil {
+	f := file.New("config/config_K_v.json", 0, true)
+	if !f.IsExist() {
+		return os.ErrNotExist
+	}
+	if bb, e := f.ReadAll(100, 1<<16); e != nil {
 		if !errors.Is(e, io.EOF) {
 			return e
 		} else {
-			json.Unmarshal(bb, &data)
+			_ = json.Unmarshal(bb, &data)
 		}
 	}
 
@@ -401,7 +409,7 @@ func (t *Common) loadConf(customConf string) error {
 				return fmt.Errorf("无法获取自定义配置文件 %d", req.Response.StatusCode)
 			} else {
 				var tmp map[string]interface{}
-				json.Unmarshal(req.Respon, &tmp)
+				_ = json.Unmarshal(req.Respon, &tmp)
 				for k, v := range tmp {
 					data[k] = v
 				}
@@ -412,7 +420,7 @@ func (t *Common) loadConf(customConf string) error {
 			if bb, err := file.New(customConf, 0, true).ReadAll(100, 1<<16); err != nil {
 				if errors.Is(err, io.EOF) {
 					var tmp map[string]interface{}
-					json.Unmarshal(bb, &tmp)
+					_ = json.Unmarshal(bb, &tmp)
 					for k, v := range tmp {
 						data[k] = v
 					}
@@ -454,5 +462,5 @@ func (t ResStruct) Write(w http.ResponseWriter) {
 		t.Message = e.Error()
 		data, _ = json.Marshal(t)
 	}
-	w.Write(data)
+	_, _ = w.Write(data)
 }

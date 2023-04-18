@@ -86,9 +86,9 @@ func Start() {
 		//如果连接中断，则等待
 		F.KeepConnect()
 		//获取cookie
-		F.Get(&c.C).Get(`Cookie`)
+		F.Get(c.C).Get(`Cookie`)
 		//获取LIVE_BUVID
-		F.Get(&c.C).Get(`LIVE_BUVID`)
+		F.Get(c.C).Get(`LIVE_BUVID`)
 
 		// 房间初始化
 		if c.C.Roomid == 0 {
@@ -105,7 +105,7 @@ func Start() {
 		//使用带tag的消息队列在功能间传递消息
 		c.C.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
 			`flash_room`: func(_ any) bool { //房间重进
-				F.Get(&c.C).Get(`WSURL`)
+				F.Get(c.C).Get(`WSURL`)
 				select {
 				case flash_room_chan <- struct{}{}:
 				default:
@@ -144,7 +144,9 @@ func Start() {
 			},
 			`pm`: func(data any) bool { //私信
 				if tmp, ok := data.(send.Pm_item); ok {
-					send.Send_pm(tmp.Uid, tmp.Msg)
+					if e := send.Send_pm(tmp.Uid, tmp.Msg); e != nil {
+						danmulog.Base_add(`私信`).L(`E: `, e)
+					}
 				}
 				return false
 			},
@@ -155,9 +157,9 @@ func Start() {
 		//捕获ctrl+c退出
 		signal.Notify(interrupt, os.Interrupt)
 		//获取uid
-		F.Get(&c.C).Get(`Uid`)
+		F.Get(c.C).Get(`Uid`)
 		//兑换硬币
-		F.Get(&c.C).Get(`Silver_2_coin`)
+		F.Get(c.C).Get(`Silver_2_coin`)
 		//每日签到
 		F.Dosign()
 		// //客户版本 不再需要
@@ -175,7 +177,7 @@ func Start() {
 			//如果连接中断，则等待
 			F.KeepConnect()
 			//获取热门榜
-			F.Get(&c.C).Get(`Note`)
+			F.Get(c.C).Get(`Note`)
 
 			danmulog.L(`I: `, "连接到房间", c.C.Roomid)
 
@@ -185,9 +187,9 @@ func Start() {
 				return true
 			})
 
-			F.Get(&c.C).Get(`Liveing`)
+			F.Get(c.C).Get(`Liveing`)
 			//检查与切换粉丝牌，只在cookie存在时启用
-			F.Get(&c.C).Get(`CheckSwitch_FansMedal`)
+			F.Get(c.C).Get(`CheckSwitch_FansMedal`)
 
 			//直播状态
 			if c.C.Liveing {
@@ -197,7 +199,7 @@ func Start() {
 			}
 
 			//对每个弹幕服务器尝试
-			F.Get(&c.C).Get(`WSURL`)
+			F.Get(c.C).Get(`WSURL`)
 			for i := 0; i < len(c.C.WSURL); i += 1 {
 				v := c.C.WSURL[i]
 				//ws启动
@@ -248,16 +250,16 @@ func Start() {
 						}()
 
 						//订阅消息，以便刷新舰长数
-						F.Get(&c.C).Get(`GuardNum`)
+						F.Get(c.C).Get(`GuardNum`)
 						// 在线人数
-						F.Get(&c.C).Get(`getOnlineGoldRank`)
+						F.Get(c.C).Get(`getOnlineGoldRank`)
 						//当前ws的消息队列
 						c.C.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
 							`exit_cu_room`: func(_ any) bool { //退出
 								return true
 							},
 							`guard_update`: func(_ any) bool { //舰长更新
-								go F.Get(&c.C).Get(`GuardNum`)
+								go F.Get(c.C).Get(`GuardNum`)
 								return false
 							},
 							`flash_room`: func(_ any) bool { //重进房时退出当前房间
@@ -271,7 +273,7 @@ func Start() {
 									return false
 								}
 								// 在线人数
-								F.Get(&c.C).Get(`getOnlineGoldRank`)
+								F.Get(c.C).Get(`getOnlineGoldRank`)
 								return false
 							},
 							`new day`: func(_ any) bool { //日期更换
@@ -280,7 +282,7 @@ func Start() {
 								// //获取用户版本  不再需要
 								// go F.Get(`VERSION`)
 								//每日兑换硬币
-								go F.Get(&c.C).Silver_2_coin()
+								go F.Get(c.C).Silver_2_coin()
 								//附加功能 每日发送弹幕
 								go reply.Entry_danmu()
 								//附加功能 保持牌子点亮
@@ -330,7 +332,7 @@ func Start() {
 						ws_c.Close()
 						danmulog.L(`I: `, "停止，等待服务器断开连接")
 						//刷新WSURL
-						F.Get(&c.C).Get(`WSURL`)
+						F.Get(c.C).Get(`WSURL`)
 						i = 0
 					case <-change_room_chan:
 						ws_c.Close()

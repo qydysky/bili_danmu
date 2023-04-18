@@ -213,7 +213,7 @@ func Ass_f(contextC context.Context, save_path string, filePath string, st time.
 			Coder:     ass.wrap,
 		},
 	}
-	f.Write([]byte(ass.header), true)
+	_, _ = f.Write([]byte(ass.header), true)
 	ass.startT = st
 
 	<-contextC.Done()
@@ -264,10 +264,10 @@ func dtos(t time.Duration) string {
 var streamO = new(sync.Map)
 
 // 获取实例的Common
-func StreamOCommon(roomid int) (array []c.Common) {
+func StreamOCommon(roomid int) (array []*c.Common) {
 	if roomid != -1 { //返回特定房间
 		if v, ok := streamO.Load(roomid); ok {
-			return []c.Common{v.(*M4SStream).Common()}
+			return []*c.Common{v.(*M4SStream).Common()}
 		}
 	} else { //返回所有
 		streamO.Range(func(_, v interface{}) bool {
@@ -298,7 +298,7 @@ func StreamOStart(roomid int) {
 
 	var tmp = new(M4SStream)
 
-	if e := tmp.LoadConfig(*c.C.Copy()); e != nil {
+	if e := tmp.LoadConfig(c.C.Copy()); e != nil {
 		flog.L(`E: `, e)
 		return
 	}
@@ -543,12 +543,16 @@ var danmuji = Danmuji{
 }
 
 func init() { //初始化反射型弹幕机
-	bb, err := file.New("config/config_auto_reply.json", 0, true).ReadAll(100, 1<<16)
+	f := file.New("config/config_auto_reply.json", 0, true)
+	if !f.IsExist() {
+		return
+	}
+	bb, err := f.ReadAll(100, 1<<16)
 	if !errors.Is(err, io.EOF) {
 		return
 	}
 	var buf map[string]interface{}
-	json.Unmarshal(bb, &buf)
+	_ = json.Unmarshal(bb, &buf)
 	for k, v := range buf {
 		if k == v {
 			continue
@@ -920,23 +924,23 @@ func (t *saveToJson) Init() {
 	t.once.Do(func() {
 		if path, ok := c.C.K_v.LoadV(`save_to_json`).(string); ok && path != `` {
 			f := file.New(path, 0, false)
-			f.Delete()
-			f.Write([]byte("["), true)
+			_ = f.Delete()
+			_, _ = f.Write([]byte("["), true)
 			f.Close()
 
 			t.msg = msgq.NewType[[]byte]()
 			t.msg.Pull_tag(map[string]func([]byte) (disable bool){
 				`data`: func(b []byte) (disable bool) {
 					f := file.New(path, -1, false)
-					f.Write(b, true)
-					f.Write([]byte(","), true)
+					_, _ = f.Write(b, true)
+					_, _ = f.Write([]byte(","), true)
 					f.Close()
 					return false
 				},
 				`stop`: func(_ []byte) (disable bool) {
 					f := file.New(path, -1, false)
-					f.Seed(-1, 2)
-					f.Write([]byte("]"), true)
+					_ = f.Seed(-1, 2)
+					_, _ = f.Write([]byte("]"), true)
 					f.Close()
 					return true
 				},
@@ -964,7 +968,7 @@ func Entry_danmu() {
 	flog := flog.Base_add(`进房弹幕`)
 
 	//检查与切换粉丝牌，只在cookie存在时启用
-	F.Get(&c.C).Get(`CheckSwitch_FansMedal`)
+	F.Get(c.C).Get(`CheckSwitch_FansMedal`)
 
 	if v, _ := c.C.K_v.LoadV(`进房弹幕_有粉丝牌时才发`).(bool); v && c.C.Wearing_FansMedal == 0 {
 		flog.L(`T: `, `无粉丝牌`)
@@ -1070,7 +1074,7 @@ func AutoSend_silver_gift() {
 	}
 
 	if c.C.UpUid == 0 {
-		F.Get(&c.C).Get(`UpUid`)
+		F.Get(c.C).Get(`UpUid`)
 	}
 
 	for _, v := range F.Gift_list() {
@@ -1161,7 +1165,7 @@ func init() {
 			} else if strings.HasSuffix(p, ".html") {
 				w.Header().Set("content-type", "text/html")
 			}
-			f.CopyToIoWriter(w, humanize.MByte, true)
+			_ = f.CopyToIoWriter(w, humanize.MByte, true)
 		})
 
 		// 直播流文件列表api
@@ -1234,7 +1238,7 @@ func init() {
 			} else if strings.HasSuffix(p, ".html") {
 				w.Header().Set("content-type", "text/html")
 			}
-			f.CopyToIoWriter(w, humanize.MByte, true)
+			_ = f.CopyToIoWriter(w, humanize.MByte, true)
 		})
 
 		// 流地址
