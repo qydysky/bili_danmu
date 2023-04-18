@@ -2,6 +2,7 @@
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/qydysky/bili_danmu)](https://goreportcard.com/report/github.com/qydysky/bili_danmu)
 [![codecov](https://codecov.io/gh/qydysky/bili_danmu/branch/Codecov/graph/badge.svg?token=2R7031P47C)](https://codecov.io/gh/qydysky/bili_danmu)
+![GitHub all releases](https://img.shields.io/github/downloads/qydysky/bili_danmu/total)
 
 ### 当前支持显示/功能
 
