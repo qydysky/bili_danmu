@@ -25,6 +25,8 @@ jobs:
 
     - name: golangci-lint
       uses: golangci/golangci-lint-action@v3
+      with:
+        args: --timeout 3m --verbose
 
     - name: Build
       run: |
@@ -61,6 +63,8 @@ jobs:
 
     - name: golangci-lint
       uses: golangci/golangci-lint-action@v3
+      with:
+        args: --timeout 3m --verbose
 
     - name: Build
       run: |

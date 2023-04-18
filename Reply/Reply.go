@@ -333,16 +333,16 @@ func (replyF) user_toast_msg(s string) {
 	{ //额外 ass 私信
 		Assf(fmt.Sprintln(sh...))
 		c.C.Danmu_Main_mq.Push_tag(`guard_update`, nil) //使用连续付费的新舰长无法区分，刷新舰长数
-		if uid != 0 {
+		if msg := c.C.K_v.LoadV(`上舰私信`).(string); uid != 0 && msg != "" {
 			c.C.Danmu_Main_mq.Push_tag(`pm`, send.Pm_item{
 				Uid: uid,
-				Msg: c.C.K_v.LoadV(`上舰私信`).(string),
+				Msg: msg,
 			}) //上舰私信
 		}
-		if c.C.K_v.LoadV(`额外私信对象`).(float64) != 0 {
+		if msg, uid := c.C.K_v.LoadV(`上舰私信(额外)`).(string), c.C.K_v.LoadV(`额外私信对象`).(float64); uid != 0 && msg != "" {
 			c.C.Danmu_Main_mq.Push_tag(`pm`, send.Pm_item{
-				Uid: int(c.C.K_v.LoadV(`额外私信对象`).(float64)),
-				Msg: c.C.K_v.LoadV(`上舰私信(额外)`).(string),
+				Uid: int(uid),
+				Msg: msg,
 			}) //上舰私信-对额外
 		}
 	}
@@ -1172,16 +1172,20 @@ func Msg_showdanmu(item Danmu_item) {
 				})
 			}
 			if i, e := strconv.Atoi(item.uid); e == nil {
-				c.C.Danmu_Main_mq.Push_tag(`pm`, send.Pm_item{
-					Uid: i,
-					Msg: c.C.K_v.LoadV(`弹幕私信`).(string),
-				}) //上舰私信
+				if msg := c.C.K_v.LoadV(`弹幕私信`).(string); msg != "" {
+					c.C.Danmu_Main_mq.Push_tag(`pm`, send.Pm_item{
+						Uid: i,
+						Msg: msg,
+					}) //上舰私信
+				}
 			}
 			if c.C.K_v.LoadV(`额外私信对象`).(float64) != 0 {
-				c.C.Danmu_Main_mq.Push_tag(`pm`, send.Pm_item{
-					Uid: int(c.C.K_v.LoadV(`额外私信对象`).(float64)),
-					Msg: c.C.K_v.LoadV(`弹幕私信(额外)`).(string),
-				}) //上舰私信-对额外
+				if msg, uid := c.C.K_v.LoadV(`上舰私信(额外)`).(string), c.C.K_v.LoadV(`额外私信对象`).(float64); uid != 0 && msg != "" {
+					c.C.Danmu_Main_mq.Push_tag(`pm`, send.Pm_item{
+						Uid: int(uid),
+						Msg: msg,
+					}) //上舰私信-对额外
+				}
 			}
 		}
 	}
