@@ -4,6 +4,8 @@
 [![codecov](https://codecov.io/gh/qydysky/bili_danmu/branch/Codecov/graph/badge.svg?token=2R7031P47C)](https://codecov.io/gh/qydysky/bili_danmu)
 ![GitHub all releases](https://img.shields.io/github/downloads/qydysky/bili_danmu/total)
 
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fqydysky%2Fbili_danmu.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fqydysky%2Fbili_danmu?ref=badge_large)
+
 ### 当前支持显示/功能
 
 #### 当前支持显示
