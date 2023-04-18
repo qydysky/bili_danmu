@@ -1,8 +1,14 @@
 ## bilibili 直播弹幕机
+![commits](https://img.shields.io/github/commit-activity/m/qydysky/bili_danmu)
 [![Go Report Card](https://goreportcard.com/badge/github.com/qydysky/bili_danmu)](https://goreportcard.com/report/github.com/qydysky/bili_danmu)
 [![codecov](https://codecov.io/gh/qydysky/bili_danmu/branch/Codecov/graph/badge.svg?token=2R7031P47C)](https://codecov.io/gh/qydysky/bili_danmu)
 ![GitHub all releases](https://img.shields.io/github/downloads/qydysky/bili_danmu/total)
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fqydysky%2Fbili_danmu.svg?type=small)](https://app.fossa.com/projects/git%2Bgithub.com%2Fqydysky%2Fbili_danmu?ref=badge_small)
+
+<a href="https://github.com/qydysky/bili_danmu/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=qydysky/bili_danmu&max=36" />
+  <div>see more</div>
+</a>
 
 ### 当前支持显示/功能
 
