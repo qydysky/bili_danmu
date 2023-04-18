@@ -5,6 +5,7 @@ on:
     branches:
       - '**'
     paths:
+      - '**.yml'
       - '**.go'
       - '**.mod'
       - '**.sum'
@@ -29,7 +30,10 @@ jobs:
       uses: golangci/golangci-lint-action@v3
       with:
         args: --timeout 3m --verbose
-    
+
+    - name: Codecov
+      uses: codecov/codecov-action@v3
+      
     - name: Build
       run: |
         sudo apt-get update
@@ -65,7 +69,10 @@ jobs:
       uses: golangci/golangci-lint-action@v3
       with:
         args: --timeout 3m --verbose
-            
+
+    - name: Codecov
+      uses: codecov/codecov-action@v3
+        
     - name: Build
       run: |
         cd demo
