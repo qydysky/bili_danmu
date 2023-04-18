@@ -255,7 +255,11 @@ func (t *Common) Init() *Common {
 	t.Roomid = *roomIdP
 
 	if e := t.loadConf(*ckv); e != nil {
-		panic(e)
+		if os.IsNotExist(e) {
+			fmt.Println("未能加载配置文件")
+		} else {
+			panic(e)
+		}
 	}
 
 	go func() {
@@ -368,7 +372,11 @@ func (t *Common) loadConf(customConf string) error {
 	var data map[string]interface{}
 
 	// 64k
-	if bb, e := file.New("config/config_K_v.json", 0, true).ReadAll(100, 1<<16); e != nil {
+	f := file.New("config/config_K_v.json", 0, true)
+	if !f.IsExist() {
+		return os.ErrNotExist
+	}
+	if bb, e := f.ReadAll(100, 1<<16); e != nil {
 		if !errors.Is(e, io.EOF) {
 			return e
 		} else {

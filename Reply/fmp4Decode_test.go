@@ -12,10 +12,10 @@ import (
 )
 
 func Test_deal(t *testing.T) {
-	flog := file.New("E:\\test\\0.flv.log", 0, false)
+	flog := file.New("0.mp4.log", 0, false)
 	_ = flog.Delete()
 	defer flog.Close()
-	f := file.New("E:\\test\\0.mp4", 0, false)
+	f := file.New("test/0.mp4", 0, false)
 	defer f.Close()
 
 	if f.IsDir() || !f.IsExist() {

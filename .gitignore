@@ -22,6 +22,8 @@ demo/live
 demo/main.exe
 *.m4s
 *.m3u8
-*.flv
 demo/build.bat
 demo/build.sh
+Reply/0.flv.log
+demo/coverage.txt
+coverage.txt

@@ -78,7 +78,11 @@ func init() {
 			}
 		}
 
-		bb, err := file.New("config/config_tts.json", 0, true).ReadAll(100, 1<<16)
+		f := file.New("config/config_tts.json", 0, true)
+		if !f.IsExist() {
+			return
+		}
+		bb, err := f.ReadAll(100, 1<<16)
 		if !errors.Is(err, io.EOF) {
 			return
 		}

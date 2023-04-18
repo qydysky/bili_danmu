@@ -31,6 +31,13 @@ jobs:
       with:
         args: --timeout 3m --verbose
 
+    - name: Test
+      run: |
+        sudo apt-get update
+        sudo apt-get install libgtk-3-dev libcairo2-dev libglib2.0-dev
+        go get .
+        CGO_ENABLED=0 go test -v --cover -coverprofile=coverage.txt ./...
+
     - name: Codecov
       uses: codecov/codecov-action@v3
       with:
@@ -38,9 +45,9 @@ jobs:
       
     - name: Build
       run: |
+        cd demo
         sudo apt-get update
         sudo apt-get install libgtk-3-dev libcairo2-dev libglib2.0-dev
-        cd demo
         go get .
         CGO_ENABLED=0 go build -v -buildmode=exe -o demo.run main.go
       
@@ -71,6 +78,12 @@ jobs:
       uses: golangci/golangci-lint-action@v3
       with:
         args: --timeout 3m --verbose
+
+    - name: Test
+      run: |
+        go get .
+        set CGO_ENABLED=0
+        go test -v --cover -coverprofile=coverage.txt ./...
 
     - name: Codecov
       uses: codecov/codecov-action@v3
