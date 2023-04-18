@@ -35,7 +35,7 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install libgtk-3-dev libcairo2-dev libglib2.0-dev
-        CGO_ENABLED=0 go test -v --cover -coverprofile=coverage.txt ./...
+        CGO_ENABLED=0 go test -v --cover -coverprofile=coverage ./...
 
     - name: Codecov
       uses: codecov/codecov-action@v3
@@ -81,7 +81,7 @@ jobs:
     - name: Test
       run: |
         set CGO_ENABLED=0
-        go test -v --cover -coverprofile=coverage.txt ./...
+        go test -v --cover -coverprofile=coverage ./...
 
     - name: Codecov
       uses: codecov/codecov-action@v3
