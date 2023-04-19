@@ -53,7 +53,7 @@ jobs:
         CGO_ENABLED=0 go build -v -buildmode=exe -o demo.run main.go
       
     - name: zip
-      run: zip -q -r ubuntu_go${{ matrix.go }}.zip *
+      run: zip -q -r ubuntu_go${{ matrix.go }}.zip demo
       
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v3
@@ -100,7 +100,7 @@ jobs:
         go build -v -buildmode=exe -o demo.exe main.go
         
     - name: zip
-      run: .\7za.exe a -r .\windows_go${{ matrix.go }}.zip ./
+      run: .\7za.exe a -r .\windows_go${{ matrix.go }}.zip ./demo
       
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v3
