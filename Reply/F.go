@@ -1013,7 +1013,13 @@ func Keep_medal_light() {
 			continue
 		} //点亮状态
 
-		cacheInfo[v.TargetID] = F.Info(v.TargetID)
+		if info, e := F.Get(c.C).Info(v.TargetID); e != nil {
+			flog.L(`E: `, e)
+			return
+		} else {
+			cacheInfo[v.TargetID] = info
+		}
+
 		//两天内到期，发弹幕续期
 		rand := p.Rand().MixRandom(0, int64(len(array)-1))
 		send.Danmu_s(array[rand].(string), cacheInfo[v.TargetID].Data.LiveRoom.Roomid)

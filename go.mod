@@ -12,6 +12,8 @@ require (
 	golang.org/x/text v0.9.0
 )
 
+require golang.org/x/exp v0.0.0-20230420155640-133eef4313cb
+
 require (
 	github.com/andybalholm/brotli v1.0.5
 	github.com/davecgh/go-spew v1.1.1 // indirect

@@ -1,6 +1,7 @@
 package F
 
 import (
+	"crypto/md5"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,6 +17,7 @@ import (
 	c "github.com/qydysky/bili_danmu/CV"
 	J "github.com/qydysky/bili_danmu/Json"
 	"github.com/skratchdot/open-golang/open"
+	"golang.org/x/exp/slices"
 
 	p "github.com/qydysky/part"
 	file "github.com/qydysky/part/file"
@@ -23,6 +25,7 @@ import (
 	g "github.com/qydysky/part/get"
 	limit "github.com/qydysky/part/limit"
 	reqf "github.com/qydysky/part/reqf"
+	psync "github.com/qydysky/part/sync"
 	sys "github.com/qydysky/part/sys"
 
 	"github.com/mdp/qrterminal/v3"
@@ -34,7 +37,13 @@ var api_limit = limit.New(2, "1s", "30s") //频率限制2次/s，最大等待时
 
 type GetFunc struct {
 	*c.Common
-	l sync.RWMutex
+	cache psync.Map
+	l     sync.RWMutex
+}
+
+type cacheItem struct {
+	data     any
+	exceeded time.Time
 }
 
 func Get(c *c.Common) *GetFunc {
@@ -1116,66 +1125,85 @@ func (c *GetFunc) Get_guardNum() (missKey []string) {
 // 	return
 // }
 
-func Info(UpUid int) (info J.Info) {
+func (c *GetFunc) Info(UpUid int) (J.Info, error) {
+	fkey := `Info`
+
+	if v, ok := c.cache.LoadV(fkey).(cacheItem); ok && v.exceeded.Before(time.Now()) {
+		return (v.data).(J.Info), nil
+	}
+
+	// 超额请求阻塞，超时将取消
 	apilog := apilog.Base_add(`Info`)
 	if api_limit.TO() {
-		return
-	} //超额请求阻塞，超时将取消
+		return J.Info{}, os.ErrDeadlineExceeded
+	}
 
-	//html
+	query := fmt.Sprintf("mid=%d&token=&platform=web&web_location=1550101", UpUid)
+	// wbi
+	{
+		v, e := c.GetNav()
+		if e != nil {
+			return J.Info{}, e
+		}
+		wrid, wts := c.getWridWts(query, v.Data.WbiImg.ImgURL, v.Data.WbiImg.SubURL)
+		query += "&w_rid=" + wrid + "&wts=" + wts
+	}
+
+	// html
 	{
 		Cookie := make(map[string]string)
-		c.C.Cookie.Range(func(k, v interface{}) bool {
+		c.Cookie.Range(func(k, v interface{}) bool {
 			Cookie[k.(string)] = v.(string)
 			return true
 		})
-		req := c.C.ReqPool.Get()
-		defer c.C.ReqPool.Put(req)
+		req := c.ReqPool.Get()
+		defer c.ReqPool.Put(req)
+
 		if err := req.Reqf(reqf.Rval{
-			Url:     `https://api.bilibili.com/x/space/acc/info?mid=` + strconv.Itoa(UpUid) + `&token=&platform=web&jsonp=jsonp`,
-			Proxy:   c.C.Proxy,
+			Url:     `https://api.bilibili.com/x/space/wbi/acc/info?` + query,
+			Proxy:   c.Proxy,
 			Timeout: 10 * 1000,
 			Retry:   2,
 			Header: map[string]string{
+				`Accept`: "application/json, text/plain, */*",
 				`Cookie`: reqf.Map_2_Cookies_String(Cookie),
 			},
 		}); err != nil {
 			apilog.L(`E: `, err)
-			return
+			return J.Info{}, err
 		}
 
+		var info J.Info
+
 		//Info
-		{
-			if e := json.Unmarshal(req.Respon, &info); e != nil {
-				apilog.L(`E: `, e)
-				return
-			} else if info.Code != 0 {
-				apilog.L(`E: `, info.Message)
-				return
-			}
+		if e := json.Unmarshal(req.Respon, &info); e != nil {
+			apilog.L(`E: `, e)
+			return J.Info{}, e
 		}
+
+		c.cache.Store(fkey, cacheItem{
+			data:     info,
+			exceeded: time.Now().Add(time.Hour),
+		})
+		return info, nil
 	}
-	return
 }
 
 // 调用记录
 var boot_Get_cookie funcCtrl.FlashFunc //新的替代旧的
 
 // 是否登录
-func (c *GetFunc) IsLogin() (isLogin bool) {
-	apilog := apilog.Base_add(`是否登录`)
-	//验证cookie
-	if missKey := CookieCheck([]string{
-		`bili_jct`,
-		`DedeUserID`,
-		`LIVE_BUVID`,
-	}); len(missKey) != 0 {
-		apilog.L(`T: `, `Cookie无Key:`, missKey)
-		return
+func (c *GetFunc) GetNav() (J.Nav, error) {
+	fkey := `GetNav`
+
+	if v, ok := c.cache.LoadV(fkey).(cacheItem); ok && v.exceeded.Before(time.Now()) {
+		return (v.data).(J.Nav), nil
 	}
+
+	apilog := apilog.Base_add(`是否登录`)
 	if api_limit.TO() {
 		apilog.L(`E: `, `超时！`)
-		return
+		return J.Nav{}, os.ErrDeadlineExceeded
 	} //超额请求阻塞，超时将取消
 
 	Cookie := make(map[string]string)
@@ -1206,22 +1234,22 @@ func (c *GetFunc) IsLogin() (isLogin bool) {
 		Retry:   2,
 	}); err != nil {
 		apilog.L(`E: `, err)
-		return
+		return J.Nav{}, err
 	}
 
 	var res J.Nav
 
 	if e := json.Unmarshal(req.Respon, &res); e != nil {
 		apilog.L(`E: `, e)
-		return
+		return J.Nav{}, e
 	}
 
-	if res.Code != 0 {
-		apilog.L(`E: `, res.Message)
-		return
-	}
+	c.cache.Store(fkey, cacheItem{
+		data:     res,
+		exceeded: time.Now().Add(time.Hour),
+	})
 
-	return res.Data.IsLogin
+	return res, nil
 }
 
 // 扫码登录
@@ -1236,13 +1264,16 @@ func (c *GetFunc) Get_cookie() (missKey []string) {
 			if miss := CookieCheck([]string{
 				`bili_jct`,
 				`DedeUserID`,
-			}); len(miss) == 0 && c.IsLogin() {
+			}); len(miss) == 0 {
+				if v, e := c.GetNav(); e != nil {
+					apilog.L(`E: `, e)
+				} else if v.Data.IsLogin {
+					//获取其他Cookie
+					c.Get_other_cookie()
 
-				//获取其他Cookie
-				c.Get_other_cookie()
-
-				apilog.L(`I: `, `已登录`)
-				return
+					apilog.L(`I: `, `已登录`)
+					return
+				}
 			}
 		}
 	}
@@ -2560,4 +2591,45 @@ func IsConnected() bool {
 
 	apilog.L(`T: `, `已连接`)
 	return true
+}
+
+// bilibili wrid wts 计算
+func (c *GetFunc) getWridWts(query string, imgURL, subURL string, customWts ...string) (w_rid, wts string) {
+	wbi := imgURL[strings.LastIndex(imgURL, "/")+1:strings.LastIndex(imgURL, ".")] +
+		subURL[strings.LastIndex(subURL, "/")+1:strings.LastIndex(subURL, ".")]
+
+	code := []int{46, 47, 18, 2, 53, 8, 23, 32, 15, 50, 10, 31, 58, 3, 45, 35, 27, 43, 5,
+		49, 33, 9, 42, 19, 29, 28, 14, 39, 12, 38, 41, 13, 37, 48, 7, 16, 24, 55,
+		40, 61, 26, 17, 0, 1, 60, 51, 30, 4, 22, 25, 54, 21, 56, 59, 6, 63, 57,
+		62, 11, 36, 20, 34, 44, 52}
+
+	s := []byte{}
+
+	for i := 0; i < len(code); i++ {
+		if code[i] < len(wbi) {
+			s = append(s, wbi[code[i]])
+			if len(s) >= 32 {
+				break
+			}
+		}
+	}
+
+	object := strings.Split(query, "&")
+
+	if len(customWts) == 0 {
+		wts = fmt.Sprintf("%d", time.Now().Unix())
+	} else {
+		wts = customWts[0]
+	}
+	object = append(object, "wts="+wts)
+
+	slices.Sort(object)
+
+	for i := 0; i < len(object); i++ {
+		object[i] = url.PathEscape(object[i])
+	}
+
+	w_rid = fmt.Sprintf("%x", md5.Sum([]byte(strings.Join(object, "&")+string(s))))
+
+	return
 }
