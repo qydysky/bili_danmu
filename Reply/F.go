@@ -19,8 +19,10 @@ import (
 	"time"
 
 	// "runtime"
+	"database/sql"
 
 	"golang.org/x/text/encoding/simplifiedchinese"
+	_ "modernc.org/sqlite"
 
 	"github.com/dustin/go-humanize"
 	c "github.com/qydysky/bili_danmu/CV"
@@ -32,6 +34,7 @@ import (
 	file "github.com/qydysky/part/file"
 	limit "github.com/qydysky/part/limit"
 	msgq "github.com/qydysky/part/msgq"
+	psql "github.com/qydysky/part/sqlite"
 	psync "github.com/qydysky/part/sync"
 	sys "github.com/qydysky/part/sys"
 	websocket "github.com/qydysky/part/websocket"
@@ -1543,6 +1546,62 @@ func (t *DanmuReLiveTriger) Check(uid, msg string) {
 				time.Sleep(time.Minute)
 				t.reload.Store(false)
 			}()
+		}
+	}
+}
+
+// 保存弹幕至sqlite
+type SaveDanmuToSqlite3 struct {
+	db   *sql.DB
+	init sync.Once
+}
+
+var saveDanmuToSqlite3 SaveDanmuToSqlite3
+
+func (t *SaveDanmuToSqlite3) Init(c *c.Common) {
+	t.init.Do(func() {
+		if v, ok := c.K_v.LoadV(`保存弹幕至sqlite`).(string); ok && v != "" {
+			if db, e := sql.Open("sqlite", v); e != nil {
+				panic(e)
+			} else {
+				t.db = db
+			}
+
+			ctx := context.Background()
+			tx := psql.BeginTx[any](t.db, ctx, &sql.TxOptions{})
+			tx = tx.Do(psql.SqlFunc[any]{
+				Ty:         psql.Execf,
+				Ctx:        ctx,
+				Query:      "create table danmu (created text, createdunix text, msg text, color text, auth text, uid text, roomid text)",
+				SkipSqlErr: true,
+			})
+			if e := tx.Fin(); e != nil {
+				panic(e)
+			}
+		}
+	})
+}
+
+func (t *SaveDanmuToSqlite3) SaveToSqlite3(item Danmu_item) {
+	if t.db != nil {
+		ctx := context.Background()
+		tx := psql.BeginTx[any](t.db, ctx, &sql.TxOptions{})
+		tx = tx.Do(psql.SqlFunc[any]{
+			Ty:    psql.Execf,
+			Ctx:   ctx,
+			Query: "insert into danmu values (?, ?, ?, ?, ?, ?, ?)",
+			Args:  []any{time.Now().Format(time.DateTime), time.Now().Unix(), item.msg, item.color, item.auth, item.uid, item.roomid},
+			AfterEF: func(_ *any, result sql.Result, txE error) (_ *any, stopErr error) {
+				if v, e := result.RowsAffected(); e != nil {
+					return nil, e
+				} else if v != 1 {
+					return nil, errors.New("插入数量错误")
+				}
+				return nil, nil
+			},
+		})
+		if e := tx.Fin(); e != nil {
+			flog.Base_add("保存弹幕至sqlite").L(`E: `, e)
 		}
 	}
 }
