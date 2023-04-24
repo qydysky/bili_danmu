@@ -15,6 +15,7 @@ import (
 	reply "github.com/qydysky/bili_danmu/Reply"
 	send "github.com/qydysky/bili_danmu/Send"
 	Cmd "github.com/qydysky/bili_danmu/cmd"
+	plugin "github.com/qydysky/bili_danmu/plugin"
 	sys "github.com/qydysky/part/sys"
 
 	msgq "github.com/qydysky/part/msgq"
@@ -75,6 +76,7 @@ func Start() {
 		if c.C.K_v.Len() == 0 {
 			panic("未能加载配置")
 		}
+		plugin.Plugin.Push_tag(`Event`, plugin.LoadKv)
 	}
 
 	{

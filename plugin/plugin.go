@@ -1,6 +1,13 @@
 package plugin
 
-import msgq "github.com/qydysky/part/msgq"
+import (
+	msgq "github.com/qydysky/part/msgq"
+)
+
+// Event
+const (
+	LoadKv = iota
+)
 
 var Plugin msgq.Msgq
 

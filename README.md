@@ -71,6 +71,10 @@
 ### 说明
 本项目使用github action自动构建，构建过程详见[yml](https://github.com/qydysky/bili_danmu/blob/master/.github/workflows/go.yml)
 
+#### 保存弹幕至sqlite
+配置文件中`保存弹幕至sqlite`，如果设置了文件路径，如`a.sqlite3`，将会在工作目录生成`a.sqlite3`，并记录弹幕。
+这是一个插件，构建方式可能变化，请查看[SaveDanmuToSqlite3](https://pkg.go.dev/github.com/qydysky/bili_danmu_plugin#SaveDanmuToSqlite3)
+
 #### 指定房间录制回调
 配置文件添加了如下配置
 ```json
