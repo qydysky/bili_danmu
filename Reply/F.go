@@ -1560,7 +1560,7 @@ type SaveDanmuToSqlite3 struct {
 func (t *SaveDanmuToSqlite3) init(c *c.Common) {
 	t.Do(func() {
 		if v, ok := c.K_v.LoadV(`保存弹幕至sqlite`).(string); ok && v != "" {
-			if db, e := sql.Open("sqlite3", v); e != nil {
+			if db, e := sql.Open("sqlite", v); e != nil {
 				panic(e)
 			} else {
 				t.db = db
