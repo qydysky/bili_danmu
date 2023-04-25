@@ -20,6 +20,7 @@ import (
 
 	"database/sql"
 
+	_ "github.com/go-sql-driver/mysql"
 	psql "github.com/qydysky/part/sqlite"
 	"golang.org/x/text/encoding/simplifiedchinese"
 	_ "modernc.org/sqlite"
@@ -1548,45 +1549,60 @@ func (t *DanmuReLiveTriger) Check(uid, msg string) {
 	}
 }
 
-// 保存弹幕至sqlite
-var saveDanmuToSqlite3 SaveDanmuToSqlite3
+// 保存弹幕至mysql
+var saveDanmuToMysql SaveDanmuToMysql
 
-type SaveDanmuToSqlite3 struct {
-	db *sql.DB
+type SaveDanmuToMysql struct {
+	db     *sql.DB
+	insert string
 	sync.Once
 }
 
-func (t *SaveDanmuToSqlite3) init(c *c.Common) {
+func (t *SaveDanmuToMysql) init(c *c.Common) {
 	t.Do(func() {
-		if v, ok := c.K_v.LoadV(`保存弹幕至sqlite`).(string); ok && v != "" {
-			if db, e := sql.Open("sqlite", v); e != nil {
-				panic(e)
-			} else {
-				db.SetMaxOpenConns(1)
-				t.db = db
+		if v, ok := c.K_v.LoadV(`保存弹幕至db`).(map[string]any); ok && len(v) != 0 {
+			var (
+				dbname, url, create                 string
+				dbnameok, urlok, createok, insertok bool
+			)
+
+			dbname, dbnameok = v["dbname"].(string)
+			url, urlok = v["url"].(string)
+			create, createok = v["create"].(string)
+			t.insert, insertok = v["insert"].(string)
+
+			if !dbnameok || !urlok || !createok || !insertok {
+				return
 			}
 
-			ctx := context.Background()
-			tx := psql.BeginTx[any](t.db, ctx, &sql.TxOptions{})
-			tx = tx.Do(psql.SqlFunc[any]{
-				Ty:         psql.Execf,
-				Ctx:        ctx,
-				Query:      "create table danmu (created text, createdunix text, msg text, color text, auth text, uid text, roomid text)",
-				SkipSqlErr: true,
-			})
-			if e := tx.Fin(); e != nil {
-				panic(e)
+			if db, e := sql.Open(dbname, url); e != nil {
+				c.Log.Base_add("保存弹幕至db").L(`E: `, e)
+			} else {
+				db.SetConnMaxLifetime(time.Minute * 3)
+				db.SetMaxOpenConns(10)
+				db.SetMaxIdleConns(10)
+				if e := psql.BeginTx[any](db, context.Background(), &sql.TxOptions{}).Do(psql.SqlFunc[any]{
+					Ty:         psql.Execf,
+					Query:      create,
+					SkipSqlErr: true,
+				}).Fin(); e != nil {
+					c.Log.Base_add("保存弹幕至db").L(`E: `, e)
+				} else {
+					t.db = db
+				}
 			}
 		}
 	})
 }
 
-func (t *SaveDanmuToSqlite3) danmu(item Danmu_item) {
-	if t.db != nil {
+func (t *SaveDanmuToMysql) danmu(item Danmu_item) {
+	if t.db == nil {
+		return
+	}
+	if e := t.db.Ping(); e == nil {
 		if e := psql.BeginTx[any](t.db, context.Background(), &sql.TxOptions{}).Do(psql.SqlFunc[any]{
 			Ty:    psql.Execf,
-			Ctx:   context.Background(),
-			Query: "insert into danmu values (?, ?, ?, ?, ?, ?, ?)",
+			Query: t.insert,
 			Args:  []any{time.Now().Format(time.DateTime), time.Now().Unix(), item.msg, item.color, item.auth, item.uid, item.roomid},
 			AfterEF: func(_ *any, result sql.Result, txE error) (_ *any, stopErr error) {
 				if v, e := result.RowsAffected(); e != nil {
@@ -1597,7 +1613,7 @@ func (t *SaveDanmuToSqlite3) danmu(item Danmu_item) {
 				return nil, nil
 			},
 		}).Fin(); e != nil {
-			c.C.Log.Base_add("保存弹幕至sqlite").L(`E: `, e)
+			c.C.Log.Base_add("保存弹幕至db").L(`E: `, e)
 		}
 	}
 }

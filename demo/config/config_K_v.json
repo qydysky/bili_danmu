@@ -40,7 +40,13 @@
     "弹幕_识别表情代码": true,
     "发送还有几天过期的礼物": 3,
     "保持牌子亮着": true,
-    "保存弹幕至sqlite": "",
+    "保存弹幕至db": {
+        "dbname": "",
+        "url":"",
+        "字段help":"time.Now().Format(time.DateTime), time.Now().Unix(), item.msg, item.color, item.auth, item.uid, item.roomid",
+        "create":"",
+        "insert":""
+    },
     "日志文件输出-help": "为空时不保存日志",
     "日志文件输出": "danmu.log",
     "日志显示": [

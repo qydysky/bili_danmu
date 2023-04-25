@@ -1093,8 +1093,8 @@ func (replyF) danmu(s string) {
 
 	{ // 附加功能 弹幕机 封禁 弹幕合并
 		// 保存弹幕至sqlite
-		saveDanmuToSqlite3.init(c.C)
-		saveDanmuToSqlite3.danmu(item)
+		saveDanmuToMysql.init(c.C)
+		saveDanmuToMysql.danmu(item)
 		// 对指定弹幕重新录制
 		danmuReLiveTriger.Init(c.C)
 		danmuReLiveTriger.Check(item.uid, item.msg)

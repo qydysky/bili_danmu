@@ -73,8 +73,47 @@
 ### 说明
 本项目使用github action自动构建，构建过程详见[yml](https://github.com/qydysky/bili_danmu/blob/master/.github/workflows/go.yml)
 
-#### 保存弹幕至sqlite
-配置文件中`保存弹幕至sqlite`，如果设置了文件路径，如`a.sqlite3`，将会在工作目录生成`a.sqlite3`，并记录弹幕。
+#### 保存弹幕至db
+配置文件中添加配置项`保存弹幕至db`。参考以下实例：
+
+mysql:
+```json
+{
+  "保存弹幕至db": {
+      "dbname": "mysql",
+      "url":"root:root@(192.168.31.103:10836)/test",
+      "字段help":"time.Now().Format(time.DateTime), time.Now().Unix(), item.msg, item.color, item.auth, item.uid, item.roomid",
+      "create":"create table danmu (created varchar(20), createdunix varchar(20), msg varchar(100), color varchar(20), auth varchar(50), uid varchar(30), roomid varchar(30))",
+      "insert":"insert into danmu (created, createdunix, msg, color, auth, uid, roomid) values (?,?,?,?,?,?,?)"
+  }
+}
+```
+
+sqlite3:
+
+注意：对不要并发连接，可能会导致失败
+```json
+{
+  "保存弹幕至db": {
+      "dbname": "sqlite",
+      "url":"danmu.sqlite3",
+      "字段help":"time.Now().Format(time.DateTime), time.Now().Unix(), item.msg, item.color, item.auth, item.uid, item.roomid",
+      "create":"create table danmu (created text, createdunix text, msg text, color text, auth text, uid text, roomid text)",
+      "insert":"insert into danmu  values (?,?,?,?,?,?,?)"
+  }
+}
+```
+
+实例：
+
+|created|createdunix|msg|color|auth|uid|roomid|
+|-------|-----------|---|-----|----|---|------|
+|2023-04-26 03:20:33|1682450433|可能走位配合了他的压枪|#e33fff|畏未|96767379|92613|
+|2023-04-26 03:20:45|1682450445|=。=|#54eed8|青江知暖|282800070|92613|
+|2023-04-26 03:20:52|1682450452|这不是铁挂吗|#ffffff|瑶少溪|43048863|92613|
+|2023-04-26 03:20:55|1682450455|开个箱？|#58c1de|修阡宇|433678545|92613|
+|2023-04-26 03:20:59|1682450459|来了来了|#00fffc|我肚子是吃饱了撑大的|830140|92613|
+
 
 #### 指定房间录制回调
 配置文件添加了如下配置
