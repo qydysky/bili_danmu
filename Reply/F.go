@@ -35,7 +35,6 @@ import (
 	limit "github.com/qydysky/part/limit"
 	msgq "github.com/qydysky/part/msgq"
 	psync "github.com/qydysky/part/sync"
-	sys "github.com/qydysky/part/sys"
 	websocket "github.com/qydysky/part/websocket"
 
 	encoder "golang.org/x/text/encoding"
@@ -607,7 +606,7 @@ func Danmuji_auto() {
 			if msg := list[i]; msg != `` {
 				Msg_senddanmu(msg)
 			}
-			sys.Sys().Timeoutf(timeout)
+			time.Sleep(time.Duration(timeout) * time.Second)
 		}
 	}()
 }
@@ -1563,6 +1562,7 @@ func (t *SaveDanmuToSqlite3) init(c *c.Common) {
 			if db, e := sql.Open("sqlite", v); e != nil {
 				panic(e)
 			} else {
+				db.SetMaxOpenConns(1)
 				t.db = db
 			}
 
@@ -1583,11 +1583,9 @@ func (t *SaveDanmuToSqlite3) init(c *c.Common) {
 
 func (t *SaveDanmuToSqlite3) danmu(item Danmu_item) {
 	if t.db != nil {
-		ctx := context.Background()
-		tx := psql.BeginTx[any](t.db, ctx, &sql.TxOptions{})
-		tx = tx.Do(psql.SqlFunc[any]{
+		if e := psql.BeginTx[any](t.db, context.Background(), &sql.TxOptions{}).Do(psql.SqlFunc[any]{
 			Ty:    psql.Execf,
-			Ctx:   ctx,
+			Ctx:   context.Background(),
 			Query: "insert into danmu values (?, ?, ?, ?, ?, ?, ?)",
 			Args:  []any{time.Now().Format(time.DateTime), time.Now().Unix(), item.msg, item.color, item.auth, item.uid, item.roomid},
 			AfterEF: func(_ *any, result sql.Result, txE error) (_ *any, stopErr error) {
@@ -1598,8 +1596,7 @@ func (t *SaveDanmuToSqlite3) danmu(item Danmu_item) {
 				}
 				return nil, nil
 			},
-		})
-		if e := tx.Fin(); e != nil {
+		}).Fin(); e != nil {
 			c.C.Log.Base_add("保存弹幕至sqlite").L(`E: `, e)
 		}
 	}

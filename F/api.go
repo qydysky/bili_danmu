@@ -26,7 +26,6 @@ import (
 	limit "github.com/qydysky/part/limit"
 	reqf "github.com/qydysky/part/reqf"
 	psync "github.com/qydysky/part/sync"
-	sys "github.com/qydysky/part/sys"
 
 	"github.com/mdp/qrterminal/v3"
 	qr "github.com/skip2/go-qrcode"
@@ -1367,7 +1366,7 @@ func (c *GetFunc) Get_cookie() (missKey []string) {
 			WhiteChar: `OO`,
 		})
 		apilog.L(`W: `, `手机扫命令行二维码登录`)
-		sys.Sys().Timeoutf(1)
+		time.Sleep(time.Second)
 	}
 
 	//有新实例，退出
@@ -1384,7 +1383,7 @@ func (c *GetFunc) Get_cookie() (missKey []string) {
 
 		for {
 			//3s刷新查看是否通过
-			sys.Sys().Timeoutf(3)
+			time.Sleep(time.Duration(3) * time.Second)
 
 			//有新实例，退出
 			if boot_Get_cookie.NeedExit(id) {
@@ -1931,7 +1930,7 @@ func Gift_list() (list []Gift_list_type_Data_List) {
 	req := c.C.ReqPool.Get()
 	defer c.C.ReqPool.Put(req)
 	if err := req.Reqf(reqf.Rval{
-		Url: `https://api.live.bilibili.com/xlive/web-room/v1/gift/bag_list?t=` + strconv.Itoa(int(sys.Sys().GetMTime())) + `&room_id=` + strconv.Itoa(c.C.Roomid),
+		Url: `https://api.live.bilibili.com/xlive/web-room/v1/gift/bag_list?t=` + strconv.Itoa(int(time.Now().UnixNano()/int64(time.Millisecond))) + `&room_id=` + strconv.Itoa(c.C.Roomid),
 		Header: map[string]string{
 			`Host`:            `api.live.bilibili.com`,
 			`User-Agent`:      `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0`,

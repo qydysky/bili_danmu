@@ -13,7 +13,7 @@ import (
 	reqf "github.com/qydysky/part/reqf"
 	sys "github.com/qydysky/part/sys"
 
-	uuid "github.com/gofrs/uuid"
+	"github.com/google/uuid"
 )
 
 type Pm_item struct {
@@ -44,21 +44,11 @@ func Send_pm(uid int, msg string) error {
 		return errors.New("Cookie错误,无bili_jct=")
 	}
 
-	var new_uuid string
-	{
-		if tmp_uuid, e := uuid.NewV4(); e == nil {
-			new_uuid = tmp_uuid.String()
-		} else {
-			log.L(`E: `, e)
-			return e
-		}
-	}
-
 	if pm_limit.TO() {
 		return errors.New("TO")
 	}
 
-	var send_str = `msg[sender_uid]=` + strconv.Itoa(c.C.Uid) + `&msg[receiver_id]=` + strconv.Itoa(uid) + `&msg[receiver_type]=1&msg[msg_type]=1&msg[msg_status]=0&msg[content]={"content":"` + msg + `"}&msg[timestamp]=` + strconv.Itoa(int(sys.Sys().GetSTime())) + `&msg[new_face_version]=0&msg[dev_id]=` + strings.ToUpper(new_uuid) + `&from_firework=0&build=0&mobi_app=web&csrf_token=` + csrf + `&csrf=` + csrf
+	var send_str = `msg[sender_uid]=` + strconv.Itoa(c.C.Uid) + `&msg[receiver_id]=` + strconv.Itoa(uid) + `&msg[receiver_type]=1&msg[msg_type]=1&msg[msg_status]=0&msg[content]={"content":"` + msg + `"}&msg[timestamp]=` + strconv.Itoa(int(sys.Sys().GetSTime())) + `&msg[new_face_version]=0&msg[dev_id]=` + strings.ToUpper(uuid.New().String()) + `&from_firework=0&build=0&mobi_app=web&csrf_token=` + csrf + `&csrf=` + csrf
 
 	Cookie := make(map[string]string)
 	c.C.Cookie.Range(func(k, v interface{}) bool {

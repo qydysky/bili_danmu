@@ -5,13 +5,13 @@ import (
 	"errors"
 	"io"
 	"strconv"
+	"time"
 
 	c "github.com/qydysky/bili_danmu/CV"
 
 	file "github.com/qydysky/part/file"
 	limit "github.com/qydysky/part/limit"
 	reqf "github.com/qydysky/part/reqf"
-	sys "github.com/qydysky/part/sys"
 )
 
 // 每5s一个令牌，最多等20秒
@@ -92,7 +92,7 @@ func Danmu_s2(data map[string]string) {
 	if _, ok := data[`fontsize`]; !ok {
 		data[`fontsize`] = `25`
 	}
-	data[`rnd`] = strconv.Itoa(int(sys.Sys().GetSTime()))
+	data[`rnd`] = strconv.Itoa(int(time.Now().Unix()))
 	data[`csrf`] = csrf
 	data[`csrf_token`] = csrf
 

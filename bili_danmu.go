@@ -239,7 +239,7 @@ func Start() {
 					}
 					//30s获取一次人气
 					go func() {
-						sys.Sys().MTimeoutf(500) //500ms
+						time.Sleep(time.Millisecond * time.Duration(500)) //500ms
 						danmulog.L(`T: `, "获取人气")
 						go func() {
 							heartbeatmsg, heartinterval := F.Heartbeat()
@@ -353,7 +353,7 @@ func Start() {
 					reply.StreamOStop(-2) //停止其他房间录制
 				}
 			}
-			sys.Sys().Timeoutf(1)
+			time.Sleep(time.Second)
 		}
 
 		{ //附加功能 直播流停止 ws信息保存
