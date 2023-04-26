@@ -29,7 +29,7 @@ jobs:
     - name: golangci-lint
       uses: golangci/golangci-lint-action@v3
       with:
-        args: --timeout 3m --verbose
+        args: --timeout 5m --verbose
 
     - name: Test
       run: |
@@ -78,7 +78,7 @@ jobs:
     - name: golangci-lint
       uses: golangci/golangci-lint-action@v3
       with:
-        args: --timeout 3m --verbose
+        args: --timeout 5m --verbose
 
     - name: Test
       run: |
