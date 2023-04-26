@@ -4,12 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"testing"
 
 	c "github.com/qydysky/bili_danmu/CV"
 	file "github.com/qydysky/part/file"
-	psql "github.com/qydysky/part/sqlite"
+	psql "github.com/qydysky/part/sql"
 )
 
 func TestSaveDanmuToDB(t *testing.T) {
@@ -35,21 +34,18 @@ func TestSaveDanmuToDB(t *testing.T) {
 	} else {
 		if e := psql.BeginTx[any](db, context.Background(), &sql.TxOptions{}).Do(psql.SqlFunc[any]{
 			Ty:    psql.Queryf,
-			Query: "select msg from danmu",
+			Query: "select msg as Msg from danmu",
 			AfterQF: func(_ *any, rows *sql.Rows, txE error) (_ *any, stopErr error) {
-				var count = 0
-				for rows.Next() {
-					count += 1
-					var msg string
-					if e := rows.Scan(&msg); e != nil {
-						return nil, e
-					}
-					if msg != "可能走位配合了他的压枪" {
-						return nil, errors.New("no msg")
-					}
+				type row struct {
+					Msg string
 				}
-				if count != 1 {
-					return nil, fmt.Errorf("no count %d", count)
+
+				v, err := psql.DealRows(rows, func() row { return row{} })
+				if err != nil {
+					return nil, err
+				}
+				if len(v) != 1 || v[0].Msg != "可能走位配合了他的压枪" {
+					return nil, errors.New("no msg")
 				}
 				return nil, nil
 			},
