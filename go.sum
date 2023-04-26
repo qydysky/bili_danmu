@@ -31,14 +31,8 @@ github.com/mdp/qrterminal/v3 v3.0.0/go.mod h1:NJpfAs7OAm77Dy8EkWrtE4aq+cE6McoLXl
 github.com/miekg/dns v1.1.53 h1:ZBkuHr5dxHtB1caEOlZTLPo7D3L3TWckgUUs/RHfDxw=
 github.com/miekg/dns v1.1.53/go.mod h1:uInx36IzPl7FYnDcMeVWxj9byh7DutNykX4G9Sj60FY=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
-github.com/qydysky/part v0.24.18 h1:TDW9rknY7Y8CtsAcS6A7eWXbojQQWYjZxMnCkmQSoyo=
-github.com/qydysky/part v0.24.18/go.mod h1:vZgRwVF/3s1R07lJO3lbnyfFaY/3xeLkkaeFCPpzjlI=
-github.com/qydysky/part v0.24.19 h1:wsXqz4M5f5P5wtZlfUzgUWq4Qv49am7sgEhFPNolVuI=
-github.com/qydysky/part v0.24.19/go.mod h1:88d8rYyw4cHZSs8u5Q2MkqOnIdKDXpDSwfiSlwo3Tx4=
-github.com/qydysky/part v0.24.20 h1:nvxJQO9S+WB1CBz+LZ+T6NXDQLxs8/YIK7e7SIewyMg=
-github.com/qydysky/part v0.24.20/go.mod h1:8Rn6RC+170YRrtgssAumk8/r68+YH3F45J4l6F6+Fl4=
-github.com/qydysky/part v0.24.21 h1:BNkZzF7Kqd7kZm9BXuc60QiEm5ETUv5D91ZAW5/Orno=
-github.com/qydysky/part v0.24.21/go.mod h1:8Rn6RC+170YRrtgssAumk8/r68+YH3F45J4l6F6+Fl4=
+github.com/qydysky/part v0.25.1 h1:/Y+ywM79DIVhhd6pYSdHVvZRz641eJvnpqL317DheDE=
+github.com/qydysky/part v0.25.1/go.mod h1:8Rn6RC+170YRrtgssAumk8/r68+YH3F45J4l6F6+Fl4=
 github.com/remyoudompheng/bigfft v0.0.0-20200410134404-eec4a21b6bb0/go.mod h1:qqbHyh8v60DhA7CoWK5oRCqLrMHRGoxYCSS9EjAz6Eo=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec h1:W09IVJc94icq4NjY3clb7Lk8O1qJ8BdBEF8z0ibU0rE=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec/go.mod h1:qqbHyh8v60DhA7CoWK5oRCqLrMHRGoxYCSS9EjAz6Eo=
@@ -48,7 +42,7 @@ github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e h1:MRM5ITcdelLK2j1
 github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e/go.mod h1:XV66xRDqSt+GTGFMVlhk3ULuV0y9ZmzeVGR4mloJI3M=
 github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966 h1:JIAuq3EEf9cgbU6AtGPK4CTG3Zf6CKMNqf0MHTggAUA=
 github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966/go.mod h1:sUM3LWHvSMaG192sy56D9F7CNvL7jUJVXoqM1QKLnog=
-github.com/stretchr/testify v1.8.1 h1:w7B6lhMri9wdJUVmEZPGGhZzrYTPvgJArz7wNPgYKsk=
+github.com/stretchr/testify v1.8.2 h1:+h33VjcLVPDHtOdpUCuF+7gSuG3yGIftsP1YvFihtJ8=
 github.com/thedevsaddam/gojsonq/v2 v2.5.2 h1:CoMVaYyKFsVj6TjU6APqAhAvC07hTI6IQen8PHzHYY0=
 github.com/thedevsaddam/gojsonq/v2 v2.5.2/go.mod h1:bv6Xa7kWy82uT0LnXPE2SzGqTj33TAEeR560MdJkiXs=
 github.com/tklauser/go-sysconf v0.3.11 h1:89WgdJhk5SNwJfu+GKyYveZ4IaJ7xAkecBo+KdJV0CM=

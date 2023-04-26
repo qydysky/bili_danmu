@@ -21,7 +21,7 @@ import (
 	"database/sql"
 
 	_ "github.com/go-sql-driver/mysql"
-	psql "github.com/qydysky/part/sqlite"
+	psql "github.com/qydysky/part/sql"
 	"golang.org/x/text/encoding/simplifiedchinese"
 	_ "modernc.org/sqlite"
 
