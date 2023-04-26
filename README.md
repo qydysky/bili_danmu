@@ -73,7 +73,7 @@
 ### 说明
 本项目使用github action自动构建，构建过程详见[yml](https://github.com/qydysky/bili_danmu/blob/master/.github/workflows/go.yml)
 
-#### 保存弹幕至db
+#### 保存弹幕至DB
 配置文件中添加配置项`保存弹幕至db`。参考以下实例：
 
 mysql:
@@ -91,7 +91,7 @@ mysql:
 
 sqlite3:
 
-注意：对不要并发连接，可能会导致失败
+注意：不要并发连接数据库，可能会导致失败
 ```json
 {
   "保存弹幕至db": {
@@ -104,7 +104,7 @@ sqlite3:
 }
 ```
 
-实例：
+数据实例：
 
 |created|createdunix|msg|color|auth|uid|roomid|
 |-------|-----------|---|-----|----|---|------|

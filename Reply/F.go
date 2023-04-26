@@ -1549,16 +1549,16 @@ func (t *DanmuReLiveTriger) Check(uid, msg string) {
 	}
 }
 
-// 保存弹幕至mysql
-var saveDanmuToMysql SaveDanmuToMysql
+// 保存弹幕至db
+var saveDanmuToDB SaveDanmuToDB
 
-type SaveDanmuToMysql struct {
+type SaveDanmuToDB struct {
 	db     *sql.DB
 	insert string
 	sync.Once
 }
 
-func (t *SaveDanmuToMysql) init(c *c.Common) {
+func (t *SaveDanmuToDB) init(c *c.Common) {
 	t.Do(func() {
 		if v, ok := c.K_v.LoadV(`保存弹幕至db`).(map[string]any); ok && len(v) != 0 {
 			var (
@@ -1595,7 +1595,7 @@ func (t *SaveDanmuToMysql) init(c *c.Common) {
 	})
 }
 
-func (t *SaveDanmuToMysql) danmu(item Danmu_item) {
+func (t *SaveDanmuToDB) danmu(item Danmu_item) {
 	if t.db == nil {
 		return
 	}
