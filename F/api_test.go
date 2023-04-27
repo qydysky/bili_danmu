@@ -1,6 +1,24 @@
 package F
 
-import "testing"
+import (
+	"testing"
+
+	c "github.com/qydysky/bili_danmu/CV"
+)
+
+func TestCookie(t *testing.T) {
+	//获取cookie
+	Get(c.C).Get(`Cookie`)
+	//获取LIVE_BUVID
+	Get(c.C).Get(`LIVE_BUVID`)
+
+	if _, ok := c.C.Cookie.Load("LIVE_BUVID"); !ok {
+		t.Fatal()
+	}
+	if _, ok := c.C.Cookie.Load("buvid3"); !ok {
+		t.Fatal()
+	}
+}
 
 func Test_getWridWts(t *testing.T) {
 	w_rid, _ := new(GetFunc).getWridWts(
@@ -10,6 +28,12 @@ func Test_getWridWts(t *testing.T) {
 		"1682105747",
 	)
 	if w_rid != "766c2091b69102edb391bf16ef917d6c" {
+		t.Fatal()
+	}
+}
+
+func Test_SearchUP(t *testing.T) {
+	if v := Get(c.C).SearchUP("qydysky"); len(v) == 0 && v[0].Roomid != 394988 {
 		t.Fatal()
 	}
 }

@@ -1277,7 +1277,7 @@ func (c *GetFunc) Get_cookie() (missKey []string) {
 	}
 
 	if v, ok := c.K_v.LoadV(`扫码登录`).(bool); !ok || !v {
-		apilog.L(`W: `, `配置文件已禁止扫码登录`)
+		apilog.L(`W: `, `配置文件已禁止扫码登录，如需登录，修改配置文件"扫码登录"为true`)
 		return
 	}
 
