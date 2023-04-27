@@ -1254,6 +1254,8 @@ func (c *GetFunc) GetNav() (J.Nav, error) {
 // 扫码登录
 func (c *GetFunc) Get_cookie() (missKey []string) {
 	apilog := apilog.Base_add(`获取Cookie`)
+	//获取其他Cookie
+	defer c.Get_other_cookie()
 
 	if p.Checkfile().IsExist("cookie.txt") { //读取cookie文件
 		if cookieString := string(CookieGet()); cookieString != `` {
@@ -1267,9 +1269,6 @@ func (c *GetFunc) Get_cookie() (missKey []string) {
 				if v, e := c.GetNav(); e != nil {
 					apilog.L(`E: `, e)
 				} else if v.Data.IsLogin {
-					//获取其他Cookie
-					c.Get_other_cookie()
-
 					apilog.L(`I: `, `已登录`)
 					return
 				}
@@ -1365,7 +1364,7 @@ func (c *GetFunc) Get_cookie() (missKey []string) {
 			BlackChar: `  `,
 			WhiteChar: `OO`,
 		})
-		apilog.L(`W: `, `手机扫命令行二维码登录`)
+		apilog.L(`W: `, `手机扫命令行二维码登录。如不登录，修改配置文件"扫码登录"为false`)
 		time.Sleep(time.Second)
 	}
 
@@ -1427,9 +1426,6 @@ func (c *GetFunc) Get_cookie() (missKey []string) {
 				if e := save_cookie(r.Response.Cookies()); e != nil {
 					apilog.L(`E: `, e)
 				}
-
-				//获取其他Cookie
-				c.Get_other_cookie()
 				break
 			}
 		}
@@ -2499,7 +2495,7 @@ type searchresult struct {
 	Is_live bool
 }
 
-func SearchUP(s string) (list []searchresult) {
+func (c *GetFunc) SearchUP(s string) (list []searchresult) {
 	apilog := apilog.Base_add(`搜索主播`)
 	if api_limit.TO() {
 		apilog.L(`E: `, `超时！`)
@@ -2507,18 +2503,30 @@ func SearchUP(s string) (list []searchresult) {
 	} //超额请求阻塞，超时将取消
 
 	{ //使用其他api
-		req := c.C.ReqPool.Get()
-		defer c.C.ReqPool.Put(req)
+		req := c.ReqPool.Get()
+		defer c.ReqPool.Put(req)
 
 		Cookie := make(map[string]string)
-		c.C.Cookie.Range(func(k, v interface{}) bool {
+		c.Cookie.Range(func(k, v interface{}) bool {
 			Cookie[k.(string)] = v.(string)
 			return true
 		})
 
+		query := "page=1&page_size=10&order=online&platform=pc&search_type=live_user&keyword=" + url.PathEscape(s)
+		// wbi
+		{
+			v, e := c.GetNav()
+			if e != nil {
+				apilog.L(`E: `, e)
+				return
+			}
+			wrid, wts := c.getWridWts(query, v.Data.WbiImg.ImgURL, v.Data.WbiImg.SubURL)
+			query += "&w_rid=" + wrid + "&wts=" + wts
+		}
+
 		if err := req.Reqf(reqf.Rval{
-			Url:   "https://api.bilibili.com/x/web-interface/wbi/search/type?page=1&page_size=10&order=online&platform=pc&search_type=live_user&keyword=" + url.PathEscape(s),
-			Proxy: c.C.Proxy,
+			Url:   "https://api.bilibili.com/x/web-interface/wbi/search/type?" + query,
+			Proxy: c.Proxy,
 			Header: map[string]string{
 				`Cookie`: reqf.Map_2_Cookies_String(Cookie),
 			},
