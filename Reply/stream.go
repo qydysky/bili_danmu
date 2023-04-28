@@ -49,7 +49,7 @@ type M4SStream struct {
 	m4s_pool          *pool.Buf[m4s_link_item] //切片pool
 	common            *c.Common                //通用配置副本
 	Current_save_path string                   //明确的直播流保存目录
-	// 事件周期 start: 开始实例 startRec：开始录制 load：接收到视频头 cut：切 stopRec：结束录制 stop：结束实例
+	// 事件周期 start: 开始实例 startRec：开始录制 load：接收到视频头 firstFrame: 接收到第一个关键帧 cut：切 stopRec：结束录制 stop：结束实例
 	msg               *msgq.MsgType[*M4SStream] //实例的各种事件回调
 	Callback_start    func(*M4SStream) error    //实例开始的回调
 	Callback_startRec func(*M4SStream) error    //录制开始的回调
@@ -594,8 +594,9 @@ func (t *M4SStream) saveStream() (e error) {
 	}
 
 	// 保存到文件
+	// 确保能接收到第一个帧才开始录制
 	if t.config.save_to_file {
-		t.msg.Pull_tag_only(`load`, func(ms *M4SStream) (disable bool) {
+		t.msg.Pull_tag_only(`firstFrame`, func(ms *M4SStream) (disable bool) {
 			ms.msg.Push_tag(`cut`, ms)
 			return true
 		})
@@ -718,10 +719,11 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 			// read
 			go func() {
 				var (
-					ticker   = time.NewTicker(time.Second)
-					buff     = slice.New[byte]()
-					keyframe = slice.New[byte]()
-					buf      = make([]byte, 1<<16)
+					ticker     = time.NewTicker(time.Second)
+					buff       = slice.New[byte]()
+					keyframe   = slice.New[byte]()
+					buf        = make([]byte, 1<<16)
+					frameCount = 0
 				)
 				defer ticker.Stop()
 				for {
@@ -764,6 +766,10 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 							t.bootBufPush(keyframe.GetPureBuf())
 							keyframe.Reset()
 							t.Stream_msg.PushLock_tag(`data`, t.boot_buf)
+							frameCount += 1
+							if frameCount == 1 {
+								t.msg.Push_tag(`firstFrame`, t)
+							}
 						}
 						if last_available_offset > 1 {
 							// fmt.Println("write Sync")
@@ -823,7 +829,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 		buf         = slice.New[byte]()
 		fmp4Decoder = &Fmp4Decoder{}
 		keyframe    = slice.New[byte]()
-		// flashingSer      bool
+		frameCount  = 0
 	)
 
 	// 下载循环
@@ -1003,6 +1009,10 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 				t.bootBufPush(keyframe.GetPureBuf())
 				keyframe.Reset()
 				t.Stream_msg.PushLock_tag(`data`, t.boot_buf)
+				frameCount += 1
+				if frameCount == 1 {
+					t.msg.Push_tag(`firstFrame`, t)
+				}
 			}
 
 			_ = buf.RemoveFront(last_available_offset)
