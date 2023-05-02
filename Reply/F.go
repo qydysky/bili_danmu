@@ -1581,13 +1581,12 @@ func (t *SaveDanmuToDB) init(c *c.Common) {
 				db.SetConnMaxLifetime(time.Minute * 3)
 				db.SetMaxOpenConns(10)
 				db.SetMaxIdleConns(10)
-				if e := psql.BeginTx[any](db, context.Background(), &sql.TxOptions{}).Do(psql.SqlFunc[any]{
-					Ty:         psql.Execf,
-					Query:      create,
-					SkipSqlErr: true,
-				}).Fin(); e != nil {
+				tx := psql.BeginTx[any](db, context.Background())
+				tx.Do(psql.SqlFunc[any]{Query: create, SkipSqlErr: true})
+				if _, e := tx.Fin(); e != nil {
 					c.Log.Base_add("保存弹幕至db").L(`E: `, e)
 				} else {
+					c.Log.Base_add("保存弹幕至db").L(`I: `, dbname)
 					t.db = db
 				}
 			}
@@ -1600,19 +1599,35 @@ func (t *SaveDanmuToDB) danmu(item Danmu_item) {
 		return
 	}
 	if e := t.db.Ping(); e == nil {
-		if e := psql.BeginTx[any](t.db, context.Background(), &sql.TxOptions{}).Do(psql.SqlFunc[any]{
-			Ty:    psql.Execf,
-			Query: t.insert,
-			Args:  []any{time.Now().Format(time.DateTime), time.Now().Unix(), item.msg, item.color, item.auth, item.uid, item.roomid},
-			AfterEF: func(_ *any, result sql.Result, txE error) (_ *any, stopErr error) {
-				if v, e := result.RowsAffected(); e != nil {
-					return nil, e
-				} else if v != 1 {
-					return nil, errors.New("插入数量错误")
-				}
-				return nil, nil
-			},
-		}).Fin(); e != nil {
+		type DanmuI struct {
+			Date   string
+			Unix   int64
+			Msg    string
+			Color  string
+			Auth   any
+			Uid    string
+			Roomid int64
+		}
+
+		tx := psql.BeginTx[any](t.db, context.Background())
+		tx.DoPlaceHolder(psql.SqlFunc[any]{Query: t.insert}, &DanmuI{
+			Date:   time.Now().Format(time.DateTime),
+			Unix:   time.Now().Unix(),
+			Msg:    item.msg,
+			Color:  item.color,
+			Auth:   item.auth,
+			Uid:    item.uid,
+			Roomid: int64(item.roomid),
+		})
+		tx.AfterEF(func(_ *any, result sql.Result, txE error) (_ *any, stopErr error) {
+			if v, e := result.RowsAffected(); e != nil {
+				return nil, e
+			} else if v != 1 {
+				return nil, errors.New("插入数量错误")
+			}
+			return nil, nil
+		})
+		if _, e := tx.Fin(); e != nil {
 			c.C.Log.Base_add("保存弹幕至db").L(`E: `, e)
 		}
 	}

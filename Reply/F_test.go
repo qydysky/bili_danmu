@@ -32,24 +32,23 @@ func TestSaveDanmuToDB(t *testing.T) {
 	if db, e := sql.Open("sqlite", "danmu.sqlite3"); e != nil {
 		t.Fatal(e)
 	} else {
-		if e := psql.BeginTx[any](db, context.Background(), &sql.TxOptions{}).Do(psql.SqlFunc[any]{
-			Ty:    psql.Queryf,
-			Query: "select msg as Msg from danmu",
-			AfterQF: func(_ *any, rows *sql.Rows, txE error) (_ *any, stopErr error) {
-				type row struct {
-					Msg string
-				}
+		tx := psql.BeginTx[any](db, context.Background())
+		tx.Do(psql.SqlFunc[any]{Query: "select msg as Msg from danmu"})
+		tx.AfterQF(func(_ *any, rows *sql.Rows, txE error) (_ *any, stopErr error) {
+			type row struct {
+				Msg string
+			}
 
-				v, err := psql.DealRows(rows, func() row { return row{} })
-				if err != nil {
-					return nil, err
-				}
-				if len(v) != 1 || v[0].Msg != "可能走位配合了他的压枪" {
-					return nil, errors.New("no msg")
-				}
-				return nil, nil
-			},
-		}).Fin(); e != nil {
+			v, err := psql.DealRows(rows, func() row { return row{} })
+			if err != nil {
+				return nil, err
+			}
+			if len(*v) != 1 || (*v)[0].Msg != "可能走位配合了他的压枪" {
+				return nil, errors.New("no msg")
+			}
+			return nil, nil
+		})
+		if _, e := tx.Fin(); e != nil {
 			t.Fatal(e)
 		}
 		db.Close()

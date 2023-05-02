@@ -84,7 +84,7 @@ mysql:
       "url":"root:root@(192.168.31.103:10836)/test",
       "字段help":"time.Now().Format(time.DateTime), time.Now().Unix(), item.msg, item.color, item.auth, item.uid, item.roomid",
       "create":"create table danmu (created varchar(20), createdunix varchar(20), msg varchar(100), color varchar(20), auth varchar(50), uid varchar(30), roomid varchar(30))",
-      "insert":"insert into danmu (created, createdunix, msg, color, auth, uid, roomid) values (?,?,?,?,?,?,?)"
+      "insert":"insert into danmu (created, createdunix, msg, color, auth, uid, roomid) values ({Date},{Unix},{Msg},{Color},{Auth},{Uid},{Roomid})"
   }
 }
 ```
@@ -99,7 +99,7 @@ sqlite3:
       "url":"danmu.sqlite3",
       "字段help":"time.Now().Format(time.DateTime), time.Now().Unix(), item.msg, item.color, item.auth, item.uid, item.roomid",
       "create":"create table danmu (created text, createdunix text, msg text, color text, auth text, uid text, roomid text)",
-      "insert":"insert into danmu  values (?,?,?,?,?,?,?)"
+      "insert":"insert into danmu  values ({Date},{Unix},{Msg},{Color},{Auth},{Uid},{Roomid})"
   }
 }
 ```
