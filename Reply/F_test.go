@@ -8,16 +8,28 @@ import (
 
 	c "github.com/qydysky/bili_danmu/CV"
 	file "github.com/qydysky/part/file"
+	log "github.com/qydysky/part/log"
 	psql "github.com/qydysky/part/sql"
 )
 
 func TestSaveDanmuToDB(t *testing.T) {
-	var common = c.Common{}
+	var common = c.Common{
+		Log: log.New(log.Config{
+			Stdout: true,
+			Prefix_string: map[string]struct{}{
+				`T: `: log.On,
+				`I: `: log.On,
+				`N: `: log.On,
+				`W: `: log.On,
+				`E: `: log.On,
+			},
+		}),
+	}
 	common.K_v.Store(`保存弹幕至db`, map[string]any{
 		"dbname": "sqlite",
 		"url":    "danmu.sqlite3",
 		"create": "create table danmu (created text, createdunix text, msg text, color text, auth text, uid text, roomid text)",
-		"insert": "insert into danmu  values (?,?,?,?,?,?,?)",
+		"insert": "insert into danmu  values ({Date},{Unix},{Msg},{Color},{Auth},{Uid},{Roomid})",
 	})
 	saveDanmuToDB.init(&common)
 	saveDanmuToDB.danmu(Danmu_item{
