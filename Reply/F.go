@@ -1571,7 +1571,7 @@ func (t *SaveDanmuToDB) init(c *c.Common) {
 			create, createok = v["create"].(string)
 			t.insert, insertok = v["insert"].(string)
 
-			if !dbnameok || !urlok || !createok || !insertok {
+			if dbname == "" || url == "" || create == "" || t.insert == "" || !dbnameok || !urlok || !createok || !insertok {
 				return
 			}
 
