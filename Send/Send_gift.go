@@ -7,6 +7,7 @@ import (
 	"time"
 
 	c "github.com/qydysky/bili_danmu/CV"
+	J "github.com/qydysky/bili_danmu/Json"
 
 	limit "github.com/qydysky/part/limit"
 	reqf "github.com/qydysky/part/reqf"
@@ -61,7 +62,7 @@ func Send_gift(gift_id, bag_id, gift_num int) {
 		req := c.C.ReqPool.Get()
 		defer c.C.ReqPool.Put(req)
 		if e := req.Reqf(reqf.Rval{
-			Url:     `https://api.live.bilibili.com/gift/v2/live/bag_send`,
+			Url:     `https://api.live.bilibili.com/xlive/revenue/v2/gift/sendBag`,
 			PostStr: url.PathEscape(sendStr),
 			Timeout: 10 * 1000,
 			Proxy:   c.C.Proxy,
@@ -84,14 +85,7 @@ func Send_gift(gift_id, bag_id, gift_num int) {
 			return
 		}
 
-		var res struct {
-			Code    int    `json:"code"`
-			Message string `json:"message"`
-			Data    struct {
-				Gift_name string `json:"gift_name"`
-				Gift_num  int    `json:"gift_num"`
-			} `json:"data"`
-		}
+		var res J.SendBag
 
 		if e := json.Unmarshal(req.Respon, &res); e != nil {
 			log.L(`E: `, e)
@@ -102,6 +96,8 @@ func Send_gift(gift_id, bag_id, gift_num int) {
 			log.L(`W: `, res.Message)
 			return
 		}
-		log.L(`I: `, `给`, c.C.Roomid, `赠送了`, res.Data.Gift_num, `个`, res.Data.Gift_name)
+		for i := 0; i < len(res.Data.GiftList); i++ {
+			log.L(`I: `, `给`, c.C.Roomid, `赠送了`, res.Data.GiftList[i].GiftNum, `个`, res.Data.GiftList[i].GiftName)
+		}
 	}
 }
