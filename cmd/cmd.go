@@ -48,6 +48,7 @@ func Cmd() {
 			fmt.Println("搜索主播->输入' sea关键词'回车")
 			fmt.Println("房间信息->输入' room'回车")
 			fmt.Println("开始结束录制->输入' rec'回车")
+			fmt.Println("退出当前房间->输入' exit'回车")
 			fmt.Println("其他输出隔断不影响")
 			fmt.Print("\n")
 		} else if inputs[0] == 27 { //屏蔽功能键
@@ -155,6 +156,14 @@ func Cmd() {
 				fmt.Println("回复' to(序号)'进入直播间")
 				fmt.Print("\n")
 
+				continue
+			}
+			//退出当前房间
+			if strings.Contains(inputs, ` exit`) && c.C.Roomid != 0 {
+				cmdlog.L(`I: `, "退出房间", c.C.Roomid)
+				reply.StreamOStop(c.C.Roomid)
+				c.C.Roomid = 0
+				c.C.Danmu_Main_mq.Push_tag(`exit_room`, nil)
 				continue
 			}
 			//重载弹幕

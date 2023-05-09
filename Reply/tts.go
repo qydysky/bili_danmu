@@ -1,6 +1,7 @@
 package reply
 
 import (
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
@@ -276,7 +277,7 @@ var (
 		`aisbabyxu`: true,
 	}
 	xfwsClient   *ws.Client
-	xf_req       func()
+	xf_req       func([]byte)
 	xf_req_block funcCtrl.BlockFunc
 )
 
@@ -348,11 +349,11 @@ func init() {
 		return
 	}
 
-	xf_req = func() {
+	xf_req = func(b []byte) {
 		xf_req_block.Block() //cant call in same time
 		defer xf_req_block.UnBlock()
 
-		xfwsClient = ws.New_client(ws.Client{
+		xfwsClient, _ = ws.New_client(&ws.Client{
 			Url:   wsUrl,
 			Proxy: c.C.Proxy,
 			Header: map[string]string{
@@ -362,61 +363,71 @@ func init() {
 				`Pragma`:          `no-cache`,
 				`Cache-Control`:   `no-cache`,
 			},
-		}).Handle()
+		})
+		wsc, _ := xfwsClient.Handle()
 		if xfwsClient.Isclose() {
 			tts_log.L(`E: `, "连接错误,使用百度", xfwsClient.Error())
 			tts_ser = `baidu`
 		} else {
-			go func() {
-				var buf []byte
-				for !xfwsClient.Isclose() {
-					data := <-xfwsClient.RecvChan
-					if len(data) == 0 {
-						break
-					}
+			var buf []byte
+			wait, cancel := context.WithCancel(context.Background())
 
-					var partS struct {
-						Code    int    `json:"code"`
-						Message string `json:"message"`
-						Sid     string `json:"sid"`
-						Data    struct {
-							Audio  string `json:"audio"`
-							Ced    string `json:"ced"`
-							Status int    `json:"status"`
-						} `json:"data"`
+			wsc.Pull_tag_only(`rec`, func(wm *ws.WsMsg) (disable bool) {
+				if len(wm.Msg) == 0 {
+					cancel()
+					return true
+				}
+
+				var partS struct {
+					Code    int    `json:"code"`
+					Message string `json:"message"`
+					Sid     string `json:"sid"`
+					Data    struct {
+						Audio  string `json:"audio"`
+						Ced    string `json:"ced"`
+						Status int    `json:"status"`
+					} `json:"data"`
+				}
+				if e := json.Unmarshal(wm.Msg, &partS); e != nil {
+					tts_log.L(`E: `, "错误", e, wm.Msg)
+					xfwsClient.Close()
+					return
+				} else {
+					if partS.Code != 0 {
+						tts_log.L(`W: `, fmt.Sprintf("code:%d msg:%s", partS.Code, partS.Message))
+						cancel()
+						return true
 					}
-					if e := json.Unmarshal(data, &partS); e != nil {
-						tts_log.L(`E: `, "错误", e, data)
-						xfwsClient.Close()
-						return
-					} else {
-						if partS.Code != 0 {
-							tts_log.L(`W: `, fmt.Sprintf("code:%d msg:%s", partS.Code, partS.Message))
-							break
+					if partS.Data.Audio != "" {
+						if part, e := base64.StdEncoding.DecodeString(partS.Data.Audio); e != nil {
+							tts_log.L(`E: `, "错误", e)
+							cancel()
+							return true
+						} else {
+							buf = append(buf, part...)
 						}
-						if partS.Data.Audio != "" {
-							if part, e := base64.StdEncoding.DecodeString(partS.Data.Audio); e != nil {
-								tts_log.L(`E: `, "错误", e)
-								break
-							} else {
-								buf = append(buf, part...)
-							}
-						}
-						if partS.Data.Status == 2 {
-							break
-						}
+					}
+					if partS.Data.Status == 2 {
+						cancel()
+						return true
 					}
 				}
-				if len(buf) != 0 {
-					_, _ = file.New(sys.Sys().Cdir()+`/tts.mp3`, 0, true).Write(buf, true)
-					play()
-				}
-				xfwsClient.Close()
-			}()
+				return false
+			})
+
+			wsc.Push_tag(`send`, &ws.WsMsg{
+				Msg: b,
+			})
+
+			<-wait.Done()
+			if len(buf) != 0 {
+				_, _ = file.New(sys.Sys().Cdir()+`/tts.mp3`, 0, true).Write(buf, true)
+				play()
+			}
+			xfwsClient.Close()
 		}
 
 	}
-	xf_req()
 }
 func xf(msg string) error {
 	if xfId == `` || xfKey == `` || xfSecret == `` {
@@ -461,10 +472,7 @@ func xf(msg string) error {
 		if b, e := json.Marshal(postS); e != nil {
 			return e
 		} else {
-			if xfwsClient.Isclose() {
-				xf_req()
-			}
-			xfwsClient.SendChan <- b
+			xf_req(b)
 		}
 	}
 	return nil

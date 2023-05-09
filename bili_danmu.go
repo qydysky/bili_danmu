@@ -1,7 +1,9 @@
 package bili_danmu
 
 import (
+	"context"
 	_ "embed"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -25,93 +27,78 @@ import (
 //go:embed VERSION
 var version string
 
-func init() {
-	go func() { //日期变化
-		var old = time.Now().Hour()
-		for {
-			if now := time.Now().Hour(); now == 0 && old != now {
-				c.C.Danmu_Main_mq.Push_tag(`new day`, nil)
-				old = now
-			}
-			c.C.Danmu_Main_mq.Push_tag(`every100s`, nil)
-			time.Sleep(time.Second * time.Duration(100))
-		}
-	}()
-}
-
 func Start() {
 	var danmulog = c.C.Log.Base(`bilidanmu`)
 	defer danmulog.Block(1000)
 
+	danmulog.L(`I: `, `当前PID:`, c.C.PID)
+	danmulog.L(`I: `, "version: ", strings.TrimSpace(version))
+
+	//检查配置
+	if c.C.K_v.Len() == 0 {
+		panic("未能加载配置")
+	}
+
+	// 保持唤醒
 	var stop = sys.Sys().PreventSleep()
 	defer stop.Done()
 
-	danmulog.L(`I: `, "version: ", strings.TrimSpace(version))
-
 	//ctrl+c退出
-	interrupt := make(chan os.Signal, 2)
 	go func() {
+		var interrupt = make(chan os.Signal, 2)
+		//捕获ctrl+c退出
+		signal.Notify(interrupt, os.Interrupt)
 		danmulog.L(`T: `, "两次ctrl+c强制退出")
-		for len(interrupt) < 2 {
-			time.Sleep(time.Second * 3)
-		}
-		danmulog.L(`I: `, "强制退出!").Block(1000)
-		os.Exit(1)
-	}()
-
-	danmulog.L(`I: `, `当前PID:`, c.C.PID)
-
-	//启动时显示ip
-	{
-		if v, ok := c.C.K_v.LoadV("启动时显示ip").(bool); ok && v {
-			for _, v := range sys.GetIntranetIp(``) {
-				danmulog.L(`I: `, `当前ip：http://`+v)
+		for {
+			<-interrupt
+			danmulog.L(`I: `, "3s内ctrl+c强制退出!").Block(1000)
+			c.C.Danmu_Main_mq.PushLock_tag(`interrupt`, nil)
+			select {
+			case <-interrupt:
+				c.C.Danmu_Main_mq.PushLock_tag(`interrupt`, nil)
+				danmulog.L(`I: `, "强制退出!").Block(1000)
+				os.Exit(1)
+			case <-time.After(time.Second * 3):
 			}
 		}
-	}
+	}()
 
-	//检查配置
-	{
-		if c.C.K_v.Len() == 0 {
-			panic("未能加载配置")
+	// 启动时显示ip
+	if v, ok := c.C.K_v.LoadV("启动时显示ip").(bool); ok && v {
+		for _, v := range sys.GetIntranetIp(``) {
+			danmulog.L(`I: `, `当前ip：http://`+v)
 		}
 	}
 
 	{
-		var (
-			change_room_chan = make(chan struct{})
-			flash_room_chan  = make(chan struct{})
-		)
-
 		//如果连接中断，则等待
 		F.KeepConnect()
 		//获取cookie
 		F.Get(c.C).Get(`Cookie`)
 		//获取LIVE_BUVID
 		F.Get(c.C).Get(`LIVE_BUVID`)
-
-		// 房间初始化
-		if c.C.Roomid == 0 {
-			c.C.Log.Block(1000) //等待所有日志输出完毕
-			fmt.Println("回车查看指令")
-		} else {
-			fmt.Print("房间号: ", strconv.Itoa(c.C.Roomid), "\n")
-			go func() { change_room_chan <- struct{}{} }()
-		}
-
 		//命令行操作 切换房间 发送弹幕
 		go Cmd.Cmd()
+		//获取uid
+		F.Get(c.C).Get(`Uid`)
+		//兑换硬币
+		F.Get(c.C).Get(`Silver_2_coin`)
+		//每日签到
+		F.Dosign()
+		// 附加功能 savetojson
+		reply.SaveToJson.Init()
+
+		var change_room_chan = c.C.Danmu_Main_mq.Pull_tag_chan(`change_room`, 1, context.Background())
+		var interrupt_chan = c.C.Danmu_Main_mq.Pull_tag_chan(`interrupt`, 1, context.Background())
+
+		// 房间初始化
+		if c.C.Roomid != 0 {
+			fmt.Print("房间号: ", strconv.Itoa(c.C.Roomid), "\n")
+			c.C.Danmu_Main_mq.Push_tag(`change_room`, nil)
+		}
 
 		//使用带tag的消息队列在功能间传递消息
 		c.C.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
-			`flash_room`: func(_ any) bool { //房间重进
-				F.Get(c.C).Get(`WSURL`)
-				select {
-				case flash_room_chan <- struct{}{}:
-				default:
-				}
-				return false
-			},
 			`change_room`: func(_ any) bool { //房间改变
 				c.C.Rev = 0.0     // 营收
 				c.C.Renqi = 1     // 人气置1
@@ -122,10 +109,6 @@ func Start() {
 				c.C.Uname = ``    // 主播id
 				c.C.Title = ``
 				c.C.Wearing_FansMedal = 0
-				for len(change_room_chan) != 0 {
-					<-change_room_chan
-				}
-				change_room_chan <- struct{}{}
 				return false
 			},
 			`c.Rev_add`: func(data any) bool { //收入
@@ -139,7 +122,7 @@ func Start() {
 				return false
 			},
 			`gtk_close`: func(_ any) bool { //gtk关闭信号
-				interrupt <- os.Interrupt
+				c.C.Danmu_Main_mq.PushLock_tag(`interrupt`, nil)
 				return false
 			},
 			`pm`: func(data any) bool { //私信
@@ -152,30 +135,28 @@ func Start() {
 			},
 		})
 
-		<-change_room_chan
-
-		//捕获ctrl+c退出
-		signal.Notify(interrupt, os.Interrupt)
-		//获取uid
-		F.Get(c.C).Get(`Uid`)
-		//兑换硬币
-		F.Get(c.C).Get(`Silver_2_coin`)
-		//每日签到
-		F.Dosign()
-		// //客户版本 不再需要
-		// F.Get(`VERSION`)
-		// 附加功能 savetojson
-		reply.SaveToJson.Init()
-		//附加功能 保持牌子点亮
-		go reply.Keep_medal_light()
-		//附加功能 自动发送即将过期礼物
-		go reply.AutoSend_silver_gift()
-
 		for exit_sign := true; exit_sign; {
+			if len(change_room_chan) == 0 {
+				fmt.Println("回车查看指令")
+			}
+
+			select {
+			case <-change_room_chan:
+			case <-interrupt_chan:
+				exit_sign = false
+			}
+
+			if !exit_sign {
+				break
+			}
 
 			danmulog.L(`T: `, "准备")
 			//如果连接中断，则等待
 			F.KeepConnect()
+			//附加功能 保持牌子点亮
+			go reply.Keep_medal_light()
+			//附加功能 自动发送即将过期礼物
+			go reply.AutoSend_silver_gift()
 			//获取热门榜
 			F.Get(c.C).Get(`Note`)
 
@@ -200,12 +181,12 @@ func Start() {
 
 			//对每个弹幕服务器尝试
 			F.Get(c.C).Get(`WSURL`)
-			for i := 0; i < len(c.C.WSURL); i += 1 {
+			for i, aliveT, exitloop := 0, time.Now().Add(3*time.Hour), false; !exitloop && i < len(c.C.WSURL) && time.Now().Before(aliveT); {
 				v := c.C.WSURL[i]
 				//ws启动
 				danmulog.L(`T: `, "连接 "+v)
 				u, _ := url.Parse(v)
-				ws_c := ws.New_client(ws.Client{
+				ws_c, err := ws.New_client(&ws.Client{
 					Url:               v,
 					TO:                35 * 1000,
 					Proxy:             c.C.Proxy,
@@ -221,136 +202,156 @@ func Start() {
 						`Pragma`:          `no-cache`,
 						`Cache-Control`:   `no-cache`,
 					},
-				}).Handle()
+				})
+				if err != nil {
+					danmulog.L(`E: `, "连接错误", err)
+					i += 1
+					continue
+				}
+				wsmsg, err := ws_c.Handle()
+				if err != nil {
+					danmulog.L(`E: `, "连接错误", err)
+					i += 1
+					continue
+				}
 				if ws_c.Isclose() {
 					danmulog.L(`E: `, "连接错误", ws_c.Error())
+					i += 1
 					continue
 				}
 
-				//SendChan 传入发送[]byte
-				//RecvChan 接收[]byte
-				ws_c.SendChan <- F.HelloGen(c.C.Roomid, c.C.Token)
-				if F.HelloChe(<-ws_c.RecvChan) {
-					danmulog.L(`I: `, "已连接到房间", c.C.Uname, `(`, c.C.Roomid, `)`)
-					reply.Gui_show(`进入直播间: `+c.C.Uname+` (`+strconv.Itoa(c.C.Roomid)+`)`, `0room`)
-					if c.C.Title != `` {
-						danmulog.L(`I: `, c.C.Title)
-						reply.Gui_show(`房间标题: `+c.C.Title, `0room`)
+				// auth
+				{
+					wsmsg.PushLock_tag(`send`, &ws.WsMsg{
+						Msg: F.HelloGen(c.C.Roomid, c.C.Token),
+					})
+					waitCheckAuth, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+					wsmsg.Pull_tag_only(`rec`, func(wm *ws.WsMsg) (disable bool) {
+						if F.HelloChe(wm.Msg) {
+							cancel()
+						}
+						return true
+					})
+					<-waitCheckAuth.Done()
+					if err := waitCheckAuth.Err(); errors.Is(err, context.DeadlineExceeded) {
+						danmulog.L(`E: `, "连接验证失败")
+						i += 1
+						continue
 					}
-					//30s获取一次人气
-					go func() {
-						time.Sleep(time.Millisecond * time.Duration(500)) //500ms
-						danmulog.L(`T: `, "获取人气")
-						go func() {
-							heartbeatmsg, heartinterval := F.Heartbeat()
-							for !ws_c.Isclose() {
-								ws_c.SendChan <- heartbeatmsg
-								time.Sleep(time.Millisecond * time.Duration(heartinterval*1000))
-							}
-						}()
+				}
 
-						//订阅消息，以便刷新舰长数
-						F.Get(c.C).Get(`GuardNum`)
-						// 在线人数
-						F.Get(c.C).Get(`getOnlineGoldRank`)
-						//当前ws的消息队列
-						c.C.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
-							`exit_cu_room`: func(_ any) bool { //退出
-								return true
-							},
-							`guard_update`: func(_ any) bool { //舰长更新
-								go F.Get(c.C).Get(`GuardNum`)
-								return false
-							},
-							`flash_room`: func(_ any) bool { //重进房时退出当前房间
-								return true
-							},
-							`change_room`: func(_ any) bool { //换房时退出当前房间
-								return true
-							},
-							`every100s`: func(_ any) bool { //每100s
-								if v, ok := c.C.K_v.LoadV("下播后不记录人气观看人数").(bool); ok && v && !c.C.Liveing {
-									return false
-								}
-								// 在线人数
-								F.Get(c.C).Get(`getOnlineGoldRank`)
-								return false
-							},
-							`new day`: func(_ any) bool { //日期更换
-								//每日签到
-								F.Dosign()
-								// //获取用户版本  不再需要
-								// go F.Get(`VERSION`)
-								//每日兑换硬币
-								go F.Get(c.C).Silver_2_coin()
-								//附加功能 每日发送弹幕
-								go reply.Entry_danmu()
-								//附加功能 保持牌子点亮
-								go reply.Keep_medal_light()
-								//附加功能 自动发送即将过期礼物
-								go reply.AutoSend_silver_gift()
-								return false
-							},
+				danmulog.L(`I: `, "已连接到房间", c.C.Uname, `(`, c.C.Roomid, `)`)
+				reply.Gui_show(`进入直播间: `+c.C.Uname+` (`+strconv.Itoa(c.C.Roomid)+`)`, `0room`)
+				if c.C.Title != `` {
+					danmulog.L(`I: `, c.C.Title)
+					reply.Gui_show(`房间标题: `+c.C.Title, `0room`)
+				}
+
+				//30s获取一次人气
+				go func() {
+					danmulog.L(`T: `, "获取人气")
+					heartbeatmsg, heartinterval := F.Heartbeat()
+					for !ws_c.Isclose() {
+						wsmsg.PushLock_tag(`send`, &ws.WsMsg{
+							Msg: heartbeatmsg,
 						})
-
-						//验证cookie
-						if missKey := F.CookieCheck([]string{
-							`bili_jct`,
-							`DedeUserID`,
-							`LIVE_BUVID`,
-						}); len(missKey) == 0 {
-							//附加功能 弹幕机 无cookie无法发送弹幕
-							reply.Danmuji_auto()
-						}
-
-						{ //附加功能 进房间发送弹幕 直播流保存 营收 每日签到
-							go F.Dosign()
-							go reply.Entry_danmu()
-							go reply.StreamOStart(c.C.Roomid)
-							go reply.ShowRevf()
-							go F.RoomEntryAction(c.C.Roomid)
-						}
-					}()
-				}
-
-				var isclose bool
-				var break_sign bool
-				for !isclose {
-					select {
-					case i := <-ws_c.RecvChan:
-						if len(i) == 0 && ws_c.Isclose() {
-							isclose = true
-						} else {
-							go reply.Reply(i)
-						}
-					case <-interrupt:
-						ws_c.Close()
-						danmulog.L(`I: `, "停止，等待服务器断开连接")
-						break_sign = true
-						exit_sign = false
-					case <-flash_room_chan:
-						ws_c.Close()
-						danmulog.L(`I: `, "停止，等待服务器断开连接")
-						//刷新WSURL
-						F.Get(c.C).Get(`WSURL`)
-						i = 0
-					case <-change_room_chan:
-						ws_c.Close()
-						danmulog.L(`I: `, "停止，等待服务器断开连接")
-						break_sign = true
+						time.Sleep(time.Millisecond * time.Duration(heartinterval*1000))
 					}
+				}()
+
+				// 刷新舰长数
+				F.Get(c.C).Get(`GuardNum`)
+				// 在线人数
+				F.Get(c.C).Get(`getOnlineGoldRank`)
+				//验证cookie
+				if missKey := F.CookieCheck([]string{
+					`bili_jct`,
+					`DedeUserID`,
+					`LIVE_BUVID`,
+				}); len(missKey) == 0 {
+					//附加功能 弹幕机 无cookie无法发送弹幕
+					reply.Danmuji_auto()
+				}
+				{ //附加功能 进房间发送弹幕 直播流保存 营收 每日签到
+					go F.Dosign()
+					go reply.Entry_danmu()
+					go reply.StreamOStart(c.C.Roomid)
+					go reply.ShowRevf()
+					go F.RoomEntryAction(c.C.Roomid)
 				}
 
-				// 当前ws链接断开时，取消当前ws的消息队列
-				c.C.Danmu_Main_mq.Push_tag(`exit_cu_room`, nil)
+				//当前ws
+				{
+					c.C.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
+						`interrupt`: func(_ any) (disable bool) {
+							exitloop = true
+							exit_sign = false
+							ws_c.Close()
+							danmulog.L(`I: `, "停止，等待服务器断开连接")
+							reply.StreamOStop(-1) //停止录制
+							return true
+						},
+						`exit_room`: func(_ any) bool { //退出当前房间
+							exitloop = true
+							ws_c.Close()
+							return true
+						},
+						`change_room`: func(_ any) bool { //换房时退出当前房间
+							exitloop = true
+							ws_c.Close()
+							if v, ok := c.C.K_v.LoadV(`仅保存当前直播间流`).(bool); ok && v {
+								reply.StreamOStop(-2) //停止其他房间录制
+							}
+							return true
+						},
+						`flash_room`: func(_ any) bool { //重进房时退出当前房间
+							ws_c.Close()
+							return true
+						},
+						`guard_update`: func(_ any) bool { //舰长更新
+							go F.Get(c.C).Get(`GuardNum`)
+							return false
+						},
+						`every100s`: func(_ any) bool { //每100s
+							if time.Now().After(aliveT) {
+								c.C.Danmu_Main_mq.Push_tag(`flash_room`, nil)
+								return false
+							}
+							if v, ok := c.C.K_v.LoadV("下播后不记录人气观看人数").(bool); ok && v && !c.C.Liveing {
+								return false
+							}
+							// 在线人数
+							F.Get(c.C).Get(`getOnlineGoldRank`)
+							return false
+						},
+						`new day`: func(_ any) bool { //日期更换
+							//每日签到
+							F.Dosign()
+							// //获取用户版本  不再需要
+							// go F.Get(`VERSION`)
+							//每日兑换硬币
+							go F.Get(c.C).Silver_2_coin()
+							//附加功能 每日发送弹幕
+							go reply.Entry_danmu()
+							//附加功能 保持牌子点亮
+							go reply.Keep_medal_light()
+							//附加功能 自动发送即将过期礼物
+							go reply.AutoSend_silver_gift()
+							return false
+						},
+					})
 
-				if break_sign {
-					break
-				}
-			}
-			{ //附加功能
-				if v, ok := c.C.K_v.LoadV(`仅保存当前直播间流`).(bool); ok && v {
-					reply.StreamOStop(-2) //停止其他房间录制
+					wsmsg.Pull_tag(map[string]func(*ws.WsMsg) (disable bool){
+						`rec`: func(wm *ws.WsMsg) (disable bool) {
+							go reply.Reply(wm.Msg)
+							return false
+						},
+						`close`: func(_ *ws.WsMsg) (disable bool) {
+							return true
+						},
+					})
+					<-wsmsg.Pull_tag_chan(`close`, 1, context.Background())
+					time.Sleep(time.Second)
 				}
 			}
 			time.Sleep(time.Second)
@@ -360,7 +361,6 @@ func Start() {
 			reply.SaveToJson.Close()
 			reply.StreamOStop(-1)
 		}
-		// close(interrupt)
 		danmulog.L(`I: `, "结束退出")
 	}
 }

@@ -231,6 +231,18 @@ func (t *Common) Init() *Common {
 
 	t.Danmu_Main_mq = mq.New()
 
+	go func() { //日期变化
+		var old = time.Now().Hour()
+		for {
+			if now := time.Now().Hour(); now == 0 && old != now {
+				t.Danmu_Main_mq.Push_tag(`new day`, nil)
+				old = now
+			}
+			t.Danmu_Main_mq.Push_tag(`every100s`, nil)
+			time.Sleep(time.Second * time.Duration(100))
+		}
+	}()
+
 	t.ReqPool = pool.New(
 		func() *reqf.Req {
 			return reqf.New()
