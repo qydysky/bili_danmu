@@ -352,7 +352,7 @@ func Start() {
 							return true
 						},
 					})
-					<-wsmsg.Pull_tag_chan(`close`, 1, context.Background())
+					<-wsmsg.Pull_tag_chan(`exit`, 1, context.Background())
 					time.Sleep(time.Second)
 				}
 			}
