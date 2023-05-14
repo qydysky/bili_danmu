@@ -160,9 +160,6 @@ func Cmd() {
 			}
 			//退出当前房间
 			if strings.Contains(inputs, ` exit`) && c.C.Roomid != 0 {
-				cmdlog.L(`I: `, "退出房间", c.C.Roomid)
-				reply.StreamOStop(c.C.Roomid)
-				c.C.Roomid = 0
 				c.C.Danmu_Main_mq.Push_tag(`exit_room`, nil)
 				continue
 			}

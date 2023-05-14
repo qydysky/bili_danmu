@@ -48,10 +48,9 @@ func Start() {
 		var interrupt = make(chan os.Signal, 2)
 		//捕获ctrl+c退出
 		signal.Notify(interrupt, os.Interrupt)
-		danmulog.L(`T: `, "两次ctrl+c强制退出")
+		danmulog.L(`T: `, "3s内两次ctrl+c强制退出")
 		for {
 			<-interrupt
-			danmulog.L(`I: `, "3s内ctrl+c强制退出!").Block(1000)
 			c.C.Danmu_Main_mq.PushLock_tag(`interrupt`, nil)
 			select {
 			case <-interrupt:
@@ -293,6 +292,9 @@ func Start() {
 						},
 						`exit_room`: func(_ any) bool { //退出当前房间
 							exitloop = true
+							reply.StreamOStop(c.C.Roomid)
+							danmulog.L(`I: `, "退出房间", c.C.Roomid)
+							c.C.Roomid = 0
 							ws_c.Close()
 							return true
 						},
