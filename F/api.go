@@ -139,10 +139,6 @@ func (c *GetFunc) Get(key string) {
 			`LIVE_BUVID`: { //LIVE_BUVID
 				c.Get_LIVE_BUVID,
 			},
-
-			`Silver_2_coin`: { //银瓜子2硬币
-				c.Silver_2_coin,
-			},
 			`CheckSwitch_FansMedal`: { //切换粉丝牌
 				c.CheckSwitch_FansMedal,
 			},
@@ -208,9 +204,6 @@ func (c *GetFunc) Get(key string) {
 			// },
 			`LIVE_BUVID`: func() bool { //LIVE_BUVID
 				return c.LiveBuvidUpdated.After(time.Now().Add(-time.Hour))
-			},
-			`Silver_2_coin`: func() bool { //银瓜子2硬币
-				return true
 			},
 			`CheckSwitch_FansMedal`: func() bool { //切换粉丝牌
 				return true

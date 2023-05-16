@@ -48,18 +48,11 @@ func Start() {
 		var interrupt = make(chan os.Signal, 2)
 		//捕获ctrl+c退出
 		signal.Notify(interrupt, os.Interrupt)
-		danmulog.L(`T: `, "3s内两次ctrl+c强制退出")
-		for {
-			<-interrupt
-			c.C.Danmu_Main_mq.PushLock_tag(`interrupt`, nil)
-			select {
-			case <-interrupt:
-				c.C.Danmu_Main_mq.PushLock_tag(`interrupt`, nil)
-				danmulog.L(`I: `, "强制退出!").Block(1000)
-				os.Exit(1)
-			case <-time.After(time.Second * 3):
-			}
-		}
+		danmulog.L(`I: `, "ctrl+c退出")
+		<-interrupt
+		c.C.Danmu_Main_mq.PushLock_tag(`interrupt`, nil)
+		danmulog.L(`I: `, "退出!").Block(1000)
+		os.Exit(1)
 	}()
 
 	// 启动时显示ip
@@ -81,7 +74,7 @@ func Start() {
 		//获取uid
 		F.Get(c.C).Get(`Uid`)
 		//兑换硬币
-		F.Get(c.C).Get(`Silver_2_coin`)
+		F.Get(c.C).Silver_2_coin()
 		//每日签到
 		F.Dosign()
 		// 附加功能 savetojson
@@ -135,14 +128,13 @@ func Start() {
 		})
 
 		for exit_sign := true; exit_sign; {
-			if len(change_room_chan) == 0 {
+			if c.C.Roomid == 0 {
 				fmt.Println("回车查看指令")
-			}
-
-			select {
-			case <-change_room_chan:
-			case <-interrupt_chan:
-				exit_sign = false
+				select {
+				case <-change_room_chan:
+				case <-interrupt_chan:
+					exit_sign = false
+				}
 			}
 
 			if !exit_sign {
