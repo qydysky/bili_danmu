@@ -43,16 +43,24 @@ func Start() {
 	var stop = sys.Sys().PreventSleep()
 	defer stop.Done()
 
+	var interrupt_chan = c.C.Danmu_Main_mq.Pull_tag_chan(`interrupt`, 2, context.Background())
+
 	//ctrl+c退出
 	go func() {
 		var interrupt = make(chan os.Signal, 2)
 		//捕获ctrl+c退出
 		signal.Notify(interrupt, os.Interrupt)
-		danmulog.L(`I: `, "ctrl+c退出")
-		<-interrupt
-		c.C.Danmu_Main_mq.PushLock_tag(`interrupt`, nil)
-		danmulog.L(`I: `, "退出!").Block(1000)
-		os.Exit(1)
+		danmulog.L(`I: `, "3s内2次ctrl+c退出")
+		for {
+			<-interrupt
+			c.C.Danmu_Main_mq.Push_tag(`interrupt`, nil)
+			select {
+			case <-interrupt:
+				c.C.Danmu_Main_mq.Push_tag(`interrupt`, nil)
+				os.Exit(1)
+			case <-time.After(time.Second * 3):
+			}
+		}
 	}()
 
 	// 启动时显示ip
@@ -81,7 +89,6 @@ func Start() {
 		reply.SaveToJson.Init()
 
 		var change_room_chan = c.C.Danmu_Main_mq.Pull_tag_chan(`change_room`, 1, context.Background())
-		var interrupt_chan = c.C.Danmu_Main_mq.Pull_tag_chan(`interrupt`, 1, context.Background())
 
 		// 房间初始化
 		if c.C.Roomid != 0 {
@@ -172,7 +179,8 @@ func Start() {
 
 			//对每个弹幕服务器尝试
 			F.Get(c.C).Get(`WSURL`)
-			for i, aliveT, exitloop := 0, time.Now().Add(3*time.Hour), false; !exitloop && i < len(c.C.WSURL) && time.Now().Before(aliveT); {
+			aliveT := time.Now().Add(3 * time.Hour)
+			for i, exitloop := 0, false; !exitloop && i < len(c.C.WSURL) && time.Now().Before(aliveT); {
 				v := c.C.WSURL[i]
 				//ws启动
 				danmulog.L(`T: `, "连接 "+v)
@@ -234,16 +242,26 @@ func Start() {
 				danmulog.L(`I: `, "已连接到房间", c.C.Uname, `(`, c.C.Roomid, `)`)
 				reply.Gui_show(`进入直播间: `+c.C.Uname+` (`+strconv.Itoa(c.C.Roomid)+`)`, `0room`)
 				if c.C.Title != `` {
-					danmulog.L(`I: `, c.C.Title)
+					danmulog.L(`I: `, `房间标题: `+c.C.Title)
 					reply.Gui_show(`房间标题: `+c.C.Title, `0room`)
 				}
+
+				wsmsg.Pull_tag(map[string]func(*ws.WsMsg) (disable bool){
+					`rec`: func(wm *ws.WsMsg) (disable bool) {
+						go reply.Reply(wm.Msg)
+						return false
+					},
+					`close`: func(_ *ws.WsMsg) (disable bool) {
+						return true
+					},
+				})
 
 				//30s获取一次人气
 				go func() {
 					danmulog.L(`T: `, "获取人气")
 					heartbeatmsg, heartinterval := F.Heartbeat()
 					for !ws_c.Isclose() {
-						wsmsg.PushLock_tag(`send`, &ws.WsMsg{
+						wsmsg.Push_tag(`send`, &ws.WsMsg{
 							Msg: heartbeatmsg,
 						})
 						time.Sleep(time.Millisecond * time.Duration(heartinterval*1000))
@@ -335,15 +353,6 @@ func Start() {
 						},
 					})
 
-					wsmsg.Pull_tag(map[string]func(*ws.WsMsg) (disable bool){
-						`rec`: func(wm *ws.WsMsg) (disable bool) {
-							go reply.Reply(wm.Msg)
-							return false
-						},
-						`close`: func(_ *ws.WsMsg) (disable bool) {
-							return true
-						},
-					})
 					<-wsmsg.Pull_tag_chan(`exit`, 1, context.Background())
 					time.Sleep(time.Second)
 				}
