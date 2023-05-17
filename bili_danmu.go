@@ -88,14 +88,6 @@ func Start() {
 		// 附加功能 savetojson
 		reply.SaveToJson.Init()
 
-		var change_room_chan = c.C.Danmu_Main_mq.Pull_tag_chan(`change_room`, 1, context.Background())
-
-		// 房间初始化
-		if c.C.Roomid != 0 {
-			fmt.Print("房间号: ", strconv.Itoa(c.C.Roomid), "\n")
-			c.C.Danmu_Main_mq.Push_tag(`change_room`, nil)
-		}
-
 		//使用带tag的消息队列在功能间传递消息
 		c.C.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
 			`change_room`: func(_ any) bool { //房间改变
@@ -137,11 +129,17 @@ func Start() {
 		for exit_sign := true; exit_sign; {
 			if c.C.Roomid == 0 {
 				fmt.Println("回车查看指令")
+				ctx, cancle := context.WithCancel(context.Background())
 				select {
-				case <-change_room_chan:
+				case <-c.C.Danmu_Main_mq.Pull_tag_chan(`change_room`, 1, ctx):
 				case <-interrupt_chan:
 					exit_sign = false
 				}
+				cancle()
+			} else {
+				// 房间初始化
+				fmt.Print("房间号: ", strconv.Itoa(c.C.Roomid), "\n")
+				c.C.Danmu_Main_mq.Push_tag(`change_room`, nil)
 			}
 
 			if !exit_sign {
