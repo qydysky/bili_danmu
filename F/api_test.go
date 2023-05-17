@@ -33,7 +33,12 @@ func Test_getWridWts(t *testing.T) {
 }
 
 func Test_SearchUP(t *testing.T) {
-	if v := Get(c.C).SearchUP("qydysky"); len(v) == 0 && v[0].Roomid != 394988 {
+	//获取cookie
+	Get(c.C).Get(`Cookie`)
+	//获取LIVE_BUVID
+	Get(c.C).Get(`LIVE_BUVID`)
+
+	if v := Get(c.C).SearchUP("qydysky"); len(v) == 0 || v[0].Roomid != 394988 {
 		t.Fatal()
 	}
 }
