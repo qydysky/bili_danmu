@@ -137,9 +137,7 @@ func Start() {
 				}
 				cancle()
 			} else {
-				// 房间初始化
 				fmt.Print("房间号: ", strconv.Itoa(c.C.Roomid), "\n")
-				c.C.Danmu_Main_mq.Push_tag(`change_room`, nil)
 			}
 
 			if !exit_sign {
