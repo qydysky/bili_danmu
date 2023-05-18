@@ -25,7 +25,7 @@
   "PK_SETTLE": true,
   "PK_AGAIN": true,
   "PK_MIC_END": true,
-  "PK_BATTLE_FINAL_PROCESS": true,
+  "PK_BATTLE_FINAL_PROCESS": false,
   "PK_BATTLE_PRO_TYPE": true,
   "PK_BATTLE_GIFT": true,
   "PK_BATTLE_SPECIAL_GIFT": true,
