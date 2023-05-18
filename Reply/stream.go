@@ -1262,6 +1262,7 @@ func (t *M4SStream) Stop() {
 	t.Status.Done()
 	t.log.L(`I: `, `正在等待下载完成...`)
 	t.exitSign.Wait()
+	t.log.L(`I: `, `结束`)
 }
 
 // 保存到文件
