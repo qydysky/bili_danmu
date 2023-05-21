@@ -270,7 +270,46 @@ ass编码GB18030支持中文
   使用`?ref={目录}`参数来获取流，当为`?ref=now`时，为当前直播流
 
 - 火狐不原生支持Hevc格式，因此但模式为`flvH,fmp4H`时，只能播放声音
-- 预览[92613少年Pi的直播回放](https://bili.qydysky.org)，此预览地址已限制1连接
+- 预览[92613少年Pi的直播回放](https://bili.qydysky.org)，此预览地址已应用如下配置
+  <details>
+    
+  <summary>config_K_v.json</summary>
+    
+  ```json
+  {
+      "日志文件输出-help": "为空时不保存日志",
+      "日志文件输出": "danmu.log",
+      "指定弹幕重启录制":[
+          {
+              "uid":"29183321",
+              "danmu":"1"
+          }
+      ],
+      "直播流清晰度-help": "清晰度可选-1:不保存 0:默认 20000:4K 10000:原画 400:蓝光 250:超清 150:高清 80:流畅,无提供所选清晰度时，使用低一档清晰度",
+      "直播流清晰度": 10000,
+      "直播流类型-help": "flv,fmp4,flvH,fmp4H,带H后缀的为Hevc格式编码",
+      "直播流类型": "flv",
+      "直播流保存位置": "./live",
+      "Web服务地址":"0.0.0.0:10000",
+      "直播Web服务路径":"/web/",
+      "直播Web可以发送弹幕":false,
+      "直播流回放速率": "3 MB",
+      "直播流回放连接限制": 1,
+      "cookie保护": "下填路径",
+      "cookie加密公钥": "public.pem",
+      "cookie解密私钥": "private.pem",
+      "debug模式-help":"在/debug/pprof/启用调试",
+      "debug模式":false,
+      "保存弹幕至db": {
+          "dbname": "mysql",
+          "url":"root:root@(192.168.31.103:10836)/test",
+          "字段help":"time.Now().Format(time.DateTime), time.Now().Unix(), item.msg, item.color, item.auth, item.uid, item.roomid",
+          "create":"create table danmu (created varchar(20), createdunix varchar(20), msg varchar(100), color varchar(20), auth varchar(50), uid varchar(30), roomid varchar(30))",
+          "insert":"insert into danmu (created, createdunix, msg, color, auth, uid, roomid) values ({Date},{Unix},{Msg},{Color},{Auth},{Uid},{Roomid})"
+      }
+  }
+  ```
+  </details>
 
 测试可用项目(测试可连续播放10min+)：
 
