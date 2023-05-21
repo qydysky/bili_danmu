@@ -1169,7 +1169,7 @@ func init() {
 				if vm, ok := limits[i].(map[string]any); ok {
 					if cidr, ok := vm["cidr"].(string); !ok {
 						continue
-					} else if max, ok := vm["max"].(float64); !ok || max == 0 {
+					} else if max, ok := vm["max"].(float64); !ok {
 						continue
 					} else {
 						if _, cidrx, err := net.ParseCIDR(cidr); err != nil {
@@ -1266,7 +1266,7 @@ func init() {
 					if !limitCon[i].cidr.Contains(ip) {
 						continue
 					}
-					if limitCon[i].available <= 0 {
+					if limitCon[i].available == 0 {
 						isOverflow = true
 						break
 					}
@@ -1310,7 +1310,7 @@ func init() {
 					if !limitCon[i].cidr.Contains(ip) {
 						continue
 					}
-					if limitCon[i].available > 0 {
+					if limitCon[i].available != 0 {
 						add = append(add, i)
 					}
 				}

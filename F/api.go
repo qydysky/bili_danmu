@@ -2345,7 +2345,6 @@ func (c *GetFunc) getOnlineGoldRank() (misskey []string) {
 		},
 		Proxy:   c.Proxy,
 		Timeout: 3 * 1000,
-		Retry:   2,
 	}); err != nil {
 		apilog.L(`E: `, err)
 		return
