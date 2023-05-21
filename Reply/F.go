@@ -9,6 +9,7 @@ import (
 	"io"
 	"io/fs"
 	"math"
+	"net"
 	"net/http"
 	"net/http/pprof"
 	"sort"
@@ -1155,12 +1156,30 @@ func init() {
 		}
 
 		// 直播流回放连接限制
+		type limitItem struct {
+			cidr      *net.IPNet
+			available int
+		}
 		var (
-			limitCon atomic.Int32
-			maxCon   int32
+			limitCon []limitItem
+			limitL   psync.RWMutex
 		)
-		if count, ok := c.C.K_v.LoadV(`直播流回放连接限制`).(float64); ok {
-			maxCon = int32(count)
+		if limits, ok := c.C.K_v.LoadV(`直播流回放连接限制`).([]any); ok {
+			for i := 0; i < len(limits); i++ {
+				if vm, ok := limits[i].(map[string]any); ok {
+					if cidr, ok := vm["cidr"].(string); !ok {
+						continue
+					} else if max, ok := vm["max"].(float64); !ok || max == 0 {
+						continue
+					} else {
+						if _, cidrx, err := net.ParseCIDR(cidr); err != nil {
+							flog.L(`E: `, err)
+						} else {
+							limitCon = append(limitCon, limitItem{cidr: cidrx, available: int(max)})
+						}
+					}
+				}
+			}
 		}
 
 		// 直播流主页
@@ -1239,10 +1258,25 @@ func init() {
 		// 直播流播放器
 		c.C.SerF.Store(path+"player/", func(w http.ResponseWriter, r *http.Request) {
 			// 直播流回放连接限制
-			if maxCon > 0 && limitCon.Load() >= maxCon {
-				w.WriteHeader(http.StatusTooManyRequests)
-				_, _ = w.Write([]byte("已达到设定最大连接数"))
-				return
+			if len(limitCon) != 0 {
+				ip := net.ParseIP(strings.Split(r.RemoteAddr, ":")[0])
+				var isOverflow bool
+				ul := limitL.RLock()
+				for i := 0; i < len(limitCon); i++ {
+					if !limitCon[i].cidr.Contains(ip) {
+						continue
+					}
+					if limitCon[i].available <= 0 {
+						isOverflow = true
+						break
+					}
+				}
+				ul()
+				if isOverflow {
+					w.WriteHeader(http.StatusTooManyRequests)
+					_, _ = w.Write([]byte("已达到设定最大连接数"))
+					return
+				}
 			}
 
 			p := strings.TrimPrefix(r.URL.Path, path+"player/")
@@ -1268,16 +1302,35 @@ func init() {
 		// 流地址
 		c.C.SerF.Store(path+"stream", func(w http.ResponseWriter, r *http.Request) {
 			// 直播流回放连接限制
-			if maxCon > 0 {
-				if limitCon.Add(1) > maxCon {
-					limitCon.Add(-1)
+			if len(limitCon) != 0 {
+				ip := net.ParseIP(strings.Split(r.RemoteAddr, ":")[0])
+				var add []int
+				ul := limitL.Lock()
+				for i := 0; i < len(limitCon); i++ {
+					if !limitCon[i].cidr.Contains(ip) {
+						continue
+					}
+					if limitCon[i].available > 0 {
+						add = append(add, i)
+					}
+				}
+				if len(add) == 0 {
+					ul()
 					w.WriteHeader(http.StatusTooManyRequests)
 					return
 				} else {
+					for i := 0; i < len(add); i++ {
+						limitCon[add[i]].available -= 1
+					}
+					ul()
 					// 连接退出
 					go func() {
 						<-r.Context().Done()
-						limitCon.Add(-1)
+						ul := limitL.Lock()
+						for i := 0; i < len(add); i++ {
+							limitCon[add[i]].available += 1
+						}
+						ul()
 					}()
 				}
 			}
