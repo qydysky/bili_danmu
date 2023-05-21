@@ -1239,15 +1239,10 @@ func init() {
 		// 直播流播放器
 		c.C.SerF.Store(path+"player/", func(w http.ResponseWriter, r *http.Request) {
 			// 直播流回放连接限制
-			if maxCon > 0 {
-				if limitCon.Add(1) > maxCon {
-					limitCon.Add(-1)
-					w.WriteHeader(http.StatusTooManyRequests)
-					_, _ = w.Write([]byte("已达到设定最大连接数"))
-					return
-				} else {
-					defer limitCon.Add(-1)
-				}
+			if maxCon > 0 && limitCon.Load() >= maxCon {
+				w.WriteHeader(http.StatusTooManyRequests)
+				_, _ = w.Write([]byte("已达到设定最大连接数"))
+				return
 			}
 
 			p := strings.TrimPrefix(r.URL.Path, path+"player/")
@@ -1277,7 +1272,6 @@ func init() {
 				if limitCon.Add(1) > maxCon {
 					limitCon.Add(-1)
 					w.WriteHeader(http.StatusTooManyRequests)
-					_, _ = w.Write([]byte("已达到设定最大连接数"))
 					return
 				} else {
 					defer limitCon.Add(-1)
