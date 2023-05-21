@@ -1154,6 +1154,15 @@ func init() {
 			c.C.SerF.Store("/debug/pprof/trace", pprof.Trace)
 		}
 
+		// 直播流回放连接限制
+		var (
+			limitCon atomic.Int32
+			maxCon   int32
+		)
+		if count, ok := c.C.K_v.LoadV(`直播流回放连接限制`).(float64); ok {
+			maxCon = int32(count)
+		}
+
 		// 直播流主页
 		c.C.SerF.Store(path, func(w http.ResponseWriter, r *http.Request) {
 			p := strings.TrimPrefix(r.URL.Path, path)
@@ -1229,6 +1238,18 @@ func init() {
 
 		// 直播流播放器
 		c.C.SerF.Store(path+"player/", func(w http.ResponseWriter, r *http.Request) {
+			// 直播流回放连接限制
+			if maxCon > 0 {
+				if limitCon.Add(1) > maxCon {
+					limitCon.Add(-1)
+					w.WriteHeader(http.StatusTooManyRequests)
+					_, _ = w.Write([]byte("已达到设定最大连接数"))
+					return
+				} else {
+					defer limitCon.Add(-1)
+				}
+			}
+
 			p := strings.TrimPrefix(r.URL.Path, path+"player/")
 			if len(p) == 0 || p[len(p)-1] == '/' {
 				p += "index.html"
@@ -1251,6 +1272,18 @@ func init() {
 
 		// 流地址
 		c.C.SerF.Store(path+"stream", func(w http.ResponseWriter, r *http.Request) {
+			// 直播流回放连接限制
+			if maxCon > 0 {
+				if limitCon.Add(1) > maxCon {
+					limitCon.Add(-1)
+					w.WriteHeader(http.StatusTooManyRequests)
+					_, _ = w.Write([]byte("已达到设定最大连接数"))
+					return
+				} else {
+					defer limitCon.Add(-1)
+				}
+			}
+
 			//header
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
 			w.Header().Set("Access-Control-Allow-Headers", "*")
@@ -1260,14 +1293,6 @@ func init() {
 			w.Header().Set("Content-Transfer-Encoding", "binary")
 
 			var rpath string
-			// if referer, e := url.Parse(r.Header.Get(`Referer`)); e != nil {
-			// 	w.Header().Set("Retry-After", "1")
-			// 	w.WriteHeader(http.StatusServiceUnavailable)
-			// 	flog.L(`E: `, e)
-			// 	return
-			// } else {
-			// 	rpath = referer.Path
-			// }
 
 			if qref := r.URL.Query().Get("ref"); rpath == "" && qref != "" {
 				rpath = "/" + qref + "/"
