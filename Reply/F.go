@@ -1274,7 +1274,11 @@ func init() {
 					w.WriteHeader(http.StatusTooManyRequests)
 					return
 				} else {
-					defer limitCon.Add(-1)
+					// 连接退出
+					go func() {
+						<-r.Context().Done()
+						limitCon.Add(-1)
+					}()
 				}
 			}
 
@@ -1348,7 +1352,6 @@ func init() {
 							speed = s
 						}
 					}
-
 					if e := f.CopyToIoWriter(w, int64(speed), true); e != nil {
 						flog.L(`E: `, e)
 					}
