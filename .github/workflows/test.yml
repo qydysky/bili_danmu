@@ -11,8 +11,8 @@ on:
       - '**.sum'
 
 jobs:
-  u-build:
-    name: build_ubuntu_go${{ matrix.go }}
+  buildtest:
+    name: test_ubuntu_go${{ matrix.go }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -43,7 +43,23 @@ jobs:
       with:
         token: ${{secrets.CODECOV_TOKEN}}
         file: coverage
-      
+
+  u-build:
+    name: build_ubuntu_go${{ matrix.go }}
+    needs: [buildtest]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go: [ '1.20' ]
+    steps:
+    - name: Set up Go${{ matrix.go }}
+      uses: actions/setup-go@v3
+      with:
+        go-version: ${{ matrix.go }}
+
+    - name: Check out code
+      uses: actions/checkout@v3
+
     - name: Build
       run: |
         cd demo
@@ -62,6 +78,7 @@ jobs:
         
   w-build:
     name: build_windows_go${{ matrix.go }}
+    needs: [buildtest]
     runs-on: windows-latest
     strategy:
       matrix:
@@ -75,23 +92,6 @@ jobs:
     - name: Check out code
       uses: actions/checkout@v3
 
-    - name: golangci-lint
-      uses: golangci/golangci-lint-action@v3
-      with:
-        args: --timeout 5m --verbose
-
-    - name: Test
-      run: |
-        set CGO_ENABLED=0
-        go get .
-        go test -v --cover -coverprofile=coverage ./...
-
-    - name: Codecov
-      uses: codecov/codecov-action@v3
-      with:
-        token: ${{secrets.CODECOV_TOKEN}}
-        file: coverage
-        
     - name: Build
       run: |
         cd demo
