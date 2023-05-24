@@ -61,6 +61,7 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install libgtk-3-dev libcairo2-dev libglib2.0-dev
+        git rev-parse --short HEAD > VERSION
         cd demo
         go get .
         CGO_ENABLED=0 go build -v -buildmode=exe -o demo.run main.go
@@ -93,6 +94,7 @@ jobs:
 
     - name: Build
       run: |
+        git rev-parse --short HEAD > VERSION
         cd demo
         set CGO_ENABLED=0
         go get .
