@@ -1148,15 +1148,50 @@ func init() {
 
 		// debug模式
 		if de, ok := c.C.K_v.LoadV(`debug模式`).(bool); ok && de {
-			c.C.SerF.Store("/debug/pprof/", pprof.Index)
-			c.C.SerF.Store("/debug/pprof/cmdline", pprof.Cmdline)
-			c.C.SerF.Store("/debug/pprof/profile", pprof.Profile)
-			c.C.SerF.Store("/debug/pprof/symbol", pprof.Symbol)
-			c.C.SerF.Store("/debug/pprof/trace", pprof.Trace)
+			c.C.SerF.Store("/debug/pprof/", func(w http.ResponseWriter, r *http.Request) {
+				//limit
+				if c.C.SerLimit.AddCount(r) {
+					pweb.WithStatusCode(w, http.StatusTooManyRequests)
+					return
+				}
+				pprof.Index(w, r)
+			})
+			c.C.SerF.Store("/debug/pprof/cmdline", func(w http.ResponseWriter, r *http.Request) {
+				//limit
+				if c.C.SerLimit.AddCount(r) {
+					pweb.WithStatusCode(w, http.StatusTooManyRequests)
+					return
+				}
+				pprof.Cmdline(w, r)
+			})
+			c.C.SerF.Store("/debug/pprof/profile", func(w http.ResponseWriter, r *http.Request) {
+				//limit
+				if c.C.SerLimit.AddCount(r) {
+					pweb.WithStatusCode(w, http.StatusTooManyRequests)
+					return
+				}
+				pprof.Profile(w, r)
+			})
+			c.C.SerF.Store("/debug/pprof/symbol", func(w http.ResponseWriter, r *http.Request) {
+				//limit
+				if c.C.SerLimit.AddCount(r) {
+					pweb.WithStatusCode(w, http.StatusTooManyRequests)
+					return
+				}
+				pprof.Symbol(w, r)
+			})
+			c.C.SerF.Store("/debug/pprof/trace", func(w http.ResponseWriter, r *http.Request) {
+				//limit
+				if c.C.SerLimit.AddCount(r) {
+					pweb.WithStatusCode(w, http.StatusTooManyRequests)
+					return
+				}
+				pprof.Trace(w, r)
+			})
 		}
 
 		// 直播流回放连接限制
-		var climit pweb.CountLimits
+		var climit pweb.Limits
 		if limits, ok := c.C.K_v.LoadV(`直播流回放连接限制`).([]any); ok {
 			for i := 0; i < len(limits); i++ {
 				if vm, ok := limits[i].(map[string]any); ok {
@@ -1165,24 +1200,28 @@ func init() {
 					} else if max, ok := vm["max"].(float64); !ok {
 						continue
 					} else {
-						climit.SetMaxCount(cidr, int(max))
+						climit.AddLimitItem(pweb.NewLimitItem(int(max)).Cidr(cidr))
 					}
 				}
 			}
 		}
 
+		// cache
+		var cache pweb.Cache
+
 		// 直播流主页
 		c.C.SerF.Store(path, func(w http.ResponseWriter, r *http.Request) {
-			p := strings.TrimPrefix(r.URL.Path, path)
-			if len(p) == 0 || p[len(p)-1] == '/' {
-				p += "index.html"
-			}
-			f := file.New("html/streamList/"+p, 0, true)
-			if !f.IsExist() || f.IsDir() {
-				w.WriteHeader(http.StatusNotFound)
+			//limit
+			if c.C.SerLimit.AddCount(r) {
+				pweb.WithStatusCode(w, http.StatusTooManyRequests)
 				return
 			}
 
+			p := strings.TrimPrefix(r.URL.Path, path)
+
+			if len(p) == 0 || p[len(p)-1] == '/' {
+				p += "index.html"
+			}
 			if strings.HasSuffix(p, ".js") {
 				w.Header().Set("content-type", "application/javascript")
 			} else if strings.HasSuffix(p, ".css") {
@@ -1190,11 +1229,42 @@ func init() {
 			} else if strings.HasSuffix(p, ".html") {
 				w.Header().Set("content-type", "text/html")
 			}
-			_ = f.CopyToIoWriter(w, humanize.MByte, true)
+
+			//cache
+			if bp, ok := cache.IsCache("html/streamList/" + p); ok {
+				w.Header().Set("Cache-Control", "max-age=60")
+				_, _ = w.Write(*bp)
+				return
+			}
+			w = cache.Cache("html/streamList/"+p, time.Minute, w)
+
+			f := file.New("html/streamList/"+p, 0, true)
+			if !f.IsExist() || f.IsDir() {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+
+			b, _ := f.ReadAll(humanize.KByte, humanize.MByte)
+			_, _ = w.Write(b)
 		})
 
 		// 直播流文件列表api
-		c.C.SerF.Store(path+"filePath", func(w http.ResponseWriter, _ *http.Request) {
+		c.C.SerF.Store(path+"filePath", func(w http.ResponseWriter, r *http.Request) {
+			//limit
+			if c.C.SerLimit.AddCount(r) {
+				pweb.WithStatusCode(w, http.StatusTooManyRequests)
+				return
+			}
+
+			//cache
+			if bp, ok := cache.IsCache(path + "filePath"); ok {
+				w.Header().Set("Content-Type", "application/json")
+				w.Header().Set("Cache-Control", "max-age=5")
+				_, _ = w.Write(*bp)
+				return
+			}
+			w = cache.Cache(path+"filePath", time.Second*5, w)
+
 			if v, ok := c.C.K_v.LoadV(`直播流保存位置`).(string); ok && v != "" {
 				type dirEntryDirs []fs.DirEntry
 				var list dirEntryDirs
@@ -1246,21 +1316,22 @@ func init() {
 
 		// 直播流播放器
 		c.C.SerF.Store(path+"player/", func(w http.ResponseWriter, r *http.Request) {
+			//limit
+			if c.C.SerLimit.AddCount(r) {
+				pweb.WithStatusCode(w, http.StatusTooManyRequests)
+				return
+			}
+
 			// 直播流回放连接限制
 			if climit.ReachMax(r) {
 				w.WriteHeader(http.StatusTooManyRequests)
-				_, _ = w.Write([]byte("已达到设定最大连接数"))
+				_, _ = w.Write([]byte(http.StatusText(http.StatusTooManyRequests)))
 				return
 			}
 
 			p := strings.TrimPrefix(r.URL.Path, path+"player/")
 			if len(p) == 0 || p[len(p)-1] == '/' {
 				p += "index.html"
-			}
-			f := file.New("html/artPlayer/"+p, 0, true)
-			if !f.IsExist() {
-				w.WriteHeader(http.StatusNotFound)
-				return
 			}
 
 			if strings.HasSuffix(p, ".js") {
@@ -1270,11 +1341,33 @@ func init() {
 			} else if strings.HasSuffix(p, ".html") {
 				w.Header().Set("content-type", "text/html")
 			}
-			_ = f.CopyToIoWriter(w, humanize.MByte, true)
+
+			//cache
+			if bp, ok := cache.IsCache("html/artPlayer/" + p); ok {
+				w.Header().Set("Cache-Control", "max-age=60")
+				_, _ = w.Write(*bp)
+				return
+			}
+			w = cache.Cache("html/artPlayer/"+p, time.Minute, w)
+
+			f := file.New("html/artPlayer/"+p, 0, true)
+			if !f.IsExist() {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+
+			b, _ := f.ReadAll(humanize.KByte, humanize.MByte)
+			_, _ = w.Write(b)
 		})
 
 		// 流地址
 		c.C.SerF.Store(path+"stream", func(w http.ResponseWriter, r *http.Request) {
+			//limit
+			if c.C.SerLimit.AddCount(r) {
+				pweb.WithStatusCode(w, http.StatusTooManyRequests)
+				return
+			}
+
 			// 直播流回放连接限制
 			if climit.AddCount(r) {
 				w.WriteHeader(http.StatusTooManyRequests)
@@ -1399,6 +1492,19 @@ func init() {
 
 		// 弹幕回放
 		c.C.SerF.Store(path+"player/ws", func(w http.ResponseWriter, r *http.Request) {
+			//limit
+			if c.C.SerLimit.AddCount(r) {
+				pweb.WithStatusCode(w, http.StatusTooManyRequests)
+				return
+			}
+
+			// 直播流回放连接限制
+			if climit.ReachMax(r) {
+				w.WriteHeader(http.StatusTooManyRequests)
+				_, _ = w.Write([]byte(http.StatusText(http.StatusTooManyRequests)))
+				return
+			}
+
 			var rpath string
 
 			if qref := r.URL.Query().Get("ref"); rpath == "" && qref != "" {

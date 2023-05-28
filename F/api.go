@@ -26,6 +26,7 @@ import (
 	limit "github.com/qydysky/part/limit"
 	reqf "github.com/qydysky/part/reqf"
 	psync "github.com/qydysky/part/sync"
+	web "github.com/qydysky/part/web"
 
 	"github.com/mdp/qrterminal/v3"
 	qr "github.com/skip2/go-qrcode"
@@ -1340,7 +1341,12 @@ func (c *GetFunc) Get_cookie() (missKey []string) {
 		defer os.RemoveAll(`qr.png`)
 		//启动web
 		if scanPath, ok := c.K_v.LoadV("扫码登录路径").(string); ok && scanPath != "" {
-			c.SerF.Store(scanPath, func(w http.ResponseWriter, _ *http.Request) {
+			c.SerF.Store(scanPath, func(w http.ResponseWriter, r *http.Request) {
+				//limit
+				if c.SerLimit.AddCount(r) {
+					web.WithStatusCode(w, http.StatusTooManyRequests)
+					return
+				}
 				_ = file.New("qr.png", 0, true).CopyToIoWriter(w, humanize.MByte, true)
 			})
 			if c.K_v.LoadV(`扫码登录自动打开标签页`).(bool) {

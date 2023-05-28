@@ -67,6 +67,7 @@ type Common struct {
 	Danmu_Main_mq     *mq.Msgq              //消息
 	ReqPool           *pool.Buf[reqf.Req]   //请求池
 	SerF              *web.WebPath          //web服务处理
+	SerLimit          *web.Limits           //Web服务连接限制
 	StartT            time.Time             //启动时间
 }
 
@@ -145,6 +146,7 @@ func (t *Common) Copy() *Common {
 		Danmu_Main_mq:     t.Danmu_Main_mq,
 		ReqPool:           t.ReqPool,
 		SerF:              t.SerF,
+		SerLimit:          t.SerLimit,
 		StartT:            t.StartT,
 	}
 
@@ -292,6 +294,7 @@ func (t *Common) Init() *Common {
 
 	t.SerF = new(web.WebPath)
 	t.Stream_url = &url.URL{}
+	t.SerLimit = &web.Limits{}
 
 	if serAdress, ok := t.K_v.LoadV("Web服务地址").(string); ok && serAdress != "" {
 		serUrl, e := url.Parse("http://" + serAdress)
@@ -303,8 +306,38 @@ func (t *Common) Init() *Common {
 			Addr: serUrl.Host,
 		}, t.SerF)
 
+		if limits, ok := t.K_v.LoadV(`Web服务连接限制`).([]any); ok {
+			for i := 0; i < len(limits); i++ {
+				if vm, ok := limits[i].(map[string]any); ok {
+					if cidr, ok := vm["cidr"].(string); !ok {
+						continue
+					} else if max, ok := vm["max"].(float64); !ok {
+						continue
+					} else {
+						t.SerLimit.AddLimitItem(web.NewLimitItem(int(max)).Cidr(cidr))
+					}
+				}
+			}
+		}
+
 		if val, ok := t.K_v.LoadV("性能路径").(string); ok && val != "" {
-			t.SerF.Store(val, func(w http.ResponseWriter, _ *http.Request) {
+			var cache web.Cache
+			t.SerF.Store(val, func(w http.ResponseWriter, r *http.Request) {
+				//limit
+				if t.SerLimit.AddCount(r) {
+					web.WithStatusCode(w, http.StatusTooManyRequests)
+					return
+				}
+
+				//cache
+				if bp, ok := cache.IsCache(val); ok {
+					w.Header().Set("Content-Type", "application/json")
+					w.Header().Set("Cache-Control", "max-age=5")
+					_, _ = w.Write(*bp)
+					return
+				}
+				w = cache.Cache(val, time.Second*5, w)
+
 				var memStats runtime.MemStats
 				runtime.ReadMemStats(&memStats)
 
@@ -465,7 +498,7 @@ type ResStruct struct {
 	Data    any    `json:"data"`
 }
 
-func (t ResStruct) Write(w http.ResponseWriter) {
+func (t ResStruct) Write(w http.ResponseWriter) []byte {
 	w.Header().Set("Content-Type", "application/json")
 	data, e := json.Marshal(t)
 	if e != nil {
@@ -475,4 +508,5 @@ func (t ResStruct) Write(w http.ResponseWriter) {
 		data, _ = json.Marshal(t)
 	}
 	_, _ = w.Write(data)
+	return data
 }
