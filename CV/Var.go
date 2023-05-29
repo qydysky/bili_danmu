@@ -302,8 +302,29 @@ func (t *Common) Init() *Common {
 			panic(e)
 		}
 
+		var (
+			readTimeout       = 3
+			readHeaderTimeout = 3
+			idleTimeout       = 3
+		)
+
+		if v, ok := t.K_v.LoadV("Web服务超时配置").(map[string]any); ok {
+			if v1, ok := v["ReadTimeout"].(float64); ok && v1 > 3 {
+				readTimeout = int(v1)
+			}
+			if v1, ok := v["ReadHeaderTimeout"].(float64); ok && v1 > 3 {
+				readHeaderTimeout = int(v1)
+			}
+			if v1, ok := v["IdleTimeout"].(float64); ok && v1 > 3 {
+				idleTimeout = int(v1)
+			}
+		}
+
 		web.NewSyncMap(&http.Server{
-			Addr: serUrl.Host,
+			Addr:              serUrl.Host,
+			ReadTimeout:       time.Duration(int(time.Second) * readTimeout),
+			ReadHeaderTimeout: time.Duration(int(time.Second) * readHeaderTimeout),
+			IdleTimeout:       time.Duration(int(time.Second) * idleTimeout),
 		}, t.SerF)
 
 		if limits, ok := t.K_v.LoadV(`Web服务连接限制`).([]any); ok {
@@ -323,9 +344,7 @@ func (t *Common) Init() *Common {
 		if val, ok := t.K_v.LoadV("性能路径").(string); ok && val != "" {
 			var cache web.Cache
 			t.SerF.Store(val, func(w http.ResponseWriter, r *http.Request) {
-				//limit
-				if t.SerLimit.AddCount(r) {
-					web.WithStatusCode(w, http.StatusTooManyRequests)
+				if DefaultHttpCheck(t, w, r, http.MethodGet) {
 					return
 				}
 
@@ -509,4 +528,18 @@ func (t ResStruct) Write(w http.ResponseWriter) []byte {
 	}
 	_, _ = w.Write(data)
 	return data
+}
+
+func DefaultHttpCheck(c *Common, w http.ResponseWriter, r *http.Request, method ...string) bool {
+	//method
+	if !web.IsMethod(r, method...) {
+		web.WithStatusCode(w, http.StatusMethodNotAllowed)
+		return true
+	}
+	//limit
+	if c.SerLimit.AddCount(r) {
+		web.WithStatusCode(w, http.StatusTooManyRequests)
+		return true
+	}
+	return false
 }

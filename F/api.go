@@ -26,7 +26,6 @@ import (
 	limit "github.com/qydysky/part/limit"
 	reqf "github.com/qydysky/part/reqf"
 	psync "github.com/qydysky/part/sync"
-	web "github.com/qydysky/part/web"
 
 	"github.com/mdp/qrterminal/v3"
 	qr "github.com/skip2/go-qrcode"
@@ -1246,21 +1245,21 @@ func (c *GetFunc) GetNav() (J.Nav, error) {
 }
 
 // 扫码登录
-func (c *GetFunc) Get_cookie() (missKey []string) {
+func (t *GetFunc) Get_cookie() (missKey []string) {
 	apilog := apilog.Base_add(`获取Cookie`)
 	//获取其他Cookie
-	defer c.Get_other_cookie()
+	defer t.Get_other_cookie()
 
 	if p.Checkfile().IsExist("cookie.txt") { //读取cookie文件
 		if cookieString := string(CookieGet()); cookieString != `` {
 			for k, v := range reqf.Cookies_String_2_Map(cookieString) { //cookie存入全局变量syncmap
-				c.Cookie.Store(k, v)
+				t.Cookie.Store(k, v)
 			}
 			if miss := CookieCheck([]string{
 				`bili_jct`,
 				`DedeUserID`,
 			}); len(miss) == 0 {
-				if v, e := c.GetNav(); e != nil {
+				if v, e := t.GetNav(); e != nil {
 					apilog.L(`E: `, e)
 				} else if v.Data.IsLogin {
 					apilog.L(`I: `, `已登录`)
@@ -1270,7 +1269,7 @@ func (c *GetFunc) Get_cookie() (missKey []string) {
 		}
 	}
 
-	if v, ok := c.K_v.LoadV(`扫码登录`).(bool); !ok || !v {
+	if v, ok := t.K_v.LoadV(`扫码登录`).(bool); !ok || !v {
 		apilog.L(`W: `, `配置文件已禁止扫码登录，如需登录，修改配置文件"扫码登录"为true`)
 		return
 	}
@@ -1282,11 +1281,11 @@ func (c *GetFunc) Get_cookie() (missKey []string) {
 	var img_url string
 	var oauth string
 	{ //获取二维码
-		r := c.ReqPool.Get()
-		defer c.ReqPool.Put(r)
+		r := t.ReqPool.Get()
+		defer t.ReqPool.Put(r)
 		if e := r.Reqf(reqf.Rval{
 			Url:     `https://passport.bilibili.com/qrcode/getLoginUrl`,
-			Proxy:   c.Proxy,
+			Proxy:   t.Proxy,
 			Timeout: 10 * 1000,
 			Retry:   2,
 		}); e != nil {
@@ -1340,19 +1339,17 @@ func (c *GetFunc) Get_cookie() (missKey []string) {
 		}
 		defer os.RemoveAll(`qr.png`)
 		//启动web
-		if scanPath, ok := c.K_v.LoadV("扫码登录路径").(string); ok && scanPath != "" {
-			c.SerF.Store(scanPath, func(w http.ResponseWriter, r *http.Request) {
-				//limit
-				if c.SerLimit.AddCount(r) {
-					web.WithStatusCode(w, http.StatusTooManyRequests)
+		if scanPath, ok := t.K_v.LoadV("扫码登录路径").(string); ok && scanPath != "" {
+			t.SerF.Store(scanPath, func(w http.ResponseWriter, r *http.Request) {
+				if c.DefaultHttpCheck(t.Common, w, r, http.MethodGet) {
 					return
 				}
 				_ = file.New("qr.png", 0, true).CopyToIoWriter(w, humanize.MByte, true)
 			})
-			if c.K_v.LoadV(`扫码登录自动打开标签页`).(bool) {
-				_ = open.Run(`http://127.0.0.1:` + c.Stream_url.Port() + scanPath)
+			if t.K_v.LoadV(`扫码登录自动打开标签页`).(bool) {
+				_ = open.Run(`http://127.0.0.1:` + t.Stream_url.Port() + scanPath)
 			}
-			apilog.L(`W: `, `或打开链接扫码登录：`+c.Stream_url.String()+scanPath)
+			apilog.L(`W: `, `或打开链接扫码登录：`+t.Stream_url.String()+scanPath)
 		}
 
 		apilog.Block(1000)
@@ -1374,7 +1371,7 @@ func (c *GetFunc) Get_cookie() (missKey []string) {
 
 	{ //循环查看是否通过
 		Cookie := make(map[string]string)
-		c.Cookie.Range(func(k, v interface{}) bool {
+		t.Cookie.Range(func(k, v interface{}) bool {
 			Cookie[k.(string)] = v.(string)
 			return true
 		})
@@ -1388,8 +1385,8 @@ func (c *GetFunc) Get_cookie() (missKey []string) {
 				return
 			}
 
-			r := c.ReqPool.Get()
-			defer c.ReqPool.Put(r)
+			r := t.ReqPool.Get()
+			defer t.ReqPool.Put(r)
 			if e := r.Reqf(reqf.Rval{
 				Url:     `https://passport.bilibili.com/qrcode/getLoginInfo`,
 				PostStr: `oauthKey=` + oauth,
@@ -1398,7 +1395,7 @@ func (c *GetFunc) Get_cookie() (missKey []string) {
 					`Referer`:      `https://passport.bilibili.com/login`,
 					`Cookie`:       reqf.Map_2_Cookies_String(Cookie),
 				},
-				Proxy:   c.Proxy,
+				Proxy:   t.Proxy,
 				Timeout: 10 * 1000,
 				Retry:   2,
 			}); e != nil {

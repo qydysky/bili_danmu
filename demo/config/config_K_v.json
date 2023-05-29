@@ -97,6 +97,12 @@
             "max":-1
         }
     ],
+    "Web服务超时配置-help":"单位秒，最小值3",
+    "Web服务超时配置": {
+        "ReadTimeout":3,
+        "ReadHeaderTimeout":3,
+        "IdleTimeout":3
+    },
     "直播Web服务路径":"/web/",
     "直播Web可以发送弹幕":true,
     "弹幕回放-help": "仅保存当前直播间流为true时才有效",

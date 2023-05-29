@@ -1149,41 +1149,31 @@ func init() {
 		// debug模式
 		if de, ok := c.C.K_v.LoadV(`debug模式`).(bool); ok && de {
 			c.C.SerF.Store("/debug/pprof/", func(w http.ResponseWriter, r *http.Request) {
-				//limit
-				if c.C.SerLimit.AddCount(r) {
-					pweb.WithStatusCode(w, http.StatusTooManyRequests)
+				if c.DefaultHttpCheck(c.C, w, r, http.MethodGet) {
 					return
 				}
 				pprof.Index(w, r)
 			})
 			c.C.SerF.Store("/debug/pprof/cmdline", func(w http.ResponseWriter, r *http.Request) {
-				//limit
-				if c.C.SerLimit.AddCount(r) {
-					pweb.WithStatusCode(w, http.StatusTooManyRequests)
+				if c.DefaultHttpCheck(c.C, w, r, http.MethodGet) {
 					return
 				}
 				pprof.Cmdline(w, r)
 			})
 			c.C.SerF.Store("/debug/pprof/profile", func(w http.ResponseWriter, r *http.Request) {
-				//limit
-				if c.C.SerLimit.AddCount(r) {
-					pweb.WithStatusCode(w, http.StatusTooManyRequests)
+				if c.DefaultHttpCheck(c.C, w, r, http.MethodGet) {
 					return
 				}
 				pprof.Profile(w, r)
 			})
 			c.C.SerF.Store("/debug/pprof/symbol", func(w http.ResponseWriter, r *http.Request) {
-				//limit
-				if c.C.SerLimit.AddCount(r) {
-					pweb.WithStatusCode(w, http.StatusTooManyRequests)
+				if c.DefaultHttpCheck(c.C, w, r, http.MethodGet) {
 					return
 				}
 				pprof.Symbol(w, r)
 			})
 			c.C.SerF.Store("/debug/pprof/trace", func(w http.ResponseWriter, r *http.Request) {
-				//limit
-				if c.C.SerLimit.AddCount(r) {
-					pweb.WithStatusCode(w, http.StatusTooManyRequests)
+				if c.DefaultHttpCheck(c.C, w, r, http.MethodGet) {
 					return
 				}
 				pprof.Trace(w, r)
@@ -1211,9 +1201,7 @@ func init() {
 
 		// 直播流主页
 		c.C.SerF.Store(path, func(w http.ResponseWriter, r *http.Request) {
-			//limit
-			if c.C.SerLimit.AddCount(r) {
-				pweb.WithStatusCode(w, http.StatusTooManyRequests)
+			if c.DefaultHttpCheck(c.C, w, r, http.MethodGet) {
 				return
 			}
 
@@ -1250,9 +1238,7 @@ func init() {
 
 		// 直播流文件列表api
 		c.C.SerF.Store(path+"filePath", func(w http.ResponseWriter, r *http.Request) {
-			//limit
-			if c.C.SerLimit.AddCount(r) {
-				pweb.WithStatusCode(w, http.StatusTooManyRequests)
+			if c.DefaultHttpCheck(c.C, w, r, http.MethodGet) {
 				return
 			}
 
@@ -1316,9 +1302,7 @@ func init() {
 
 		// 直播流播放器
 		c.C.SerF.Store(path+"player/", func(w http.ResponseWriter, r *http.Request) {
-			//limit
-			if c.C.SerLimit.AddCount(r) {
-				pweb.WithStatusCode(w, http.StatusTooManyRequests)
+			if c.DefaultHttpCheck(c.C, w, r, http.MethodGet) {
 				return
 			}
 
@@ -1362,9 +1346,7 @@ func init() {
 
 		// 流地址
 		c.C.SerF.Store(path+"stream", func(w http.ResponseWriter, r *http.Request) {
-			//limit
-			if c.C.SerLimit.AddCount(r) {
-				pweb.WithStatusCode(w, http.StatusTooManyRequests)
+			if c.DefaultHttpCheck(c.C, w, r, http.MethodGet) {
 				return
 			}
 
@@ -1492,9 +1474,7 @@ func init() {
 
 		// 弹幕回放
 		c.C.SerF.Store(path+"player/ws", func(w http.ResponseWriter, r *http.Request) {
-			//limit
-			if c.C.SerLimit.AddCount(r) {
-				pweb.WithStatusCode(w, http.StatusTooManyRequests)
+			if c.DefaultHttpCheck(c.C, w, r, http.MethodGet) {
 				return
 			}
 
