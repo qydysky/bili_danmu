@@ -236,7 +236,7 @@ func (t *M4SStream) fetchCheckStream() bool {
 			t.log.L(`W: `, `live响应错误`)
 			t.common.Live = t.common.Live[1:]
 		} else if r.Response.StatusCode&200 != 200 {
-			t.log.L(`W: `, `live响应错误`, r.Response.Status, string(r.Respon))
+			t.log.L(`W: `, `live响应错误`, r.Response.Status)
 			t.common.Live = t.common.Live[1:]
 		}
 		t.reqPool.Put(r)
@@ -685,12 +685,15 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 			}()
 
 			rc, rw := io.Pipe()
-			var leastReadUnix atomic.Int64
+			var (
+				leastReadUnix atomic.Int64
+				readTO        int64 = 5
+			)
 			leastReadUnix.Store(time.Now().Unix())
 
 			// read timeout
 			go func() {
-				timer := time.NewTicker(5 * time.Second)
+				timer := time.NewTicker(time.Duration(readTO * int64(time.Second)))
 				defer timer.Stop()
 
 				for {
@@ -698,8 +701,8 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 					case <-cancelC.Done():
 						return
 					case curT := <-timer.C:
-						if curT.Unix()-leastReadUnix.Load() > 5 {
-							t.log.L(`W: `, "5s未接收到任何数据")
+						if curT.Unix()-leastReadUnix.Load() > readTO {
+							t.log.L(`W: `, fmt.Sprintf("%vs未接收到有效数据", readTO))
 							// 5s未接收到任何数据
 							r.Cancel()
 							return
@@ -733,7 +736,6 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 						t.Stream_msg.PushLock_tag(`close`, nil)
 						break
 					}
-					leastReadUnix.Store(time.Now().Unix())
 
 					skip := true
 					select {
@@ -754,6 +756,10 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 							}
 							//丢弃所有数据
 							buff.Reset()
+						}
+						// 存在有效数据
+						if len(front_buf) != 0 || len(t.first_buf) != 0 {
+							leastReadUnix.Store(time.Now().Unix())
 						}
 						if len(front_buf) != 0 && len(t.first_buf) == 0 {
 							t.first_buf = make([]byte, len(front_buf))
@@ -790,6 +796,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 				NoResponse:       true,
 				Async:            true,
 				Proxy:            t.common.Proxy,
+				WriteLoopTO:      3000,
 				Header: map[string]string{
 					`Host`:            surl.Host,
 					`User-Agent`:      `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0`,

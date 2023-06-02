@@ -31,44 +31,44 @@ type StreamType struct {
 }
 
 type Common struct {
-	PID               int                   //进程id
-	Uid               int                   //client uid
-	Live              []LiveQn              //直播流链接
-	Live_qn           int                   //当前直播流质量
-	Live_want_qn      int                   //期望直播流质量
-	Roomid            int                   //房间ID
-	Cookie            syncmap.Map           //Cookie
-	Title             string                //直播标题
-	Uname             string                //主播名
-	UpUid             int                   //主播uid
-	Rev               float64               //营收
-	Renqi             int                   //人气
-	Watched           int                   //观看人数
-	OnlineNum         int                   //在线人数
-	GuardNum          int                   //舰长数
-	ParentAreaID      int                   //父分区
-	AreaID            int                   //子分区
-	Locked            bool                  //直播间封禁
-	Note              string                //分区排行
-	Live_Start_Time   time.Time             //直播开始时间
-	Liveing           bool                  //是否在直播
-	Wearing_FansMedal int                   //当前佩戴的粉丝牌
-	Token             string                //弹幕钥
-	WSURL             []string              //弹幕链接
-	LiveBuvidUpdated  time.Time             //LIVE_BUVID更新时间
-	Stream_url        *url.URL              //直播Web服务
-	Proxy             string                //全局代理
-	AcceptQn          map[int]string        //允许的直播流质量
-	Qn                map[int]string        //全部直播流质量
-	StreamType        StreamType            //当前直播流类型
-	AllStreamType     map[string]StreamType //直播流类型
-	K_v               syncmap.Map           //配置文件
-	Log               *log.Log_interface    //日志
-	Danmu_Main_mq     *mq.Msgq              //消息
-	ReqPool           *pool.Buf[reqf.Req]   //请求池
-	SerF              *web.WebPath          //web服务处理
-	SerLimit          *web.Limits           //Web服务连接限制
-	StartT            time.Time             //启动时间
+	PID               int                   `json:"pid"`           //进程id
+	Uid               int                   `json:"-"`             //client uid
+	Live              []LiveQn              `json:"-"`             //直播流链接
+	Live_qn           int                   `json:"liveQn"`        //当前直播流质量
+	Live_want_qn      int                   `json:"-"`             //期望直播流质量
+	Roomid            int                   `json:"roomid"`        //房间ID
+	Cookie            syncmap.Map           `json:"-"`             //Cookie
+	Title             string                `json:"title"`         //直播标题
+	Uname             string                `json:"uname"`         //主播名
+	UpUid             int                   `json:"upUid"`         //主播uid
+	Rev               float64               `json:"rev"`           //营收
+	Renqi             int                   `json:"renqi"`         //人气
+	Watched           int                   `json:"watched"`       //观看人数
+	OnlineNum         int                   `json:"onlineNum"`     //在线人数
+	GuardNum          int                   `json:"guardNum"`      //舰长数
+	ParentAreaID      int                   `json:"parentAreaID"`  //父分区
+	AreaID            int                   `json:"areaID"`        //子分区
+	Locked            bool                  `json:"locked"`        //直播间封禁
+	Note              string                `json:"note"`          //分区排行
+	Live_Start_Time   time.Time             `json:"liveStartTime"` //直播开始时间
+	Liveing           bool                  `json:"liveing"`       //是否在直播
+	Wearing_FansMedal int                   `json:"-"`             //当前佩戴的粉丝牌
+	Token             string                `json:"-"`             //弹幕钥
+	WSURL             []string              `json:"-"`             //弹幕链接
+	LiveBuvidUpdated  time.Time             `json:"-"`             //LIVE_BUVID更新时间
+	Stream_url        *url.URL              `json:"-"`             //直播Web服务
+	Proxy             string                `json:"-"`             //全局代理
+	AcceptQn          map[int]string        `json:"-"`             //允许的直播流质量
+	Qn                map[int]string        `json:"-"`             //全部直播流质量
+	StreamType        StreamType            `json:"streamType"`    //当前直播流类型
+	AllStreamType     map[string]StreamType `json:"-"`             //直播流类型
+	K_v               syncmap.Map           `json:"-"`             //配置文件
+	Log               *log.Log_interface    `json:"-"`             //日志
+	Danmu_Main_mq     *mq.Msgq              `json:"-"`             //消息
+	ReqPool           *pool.Buf[reqf.Req]   `json:"-"`             //请求池
+	SerF              *web.WebPath          `json:"-"`             //web服务处理
+	SerLimit          *web.Limits           `json:"-"`             //Web服务连接限制
+	StartT            time.Time             `json:"startT"`        //启动时间
 }
 
 type LiveQn struct {
@@ -385,6 +385,7 @@ func (t *Common) Init() *Common {
 							"gcCPUFractionPpm": float64(int(memStats.GCCPUFraction*100000000)) / 100,
 							"gcAvgS":           float64(int(gcAvgS*100)) / 100,
 						},
+						"common": t,
 					},
 				},
 				}.Write(w)

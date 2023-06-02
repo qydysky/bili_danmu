@@ -71,6 +71,8 @@ func Cmd() {
 						continue
 					}
 					cmdlog.L(`W: `, "输入错误", inputs)
+				} else if c.C.Roomid == 0 {
+					cmdlog.L(`W: `, "输入错误", inputs)
 				} else {
 					if reply.StreamOStatus(c.C.Roomid) {
 						reply.StreamOStop(c.C.Roomid)
