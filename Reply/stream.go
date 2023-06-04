@@ -1283,7 +1283,7 @@ func (t *M4SStream) PusherToFile(contextC context.Context, filepath string, star
 	}
 
 	_, _ = f.Write(t.getFirstBuf(), true)
-	t.Stream_msg.Pull_tag(map[string]func([]byte) bool{
+	t.Stream_msg.Pull_tag_async(map[string]func([]byte) bool{
 		`data`: func(b []byte) bool {
 			select {
 			case <-contextC.Done():
@@ -1352,7 +1352,7 @@ func (t *M4SStream) PusherToHttp(w http.ResponseWriter, r *http.Request, startFu
 	contextC, cancel := context.WithCancel(r.Context())
 
 	//
-	t.Stream_msg.Pull_tag(map[string]func([]byte) bool{
+	t.Stream_msg.Pull_tag_async(map[string]func([]byte) bool{
 		`data`: func(b []byte) bool {
 			select {
 			case <-contextC.Done():

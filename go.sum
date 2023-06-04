@@ -32,6 +32,8 @@ github.com/qydysky/part v0.28.1-0.20230602174331-a838e316668d h1:NDk77uktMXlfEXJ
 github.com/qydysky/part v0.28.1-0.20230602174331-a838e316668d/go.mod h1:xSAOQyg7Wyd+QtXxmHBodYzx3y5HJnfr4R29MXxNKF4=
 github.com/qydysky/part v0.28.1-0.20230602190805-e713cd3914aa h1:CBCY0tJB8M0KwmZ/BIoydBrBYV0lpgPLGCgT3YaGSLY=
 github.com/qydysky/part v0.28.1-0.20230602190805-e713cd3914aa/go.mod h1:xSAOQyg7Wyd+QtXxmHBodYzx3y5HJnfr4R29MXxNKF4=
+github.com/qydysky/part v0.28.1-0.20230604175129-19d1532a8fbc h1:EAfIfYh3wOMqsriiDPzQo6KfGXIMpCpmaTLg8Z6j0eo=
+github.com/qydysky/part v0.28.1-0.20230604175129-19d1532a8fbc/go.mod h1:xSAOQyg7Wyd+QtXxmHBodYzx3y5HJnfr4R29MXxNKF4=
 github.com/remyoudompheng/bigfft v0.0.0-20200410134404-eec4a21b6bb0/go.mod h1:qqbHyh8v60DhA7CoWK5oRCqLrMHRGoxYCSS9EjAz6Eo=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec h1:W09IVJc94icq4NjY3clb7Lk8O1qJ8BdBEF8z0ibU0rE=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec/go.mod h1:qqbHyh8v60DhA7CoWK5oRCqLrMHRGoxYCSS9EjAz6Eo=
