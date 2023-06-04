@@ -1,7 +1,7 @@
 {
   "help": "禁用指定消息类型,false将忽略此类消息,true将显示此类消息的json纯文本",
-  "PANEL_INTERACTIVE_NOTIFY_CHANGE": false,
-  "INTERACTIVE_USER": false,
+  "PANEL_INTERACTIVE_NOTIFY_CHANGE": true,
+  "INTERACTIVE_USER": true,
   "VOICE_CHAT_UPDATE": false,
   "LIVE_PANEL_CHANGE": false,
   "PK_BATTLE_PRE": false,
