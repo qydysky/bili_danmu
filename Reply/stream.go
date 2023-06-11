@@ -758,7 +758,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 							buff.Reset()
 						}
 						// 存在有效数据
-						if len(front_buf) != 0 || len(t.first_buf) != 0 {
+						if len(front_buf) != 0 || keyframe.Size() != 0 {
 							leastReadUnix.Store(time.Now().Unix())
 						}
 						if len(front_buf) != 0 && len(t.first_buf) == 0 {
