@@ -1,5 +1,7 @@
 {
   "help": "禁用指定消息类型,false将忽略此类消息,true将显示此类消息的json纯文本",
+  "RANK_REM":false,
+  "PLAY_TAG":false,
   "PANEL_INTERACTIVE_NOTIFY_CHANGE": true,
   "INTERACTIVE_USER": true,
   "VOICE_CHAT_UPDATE": false,
@@ -65,7 +67,6 @@
   "MILESTONE_UPDATE_EVENT": true,
   "WEB_REPORT_CONTROL": true,
   "DANMU_TAG_CHANGE": true,
-  "RANK_REM": true,
   "LIVE_PLAYER_LOG_RECYCLE": true,
   "LIVE_INTERNAL_ROOM_LOGIN": true,
   "LIVE_OPEN_PLATFORM_GAME": true,
