@@ -21,6 +21,7 @@ import (
 	"database/sql"
 
 	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/lib/pq"
 	psql "github.com/qydysky/part/sql"
 	"golang.org/x/text/encoding/simplifiedchinese"
 	_ "modernc.org/sqlite"
@@ -1660,6 +1661,7 @@ func (t *DanmuReLiveTriger) Check(uid, msg string) {
 var saveDanmuToDB SaveDanmuToDB
 
 type SaveDanmuToDB struct {
+	dbname string
 	db     *sql.DB
 	insert string
 	sync.Once
@@ -1681,6 +1683,8 @@ func (t *SaveDanmuToDB) init(c *c.Common) {
 			if dbname == "" || url == "" || create == "" || t.insert == "" || !dbnameok || !urlok || !createok || !insertok {
 				return
 			}
+
+			t.dbname = dbname
 
 			if db, e := sql.Open(dbname, url); e != nil {
 				c.Log.Base_add("保存弹幕至db").L(`E: `, e)
@@ -1716,6 +1720,13 @@ func (t *SaveDanmuToDB) danmu(item Danmu_item) {
 			Roomid int64
 		}
 
+		var replaceF []func(index int, holder string) (replaceTo string)
+		if t.dbname == "postgres" {
+			replaceF = append(replaceF, func(index int, holder string) (replaceTo string) {
+				return fmt.Sprintf("$%d", index+1)
+			})
+		}
+
 		tx := psql.BeginTx[any](t.db, context.Background())
 		tx.DoPlaceHolder(psql.SqlFunc[any]{Query: t.insert}, &DanmuI{
 			Date:   time.Now().Format(time.DateTime),
@@ -1725,7 +1736,7 @@ func (t *SaveDanmuToDB) danmu(item Danmu_item) {
 			Auth:   item.auth,
 			Uid:    item.uid,
 			Roomid: int64(item.roomid),
-		})
+		}, replaceF...)
 		tx.AfterEF(func(_ *any, result sql.Result, txE error) (_ *any, stopErr error) {
 			if v, e := result.RowsAffected(); e != nil {
 				return nil, e

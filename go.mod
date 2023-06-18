@@ -5,7 +5,7 @@ go 1.20
 require (
 	github.com/gotk3/gotk3 v0.6.2
 	github.com/mdp/qrterminal/v3 v3.1.1
-	github.com/qydysky/part v0.28.1-0.20230606105248-58d1b579625e
+	github.com/qydysky/part v0.28.1-0.20230618130156-8e4660c16bc9
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966
 	golang.org/x/text v0.9.0
@@ -39,6 +39,7 @@ require (
 	github.com/go-sql-driver/mysql v1.7.1
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/klauspost/compress v1.16.5 // indirect
+	github.com/lib/pq v1.10.9
 	github.com/miekg/dns v1.1.54 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
 	github.com/thedevsaddam/gojsonq/v2 v2.5.2 // indirect
