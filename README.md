@@ -269,7 +269,7 @@ ass编码GB18030支持中文
 
   使用`?ref={目录}`参数来获取流，当为`?ref=now`时，为当前直播流
 
-- 火狐不原生支持Hevc格式，因此但模式为`flvH,fmp4H`时，只能播放声音
+- 火狐不原生支持Hevc格式，因此当模式为`flvH,fmp4H`时，只能播放声音
 - 预览[92613少年Pi的直播回放](https://bili.qydysky.org)，此预览地址已应用如下配置
   <details>
     
@@ -577,12 +577,12 @@ windows: set CGO_ENABLED=0;go run . [-r 房间ID] [-ckv 自定义config_K_v.json
 
 3. docker部署
 
-经测试可以部署到`ubuntu`镜像上，注意首先得[更新ca](https://stackoverflow.com/questions/64462922/docker-multi-stage-build-go-image-x509-certificate-signed-by-unknown-authorit)
+经测试可以部署到`debian`镜像上，注意首先得[更新ca](https://stackoverflow.com/questions/64462922/docker-multi-stage-build-go-image-x509-certificate-signed-by-unknown-authorit)
 ```
 apt-get update && apt-get install -y ca-certificates openssl
 ```
 
-如果你日常使用windows，但在ubuntu运行，那还需先编译linux版本
+如果你日常使用windows，但在debian运行，那还需先编译linux版本
 
 下载安装[golang](https://go.dev/)/[golangCN](https://golang.google.cn/)
 
