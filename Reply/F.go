@@ -1680,7 +1680,7 @@ func (t *SaveDanmuToDB) init(c *c.Common) {
 			create, createok = v["create"].(string)
 			t.insert, insertok = v["insert"].(string)
 
-			if dbname == "" || url == "" || create == "" || t.insert == "" || !dbnameok || !urlok || !createok || !insertok {
+			if dbname == "" || url == "" || t.insert == "" || !dbnameok || !urlok || !insertok {
 				return
 			}
 
@@ -1692,14 +1692,16 @@ func (t *SaveDanmuToDB) init(c *c.Common) {
 				db.SetConnMaxLifetime(time.Minute * 3)
 				db.SetMaxOpenConns(10)
 				db.SetMaxIdleConns(10)
-				tx := psql.BeginTx[any](db, context.Background())
-				tx.Do(psql.SqlFunc[any]{Query: create, SkipSqlErr: true})
-				if _, e := tx.Fin(); e != nil {
-					c.Log.Base_add("保存弹幕至db").L(`E: `, e)
-				} else {
-					c.Log.Base_add("保存弹幕至db").L(`I: `, dbname)
-					t.db = db
+				t.db = db
+				if createok {
+					tx := psql.BeginTx[any](db, context.Background())
+					tx.Do(psql.SqlFunc[any]{Query: create, SkipSqlErr: true})
+					if _, e := tx.Fin(); e != nil {
+						c.Log.Base_add("保存弹幕至db").L(`E: `, e)
+						return
+					}
 				}
+				c.Log.Base_add("保存弹幕至db").L(`I: `, dbname)
 			}
 		}
 	})

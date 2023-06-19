@@ -117,6 +117,8 @@ sqlite3:
 }
 ```
 
+字段`create`可以为空字符串，此时将不会在初次接收到弹幕时执行`create`语句，你必须要预先创建好表。
+
 数据实例：
 
 |created|createdunix|msg|color|auth|uid|roomid|
