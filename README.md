@@ -3,6 +3,8 @@
 [![codecov](https://codecov.io/gh/qydysky/bili_danmu/branch/master/graph/badge.svg?token=2R7031P47C)](https://codecov.io/gh/qydysky/bili_danmu)
 [![Libraries.io dependency status for GitHub repo](https://img.shields.io/librariesio/github/qydysky/bili_danmu)](https://libraries.io/go/github.com%2Fqydysky%2Fbili_danmu)
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fqydysky%2Fbili_danmu.svg?type=small)](https://app.fossa.com/projects/git%2Bgithub.com%2Fqydysky%2Fbili_danmu?ref=badge_small)
+![Website](https://img.shields.io/website?up_message=%E5%9C%A8%E7%BA%BF&down_message=%E7%A6%BB%E7%BA%BF&url=http%3A%2F%2F8.134.76.53%3A8080%2Fweb&label=92613%E5%B0%91%E5%B9%B4Pi%E7%9A%84%E7%9B%B4%E6%92%AD%E5%9B%9E%E6%94%BE&link=https%3A%2F%2Fbili.qydysky.org%2F)
+
 
 ![commits](https://img.shields.io/github/commit-activity/m/qydysky/bili_danmu)
 ![GitHub all releases](https://img.shields.io/github/downloads/qydysky/bili_danmu/total)
@@ -336,7 +338,7 @@ ass编码GB18030支持中文
   ```json
   {
     "日志文件输出-help": "为空时不保存日志",
-    "日志文件输出": "danmu.log",
+    "日志文件输出": "",
     "指定弹幕重启录制":[
         {
             "uid":"29183321",
@@ -347,7 +349,7 @@ ass编码GB18030支持中文
     "直播流清晰度": 10000,
     "直播流类型-help": "flv,fmp4,flvH,fmp4H,带H后缀的为Hevc格式编码",
     "直播流类型": "flv",
-    "直播流保存位置": "./live",
+    "直播流保存位置": "/live",
     "Web服务地址":"0.0.0.0:10000",
     "直播Web服务路径":"/web/",
     "直播Web可以发送弹幕":false,
@@ -374,13 +376,20 @@ ass编码GB18030支持中文
     "cookie加密公钥": "public.pem",
     "cookie解密私钥": "private.pem",
     "debug模式-help":"在/debug/pprof/启用调试",
-    "debug模式":false,
+    "debug模式":true,
     "保存弹幕至db": {
-        "dbname": "mysql",
-        "url":"root:root@(192.168.31.103:10836)/test",
+        "dbname": "postgres",
+        "url":"postgres://postgres:qydysky@192.168.31.103:5432/postgres?sslmode=disable",
         "字段help":"time.Now().Format(time.DateTime), time.Now().Unix(), item.msg, item.color, item.auth, item.uid, item.roomid",
         "create":"create table danmu (created varchar(20), createdunix varchar(20), msg varchar(100), color varchar(20), auth varchar(50), uid varchar(30), roomid varchar(30))",
         "insert":"insert into danmu (created, createdunix, msg, color, auth, uid, roomid) values ({Date},{Unix},{Msg},{Color},{Auth},{Uid},{Roomid})"
+    },
+    "保存日志至db":{
+        "dbname": "postgres",
+        "url":"postgres://postgres:qydysky@192.168.31.103:5432/postgres?sslmode=disable",
+        "字段help":"$1:Prefix $2:Base $3:Msgs, use ? or $%d not placeholder",
+        "create":"create table log (created timestamp, Prefix varchar(10), Base varchar(30), Msgs varchar(500))",
+        "insert":"insert into log (created, Prefix, Base, Msgs) values (now(),$1,$2,$3)"
     }
   }
   ```
