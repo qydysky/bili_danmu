@@ -28,7 +28,7 @@ import (
 )
 
 var (
-	tts_setting_string = map[string]string{
+	TTS_setting_string = map[string]string{
 		"0buyguide":  "感谢{D}",
 		"0gift":      "感谢{D}",
 		"0superchat": "感谢{D}",
@@ -91,7 +91,7 @@ func init() {
 		_ = json.Unmarshal(bb, &buf)
 		if onoff, ok := buf[`onoff`]; ok {
 			for k, v := range onoff.(map[string]interface{}) {
-				tts_setting_string[k] = v.(string)
+				TTS_setting_string[k] = v.(string)
 			}
 		}
 		if replace, ok := buf[`replace`]; ok {
@@ -118,7 +118,7 @@ func init() {
 	c.C.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
 		`tts`: func(data interface{}) bool { //tts
 			d, _ := data.(Danmu_mq_t)
-			if s, ok := tts_setting_string[d.uid]; ok && len(d.m) != 0 && s != "" {
+			if s, ok := TTS_setting_string[d.uid]; ok && len(d.m) != 0 && s != "" {
 
 				for k, v := range d.m {
 					s = strings.ReplaceAll(s, k, v)

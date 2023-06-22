@@ -1076,6 +1076,7 @@ func (replyF) danmu(s string) {
 		}
 		if len(infob) > 0 {
 			item.msg, _ = infob[1].(string)
+			item.msg = strings.TrimSpace(item.msg)
 		}
 		if len(infob) > 1 {
 			i, _ := infob[2].([]interface{})
@@ -1089,7 +1090,11 @@ func (replyF) danmu(s string) {
 		item.roomid = c.C.Roomid
 	}
 
-	msglog := msglog.Log_show_control(false)
+	danmulog := msglog.Base("弹").LShow(false)
+
+	if v, ok := c.C.K_v.LoadV(`弹幕输出到日志`).(bool); !ok || !v {
+		danmulog.LFile("")
+	}
 
 	{ // 附加功能 弹幕机 封禁 弹幕合并
 		// 保存弹幕至db
@@ -1098,28 +1103,60 @@ func (replyF) danmu(s string) {
 		// 对指定弹幕重新录制
 		danmuReLiveTriger.Init(c.C)
 		danmuReLiveTriger.Check(item.uid, item.msg)
-		go Danmujif(item.msg)
-		// if Autobanf(item.msg) {
-		// 	Gui_show(Itos([]interface{}{"风险", item.auth, ":", item.msg}))
-		// 	fmt.Println("风险", item.auth, ":", item.msg)
-		// 	msglog.Base_add("风险").L(`I: `, item.auth, ":", item.msg)
-		// 	return
-		// }
+		// 语言tts 私信
+		{
+			if item.uid != "" {
+				if item.auth != nil {
+					if s, ok := TTS_setting_string[item.uid]; ok && s != "" {
+						c.C.Danmu_Main_mq.Push_tag(`tts`, Danmu_mq_t{ //传入消息队列
+							uid: item.uid,
+							m: map[string]string{
+								`{auth}`: fmt.Sprint(item.auth),
+								`{msg}`:  item.msg,
+							},
+						})
+					}
+				}
+				if i, e := strconv.Atoi(item.uid); e == nil {
+					if msg := c.C.K_v.LoadV(`弹幕私信`).(string); msg != "" {
+						c.C.Danmu_Main_mq.Push_tag(`pm`, send.Pm_item{
+							Uid: i,
+							Msg: msg,
+						}) //弹幕私信
+					}
+				}
+				if c.C.K_v.LoadV(`额外私信对象`).(float64) != 0 {
+					if msg, uid := c.C.K_v.LoadV(`弹幕私信(额外)`).(string), c.C.K_v.LoadV(`额外私信对象`).(float64); uid != 0 && msg != "" {
+						c.C.Danmu_Main_mq.Push_tag(`pm`, send.Pm_item{
+							Uid: int(uid),
+							Msg: msg,
+						}) //弹幕私信-对额外
+					}
+				}
+			}
+		}
+		// 反射弹幕机
+		if IsOn("反射弹幕机") {
+			go Danmujif(item.msg)
+		}
 		if i := Autoskipf(item.msg); i > 0 {
-			msglog.L(`I: `, item.auth, ":", item.msg)
+			danmulog.L(`I: `, item.auth, ":", item.msg)
 			return
 		}
 		//附加功能 更少弹幕
 		if !Lessdanmuf(item.msg) {
-			msglog.L(`I: `, item.auth, ":", item.msg)
+			danmulog.L(`I: `, item.auth, ":", item.msg)
 			return
 		}
 		if _msg := Shortdanmuf(item.msg); _msg == "" {
-			msglog.L(`I: `, item.auth, ":", item.msg)
+			danmulog.L(`I: `, item.auth, ":", item.msg)
 			return
 		} else {
 			item.msg = _msg
 		}
+	}
+	if item.auth != nil {
+		danmulog.L(`I: `, item.auth, ":", item.msg)
 	}
 	Msg_showdanmu(item)
 }
@@ -1142,60 +1179,24 @@ func Msg_senddanmu(msg string) {
 // 弹幕显示
 // 由于额外功能有些需要显示，为了统一管理，使用此方法进行处理
 func Msg_showdanmu(item Danmu_item) {
-	msg := strings.TrimSpace(item.msg)
-	msglog := msglog.Log_show_control(false)
-
 	//room change
 	if item.roomid != 0 && item.roomid != c.C.Roomid {
 		return
 	}
-
 	//展示
 	{
 		//ass
-		Assf(msg)
+		Assf(item.msg)
 		//直播流服务弹幕
 		SendStreamWs(item)
 
 		if item.auth != nil {
-			Gui_show(fmt.Sprint(item.auth)+`: `+msg, item.uid)
+			Gui_show(fmt.Sprint(item.auth)+`: `+item.msg, item.uid)
 		} else {
-			Gui_show(msg, item.uid)
+			Gui_show(item.msg, item.uid)
 		}
 	}
-	{ //语言tts 私信
-		if item.uid != "" {
-			if item.auth != nil {
-				c.C.Danmu_Main_mq.Push_tag(`tts`, Danmu_mq_t{ //传入消息队列
-					uid: item.uid,
-					m: map[string]string{
-						`{auth}`: fmt.Sprint(item.auth),
-						`{msg}`:  msg,
-					},
-				})
-			}
-			if i, e := strconv.Atoi(item.uid); e == nil {
-				if msg := c.C.K_v.LoadV(`弹幕私信`).(string); msg != "" {
-					c.C.Danmu_Main_mq.Push_tag(`pm`, send.Pm_item{
-						Uid: i,
-						Msg: msg,
-					}) //上舰私信
-				}
-			}
-			if c.C.K_v.LoadV(`额外私信对象`).(float64) != 0 {
-				if msg, uid := c.C.K_v.LoadV(`上舰私信(额外)`).(string), c.C.K_v.LoadV(`额外私信对象`).(float64); uid != 0 && msg != "" {
-					c.C.Danmu_Main_mq.Push_tag(`pm`, send.Pm_item{
-						Uid: int(uid),
-						Msg: msg,
-					}) //上舰私信-对额外
-				}
-			}
-		}
-	}
-	fmt.Println(msg)
-	if item.auth != nil {
-		msglog.L(`I: `, item.auth, ":", msg)
-	}
+	fmt.Println(item.msg)
 }
 
 type Danmu_mq_t struct {

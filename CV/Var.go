@@ -433,7 +433,7 @@ func (t *Common) Init() *Common {
 			url, urlok := v["url"].(string)
 			create, createok := v["create"].(string)
 			insert, insertok := v["insert"].(string)
-			if dbnameok && urlok && insertok {
+			if dbnameok && urlok && insertok && dbname != "" && url != "" && insert != "" {
 				db, e := sql.Open(dbname, url)
 				if e != nil {
 					panic("保存日志至db打开连接错误" + e.Error())
