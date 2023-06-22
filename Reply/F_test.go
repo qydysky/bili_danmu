@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	c "github.com/qydysky/bili_danmu/CV"
-	file "github.com/qydysky/part/file"
 	psql "github.com/qydysky/part/sql"
 )
 
@@ -28,32 +27,29 @@ func TestSaveDanmuToDB(t *testing.T) {
 	})
 	saveDanmuToDB.db.Close()
 
-	if db, e := sql.Open("sqlite", "danmu.sqlite3"); e != nil {
+	if db, e := sql.Open("sqlite", ":memory:"); e != nil {
 		t.Fatal(e)
 	} else {
 		tx := psql.BeginTx[any](db, context.Background())
 		tx.Do(psql.SqlFunc[any]{Query: "select msg as Msg from danmu"})
-		tx.AfterQF(func(_ *any, rows *sql.Rows, txE error) (_ *any, stopErr error) {
+		tx.AfterQF(func(_ *any, rows *sql.Rows, e *error) {
 			type row struct {
 				Msg string
 			}
 
 			v, err := psql.DealRows(rows, func() row { return row{} })
 			if err != nil {
-				return nil, err
+				*e = err
+				return
 			}
-			if len(*v) != 1 || (*v)[0].Msg != "可能走位配合了他的压枪" {
-				return nil, errors.New("no msg")
+			if len(v) != 1 || v[0].Msg != "可能走位配合了他的压枪" {
+				*e = errors.New("no msg")
+				return
 			}
-			return nil, nil
 		})
 		if _, e := tx.Fin(); e != nil {
 			t.Fatal(e)
 		}
 		db.Close()
-	}
-
-	if e := file.New("danmu.sqlite3", 0, true).Delete(); e != nil {
-		t.Fatal(e)
 	}
 }

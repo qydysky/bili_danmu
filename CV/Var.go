@@ -1,6 +1,8 @@
 package cv
 
 import (
+	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -15,13 +17,17 @@ import (
 	"time"
 
 	"github.com/dustin/go-humanize"
+	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/lib/pq"
 	file "github.com/qydysky/part/file"
 	log "github.com/qydysky/part/log"
 	mq "github.com/qydysky/part/msgq"
 	pool "github.com/qydysky/part/pool"
 	reqf "github.com/qydysky/part/reqf"
+	psql "github.com/qydysky/part/sql"
 	syncmap "github.com/qydysky/part/sync"
 	web "github.com/qydysky/part/web"
+	_ "modernc.org/sqlite"
 )
 
 type StreamType struct {
@@ -421,6 +427,29 @@ func (t *Common) Init() *Common {
 				`E: `: log.On,
 			},
 		})
+
+		if v, ok := t.K_v.LoadV(`保存日志至db`).(map[string]any); ok && len(v) != 0 {
+			dbname, dbnameok := v["dbname"].(string)
+			url, urlok := v["url"].(string)
+			create, createok := v["create"].(string)
+			insert, insertok := v["insert"].(string)
+			if dbnameok && urlok && insertok {
+				db, e := sql.Open(dbname, url)
+				if e != nil {
+					panic("保存日志至db打开连接错误" + e.Error())
+				}
+				if createok {
+					tx := psql.BeginTx[any](db, context.Background())
+					tx.Do(psql.SqlFunc[any]{
+						Query:      create,
+						SkipSqlErr: true,
+					})
+					_, _ = tx.Fin()
+				}
+				t.Log = t.Log.LDB(db, insert)
+			}
+		}
+
 		logmap := make(map[string]struct{})
 		if array, ok := t.K_v.Load(`日志显示`); ok {
 			for _, v := range array.([]interface{}) {

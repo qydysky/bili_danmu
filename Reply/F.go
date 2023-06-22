@@ -1739,13 +1739,14 @@ func (t *SaveDanmuToDB) danmu(item Danmu_item) {
 			Uid:    item.uid,
 			Roomid: int64(item.roomid),
 		}, replaceF...)
-		tx.AfterEF(func(_ *any, result sql.Result, txE error) (_ *any, stopErr error) {
-			if v, e := result.RowsAffected(); e != nil {
-				return nil, e
+		tx.AfterEF(func(_ *any, result sql.Result, e *error) {
+			if v, err := result.RowsAffected(); err != nil {
+				*e = err
+				return
 			} else if v != 1 {
-				return nil, errors.New("插入数量错误")
+				*e = errors.New("插入数量错误")
+				return
 			}
-			return nil, nil
 		})
 		if _, e := tx.Fin(); e != nil {
 			c.C.Log.Base_add("保存弹幕至db").L(`E: `, e)
