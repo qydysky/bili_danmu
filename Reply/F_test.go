@@ -27,7 +27,7 @@ func TestSaveDanmuToDB(t *testing.T) {
 	})
 	saveDanmuToDB.db.Close()
 
-	if db, e := sql.Open("sqlite", ":memory:"); e != nil {
+	if db, e := sql.Open("sqlite", "danmu.sqlite3"); e != nil {
 		t.Fatal(e)
 	} else {
 		tx := psql.BeginTx[any](db, context.Background())
