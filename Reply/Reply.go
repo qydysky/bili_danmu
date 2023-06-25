@@ -742,7 +742,7 @@ func (replyF) preparing(s string) {
 		{ //附加功能 obs结束 savestream结束
 			// Obs_R(false)
 			// Obsf(false)
-			go ShowRevf()
+			go ShowRevf(false)
 			c.C.Liveing = false
 			// 停止此房间录制
 			var roomId, _ = strconv.Atoi(type_item.Roomid)

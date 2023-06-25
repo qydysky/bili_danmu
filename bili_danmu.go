@@ -281,7 +281,7 @@ func Start() {
 					go F.Dosign()
 					go reply.Entry_danmu()
 					go reply.StreamOStart(c.C.Roomid)
-					go reply.ShowRevf()
+					go reply.ShowRevf(true)
 					go F.RoomEntryAction(c.C.Roomid)
 				}
 
