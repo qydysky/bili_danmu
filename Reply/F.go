@@ -122,30 +122,19 @@ func selfcross2(a []string) (float32, string) {
 
 // 功能区
 // ShowRev 显示营收
-var (
-	ShowRev_old   float64
-	ShowRev_start bool
-)
+var ShowRev_old float64
 
 // 显示营收
-func ShowRevf() {
+func ShowRevf(counting bool) {
 	if !IsOn("统计营收") {
 		return
 	}
-	if ShowRev_start {
-		c.C.Log.Base(`功能`).L(`I: `, fmt.Sprintf("营收 ￥%.2f", c.C.Rev))
-		return
-	}
-	ShowRev_start = true
-	for {
-		c.C.Log.Base(`功能`).L(`I: `, fmt.Sprintf("营收 ￥%.2f", c.C.Rev))
-		for {
-			if c.C.Rev != ShowRev_old {
-				break
-			}
+	for counting {
+		for c.C.Rev == ShowRev_old {
 			time.Sleep(time.Minute)
 		}
 		ShowRev_old = c.C.Rev
+		c.C.Log.Base_add(`营收`).L(`I: `, fmt.Sprintf("营收 ￥%.2f", c.C.Rev))
 	}
 }
 
