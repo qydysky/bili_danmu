@@ -267,7 +267,7 @@ func (replyF) anchor_lot_award(s string) {
 
 // msg-通常是大航海购买续费
 func (replyF) user_toast_msg(s string) {
-	msglog := msglog.Base_add("礼")
+	msglog := msglog.Base_add("礼", "大航海")
 
 	var j ws_msg.USER_TOAST_MSG
 	if e := json.Unmarshal([]byte(s), &j); e != nil {
@@ -491,7 +491,7 @@ func (replyF) special_gift(s string) {
 	Gui_show(Itos(sh), "0jiezou")
 	// Gui_show("====\n")
 
-	msglog.Base_add("礼").Log_show_control(false).L(`I: `, sh...)
+	msglog.Base_add("礼", "节奏风暴").Log_show_control(false).L(`I: `, sh...)
 
 }
 
@@ -732,7 +732,7 @@ func (replyF) room_block_msg(s string) {
 
 // Msg-房间准备信息，通常出现在下播而不出现在开播
 func (replyF) preparing(s string) {
-	msglog := msglog.Base_add("房")
+	msglog := msglog.Base_add("房", "下播")
 
 	var type_item ws_msg.PREPARING
 	if err := json.Unmarshal([]byte(s), &type_item); err != nil {
@@ -755,7 +755,7 @@ func (replyF) preparing(s string) {
 
 // Msg-房间开播信息
 func (replyF) live(s string) {
-	msglog := msglog.Base_add("房")
+	msglog := msglog.Base_add("房", "开播")
 
 	var type_item ws_msg.LIVE
 	if err := json.Unmarshal([]byte(s), &type_item); err != nil {
@@ -790,7 +790,7 @@ func (replyF) live(s string) {
 var sc_buf = make(map[int]struct{})
 
 func (replyF) super_chat_message(s string) {
-	msglog := msglog.Base_add("礼")
+	msglog := msglog.Base_add("礼", "SC")
 
 	var j ws_msg.SUPER_CHAT_MESSAGE
 	if e := json.Unmarshal([]byte(s), &j); e != nil {
@@ -891,7 +891,7 @@ func (replyF) hot_rank_settlement_v2(s string) {
 
 // Msg-老板打赏新礼物红包
 func (replyF) popularity_red_pocket_new(s string) {
-	msglog := msglog.Base_add("礼")
+	msglog := msglog.Base_add("礼", "礼物红包")
 
 	var type_item ws_msg.POPULARITY_RED_POCKET_NEW
 	if e := json.Unmarshal([]byte(s), &type_item); e != nil {
@@ -908,12 +908,12 @@ func (replyF) popularity_red_pocket_new(s string) {
 			`{giftName}`: type_item.Data.GiftName,
 		},
 	})
-	msglog.L(`I: `, "礼物红包", tmp)
+	msglog.L(`I: `, tmp)
 }
 
 // Msg-老板打赏礼物红包
 func (replyF) popularity_red_pocket_start(s string) {
-	msglog := msglog.Base_add("礼")
+	msglog := msglog.Base_add("礼", "礼物红包")
 
 	var type_item ws_msg.POPULARITY_RED_POCKET_START
 	if e := json.Unmarshal([]byte(s), &type_item); e != nil {
@@ -927,7 +927,7 @@ func (replyF) popularity_red_pocket_start(s string) {
 			`{msg}`: tmp,
 		},
 	})
-	msglog.L(`I: `, "礼物红包", tmp)
+	msglog.L(`I: `, tmp)
 }
 
 // Msg-元气赏连抽
