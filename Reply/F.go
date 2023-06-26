@@ -1416,6 +1416,13 @@ func init() {
 							speed = s
 						}
 					}
+
+					go func() {
+						flog.L(`T: `, r.RemoteAddr, `接入录播`, v)
+						<-r.Context().Done()
+						flog.L(`T: `, r.RemoteAddr, `断开录播`, v)
+					}()
+
 					if e := f.CopyToIoWriter(w, int64(speed), true); e != nil {
 						flog.L(`E: `, e)
 					}
