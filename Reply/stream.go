@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -1187,6 +1188,16 @@ func (t *M4SStream) Start() bool {
 						cr = ms.common.Roomid
 					)
 
+					// savestate
+					{
+						fj := file.New(cp+"0.json", 0, true)
+						if common, err := json.Marshal(ms.common); err != nil {
+							l.L(`E: `, err)
+						} else if _, err := fj.Write(common, true); err != nil {
+							l.L(`E: `, err)
+						}
+						fj.Close()
+					}
 					go StartRecDanmu(contextC, cp+"0.csv")     //保存弹幕
 					go Ass_f(contextC, cp, cp+"0", time.Now()) //开始ass
 					startT := time.Now()

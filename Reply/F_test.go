@@ -53,3 +53,28 @@ func TestSaveDanmuToDB(t *testing.T) {
 		db.Close()
 	}
 }
+
+func Test_getRecInfo(t *testing.T) {
+	pathInfo, err := getRecInfo("testdata/live/2023_06_27-02_17_48-7734200-【预告】27日15点 JDG vs NIP！-原画-YI2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if pathInfo.Name != "【预告】27日15点 JDG vs NIP！" {
+		t.Fatal()
+	}
+	if pathInfo.Path != "testdata/live/2023_06_27-02_17_48-7734200-【预告】27日15点 JDG vs NIP！-原画-YI2" {
+		t.Fatal()
+	}
+	if pathInfo.Qn != "原画" {
+		t.Fatal()
+	}
+	if pathInfo.StartT != "2023-06-25 15:29:33" {
+		t.Fatal()
+	}
+	if pathInfo.Roomid != 7734200 {
+		t.Fatal()
+	}
+	if pathInfo.UpUid != 50329118 {
+		t.Fatal()
+	}
+}

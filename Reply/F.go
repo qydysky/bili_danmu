@@ -7,10 +7,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/fs"
 	"math"
 	"net/http"
 	"net/http/pprof"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -1128,6 +1128,54 @@ func SendStreamWs(item Danmu_item) {
 	})
 }
 
+// 录播目录信息
+type paf struct {
+	Uname  string `json:"uname"`
+	UpUid  int    `json:"upUid"`
+	Roomid int    `json:"roomid"`
+	Qn     string `json:"qn"`
+	Name   string `json:"name"`
+	StartT string `json:"start"`
+	Path   string `json:"path"`
+}
+
+// 获取录播目录信息
+func getRecInfo(dirpath string) (pathInfo paf, err error) {
+	dirf := file.New(dirpath, 0, true)
+	defer dirf.Close()
+	if dirf.IsDir() {
+		// 从文件夹获取信息
+		{
+			dirfName := dirf.File().Name()
+			pathInfo = paf{Name: dirfName[20:], StartT: dirfName[:19], Path: dirfName}
+		}
+		// 从0.json获取信息
+		{
+			json0 := file.New(dirpath+string(os.PathSeparator)+"0.json", 0, true)
+			defer json0.Close()
+			if data, e := json0.ReadAll(1<<8, 1<<16); e != nil && !errors.Is(e, io.EOF) {
+				err = e
+				return
+			} else {
+				var common c.Common
+				if e := json.Unmarshal(data, &common); e != nil {
+					err = e
+					return
+				} else {
+					pathInfo.Uname = common.Uname
+					pathInfo.UpUid = common.UpUid
+					pathInfo.Roomid = common.Roomid
+					pathInfo.Qn = c.C.Qn[common.Live_qn]
+					pathInfo.Name = common.Title
+					pathInfo.StartT = common.Live_Start_Time.Format(time.DateTime)
+					pathInfo.Path = dirf.File().Name()
+				}
+			}
+		}
+	}
+	return
+}
+
 func init() {
 	flog := flog.Base_add(`直播Web服务`)
 	if path, ok := c.C.K_v.LoadV(`直播Web服务路径`).(string); ok {
@@ -1242,40 +1290,26 @@ func init() {
 			w = cache.Cache(path+"filePath", time.Second*5, w)
 
 			if v, ok := c.C.K_v.LoadV(`直播流保存位置`).(string); ok && v != "" {
-				type dirEntryDirs []fs.DirEntry
-				var list dirEntryDirs
-				var err error
-				f, err := http.Dir(v).Open("/")
-				if err != nil {
-					c.ResStruct{Code: -1, Message: err.Error(), Data: nil}.Write(w)
+				dir := file.New(v, 0, true)
+				defer dir.Close()
+				if !dir.IsDir() {
+					c.ResStruct{Code: -1, Message: "not dir", Data: nil}.Write(w)
 					return
-				}
-				defer f.Close()
-
-				_, err = f.Stat()
-				if err != nil {
-					c.ResStruct{Code: -1, Message: err.Error(), Data: nil}.Write(w)
-					return
-				}
-				if d, ok := f.(fs.ReadDirFile); ok {
-					list, err = d.ReadDir(-1)
-				}
-
-				if err != nil {
-					c.ResStruct{Code: -1, Message: err.Error(), Data: nil}.Write(w)
-					return
-				}
-
-				type paf struct {
-					Name   string `json:"name"`
-					StartT string `json:"start"`
-					Path   string `json:"path"`
 				}
 
 				var filePaths []paf
-				for i, n := 0, len(list); i < n; i++ {
-					if list[i].IsDir() && len(list[i].Name()) > 20 {
-						filePaths = append(filePaths, paf{list[i].Name()[20:], list[i].Name()[:19], list[i].Name()})
+
+				if fs, e := dir.DirFiles(); e != nil {
+					c.ResStruct{Code: -1, Message: e.Error(), Data: nil}.Write(w)
+					return
+				} else {
+					for i, n := 0, len(fs); i < n; i++ {
+						if filePath, e := getRecInfo((fs[i])); e != nil {
+							c.ResStruct{Code: -1, Message: e.Error(), Data: nil}.Write(w)
+							return
+						} else {
+							filePaths = append(filePaths, filePath)
+						}
 					}
 				}
 

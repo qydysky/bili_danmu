@@ -1,0 +1,25 @@
+{
+  "pid": 451081,
+  "liveQn": 10000,
+  "roomid": 7734200,
+  "title": "【预告】27日15点 JDG vs NIP！",
+  "uname": "哔哩哔哩英雄联盟赛事",
+  "upUid": 50329118,
+  "rev": 0,
+  "renqi": 352575,
+  "watched": 0,
+  "onlineNum": 2114,
+  "guardNum": 16,
+  "parentAreaID": 13,
+  "areaID": 561,
+  "locked": false,
+  "note": " -2",
+  "liveStartTime": "2023-06-25T15:29:33Z",
+  "liveing": true,
+  "streamType": {
+    "Protocol_name": "http_stream",
+    "Format_name": "flv",
+    "Codec_name": "avc"
+  },
+  "startT": "2023-06-27T02:16:39.001415551Z"
+}
