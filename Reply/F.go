@@ -1305,6 +1305,8 @@ func init() {
 							c.ResStruct{Code: -1, Message: e.Error(), Data: nil}.Write(w)
 							return
 						} else {
+							filePath.StartT = strings.ReplaceAll(filePath.StartT, "_", ":")
+							filePath.StartT = strings.ReplaceAll(filePath.StartT, "-", " ")
 							filePaths = append(filePaths, filePath)
 						}
 					}
