@@ -1305,7 +1305,9 @@ func init() {
 							c.ResStruct{Code: -1, Message: e.Error(), Data: nil}.Write(w)
 							return
 						} else {
-							filePath.StartT = strings.ReplaceAll(filePath.StartT, "_", ":")
+							if t, e := time.Parse("2006_01_02-15_04_05", filePath.StartT); e == nil {
+								filePath.StartT = t.Format(time.DateTime)
+							}
 							filePaths = append(filePaths, filePath)
 						}
 					}
