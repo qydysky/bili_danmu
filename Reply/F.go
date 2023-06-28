@@ -10,7 +10,9 @@ import (
 	"math"
 	"net/http"
 	"net/http/pprof"
+	"net/url"
 	"os"
+	"path"
 	"sort"
 	"strconv"
 	"strings"
@@ -1130,13 +1132,14 @@ func SendStreamWs(item Danmu_item) {
 
 // 录播目录信息
 type paf struct {
-	Uname  string `json:"uname"`
-	UpUid  int    `json:"upUid"`
-	Roomid int    `json:"roomid"`
-	Qn     string `json:"qn"`
-	Name   string `json:"name"`
-	StartT string `json:"start"`
-	Path   string `json:"path"`
+	Uname    string `json:"uname"`
+	UpUid    int    `json:"upUid"`
+	Roomid   int    `json:"roomid"`
+	Qn       string `json:"qn"`
+	Name     string `json:"name"`
+	StartT   string `json:"start"`
+	Path     string `json:"path"`
+	StartRec string `json:"startRec"`
 }
 
 // 获取录播目录信息
@@ -1146,7 +1149,7 @@ func getRecInfo(dirpath string) (pathInfo paf, err error) {
 	if dirf.IsDir() {
 		// 从文件夹获取信息
 		{
-			dirfName := dirf.File().Name()
+			dirfName := path.Base(dirf.File().Name())
 			pathInfo = paf{Name: dirfName[20:], StartT: dirfName[:19], Path: dirfName}
 		}
 		// 从0.json获取信息
@@ -1157,18 +1160,9 @@ func getRecInfo(dirpath string) (pathInfo paf, err error) {
 				err = e
 				return
 			} else {
-				var common c.Common
-				if e := json.Unmarshal(data, &common); e != nil {
+				if e := json.Unmarshal(data, &pathInfo); e != nil {
 					err = e
 					return
-				} else {
-					pathInfo.Uname = common.Uname
-					pathInfo.UpUid = common.UpUid
-					pathInfo.Roomid = common.Roomid
-					pathInfo.Qn = c.C.Qn[common.Live_qn]
-					pathInfo.Name = common.Title
-					pathInfo.StartT = common.Live_Start_Time.Format(time.DateTime)
-					pathInfo.Path = dirf.File().Name()
 				}
 			}
 		}
@@ -1406,6 +1400,13 @@ func init() {
 						v += rpath[1:]
 					} else {
 						v += rpath
+					}
+					if rawPath, e := url.PathUnescape(v); e != nil {
+						w.WriteHeader(http.StatusServiceUnavailable)
+						flog.L(`I: `, "路径解码失败", v)
+						return
+					} else {
+						v = rawPath
 					}
 					if file.New(v+"0.flv", 0, true).IsExist() {
 						v += "0.flv"

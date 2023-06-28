@@ -1,25 +1,10 @@
 {
-  "pid": 451081,
-  "liveQn": 10000,
-  "roomid": 7734200,
-  "title": "【预告】27日15点 JDG vs NIP！",
-  "uname": "哔哩哔哩英雄联盟赛事",
-  "upUid": 50329118,
-  "rev": 0,
-  "renqi": 352575,
-  "watched": 0,
-  "onlineNum": 2114,
-  "guardNum": 16,
-  "parentAreaID": 13,
-  "areaID": 561,
-  "locked": false,
-  "note": " -2",
-  "liveStartTime": "2023-06-25T15:29:33Z",
-  "liveing": true,
-  "streamType": {
-    "Protocol_name": "http_stream",
-    "Format_name": "flv",
-    "Codec_name": "avc"
-  },
-  "startT": "2023-06-27T02:16:39.001415551Z"
+  "uname": "烤鱼子Official",
+  "upUid": 592507317,
+  "roomid": 22259479,
+  "qn": "原画",
+  "name": "🐟在太空宿舍里该做什么呢🐟",
+  "start": "2023-06-28 00:23:35",
+  "path": "2023_06_28-08_44_39-22259479-🐟在太空宿舍里该做什么呢🐟-原画-zlG",
+  "startRec": "2023-06-28 08:44:39"
 }

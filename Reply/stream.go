@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -1191,9 +1192,18 @@ func (t *M4SStream) Start() bool {
 					// savestate
 					{
 						fj := file.New(cp+"0.json", 0, true)
-						if common, err := json.Marshal(ms.common); err != nil {
+						var pathInfo paf
+						pathInfo.Uname = ms.common.Uname
+						pathInfo.UpUid = ms.common.UpUid
+						pathInfo.Roomid = ms.common.Roomid
+						pathInfo.Qn = c.C.Qn[ms.common.Live_qn]
+						pathInfo.Name = ms.common.Title
+						pathInfo.StartT = ms.common.Live_Start_Time.Format(time.DateTime)
+						pathInfo.StartRec = time.Now().Format(time.DateTime)
+						pathInfo.Path = path.Base(cp)
+						if pathInfoJson, err := json.Marshal(pathInfo); err != nil {
 							l.L(`E: `, err)
-						} else if _, err := fj.Write(common, true); err != nil {
+						} else if _, err := fj.Write(pathInfoJson, true); err != nil {
 							l.L(`E: `, err)
 						}
 						fj.Close()

@@ -59,22 +59,28 @@ func Test_getRecInfo(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if pathInfo.Name != "【预告】27日15点 JDG vs NIP！" {
+	if pathInfo.Name != "🐟在太空宿舍里该做什么呢🐟" {
 		t.Fatal()
 	}
-	if pathInfo.Path != "testdata/live/2023_06_27-02_17_48-7734200-【预告】27日15点 JDG vs NIP！-原画-YI2" {
+	if pathInfo.Path != "2023_06_28-08_44_39-22259479-🐟在太空宿舍里该做什么呢🐟-原画-zlG" {
 		t.Fatal()
 	}
 	if pathInfo.Qn != "原画" {
 		t.Fatal()
 	}
-	if pathInfo.StartT != "2023-06-25 15:29:33" {
+	if pathInfo.StartT != "2023-06-28 00:23:35" {
 		t.Fatal()
 	}
-	if pathInfo.Roomid != 7734200 {
+	if pathInfo.StartRec != "2023-06-28 08:44:39" {
 		t.Fatal()
 	}
-	if pathInfo.UpUid != 50329118 {
+	if pathInfo.Roomid != 22259479 {
+		t.Fatal()
+	}
+	if pathInfo.UpUid != 592507317 {
+		t.Fatal()
+	}
+	if pathInfo.Uname != "烤鱼子Official" {
 		t.Fatal()
 	}
 }
