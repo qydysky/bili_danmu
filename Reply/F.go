@@ -1306,7 +1306,6 @@ func init() {
 							return
 						} else {
 							filePath.StartT = strings.ReplaceAll(filePath.StartT, "_", ":")
-							filePath.StartT = strings.ReplaceAll(filePath.StartT, "-", " ")
 							filePaths = append(filePaths, filePath)
 						}
 					}
