@@ -1132,14 +1132,14 @@ func SendStreamWs(item Danmu_item) {
 
 // 录播目录信息
 type paf struct {
-	Uname    string `json:"uname"`
-	UpUid    int    `json:"upUid"`
-	Roomid   int    `json:"roomid"`
-	Qn       string `json:"qn"`
-	Name     string `json:"name"`
-	StartT   string `json:"start"`
-	Path     string `json:"path"`
-	StartRec string `json:"startRec"`
+	Uname      string `json:"uname"`
+	UpUid      int    `json:"upUid"`
+	Roomid     int    `json:"roomid"`
+	Qn         string `json:"qn"`
+	Name       string `json:"name"`
+	StartT     string `json:"startT"`
+	Path       string `json:"path"`
+	StartLiveT string `json:"startLiveT"`
 }
 
 // 获取录播目录信息
@@ -1155,6 +1155,9 @@ func getRecInfo(dirpath string) (pathInfo paf, err error) {
 		// 从0.json获取信息
 		{
 			json0 := file.New(dirpath+string(os.PathSeparator)+"0.json", 0, true)
+			if !json0.IsExist() {
+				return
+			}
 			defer json0.Close()
 			if data, e := json0.ReadAll(1<<8, 1<<16); e != nil && !errors.Is(e, io.EOF) {
 				err = e

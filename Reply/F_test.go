@@ -62,16 +62,16 @@ func Test_getRecInfo(t *testing.T) {
 	if pathInfo.Name != "🐟在太空宿舍里该做什么呢🐟" {
 		t.Fatal()
 	}
-	if pathInfo.Path != "2023_06_28-08_44_39-22259479-🐟在太空宿舍里该做什么呢🐟-原画-zlG" {
+	if pathInfo.Path != "2023_06_28-09_15_48-22259479-🐟在太空宿舍里该做什么呢🐟-原画-aw4" {
 		t.Fatal()
 	}
 	if pathInfo.Qn != "原画" {
 		t.Fatal()
 	}
-	if pathInfo.StartT != "2023-06-28 00:23:35" {
+	if pathInfo.StartT != "2023-06-28 09:15:48" {
 		t.Fatal()
 	}
-	if pathInfo.StartRec != "2023-06-28 08:44:39" {
+	if pathInfo.StartLiveT != "2023-06-28 00:23:35" {
 		t.Fatal()
 	}
 	if pathInfo.Roomid != 22259479 {

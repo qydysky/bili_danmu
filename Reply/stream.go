@@ -1198,8 +1198,8 @@ func (t *M4SStream) Start() bool {
 						pathInfo.Roomid = ms.common.Roomid
 						pathInfo.Qn = c.C.Qn[ms.common.Live_qn]
 						pathInfo.Name = ms.common.Title
-						pathInfo.StartT = ms.common.Live_Start_Time.Format(time.DateTime)
-						pathInfo.StartRec = time.Now().Format(time.DateTime)
+						pathInfo.StartT = time.Now().Format(time.DateTime)
+						pathInfo.StartLiveT = ms.common.Live_Start_Time.Format(time.DateTime)
 						pathInfo.Path = path.Base(cp)
 						if pathInfoJson, err := json.Marshal(pathInfo); err != nil {
 							l.L(`E: `, err)
