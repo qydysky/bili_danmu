@@ -163,17 +163,17 @@ func Start() {
 			})
 
 			F.Get(c.C).Get(`Liveing`)
-			//检查与切换粉丝牌，只在cookie存在时启用
+			// 检查与切换粉丝牌，只在cookie存在时启用
 			F.Get(c.C).Get(`CheckSwitch_FansMedal`)
 
-			//直播状态
+			// 直播状态
 			if c.C.Liveing {
 				danmulog.L(`I: `, "直播中")
 			} else {
 				danmulog.L(`I: `, "未直播")
 			}
 
-			//对每个弹幕服务器尝试
+			// 对每个弹幕服务器尝试
 			F.Get(c.C).Get(`WSURL`)
 			aliveT := time.Now().Add(3 * time.Hour)
 			for i, exitloop := 0, false; !exitloop && i < len(c.C.WSURL) && time.Now().Before(aliveT); {
@@ -313,6 +313,7 @@ func Start() {
 							return true
 						},
 						`flash_room`: func(_ any) bool { //重进房时退出当前房间
+							F.Get(c.C).Get(`WSURL`)
 							ws_c.Close()
 							return true
 						},
