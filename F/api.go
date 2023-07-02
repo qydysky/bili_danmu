@@ -25,7 +25,6 @@ import (
 	g "github.com/qydysky/part/get"
 	limit "github.com/qydysky/part/limit"
 	reqf "github.com/qydysky/part/reqf"
-	psync "github.com/qydysky/part/sync"
 
 	"github.com/mdp/qrterminal/v3"
 	qr "github.com/skip2/go-qrcode"
@@ -36,8 +35,7 @@ var api_limit = limit.New(2, "1s", "30s") //频率限制2次/s，最大等待时
 
 type GetFunc struct {
 	*c.Common
-	cache psync.Map
-	l     sync.RWMutex
+	l sync.RWMutex
 }
 
 type cacheItem struct {
@@ -485,6 +483,13 @@ func (c *GetFunc) missRoomId() (missKey []string) {
 }
 
 func (c *GetFunc) getInfoByRoom() (missKey []string) {
+
+	fkey := `getInfoByRoom`
+
+	if v, ok := c.Cache.LoadV(fkey).(cacheItem); ok && v.exceeded.After(time.Now()) {
+		return
+	}
+
 	apilog := apilog.Base_add(`getInfoByRoom`)
 
 	if c.Roomid == 0 {
@@ -557,6 +562,11 @@ func (c *GetFunc) getInfoByRoom() (missKey []string) {
 			}
 		}
 	}
+
+	c.Cache.Store(fkey, cacheItem{
+		data:     nil,
+		exceeded: time.Now().Add(time.Second * 2),
+	})
 	return
 }
 
@@ -1120,7 +1130,7 @@ func (c *GetFunc) Get_guardNum() (missKey []string) {
 func (c *GetFunc) Info(UpUid int) (J.Info, error) {
 	fkey := `Info`
 
-	if v, ok := c.cache.LoadV(fkey).(cacheItem); ok && v.exceeded.Before(time.Now()) {
+	if v, ok := c.Cache.LoadV(fkey).(cacheItem); ok && v.exceeded.After(time.Now()) {
 		return (v.data).(J.Info), nil
 	}
 
@@ -1173,7 +1183,7 @@ func (c *GetFunc) Info(UpUid int) (J.Info, error) {
 			return J.Info{}, e
 		}
 
-		c.cache.Store(fkey, cacheItem{
+		c.Cache.Store(fkey, cacheItem{
 			data:     info,
 			exceeded: time.Now().Add(time.Hour),
 		})
@@ -1188,7 +1198,7 @@ var boot_Get_cookie funcCtrl.FlashFunc //新的替代旧的
 func (c *GetFunc) GetNav() (J.Nav, error) {
 	fkey := `GetNav`
 
-	if v, ok := c.cache.LoadV(fkey).(cacheItem); ok && v.exceeded.Before(time.Now()) {
+	if v, ok := c.Cache.LoadV(fkey).(cacheItem); ok && v.exceeded.After(time.Now()) {
 		return (v.data).(J.Nav), nil
 	}
 
@@ -1236,7 +1246,7 @@ func (c *GetFunc) GetNav() (J.Nav, error) {
 		return J.Nav{}, e
 	}
 
-	c.cache.Store(fkey, cacheItem{
+	c.Cache.Store(fkey, cacheItem{
 		data:     res,
 		exceeded: time.Now().Add(time.Hour),
 	})

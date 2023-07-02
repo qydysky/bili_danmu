@@ -75,6 +75,7 @@ type Common struct {
 	SerF              *web.WebPath          `json:"-"`             //web服务处理
 	SerLimit          *web.Limits           `json:"-"`             //Web服务连接限制
 	StartT            time.Time             `json:"startT"`        //启动时间
+	Cache             syncmap.Map           `json:"-"`             //缓存
 }
 
 type LiveQn struct {
@@ -154,6 +155,7 @@ func (t *Common) Copy() *Common {
 		SerF:              t.SerF,
 		SerLimit:          t.SerLimit,
 		StartT:            t.StartT,
+		Cache:             t.Cache.Copy(),
 	}
 
 	return &c

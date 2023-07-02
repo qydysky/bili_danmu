@@ -3,6 +3,7 @@ package reply
 import (
 	"bytes"
 	"context"
+	"crypto/md5"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -31,7 +32,6 @@ import (
 	reqf "github.com/qydysky/part/reqf"
 	signal "github.com/qydysky/part/signal"
 	slice "github.com/qydysky/part/slice"
-	pstring "github.com/qydysky/part/strings"
 )
 
 type M4SStream struct {
@@ -553,13 +553,16 @@ func (t *M4SStream) removeStream() (e error) {
 
 // 设置保存路径
 func (t *M4SStream) getSavepath() {
-	t.Current_save_path = t.config.save_path + "/" +
-		time.Now().Format("2006_01_02-15_04_05") + "-" +
-		strconv.Itoa(t.common.Roomid) + "-" +
-		strings.NewReplacer("\\", "", "/", "", ":", "", "*", "", "?", "", "\"", "", "<", "", ">", "", "|", "", "#", "").Replace(t.common.Title) + "-" +
-		t.common.Qn[t.common.Live_qn] + "-" +
-		pstring.Rand(2, 3) +
-		`/`
+	w := md5.New()
+	_, _ = io.WriteString(w, t.common.Title)
+
+	t.Current_save_path = fmt.Sprintf("%s/%s-%d-%d-%x/",
+		t.config.save_path,
+		time.Now().Format("2006_01_02-15_04_05"),
+		t.common.Roomid,
+		t.common.Live_qn,
+		w.Sum(nil)[:3])
+
 	// 显示保存位置
 	if rel, err := filepath.Rel(t.config.save_path, t.Current_save_path); err == nil {
 		t.log.L(`I: `, "保存到", rel+`/0.`+t.stream_type)
