@@ -1150,7 +1150,9 @@ func getRecInfo(dirpath string) (pathInfo paf, err error) {
 		// 从文件夹获取信息
 		{
 			dirfName := path.Base(dirf.File().Name())
-			pathInfo = paf{Name: dirfName[20:], StartT: dirfName[:19], Path: dirfName}
+			if len(dirfName) > 20 {
+				pathInfo = paf{Name: dirfName[20:], StartT: dirfName[:19], Path: dirfName}
+			}
 		}
 		// 从0.json获取信息
 		{
