@@ -32,6 +32,7 @@ import (
 	reqf "github.com/qydysky/part/reqf"
 	signal "github.com/qydysky/part/signal"
 	slice "github.com/qydysky/part/slice"
+	pstring "github.com/qydysky/part/strings"
 )
 
 type M4SStream struct {
@@ -556,12 +557,13 @@ func (t *M4SStream) getSavepath() {
 	w := md5.New()
 	_, _ = io.WriteString(w, t.common.Title)
 
-	t.Current_save_path = fmt.Sprintf("%s/%s-%d-%d-%x/",
+	t.Current_save_path = fmt.Sprintf("%s/%s-%d-%d-%x-%s/",
 		t.config.save_path,
 		time.Now().Format("2006_01_02-15_04_05"),
 		t.common.Roomid,
 		t.common.Live_qn,
-		w.Sum(nil)[:3])
+		w.Sum(nil)[:3],
+		pstring.Rand(2, 3))
 
 	// 显示保存位置
 	if rel, err := filepath.Rel(t.config.save_path, t.Current_save_path); err == nil {
