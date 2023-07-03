@@ -1,5 +1,6 @@
 {
   "help": "禁用指定消息类型,false将忽略此类消息,true将显示此类消息的json纯文本",
+  "SHOPPING_EXPLAIN_CARD": false,
   "RANK_REM":false,
   "PLAY_TAG":false,
   "PANEL_INTERACTIVE_NOTIFY_CHANGE": true,
