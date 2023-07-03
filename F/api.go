@@ -1475,8 +1475,16 @@ func Get_cookie_by_msg() {
 	/*https://passport.bilibili.com/x/passport-login/web/sms/send*/
 }
 
+// 牌子字段
+type FansMedalI struct {
+	TargetID  int
+	IsLighted int
+	MedalID   int
+	RoomID    int
+}
+
 // 获取牌子信息
-func Get_list_in_room() (array []J.GetMyMedals_Items) {
+func Get_list_in_room() (array []FansMedalI) {
 
 	apilog := apilog.Base_add(`获取牌子`)
 	//验证cookie
@@ -1495,12 +1503,12 @@ func Get_list_in_room() (array []J.GetMyMedals_Items) {
 	})
 
 	{ //获取牌子列表
-		var medalList []J.GetMyMedals_Items
+		var medalList []FansMedalI
 		for pageNum := 1; true; pageNum += 1 {
 			r := c.C.ReqPool.Get()
 			defer c.C.ReqPool.Put(r)
 			if e := r.Reqf(reqf.Rval{
-				Url: `https://api.live.bilibili.com/xlive/app-ucenter/v1/user/GetMyMedals?page=` + strconv.Itoa(pageNum) + `&page_size=10`,
+				Url: `https://api.live.bilibili.com/xlive/app-ucenter/v1/fansMedal/panel?page=` + strconv.Itoa(pageNum) + `&page_size=10`,
 				Header: map[string]string{
 					`Cookie`: reqf.Map_2_Cookies_String(Cookie),
 				},
@@ -1512,7 +1520,7 @@ func Get_list_in_room() (array []J.GetMyMedals_Items) {
 				return
 			}
 
-			var res J.GetMyMedals
+			var res J.FansMedal
 
 			if e := json.Unmarshal(r.Respon, &res); e != nil {
 				apilog.L(`E: `, e)
@@ -1523,9 +1531,17 @@ func Get_list_in_room() (array []J.GetMyMedals_Items) {
 				return
 			}
 
-			medalList = append(medalList, res.Data.Items...)
+			for i := 0; i < len(res.Data.List); i++ {
+				li := res.Data.List[i]
+				medalList = append(medalList, FansMedalI{
+					TargetID:  li.Medal.TargetID,
+					IsLighted: li.Medal.IsLighted,
+					MedalID:   li.Medal.MedalID,
+					RoomID:    li.RoomInfo.RoomID,
+				})
+			}
 
-			if res.Data.PageInfo.CurPage == res.Data.PageInfo.TotalPage {
+			if res.Data.PageInfo.CurrentPage == res.Data.PageInfo.TotalPage {
 				break
 			}
 

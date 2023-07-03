@@ -31,7 +31,6 @@ import (
 	"github.com/dustin/go-humanize"
 	c "github.com/qydysky/bili_danmu/CV"
 	F "github.com/qydysky/bili_danmu/F"
-	J "github.com/qydysky/bili_danmu/Json"
 	send "github.com/qydysky/bili_danmu/Send"
 
 	p "github.com/qydysky/part"
@@ -998,27 +997,19 @@ func Keep_medal_light() {
 	flog.L(`T: `, `开始`)
 	defer flog.L(`I: `, `完成`)
 
-	cacheInfo := make(map[int]J.Info)
 	medals := F.Get_list_in_room()
 	if len(medals) == 0 {
 		return
 	}
 	for _, v := range medals {
-		if v.IsLighted == 1 {
+		if v.IsLighted == 1 || v.RoomID == 0 {
 			continue
 		} //点亮状态
 
-		if info, e := F.Get(c.C).Info(v.TargetID); e != nil {
-			flog.L(`E: `, e)
-			return
-		} else {
-			cacheInfo[v.TargetID] = info
-		}
-
 		//两天内到期，发弹幕续期
 		rand := p.Rand().MixRandom(0, int64(len(array)-1))
-		send.Danmu_s(array[rand].(string), cacheInfo[v.TargetID].Data.LiveRoom.Roomid)
-		time.Sleep(time.Second)
+		send.Danmu_s(array[rand].(string), v.RoomID)
+		time.Sleep(time.Second * 5)
 	}
 
 	//重试，使用点赞
@@ -1027,7 +1018,7 @@ func Keep_medal_light() {
 		return
 	}
 	for _, v := range medals {
-		if v.IsLighted == 1 || cacheInfo[v.TargetID].Data.LiveRoom.Roomid == 0 {
+		if v.IsLighted == 1 || v.RoomID == 0 {
 			continue
 		}
 
@@ -1035,9 +1026,9 @@ func Keep_medal_light() {
 		send.Danmu_s2(map[string]string{
 			`msg`:     `official_147`,
 			`dm_type`: `1`,
-			`roomid`:  strconv.Itoa(cacheInfo[v.TargetID].Data.LiveRoom.Roomid),
+			`roomid`:  strconv.Itoa(v.RoomID),
 		})
-		time.Sleep(time.Second)
+		time.Sleep(time.Second * 5)
 	}
 
 	//重试，使用历史弹幕
@@ -1046,13 +1037,13 @@ func Keep_medal_light() {
 		return
 	}
 	for _, v := range medals {
-		if v.IsLighted == 1 || cacheInfo[v.TargetID].Data.LiveRoom.Roomid == 0 {
+		if v.IsLighted == 1 || v.RoomID == 0 {
 			continue
 		}
 
 		//两天内到期，发弹幕续期
 		var Str string
-		for _, v := range F.GetHistory(cacheInfo[v.TargetID].Data.LiveRoom.Roomid).Data.Room {
+		for _, v := range F.GetHistory(v.RoomID).Data.Room {
 			if v.Text != "" {
 				Str = v.Text
 				break
@@ -1062,8 +1053,8 @@ func Keep_medal_light() {
 			rand := p.Rand().MixRandom(0, int64(len(array)-1))
 			Str = array[rand].(string)
 		}
-		send.Danmu_s(Str, cacheInfo[v.TargetID].Data.LiveRoom.Roomid)
-		time.Sleep(time.Second)
+		send.Danmu_s(Str, v.RoomID)
+		time.Sleep(time.Second * 5)
 	}
 }
 
