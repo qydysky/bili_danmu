@@ -100,9 +100,21 @@ func (replyF) defaultMsg(s string) {
 	msglog.Base_add("Unknow").L(`E: `, s)
 }
 
+// 登录提示
+func (replyF) log_in_notice(s string) {
+	msglog := msglog.Base_add("房")
+	var j ws_msg.LOG_IN_NOTICE
+	if e := json.Unmarshal([]byte(s), &j); e != nil {
+		msglog.L(`E: `, e)
+		return
+	}
+	Gui_show(j.Data.NoticeMsg, `0room`)
+	msglog.L(`I: `, j.Data.NoticeMsg)
+}
+
 // 超管切直播
 func (replyF) cut_off(s string) {
-	msglog := msglog.Base_add("超管切直播")
+	msglog := msglog.Base_add("房", "超管")
 	var j ws_msg.CUT_OFF
 	if e := json.Unmarshal([]byte(s), &j); e != nil {
 		msglog.L(`E: `, e)
@@ -530,7 +542,7 @@ func (replyF) warning(s string) {
 
 	Gui_show(s, "0room")
 
-	msglog.Base_add("房").L(`I: `, s)
+	msglog.Base_add("房", "超管").L(`I: `, s)
 }
 
 // Msg-为主播点赞了
