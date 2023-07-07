@@ -1741,6 +1741,11 @@ func Dosign() {
 		return
 	}
 
+	if api_limit.TO() {
+		apilog.L(`E: `, `超时！`)
+		return
+	} //超额请求阻塞，超时将取消
+
 	{ //检查是否签到
 		Cookie := make(map[string]string)
 		c.C.Cookie.Range(func(k, v interface{}) bool {
@@ -1788,9 +1793,15 @@ func Dosign() {
 			return
 		}
 		if msg.Data.Status == 1 { //今日已签到
+			apilog.L(`T: `, `今日已签到`)
 			return
 		}
 	}
+
+	if api_limit.TO() {
+		apilog.L(`E: `, `超时！`)
+		return
+	} //超额请求阻塞，超时将取消
 
 	{ //签到
 		Cookie := make(map[string]string)
