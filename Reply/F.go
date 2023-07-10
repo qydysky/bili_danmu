@@ -133,7 +133,9 @@ func init() {
 	go func() {
 		clog := c.C.Log.Base_add(`营收`)
 		for {
+			if c.C.Roomid != 0 {
 			ShowRev.LoadOrStore(c.C.Roomid, 0.0)
+			}
 			ShowRev.Range(func(key, value any) bool {
 				if room, ok := key.(int); ok && c.C.Roomid == room {
 					if rev, ok := value.(float64); ok {
