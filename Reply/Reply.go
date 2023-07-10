@@ -751,10 +751,7 @@ func (replyF) preparing(s string) {
 		msglog.L(`E: `, err)
 		return
 	} else {
-		{ //附加功能 obs结束 savestream结束
-			// Obs_R(false)
-			// Obsf(false)
-			go ShowRevf(false)
+		{ //附加功能 savestream结束
 			c.C.Liveing = false
 			// 停止此房间录制
 			var roomId, _ = strconv.Atoi(type_item.Roomid)
