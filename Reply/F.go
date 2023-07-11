@@ -122,8 +122,6 @@ func selfcross2(a []string) (float32, string) {
 }
 
 // 功能区
-// ShowRev 显示营收
-var ShowRev sync.Map
 
 // 显示营收
 func init() {
@@ -131,26 +129,22 @@ func init() {
 		return
 	}
 	go func() {
+		var ShowRev = make(map[int]float64)
+
 		clog := c.C.Log.Base_add(`营收`)
 		for {
 			if c.C.Roomid != 0 {
-				ShowRev.LoadOrStore(c.C.Roomid, 0.0)
+				ShowRev[c.C.Roomid] = 0
 			}
-			ShowRev.Range(func(key, value any) bool {
-				if room, ok := key.(int); ok && c.C.Roomid == room {
-					if rev, ok := value.(float64); ok {
-						if c.C.Rev != rev {
-							ShowRev.Store(room, c.C.Rev)
-							clog.L(`I: `, fmt.Sprintf("%d ￥%.2f", room, c.C.Rev))
-						}
-						return true
-					}
-				} else {
+			for room, rev := range ShowRev {
+				if c.C.Roomid != room {
+					clog.L(`I: `, fmt.Sprintf("%d ￥%.2f", room, c.C.Rev))
+					delete(ShowRev, room)
+				} else if c.C.Rev != rev {
+					ShowRev[room] = c.C.Rev
 					clog.L(`I: `, fmt.Sprintf("%d ￥%.2f", room, c.C.Rev))
 				}
-				ShowRev.Delete(key)
-				return true
-			})
+			}
 			time.Sleep(time.Minute)
 		}
 	}()
