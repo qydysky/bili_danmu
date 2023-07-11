@@ -94,4 +94,3 @@ type FansMedalItem struct {
 	HonorIcon        string `json:"honor_icon"`
 	CanDelete        bool   `json:"can_delete"`
 }
-
