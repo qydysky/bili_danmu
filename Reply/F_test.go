@@ -55,7 +55,7 @@ func TestSaveDanmuToDB(t *testing.T) {
 }
 
 func Test_getRecInfo(t *testing.T) {
-	pathInfo, err := getRecInfo("testdata/live/2023_06_27-02_17_48-7734200-【预告】27日15点 JDG vs NIP！-原画-YI2")
+	pathInfo, err := getRecInfo("testdata/live/2023_07_10-14_49_10-22259479-10000-644c3e-vfv")
 	if err != nil {
 		t.Fatal(err)
 	}
