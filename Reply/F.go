@@ -133,7 +133,7 @@ func init() {
 
 		clog := c.C.Log.Base_add(`营收`)
 		for {
-			if c.C.Roomid != 0 {
+			if _, ok := ShowRev[c.C.Roomid]; !ok && c.C.Roomid != 0 {
 				ShowRev[c.C.Roomid] = 0
 			}
 			for room, rev := range ShowRev {
