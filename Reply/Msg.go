@@ -17,6 +17,7 @@ var msglog = c.C.Log.Base(`Msg`)
 
 // Msg类型数据处理方法map
 var Msg_map = map[string]func(replyF, string){
+	`WEALTH_NOTIFY`:                     replyF.wealth_notify, //荣耀等级提示
 	`LOG_IN_NOTICE`:                     replyF.log_in_notice, //登录提示
 	`HOT_BUY_NUM`:                       nil,
 	`VOICE_JOIN_ROOM_COUNT_INFO`:        replyF.voice_join_room_count_info, //连麦等待

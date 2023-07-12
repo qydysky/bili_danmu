@@ -100,6 +100,18 @@ func (replyF) defaultMsg(s string) {
 	msglog.Base_add("Unknow").L(`E: `, s)
 }
 
+// 荣耀等级提示
+func (replyF) wealth_notify(s string) {
+	msglog := msglog.Base_add("房")
+	var j ws_msg.WEALTH_NOTIFY
+	if e := json.Unmarshal([]byte(s), &j); e != nil {
+		msglog.L(`E: `, e)
+		return
+	}
+	Gui_show(fmt.Sprintf("当前荣耀等级 %d", j.Data.Info.Level), `0room`)
+	msglog.L(`I: `, fmt.Sprintf("当前荣耀等级 %d", j.Data.Info.Level))
+}
+
 // 登录提示
 func (replyF) log_in_notice(s string) {
 	msglog := msglog.Base_add("房")
