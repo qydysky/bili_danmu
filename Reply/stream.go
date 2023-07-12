@@ -736,11 +736,12 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 					frameCount = 0
 				)
 				defer ticker.Stop()
+				defer t.Stream_msg.PushLock_tag(`close`, nil)
 				for {
 					n, e := rc.Read(buf)
 					_ = buff.Append(buf[:n])
 					if e != nil {
-						t.Stream_msg.PushLock_tag(`close`, nil)
+						r.Cancel()
 						break
 					}
 
@@ -775,7 +776,12 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 							t.Stream_msg.PushLock_tag(`data`, t.first_buf)
 							t.msg.Push_tag(`load`, t)
 						}
-						if len(t.first_buf) != 0 && keyframe.Size() != 0 {
+						if keyframe.Size() != 0 {
+							if len(t.first_buf) == 0 {
+								t.log.L(`W: `, `flv未接收到起始段`)
+								r.Cancel()
+								break
+							}
 							t.bootBufPush(keyframe.GetPureBuf())
 							keyframe.Reset()
 							t.Stream_msg.PushLock_tag(`data`, t.boot_buf)
@@ -1099,7 +1105,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 	}
 
 	// 发送空字节会导致流服务终止
-	t.Stream_msg.PushLock_tag(`data`, []byte{})
+	t.Stream_msg.PushLock_tag(`close`, nil)
 
 	return
 }
