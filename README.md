@@ -3,7 +3,7 @@
 [![codecov](https://codecov.io/gh/qydysky/bili_danmu/branch/master/graph/badge.svg?token=2R7031P47C)](https://codecov.io/gh/qydysky/bili_danmu)
 [![Libraries.io dependency status for GitHub repo](https://img.shields.io/librariesio/github/qydysky/bili_danmu)](https://libraries.io/go/github.com%2Fqydysky%2Fbili_danmu)
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fqydysky%2Fbili_danmu.svg?type=small)](https://app.fossa.com/projects/git%2Bgithub.com%2Fqydysky%2Fbili_danmu?ref=badge_small)
-[![少年Pi的直播回放](https://img.shields.io/website?up_message=%E5%9C%A8%E7%BA%BF&down_message=%E7%A6%BB%E7%BA%BF&url=http%3A%2F%2F8.134.76.53%3A8080%2Fweb&label=%E5%B0%91%E5%B9%B4Pi%E7%9A%84%E7%9B%B4%E6%92%AD%E5%9B%9E%E6%94%BE)](https://bili.qydysky.org)
+[![少年Pi的直播回放](https://img.shields.io/website?up_message=%E5%9C%A8%E7%BA%BF&down_message=%E7%A6%BB%E7%BA%BF&url=http%3A%2F%2F8.134.76.53%3A8080%2Fweb&label=%E5%B0%91%E5%B9%B4Pi%E7%9A%84%E7%9B%B4%E6%92%AD%E5%9B%9E%E6%94%BE)](https://r.qydysky.org/bili)
 
 
 ![commits](https://img.shields.io/github/commit-activity/m/qydysky/bili_danmu)
@@ -332,7 +332,7 @@ ass编码GB18030支持中文
   使用`?ref={目录}`参数来获取流，当为`?ref=now`时，为当前直播流
 
 - 火狐不原生支持Hevc格式，因此当模式为`flvH,fmp4H`时，只能播放声音
-- 预览[92613少年Pi的直播回放](https://bili.qydysky.org)，此预览地址已应用如下配置
+- 预览[92613少年Pi的直播回放](https://r.qydysky.org/bili)，此预览地址已应用如下配置
   <details>
     
   <summary>config_K_v.json</summary>
