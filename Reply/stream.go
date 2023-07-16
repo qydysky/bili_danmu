@@ -685,7 +685,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 				select {
 				//停止录制
 				case <-tsc:
-					r.Cancel()
+					cancel()
 				//当前连接终止
 				case <-cancelC.Done():
 				}
@@ -706,19 +706,20 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 				for {
 					select {
 					case <-cancelC.Done():
+						rc.CloseWithError(context.Canceled)
 						return
 					case curT := <-timer.C:
 						if curT.Unix()-leastReadUnix.Load() > readTO {
 							t.log.L(`W: `, fmt.Sprintf("%vs未接收到有效数据", readTO))
 							// 5s未接收到任何数据
-							r.Cancel()
+							cancel()
 							return
 						}
 						if v, ok := c.C.K_v.LoadV(`直播流清晰度`).(float64); ok {
 							if t.config.want_qn != int(v) {
 								t.log.L(`I: `, "直播流清晰度改变:", t.common.Qn[t.config.want_qn], "=>", t.common.Qn[int(v)])
 								t.config.want_qn = int(v)
-								r.Cancel()
+								cancel()
 								return
 							}
 						}
@@ -735,13 +736,12 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 					buf        = make([]byte, 1<<16)
 					frameCount = 0
 				)
-				defer ticker.Stop()
-				defer t.Stream_msg.PushLock_tag(`close`, nil)
+
 				for {
 					n, e := rc.Read(buf)
 					_ = buff.Append(buf[:n])
 					if e != nil {
-						r.Cancel()
+						cancel()
 						break
 					}
 
@@ -779,7 +779,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 						if keyframe.Size() != 0 {
 							if len(t.first_buf) == 0 {
 								t.log.L(`W: `, `flv未接收到起始段`)
-								r.Cancel()
+								cancel()
 								break
 							}
 							t.bootBufPush(keyframe.GetPureBuf())
@@ -799,11 +799,15 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 
 				buf = nil
 				buff.Reset()
+
+				ticker.Stop()
+				t.Stream_msg.PushLock_tag(`close`, nil)
 			}()
 
 			t.log.L(`I: `, `flv下载开始`)
 
 			_ = r.Reqf(reqf.Rval{
+				Ctx:              cancelC,
 				Url:              surl.String(),
 				SaveToPipeWriter: rw,
 				NoResponse:       true,
