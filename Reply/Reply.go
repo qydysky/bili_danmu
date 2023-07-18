@@ -97,7 +97,7 @@ type replyF struct{}
 
 // 默认未识别Msg
 func (replyF) defaultMsg(s string) {
-	msglog.Base_add("Unknow").L(`E: `, s)
+	msglog.Base_add("Unknow").L(`W: `, s)
 }
 
 // 荣耀等级提示

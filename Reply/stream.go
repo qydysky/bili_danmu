@@ -1129,7 +1129,7 @@ func (t *M4SStream) Start() bool {
 	// 是否在直播
 	F.Get(t.common).Get(`Liveing`)
 	if !t.common.Liveing {
-		t.log.L(`W: `, `未直播`)
+		t.log.L(`I: `, `未直播`)
 		return false
 	}
 
@@ -1274,7 +1274,7 @@ func (t *M4SStream) Start() bool {
 			// 是否在直播
 			F.Get(t.common).Get(`Liveing`)
 			if !t.common.Liveing {
-				t.log.L(`W: `, `未直播`)
+				t.log.L(`I: `, `未直播`)
 				break
 			}
 

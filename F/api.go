@@ -2113,7 +2113,7 @@ func (c *GetFunc) Silver_2_coin() (missKey []string) {
 		}
 
 		if Silver < j.Data.Silver2CoinPrice {
-			apilog.L(`W: `, `当前银瓜子数量不足`)
+			apilog.L(`I: `, `当前银瓜子数量不足`)
 			return
 		}
 	}
