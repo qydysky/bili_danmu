@@ -26,6 +26,7 @@ import (
 
 	file "github.com/qydysky/part/file"
 	funcCtrl "github.com/qydysky/part/funcCtrl"
+	pio "github.com/qydysky/part/io"
 	log "github.com/qydysky/part/log"
 	msgq "github.com/qydysky/part/msgq"
 	pool "github.com/qydysky/part/pool"
@@ -691,7 +692,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 				}
 			}()
 
-			rc, rw := io.Pipe()
+			pipe := pio.NewPipe()
 			var (
 				leastReadUnix atomic.Int64
 				readTO        int64 = 5
@@ -706,7 +707,6 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 				for {
 					select {
 					case <-cancelC.Done():
-						rc.CloseWithError(context.Canceled)
 						return
 					case curT := <-timer.C:
 						if curT.Unix()-leastReadUnix.Load() > readTO {
@@ -738,7 +738,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 				)
 
 				for {
-					n, e := rc.Read(buf)
+					n, e := pipe.Read(buf)
 					_ = buff.Append(buf[:n])
 					if e != nil {
 						cancel()
@@ -807,13 +807,13 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 			t.log.L(`I: `, `flv下载开始`)
 
 			_ = r.Reqf(reqf.Rval{
-				Ctx:              cancelC,
-				Url:              surl.String(),
-				SaveToPipeWriter: rw,
-				NoResponse:       true,
-				Async:            true,
-				Proxy:            t.common.Proxy,
-				WriteLoopTO:      int(readTO)*1000*2 + 1,
+				Ctx:         cancelC,
+				Url:         surl.String(),
+				SaveToPipe:  pipe,
+				NoResponse:  true,
+				Async:       true,
+				Proxy:       t.common.Proxy,
+				WriteLoopTO: int(readTO)*1000*2 + 1,
 				Header: map[string]string{
 					`Host`:            surl.Host,
 					`User-Agent`:      `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0`,

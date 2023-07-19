@@ -30,8 +30,8 @@ github.com/mdp/qrterminal/v3 v3.1.1/go.mod h1:5lJlXe7Jdr8wlPDdcsJttv1/knsRgzXASy
 github.com/miekg/dns v1.1.55 h1:GoQ4hpsj0nFLYe+bWiCToyrBEJXkQfOOIvFGFy0lEgo=
 github.com/miekg/dns v1.1.55/go.mod h1:uInx36IzPl7FYnDcMeVWxj9byh7DutNykX4G9Sj60FY=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
-github.com/qydysky/part v0.28.1-0.20230716191926-eec76611f9da h1:37ymW4OXo7uFZ4GZPDHcY741bBAxgLQBFTQvZbAMySA=
-github.com/qydysky/part v0.28.1-0.20230716191926-eec76611f9da/go.mod h1:CdkAHZ+OxieG1sI4M6UowP9j0QQDnhtDtN4tWsylCPU=
+github.com/qydysky/part v0.28.1-0.20230719070824-1cd4290c29fe h1:5WmdnH9qJ5ytpev9LqKHxCarmu09RLDKRQ4v/ADNgqM=
+github.com/qydysky/part v0.28.1-0.20230719070824-1cd4290c29fe/go.mod h1:CdkAHZ+OxieG1sI4M6UowP9j0QQDnhtDtN4tWsylCPU=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec h1:W09IVJc94icq4NjY3clb7Lk8O1qJ8BdBEF8z0ibU0rE=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec/go.mod h1:qqbHyh8v60DhA7CoWK5oRCqLrMHRGoxYCSS9EjAz6Eo=
 github.com/shirou/gopsutil v3.21.11+incompatible h1:+1+c1VGhc88SSonWP6foOcLhvnKlUeu/erjjvaPEYiI=
