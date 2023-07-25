@@ -309,7 +309,9 @@ func (t *GetFunc) Html() (missKey []string) {
 					t.Roomid = j.RoomInitRes.Data.RoomID
 				}
 				//直播开始时间
-				t.Live_Start_Time = time.Unix(int64(j.RoomInitRes.Data.LiveTime), 0)
+				if j.RoomInitRes.Data.LiveTime != 0 {
+					t.Live_Start_Time = time.Unix(int64(j.RoomInitRes.Data.LiveTime), 0)
+				}
 				//是否在直播
 				t.Liveing = j.RoomInitRes.Data.LiveStatus == 1
 
@@ -528,7 +530,9 @@ func (c *GetFunc) getInfoByRoom() (missKey []string) {
 			}
 
 			//直播开始时间
-			c.Live_Start_Time = time.Unix(int64(j.Data.RoomInfo.LiveStartTime), 0)
+			if j.Data.RoomInfo.LiveStartTime != 0 {
+				c.Live_Start_Time = time.Unix(int64(j.Data.RoomInfo.LiveStartTime), 0)
+			}
 			//是否在直播
 			c.Liveing = j.Data.RoomInfo.LiveStatus == 1
 			//直播间标题
@@ -626,7 +630,9 @@ func (t *GetFunc) getRoomPlayInfo() (missKey []string) {
 			t.Roomid = j.Data.RoomID
 		}
 		//直播开始时间
-		t.Live_Start_Time = time.Unix(int64(j.Data.LiveTime), 0)
+		if j.Data.LiveTime != 0 {
+			t.Live_Start_Time = time.Unix(int64(j.Data.LiveTime), 0)
+		}
 		//是否在直播
 		t.Liveing = j.Data.LiveStatus == 1
 
@@ -719,7 +725,9 @@ func (t *GetFunc) getRoomPlayInfoByQn() (missKey []string) {
 			t.Roomid = j.Data.RoomID
 		}
 		//直播开始时间
-		t.Live_Start_Time = time.Unix(int64(j.Data.LiveTime), 0)
+		if j.Data.LiveTime != 0 {
+			t.Live_Start_Time = time.Unix(int64(j.Data.LiveTime), 0)
+		}
 		//是否在直播
 		t.Liveing = j.Data.LiveStatus == 1
 

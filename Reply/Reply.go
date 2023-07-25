@@ -3,6 +3,7 @@ package reply
 import (
 	"bytes"
 	"compress/zlib"
+	"context"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -15,6 +16,7 @@ import (
 	ws_msg "github.com/qydysky/bili_danmu/Reply/ws_msg"
 	send "github.com/qydysky/bili_danmu/Send"
 	p "github.com/qydysky/part"
+	comp "github.com/qydysky/part/component"
 	mq "github.com/qydysky/part/msgq"
 	pstrings "github.com/qydysky/part/strings"
 )
@@ -768,6 +770,10 @@ func (replyF) preparing(s string) {
 			// 停止此房间录制
 			var roomId, _ = strconv.Atoi(type_item.Roomid)
 			StreamOStop(roomId)
+			// 下播总结
+			if e := comp.Run(`bili_danmu.Reply.wsmsg.preparing`, context.Background(), c.C); e != nil {
+				msglog.L(`E: `, e)
+			}
 		}
 		Gui_show("房间", type_item.Roomid, "下播了", "0room")
 		msglog.L(`I: `, "房间", type_item.Roomid, "下播了")

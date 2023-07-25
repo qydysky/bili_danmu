@@ -31,6 +31,7 @@ import (
 	"github.com/dustin/go-humanize"
 	c "github.com/qydysky/bili_danmu/CV"
 	F "github.com/qydysky/bili_danmu/F"
+	_ "github.com/qydysky/bili_danmu/Reply/F"
 	send "github.com/qydysky/bili_danmu/Send"
 
 	p "github.com/qydysky/part"
