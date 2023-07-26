@@ -284,11 +284,6 @@ func StreamOCommon(roomid int) (array []*c.Common) {
 	return
 }
 
-type SavestreamO struct {
-	Roomid int
-	IsRec  bool
-}
-
 // 获取实例的录制状态
 func StreamOStatus(roomid int) (Islive bool) {
 	v, ok := streamO.Load(roomid)
