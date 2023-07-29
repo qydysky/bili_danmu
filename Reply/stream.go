@@ -801,7 +801,6 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 				buff.Reset()
 
 				ticker.Stop()
-				t.Stream_msg.PushLock_tag(`close`, nil)
 			}()
 
 			t.log.L(`I: `, `flv下载开始`)
@@ -839,6 +838,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 		}
 		cancel()
 		t.reqPool.Put(r)
+		t.Stream_msg.PushLock_tag(`close`, nil)
 	}
 }
 
