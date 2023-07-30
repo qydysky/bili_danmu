@@ -43,7 +43,9 @@ func Start() {
 	var stop = sys.Sys().PreventSleep()
 	defer stop.Done()
 
-	var interrupt_chan = c.C.Danmu_Main_mq.Pull_tag_chan(`interrupt`, 2, context.Background())
+	// 用户中断
+	var cancelInterrupt, interrupt_chan = c.C.Danmu_Main_mq.Pull_tag_chan(`interrupt`, 2, context.Background())
+	defer cancelInterrupt()
 
 	//ctrl+c退出
 	go func() {
@@ -89,53 +91,58 @@ func Start() {
 		reply.SaveToJson.Init()
 
 		//使用带tag的消息队列在功能间传递消息
-		c.C.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
-			`change_room`: func(_ any) bool { //房间改变
-				c.C.Rev = 0.0     // 营收
-				c.C.Renqi = 1     // 人气置1
-				c.C.Watched = 0   // 观看人数
-				c.C.OnlineNum = 0 // 在线人数
-				c.C.GuardNum = 0  // 舰长数
-				c.C.Note = ``     // 分区排行
-				c.C.Uname = ``    // 主播id
-				c.C.Title = ``
-				c.C.Wearing_FansMedal = 0
-				return false
-			},
-			`c.Rev_add`: func(data any) bool { //收入
-				c.C.Rev += data.(float64)
-				return false
-			},
-			`c.Renqi`: func(data any) bool { //人气更新
-				if tmp, ok := data.(int); ok {
-					c.C.Renqi = tmp
-				}
-				return false
-			},
-			`gtk_close`: func(_ any) bool { //gtk关闭信号
-				c.C.Danmu_Main_mq.PushLock_tag(`interrupt`, nil)
-				return false
-			},
-			`pm`: func(data any) bool { //私信
-				if tmp, ok := data.(send.Pm_item); ok {
-					if e := send.Send_pm(tmp.Uid, tmp.Msg); e != nil {
-						danmulog.Base_add(`私信`).L(`E: `, e)
+		{
+			var cancelfunc = c.C.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
+				`change_room`: func(_ any) bool { //房间改变
+					c.C.Rev = 0.0     // 营收
+					c.C.Renqi = 1     // 人气置1
+					c.C.Watched = 0   // 观看人数
+					c.C.OnlineNum = 0 // 在线人数
+					c.C.GuardNum = 0  // 舰长数
+					c.C.Note = ``     // 分区排行
+					c.C.Uname = ``    // 主播id
+					c.C.Title = ``
+					c.C.Wearing_FansMedal = 0
+					return false
+				},
+				`c.Rev_add`: func(data any) bool { //收入
+					c.C.Rev += data.(float64)
+					return false
+				},
+				`c.Renqi`: func(data any) bool { //人气更新
+					if tmp, ok := data.(int); ok {
+						c.C.Renqi = tmp
 					}
-				}
-				return false
-			},
-		})
+					return false
+				},
+				`gtk_close`: func(_ any) bool { //gtk关闭信号
+					c.C.Danmu_Main_mq.PushLock_tag(`interrupt`, nil)
+					return false
+				},
+				`pm`: func(data any) bool { //私信
+					if tmp, ok := data.(send.Pm_item); ok {
+						if e := send.Send_pm(tmp.Uid, tmp.Msg); e != nil {
+							danmulog.Base_add(`私信`).L(`E: `, e)
+						}
+					}
+					return false
+				},
+			})
+			defer cancelfunc()
+		}
 
 		for exit_sign := true; exit_sign; {
 			if c.C.Roomid == 0 {
 				fmt.Println("回车查看指令")
-				ctx, cancle := context.WithCancel(context.Background())
+				ctx, cancel := context.WithCancel(context.Background())
+				cancel1, c := c.C.Danmu_Main_mq.Pull_tag_chan(`change_room`, 1, ctx)
 				select {
-				case <-c.C.Danmu_Main_mq.Pull_tag_chan(`change_room`, 1, ctx):
+				case <-c:
 				case <-interrupt_chan:
 					exit_sign = false
 				}
-				cancle()
+				cancel1()
+				cancel()
 			} else {
 				fmt.Print("房间号: ", strconv.Itoa(c.C.Roomid), "\n")
 			}
@@ -221,13 +228,14 @@ func Start() {
 						Msg: F.HelloGen(c.C.Roomid, c.C.Token),
 					})
 					waitCheckAuth, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-					wsmsg.Pull_tag_only(`rec`, func(wm *ws.WsMsg) (disable bool) {
+					doneAuth := wsmsg.Pull_tag_only(`rec`, func(wm *ws.WsMsg) (disable bool) {
 						if F.HelloChe(wm.Msg) {
 							cancel()
 						}
 						return true
 					})
 					<-waitCheckAuth.Done()
+					doneAuth()
 					if err := waitCheckAuth.Err(); errors.Is(err, context.DeadlineExceeded) {
 						danmulog.L(`E: `, "连接验证失败")
 						i += 1
@@ -242,7 +250,8 @@ func Start() {
 					reply.Gui_show(`房间标题: `+c.C.Title, `0room`)
 				}
 
-				wsmsg.Pull_tag(map[string]func(*ws.WsMsg) (disable bool){
+				// 处理ws消息
+				var cancelDeal = wsmsg.Pull_tag(map[string]func(*ws.WsMsg) (disable bool){
 					`rec`: func(wm *ws.WsMsg) (disable bool) {
 						go reply.Reply(wm.Msg)
 						return false
@@ -286,7 +295,8 @@ func Start() {
 
 				//当前ws
 				{
-					c.C.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
+					// 处理各种指令
+					var cancelfunc = c.C.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
 						`interrupt`: func(_ any) (disable bool) {
 							exitloop = true
 							exit_sign = false
@@ -349,9 +359,16 @@ func Start() {
 						},
 					})
 
-					<-wsmsg.Pull_tag_chan(`exit`, 1, context.Background())
+					{
+						cancel, c := wsmsg.Pull_tag_chan(`exit`, 1, context.Background())
+						<-c
+						cancel()
+					}
+
+					cancelfunc()
 					time.Sleep(time.Second)
 				}
+				cancelDeal()
 			}
 			time.Sleep(time.Second)
 		}

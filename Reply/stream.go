@@ -594,7 +594,6 @@ func (t *M4SStream) saveStream() (e error) {
 			return err
 		}
 	}
-	defer t.msg.Push_tag(`stopRec`, t)
 
 	// 移除历史流
 	if err := t.removeStream(); err != nil {
@@ -602,12 +601,13 @@ func (t *M4SStream) saveStream() (e error) {
 	}
 
 	// 保存到文件
-	// 确保能接收到第一个帧才开始录制
 	if t.config.save_to_file {
-		t.msg.Pull_tag_only(`firstFrame`, func(ms *M4SStream) (disable bool) {
+		// 确保能接收到第一个帧才开始录制
+		var cancelfirstFrame = t.msg.Pull_tag_only(`firstFrame`, func(ms *M4SStream) (disable bool) {
 			ms.msg.Push_tag(`cut`, ms)
 			return true
 		})
+		defer cancelfirstFrame()
 	}
 
 	// 获取流
@@ -621,17 +621,33 @@ func (t *M4SStream) saveStream() (e error) {
 		t.log.L(`E: `, e)
 	}
 
+	// 退出当前方法时，结束录制
+	t.msg.Push_tag(`stopRec`, t)
 	return
 }
 
 func (t *M4SStream) saveStreamFlv() (e error) {
+	// 开始获取
+	r := t.reqPool.Get()
+	defer t.reqPool.Put(r)
+
+	CookieM := make(map[string]string)
+	t.common.Cookie.Range(func(k, v interface{}) bool {
+		CookieM[k.(string)] = v.(string)
+		return true
+	})
+
+	var surl *url.URL
+
+	// 找到可用流服务器
 	for {
 		v := t.common.ValidLive()
 		if v == nil {
 			return errors.New("未能找到可用流服务器")
 		}
 
-		surl, err := url.Parse(v.Url)
+		var err error
+		surl, err = url.Parse(v.Url)
 		if err != nil {
 			t.log.L(`E: `, err)
 			e = err
@@ -644,14 +660,6 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 			return
 		}
 
-		CookieM := make(map[string]string)
-		t.common.Cookie.Range(func(k, v interface{}) bool {
-			CookieM[k.(string)] = v.(string)
-			return true
-		})
-
-		//开始获取
-		r := t.reqPool.Get()
 		//检查
 		if e := r.Reqf(reqf.Rval{
 			Url:              surl.String(),
@@ -677,169 +685,170 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 			continue
 		}
 
-		cancelC, cancel := context.WithCancel(context.Background())
-		{
-			go func() {
-				tsc, tscf := t.Status.WaitC()
-				defer tscf()
+		break
+	}
 
+	cancelC, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	{
+		go func() {
+			tsc, tscf := t.Status.WaitC()
+			defer tscf()
+
+			select {
+			//停止录制
+			case <-tsc:
+				cancel()
+			//当前连接终止
+			case <-cancelC.Done():
+			}
+		}()
+
+		pipe := pio.NewPipe()
+		var (
+			leastReadUnix atomic.Int64
+			readTO        int64 = 5
+		)
+		leastReadUnix.Store(time.Now().Unix())
+
+		// read timeout
+		go func() {
+			timer := time.NewTicker(time.Duration(readTO * int64(time.Second)))
+			defer timer.Stop()
+
+			for {
 				select {
-				//停止录制
-				case <-tsc:
-					cancel()
-				//当前连接终止
 				case <-cancelC.Done():
-				}
-			}()
-
-			pipe := pio.NewPipe()
-			var (
-				leastReadUnix atomic.Int64
-				readTO        int64 = 5
-			)
-			leastReadUnix.Store(time.Now().Unix())
-
-			// read timeout
-			go func() {
-				timer := time.NewTicker(time.Duration(readTO * int64(time.Second)))
-				defer timer.Stop()
-
-				for {
-					select {
-					case <-cancelC.Done():
+					return
+				case curT := <-timer.C:
+					if curT.Unix()-leastReadUnix.Load() > readTO {
+						t.log.L(`W: `, fmt.Sprintf("%vs未接收到有效数据", readTO))
+						// 5s未接收到任何数据
+						cancel()
 						return
-					case curT := <-timer.C:
-						if curT.Unix()-leastReadUnix.Load() > readTO {
-							t.log.L(`W: `, fmt.Sprintf("%vs未接收到有效数据", readTO))
-							// 5s未接收到任何数据
+					}
+					if v, ok := c.C.K_v.LoadV(`直播流清晰度`).(float64); ok {
+						if t.config.want_qn != int(v) {
+							t.log.L(`I: `, "直播流清晰度改变:", t.common.Qn[t.config.want_qn], "=>", t.common.Qn[int(v)])
+							t.config.want_qn = int(v)
 							cancel()
 							return
 						}
-						if v, ok := c.C.K_v.LoadV(`直播流清晰度`).(float64); ok {
-							if t.config.want_qn != int(v) {
-								t.log.L(`I: `, "直播流清晰度改变:", t.common.Qn[t.config.want_qn], "=>", t.common.Qn[int(v)])
-								t.config.want_qn = int(v)
-								cancel()
-								return
-							}
-						}
 					}
-				}
-			}()
-
-			// read
-			go func() {
-				var (
-					ticker     = time.NewTicker(time.Second)
-					buff       = slice.New[byte]()
-					keyframe   = slice.New[byte]()
-					buf        = make([]byte, 1<<16)
-					frameCount = 0
-				)
-
-				for {
-					n, e := pipe.Read(buf)
-					_ = buff.Append(buf[:n])
-					if e != nil {
-						cancel()
-						break
-					}
-
-					skip := true
-					select {
-					case <-ticker.C:
-						skip = false
-					default:
-					}
-					if skip {
-						continue
-					}
-
-					if !buff.IsEmpty() {
-						keyframe.Reset()
-						front_buf, last_available_offset, e := Search_stream_tag(buff.GetPureBuf(), keyframe)
-						if e != nil {
-							if strings.Contains(e.Error(), `no found available tag`) {
-								continue
-							}
-							//丢弃所有数据
-							buff.Reset()
-						}
-						// 存在有效数据
-						if len(front_buf) != 0 || keyframe.Size() != 0 {
-							leastReadUnix.Store(time.Now().Unix())
-						}
-						if len(front_buf) != 0 && len(t.first_buf) == 0 {
-							t.first_buf = make([]byte, len(front_buf))
-							copy(t.first_buf, front_buf)
-							// fmt.Println("write front_buf")
-							t.Stream_msg.PushLock_tag(`data`, t.first_buf)
-							t.msg.Push_tag(`load`, t)
-						}
-						if keyframe.Size() != 0 {
-							if len(t.first_buf) == 0 {
-								t.log.L(`W: `, `flv未接收到起始段`)
-								cancel()
-								break
-							}
-							t.bootBufPush(keyframe.GetPureBuf())
-							keyframe.Reset()
-							t.Stream_msg.PushLock_tag(`data`, t.boot_buf)
-							frameCount += 1
-							if frameCount == 1 {
-								t.msg.Push_tag(`firstFrame`, t)
-							}
-						}
-						if last_available_offset > 1 {
-							// fmt.Println("write Sync")
-							_ = buff.RemoveFront(last_available_offset - 1)
-						}
-					}
-				}
-
-				buf = nil
-				buff.Reset()
-
-				ticker.Stop()
-			}()
-
-			t.log.L(`I: `, `flv下载开始`)
-
-			_ = r.Reqf(reqf.Rval{
-				Ctx:         cancelC,
-				Url:         surl.String(),
-				SaveToPipe:  pipe,
-				NoResponse:  true,
-				Async:       true,
-				Proxy:       t.common.Proxy,
-				WriteLoopTO: int(readTO)*1000*2 + 1,
-				Header: map[string]string{
-					`Host`:            surl.Host,
-					`User-Agent`:      `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0`,
-					`Accept`:          `*/*`,
-					`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
-					`Origin`:          `https://live.bilibili.com`,
-					`Connection`:      `keep-alive`,
-					`Pragma`:          `no-cache`,
-					`Cache-Control`:   `no-cache`,
-					`Referer`:         "https://live.bilibili.com/",
-					`Cookie`:          reqf.Map_2_Cookies_String(CookieM),
-				},
-			})
-			if err := r.Wait(); err != nil && !errors.Is(err, io.EOF) {
-				if reqf.IsCancel(err) {
-					t.log.L(`I: `, `flv下载停止`)
-				} else if err != nil && !reqf.IsTimeout(err) {
-					e = err
-					t.log.L(`E: `, `flv下载失败:`, err)
 				}
 			}
-			v.DisableAuto()
+		}()
+
+		// read
+		go func() {
+			var (
+				ticker     = time.NewTicker(time.Second)
+				buff       = slice.New[byte]()
+				keyframe   = slice.New[byte]()
+				buf        = make([]byte, 1<<16)
+				frameCount = 0
+			)
+
+			for {
+				n, e := pipe.Read(buf)
+				_ = buff.Append(buf[:n])
+				if e != nil {
+					cancel()
+					break
+				}
+
+				skip := true
+				select {
+				case <-ticker.C:
+					skip = false
+				default:
+				}
+				if skip {
+					continue
+				}
+
+				if !buff.IsEmpty() {
+					keyframe.Reset()
+					front_buf, last_available_offset, e := Search_stream_tag(buff.GetPureBuf(), keyframe)
+					if e != nil {
+						if strings.Contains(e.Error(), `no found available tag`) {
+							continue
+						}
+						//丢弃所有数据
+						buff.Reset()
+					}
+					// 存在有效数据
+					if len(front_buf) != 0 || keyframe.Size() != 0 {
+						leastReadUnix.Store(time.Now().Unix())
+					}
+					if len(front_buf) != 0 && len(t.first_buf) == 0 {
+						t.first_buf = make([]byte, len(front_buf))
+						copy(t.first_buf, front_buf)
+						// fmt.Println("write front_buf")
+						t.Stream_msg.PushLock_tag(`data`, t.first_buf)
+						t.msg.Push_tag(`load`, t)
+					}
+					if keyframe.Size() != 0 {
+						if len(t.first_buf) == 0 {
+							t.log.L(`W: `, `flv未接收到起始段`)
+							cancel()
+							break
+						}
+						t.bootBufPush(keyframe.GetPureBuf())
+						keyframe.Reset()
+						t.Stream_msg.PushLock_tag(`data`, t.boot_buf)
+						frameCount += 1
+						if frameCount == 1 {
+							t.msg.Push_tag(`firstFrame`, t)
+						}
+					}
+					if last_available_offset > 1 {
+						// fmt.Println("write Sync")
+						_ = buff.RemoveFront(last_available_offset - 1)
+					}
+				}
+			}
+
+			buf = nil
+			buff.Reset()
+
+			ticker.Stop()
+		}()
+
+		t.log.L(`I: `, `flv下载开始`)
+
+		_ = r.Reqf(reqf.Rval{
+			Ctx:         cancelC,
+			Url:         surl.String(),
+			SaveToPipe:  pipe,
+			NoResponse:  true,
+			Async:       true,
+			Proxy:       t.common.Proxy,
+			WriteLoopTO: int(readTO)*1000*2 + 1,
+			Header: map[string]string{
+				`Host`:            surl.Host,
+				`User-Agent`:      `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0`,
+				`Accept`:          `*/*`,
+				`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
+				`Origin`:          `https://live.bilibili.com`,
+				`Connection`:      `keep-alive`,
+				`Pragma`:          `no-cache`,
+				`Cache-Control`:   `no-cache`,
+				`Referer`:         "https://live.bilibili.com/",
+				`Cookie`:          reqf.Map_2_Cookies_String(CookieM),
+			},
+		})
+		if err := r.Wait(); err != nil && !errors.Is(err, io.EOF) {
+			if reqf.IsCancel(err) {
+				t.log.L(`I: `, `flv下载停止`)
+			} else if err != nil && !reqf.IsTimeout(err) {
+				e = err
+				t.log.L(`E: `, `flv下载失败:`, err)
+			}
 		}
-		cancel()
-		t.reqPool.Put(r)
-		t.Stream_msg.PushLock_tag(`close`, nil)
 	}
+
+	return
 }
 
 func (t *M4SStream) saveStreamM4s() (e error) {
@@ -917,9 +926,10 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 					r := t.reqPool.Get()
 					defer t.reqPool.Put(r)
 					reqConfig := reqf.Rval{
-						Url:     link.Url,
-						Timeout: 3000,
-						Proxy:   t.common.Proxy,
+						Url:         link.Url,
+						Timeout:     3000,
+						WriteLoopTO: 5000,
+						Proxy:       t.common.Proxy,
 						Header: map[string]string{
 							`Connection`: `close`,
 						},
@@ -1108,9 +1118,6 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 		download_seq = append(download_seq, m4s_links...)
 	}
 
-	// 发送空字节会导致流服务终止
-	t.Stream_msg.PushLock_tag(`close`, nil)
-
 	return
 }
 
@@ -1157,35 +1164,38 @@ func (t *M4SStream) Start() bool {
 
 		// 设置事件
 		// 当录制停止时，取消全部录制
-		mainContextC, mainCancle := context.WithCancel(context.Background())
+		mainContextC, maincancel := context.WithCancel(context.Background())
 		if t.Callback_stopRec != nil {
-			t.msg.Pull_tag_only("stopRec", func(ms *M4SStream) (disable bool) {
+			cancel := t.msg.Pull_tag_only(`stopRec`, func(ms *M4SStream) (disable bool) {
 				ms.Callback_stopRec(ms)
 				return false
 			})
+			defer cancel()
 		}
-		t.msg.Pull_tag_only("stop", func(ms *M4SStream) (disable bool) {
+		cancel := t.msg.Pull_tag_only("stop", func(ms *M4SStream) (disable bool) {
 			if ms.Callback_stop != nil {
 				ms.Callback_stop(ms)
 			}
-			mainCancle()
+			maincancel()
 			t.msg.ClearAll()
 			return true
 		})
+		defer cancel()
 
 		if t.config.save_to_file {
 			var fc funcCtrl.FlashFunc
-			t.msg.Pull_tag_async(map[string]func(*M4SStream) (disable bool){
+			cancel := t.msg.Pull_tag_async(map[string]func(*M4SStream) (disable bool){
 				`cut`: func(ms *M4SStream) (disable bool) {
 					// 当cut时，取消上次录制
-					contextC, cancle := context.WithCancel(mainContextC)
-					fc.FlashWithCallback(cancle)
+					contextC, cancel := context.WithCancel(mainContextC)
+					fc.FlashWithCallback(cancel)
 
 					// 当stopRec时，取消录制
-					ms.msg.Pull_tag_only("stopRec", func(_ *M4SStream) (disable bool) {
-						cancle()
+					cancelMsg := ms.msg.Pull_tag_only(`stopRec`, func(_ *M4SStream) (disable bool) {
+						cancel()
 						return true
 					})
+					defer cancelMsg()
 
 					l := ms.log.Base_add(`文件保存`)
 					startf := func(_ *M4SStream) error {
@@ -1231,6 +1241,9 @@ func (t *M4SStream) Start() bool {
 					}
 					duration := time.Since(startT)
 
+					// 结束，发送空值停止直播回放
+					t.Stream_msg.PushLock_tag(`data`, []byte{})
+
 					//指定房间录制回调
 					if v, ok := ms.common.K_v.LoadV("指定房间录制回调").([]any); ok && len(v) > 0 {
 						l := l.Base(`录制回调`)
@@ -1265,9 +1278,8 @@ func (t *M4SStream) Start() bool {
 					return false
 				},
 			})
+			defer cancel()
 		}
-
-		defer t.msg.Push_tag(`stop`, t)
 
 		// 主循环
 		for t.Status.Islive() {
@@ -1292,6 +1304,9 @@ func (t *M4SStream) Start() bool {
 		}
 
 		t.log.L(`I: `, `结束录制(`+strconv.Itoa(t.common.Roomid)+`)`)
+
+		// 退出
+		t.msg.Push_tag(`stop`, t)
 		t.exitSign.Done()
 	}()
 	return true
@@ -1319,7 +1334,7 @@ func (t *M4SStream) PusherToFile(contextC context.Context, filepath string, star
 	}
 
 	_, _ = f.Write(t.getFirstBuf(), true)
-	t.Stream_msg.Pull_tag_async(map[string]func([]byte) bool{
+	cancelRec := t.Stream_msg.Pull_tag_async(map[string]func([]byte) bool{
 		`data`: func(b []byte) bool {
 			select {
 			case <-contextC.Done():
@@ -1337,6 +1352,7 @@ func (t *M4SStream) PusherToFile(contextC context.Context, filepath string, star
 		},
 	})
 	<-contextC.Done()
+	cancelRec()
 
 	if e := stopFunc(t); e != nil {
 		return e
@@ -1388,7 +1404,7 @@ func (t *M4SStream) PusherToHttp(w http.ResponseWriter, r *http.Request, startFu
 	contextC, cancel := context.WithCancel(r.Context())
 
 	//
-	t.Stream_msg.Pull_tag_async(map[string]func([]byte) bool{
+	cancelRec := t.Stream_msg.Pull_tag_async(map[string]func([]byte) bool{
 		`data`: func(b []byte) bool {
 			select {
 			case <-contextC.Done():
@@ -1412,8 +1428,8 @@ func (t *M4SStream) PusherToHttp(w http.ResponseWriter, r *http.Request, startFu
 			return true
 		},
 	})
-
 	<-contextC.Done()
+	cancelRec()
 
 	if e := stopFunc(t); e != nil {
 		return e
