@@ -357,7 +357,7 @@ func init() {
 			Url:   wsUrl,
 			Proxy: c.C.Proxy,
 			Header: map[string]string{
-				`User-Agent`:      `Mozilla/5.0 (X11; Linux x86_64; rv:84.0) Gecko/20100101 Firefox/84.0`,
+				`User-Agent`:      c.UA,
 				`Accept`:          `*/*`,
 				`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
 				`Pragma`:          `no-cache`,

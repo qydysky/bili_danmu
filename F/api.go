@@ -853,39 +853,39 @@ func Get_face_src(uid string) string {
 	return rface.(string) + `@58w_58h`
 }
 
-func (c *GetFunc) getPopularAnchorRank() (missKey []string) {
+func (t *GetFunc) getPopularAnchorRank() (missKey []string) {
 	apilog := apilog.Base_add(`Get_HotRank`)
 
-	if c.Uid == 0 {
+	if t.Uid == 0 {
 		missKey = append(missKey, `Uid`)
 	}
-	if c.UpUid == 0 {
+	if t.UpUid == 0 {
 		missKey = append(missKey, `UpUid`)
 	}
-	if c.Roomid == 0 {
+	if t.Roomid == 0 {
 		missKey = append(missKey, `Roomid`)
 	}
 	if len(missKey) > 0 {
 		return
 	}
 
-	Roomid := strconv.Itoa(c.Roomid)
+	Roomid := strconv.Itoa(t.Roomid)
 
 	//getHotRank
 	{
 		Cookie := make(map[string]string)
-		c.Cookie.Range(func(k, v interface{}) bool {
+		t.Cookie.Range(func(k, v interface{}) bool {
 			Cookie[k.(string)] = v.(string)
 			return true
 		})
 
-		req := c.ReqPool.Get()
-		defer c.ReqPool.Put(req)
+		req := t.ReqPool.Get()
+		defer t.ReqPool.Put(req)
 		if err := req.Reqf(reqf.Rval{
-			Url: `https://api.live.bilibili.com/xlive/general-interface/v1/rank/getPopularAnchorRank?uid=` + strconv.Itoa(c.Uid) + `&ruid=` + strconv.Itoa(c.UpUid) + `&clientType=2`,
+			Url: `https://api.live.bilibili.com/xlive/general-interface/v1/rank/getPopularAnchorRank?uid=` + strconv.Itoa(t.Uid) + `&ruid=` + strconv.Itoa(t.UpUid) + `&clientType=2`,
 			Header: map[string]string{
 				`Host`:            `api.live.bilibili.com`,
-				`User-Agent`:      `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0`,
+				`User-Agent`:      c.UA,
 				`Accept`:          `application/json, text/plain, */*`,
 				`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
 				`Accept-Encoding`: `gzip, deflate, br`,
@@ -896,7 +896,7 @@ func (c *GetFunc) getPopularAnchorRank() (missKey []string) {
 				`Referer`:         "https://live.bilibili.com/" + Roomid,
 				`Cookie`:          reqf.Map_2_Cookies_String(Cookie),
 			},
-			Proxy:   c.Proxy,
+			Proxy:   t.Proxy,
 			Timeout: 3 * 1000,
 			Retry:   2,
 		}); err != nil {
@@ -915,11 +915,11 @@ func (c *GetFunc) getPopularAnchorRank() (missKey []string) {
 		}
 
 		//获取排名
-		c.Note = "人气榜 "
+		t.Note = "人气榜 "
 		if j.Data.Anchor.Rank == 0 {
-			c.Note += "100+"
+			t.Note += "100+"
 		} else {
-			c.Note += strconv.Itoa(j.Data.Anchor.Rank)
+			t.Note += strconv.Itoa(j.Data.Anchor.Rank)
 		}
 	}
 
@@ -963,7 +963,7 @@ func (c *GetFunc) Get_HotRank() (missKey []string) {
 	// 		Url: `https://api.live.bilibili.com/xlive/general-interface/v1/rank/getHotRank?ruid=` + strconv.Itoa(c.UpUid) + `&room_id=` + Roomid + `&is_pre=0&page_size=50&source=2&area_id=` + strconv.Itoa(c.ParentAreaID),
 	// 		Header: map[string]string{
 	// 			`Host`:            `api.live.bilibili.com`,
-	// 			`User-Agent`:      `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0`,
+	// 			`User-Agent`:      c.UA,
 	// 			`Accept`:          `application/json, text/plain, */*`,
 	// 			`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
 	// 			`Accept-Encoding`: `gzip, deflate, br`,
@@ -1004,39 +1004,39 @@ func (c *GetFunc) Get_HotRank() (missKey []string) {
 	return
 }
 
-func (c *GetFunc) Get_guardNum() (missKey []string) {
+func (t *GetFunc) Get_guardNum() (missKey []string) {
 	apilog := apilog.Base_add(`Get_guardNum`)
 
-	if c.UpUid == 0 {
+	if t.UpUid == 0 {
 		missKey = append(missKey, `UpUid`)
 	}
-	if c.Roomid == 0 {
+	if t.Roomid == 0 {
 		missKey = append(missKey, `Roomid`)
 	}
-	if c.LiveBuvidUpdated.Before(time.Now().Add(-time.Hour)) {
+	if t.LiveBuvidUpdated.Before(time.Now().Add(-time.Hour)) {
 		missKey = append(missKey, `LIVE_BUVID`)
 	}
 	if len(missKey) > 0 {
 		return
 	}
 
-	Roomid := strconv.Itoa(c.Roomid)
+	Roomid := strconv.Itoa(t.Roomid)
 
 	//Get_guardNum
 	{
 		Cookie := make(map[string]string)
-		c.Cookie.Range(func(k, v interface{}) bool {
+		t.Cookie.Range(func(k, v interface{}) bool {
 			Cookie[k.(string)] = v.(string)
 			return true
 		})
 
-		req := c.ReqPool.Get()
-		defer c.ReqPool.Put(req)
+		req := t.ReqPool.Get()
+		defer t.ReqPool.Put(req)
 		if err := req.Reqf(reqf.Rval{
-			Url: `https://api.live.bilibili.com/xlive/app-room/v2/guardTab/topList?roomid=` + Roomid + `&page=1&ruid=` + strconv.Itoa(c.UpUid) + `&page_size=29`,
+			Url: `https://api.live.bilibili.com/xlive/app-room/v2/guardTab/topList?roomid=` + Roomid + `&page=1&ruid=` + strconv.Itoa(t.UpUid) + `&page_size=29`,
 			Header: map[string]string{
 				`Host`:            `api.live.bilibili.com`,
-				`User-Agent`:      `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0`,
+				`User-Agent`:      c.UA,
 				`Accept`:          `application/json, text/plain, */*`,
 				`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
 				`Accept-Encoding`: `gzip, deflate, br`,
@@ -1047,7 +1047,7 @@ func (c *GetFunc) Get_guardNum() (missKey []string) {
 				`Referer`:         "https://live.bilibili.com/" + Roomid,
 				`Cookie`:          reqf.Map_2_Cookies_String(Cookie),
 			},
-			Proxy:   c.Proxy,
+			Proxy:   t.Proxy,
 			Timeout: 3 * 1000,
 			Retry:   2,
 		}); err != nil {
@@ -1066,7 +1066,7 @@ func (c *GetFunc) Get_guardNum() (missKey []string) {
 		}
 
 		//获取舰长数
-		c.GuardNum = j.Data.Info.Num
+		t.GuardNum = j.Data.Info.Num
 	}
 
 	return
@@ -1135,10 +1135,10 @@ func (c *GetFunc) Get_guardNum() (missKey []string) {
 // 	return
 // }
 
-func (c *GetFunc) Info(UpUid int) (J.Info, error) {
+func (t *GetFunc) Info(UpUid int) (J.Info, error) {
 	fkey := `Info`
 
-	if v, ok := c.Cache.LoadV(fkey).(cacheItem); ok && v.exceeded.After(time.Now()) {
+	if v, ok := t.Cache.LoadV(fkey).(cacheItem); ok && v.exceeded.After(time.Now()) {
 		return (v.data).(J.Info), nil
 	}
 
@@ -1151,27 +1151,27 @@ func (c *GetFunc) Info(UpUid int) (J.Info, error) {
 	query := fmt.Sprintf("mid=%d&token=&platform=web&web_location=1550101", UpUid)
 	// wbi
 	{
-		v, e := c.GetNav()
+		v, e := t.GetNav()
 		if e != nil {
 			return J.Info{}, e
 		}
-		wrid, wts := c.getWridWts(query, v.Data.WbiImg.ImgURL, v.Data.WbiImg.SubURL)
+		wrid, wts := t.getWridWts(query, v.Data.WbiImg.ImgURL, v.Data.WbiImg.SubURL)
 		query += "&w_rid=" + wrid + "&wts=" + wts
 	}
 
 	// html
 	{
 		Cookie := make(map[string]string)
-		c.Cookie.Range(func(k, v interface{}) bool {
+		t.Cookie.Range(func(k, v interface{}) bool {
 			Cookie[k.(string)] = v.(string)
 			return true
 		})
-		req := c.ReqPool.Get()
-		defer c.ReqPool.Put(req)
+		req := t.ReqPool.Get()
+		defer t.ReqPool.Put(req)
 
 		if err := req.Reqf(reqf.Rval{
 			Url:     `https://api.bilibili.com/x/space/wbi/acc/info?` + query,
-			Proxy:   c.Proxy,
+			Proxy:   t.Proxy,
 			Timeout: 10 * 1000,
 			Retry:   2,
 			Header: map[string]string{
@@ -1191,7 +1191,7 @@ func (c *GetFunc) Info(UpUid int) (J.Info, error) {
 			return J.Info{}, e
 		}
 
-		c.Cache.Store(fkey, cacheItem{
+		t.Cache.Store(fkey, cacheItem{
 			data:     info,
 			exceeded: time.Now().Add(time.Hour),
 		})
@@ -1203,10 +1203,10 @@ func (c *GetFunc) Info(UpUid int) (J.Info, error) {
 var boot_Get_cookie funcCtrl.FlashFunc //新的替代旧的
 
 // 是否登录
-func (c *GetFunc) GetNav() (J.Nav, error) {
+func (t *GetFunc) GetNav() (J.Nav, error) {
 	fkey := `GetNav`
 
-	if v, ok := c.Cache.LoadV(fkey).(cacheItem); ok && v.exceeded.After(time.Now()) {
+	if v, ok := t.Cache.LoadV(fkey).(cacheItem); ok && v.exceeded.After(time.Now()) {
 		return (v.data).(J.Nav), nil
 	}
 
@@ -1217,18 +1217,18 @@ func (c *GetFunc) GetNav() (J.Nav, error) {
 	} //超额请求阻塞，超时将取消
 
 	Cookie := make(map[string]string)
-	c.Cookie.Range(func(k, v interface{}) bool {
+	t.Cookie.Range(func(k, v interface{}) bool {
 		Cookie[k.(string)] = v.(string)
 		return true
 	})
 
-	req := c.ReqPool.Get()
-	defer c.ReqPool.Put(req)
+	req := t.ReqPool.Get()
+	defer t.ReqPool.Put(req)
 	if err := req.Reqf(reqf.Rval{
 		Url: `https://api.bilibili.com/x/web-interface/nav`,
 		Header: map[string]string{
 			`Host`:            `api.bilibili.com`,
-			`User-Agent`:      `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0`,
+			`User-Agent`:      c.UA,
 			`Accept`:          `application/json, text/plain, */*`,
 			`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
 			`Accept-Encoding`: `gzip, deflate, br`,
@@ -1239,7 +1239,7 @@ func (c *GetFunc) GetNav() (J.Nav, error) {
 			`Referer`:         `https://t.bilibili.com/pages/nav/index_new`,
 			`Cookie`:          reqf.Map_2_Cookies_String(Cookie),
 		},
-		Proxy:   c.Proxy,
+		Proxy:   t.Proxy,
 		Timeout: 3 * 1000,
 		Retry:   2,
 	}); err != nil {
@@ -1254,7 +1254,7 @@ func (c *GetFunc) GetNav() (J.Nav, error) {
 		return J.Nav{}, e
 	}
 
-	c.Cache.Store(fkey, cacheItem{
+	t.Cache.Store(fkey, cacheItem{
 		data:     res,
 		exceeded: time.Now().Add(time.Hour),
 	})
@@ -1767,7 +1767,7 @@ func Dosign() {
 			Url: `https://api.live.bilibili.com/xlive/web-ucenter/v1/sign/WebGetSignInfo`,
 			Header: map[string]string{
 				`Host`:            `api.live.bilibili.com`,
-				`User-Agent`:      `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0`,
+				`User-Agent`:      c.UA,
 				`Accept`:          `application/json, text/plain, */*`,
 				`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
 				`Accept-Encoding`: `gzip, deflate, br`,
@@ -1824,7 +1824,7 @@ func Dosign() {
 			Url: `https://api.live.bilibili.com/xlive/web-ucenter/v1/sign/DoSign`,
 			Header: map[string]string{
 				`Host`:            `api.live.bilibili.com`,
-				`User-Agent`:      `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0`,
+				`User-Agent`:      c.UA,
 				`Accept`:          `application/json, text/plain, */*`,
 				`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
 				`Accept-Encoding`: `gzip, deflate, br`,
@@ -1862,7 +1862,7 @@ func Dosign() {
 }
 
 // LIVE_BUVID
-func (c *GetFunc) Get_LIVE_BUVID() (missKey []string) {
+func (t *GetFunc) Get_LIVE_BUVID() (missKey []string) {
 	apilog := apilog.Base_add(`LIVE_BUVID`)
 
 	//当房间处于特殊活动状态时，将会获取不到，此处使用了若干著名up主房间进行尝试
@@ -1873,13 +1873,13 @@ func (c *GetFunc) Get_LIVE_BUVID() (missKey []string) {
 	}
 
 	for _, roomid := range roomIdList { //获取
-		req := c.ReqPool.Get()
-		defer c.ReqPool.Put(req)
+		req := t.ReqPool.Get()
+		defer t.ReqPool.Put(req)
 		if err := req.Reqf(reqf.Rval{
 			Url: `https://api.live.bilibili.com/live/getRoomKanBanModel?roomid=` + roomid,
 			Header: map[string]string{
 				`Host`:                      `live.bilibili.com`,
-				`User-Agent`:                `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0`,
+				`User-Agent`:                c.UA,
 				`Accept`:                    `text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8`,
 				`Accept-Language`:           `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
 				`Accept-Encoding`:           `gzip, deflate, br`,
@@ -1889,7 +1889,7 @@ func (c *GetFunc) Get_LIVE_BUVID() (missKey []string) {
 				`DNT`:                       `1`,
 				`Upgrade-Insecure-Requests`: `1`,
 			},
-			Proxy:   c.Proxy,
+			Proxy:   t.Proxy,
 			Timeout: 3 * 1000,
 			Retry:   2,
 		}); err != nil {
@@ -1914,7 +1914,7 @@ func (c *GetFunc) Get_LIVE_BUVID() (missKey []string) {
 		}
 	}
 
-	c.LiveBuvidUpdated = time.Now()
+	t.LiveBuvidUpdated = time.Now()
 
 	return
 }
@@ -1970,7 +1970,7 @@ func Gift_list() (list []Gift_list_type_Data_List) {
 		Url: `https://api.live.bilibili.com/xlive/web-room/v1/gift/bag_list?t=` + strconv.Itoa(int(time.Now().UnixNano()/int64(time.Millisecond))) + `&room_id=` + strconv.Itoa(c.C.Roomid),
 		Header: map[string]string{
 			`Host`:            `api.live.bilibili.com`,
-			`User-Agent`:      `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0`,
+			`User-Agent`:      c.UA,
 			`Accept`:          `application/json, text/plain, */*`,
 			`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
 			`Accept-Encoding`: `gzip, deflate, br`,
@@ -2006,10 +2006,10 @@ func Gift_list() (list []Gift_list_type_Data_List) {
 }
 
 // 银瓜子2硬币
-func (c *GetFunc) Silver_2_coin() (missKey []string) {
+func (t *GetFunc) Silver_2_coin() (missKey []string) {
 	apilog := apilog.Base_add(`银瓜子=>硬币`)
 
-	if c.LiveBuvidUpdated.Before(time.Now().Add(-time.Hour)) {
+	if t.LiveBuvidUpdated.Before(time.Now().Add(-time.Hour)) {
 		missKey = append(missKey, `LIVE_BUVID`)
 	}
 	if len(missKey) > 0 {
@@ -2029,18 +2029,18 @@ func (c *GetFunc) Silver_2_coin() (missKey []string) {
 	var Silver int
 	{ //验证是否还有机会
 		Cookie := make(map[string]string)
-		c.Cookie.Range(func(k, v interface{}) bool {
+		t.Cookie.Range(func(k, v interface{}) bool {
 			Cookie[k.(string)] = v.(string)
 			return true
 		})
 
-		req := c.ReqPool.Get()
-		defer c.ReqPool.Put(req)
+		req := t.ReqPool.Get()
+		defer t.ReqPool.Put(req)
 		if err := req.Reqf(reqf.Rval{
 			Url: `https://api.live.bilibili.com/xlive/revenue/v1/wallet/getStatus`,
 			Header: map[string]string{
 				`Host`:            `api.live.bilibili.com`,
-				`User-Agent`:      `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0`,
+				`User-Agent`:      c.UA,
 				`Accept`:          `application/json, text/plain, */*`,
 				`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
 				`Accept-Encoding`: `gzip, deflate, br`,
@@ -2051,7 +2051,7 @@ func (c *GetFunc) Silver_2_coin() (missKey []string) {
 				`Referer`:         `https://link.bilibili.com/p/center/index`,
 				`Cookie`:          reqf.Map_2_Cookies_String(Cookie),
 			},
-			Proxy:   c.Proxy,
+			Proxy:   t.Proxy,
 			Timeout: 3 * 1000,
 			Retry:   2,
 		}); err != nil {
@@ -2080,18 +2080,18 @@ func (c *GetFunc) Silver_2_coin() (missKey []string) {
 
 	{ //获取交换规则，验证数量足够
 		Cookie := make(map[string]string)
-		c.Cookie.Range(func(k, v interface{}) bool {
+		t.Cookie.Range(func(k, v interface{}) bool {
 			Cookie[k.(string)] = v.(string)
 			return true
 		})
 
-		req := c.ReqPool.Get()
-		defer c.ReqPool.Put(req)
+		req := t.ReqPool.Get()
+		defer t.ReqPool.Put(req)
 		if err := req.Reqf(reqf.Rval{
 			Url: `https://api.live.bilibili.com/xlive/revenue/v1/wallet/getRule`,
 			Header: map[string]string{
 				`Host`:            `api.live.bilibili.com`,
-				`User-Agent`:      `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0`,
+				`User-Agent`:      c.UA,
 				`Accept`:          `application/json, text/plain, */*`,
 				`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
 				`Accept-Encoding`: `gzip, deflate, br`,
@@ -2102,7 +2102,7 @@ func (c *GetFunc) Silver_2_coin() (missKey []string) {
 				`Referer`:         `https://link.bilibili.com/p/center/index`,
 				`Cookie`:          reqf.Map_2_Cookies_String(Cookie),
 			},
-			Proxy:   c.Proxy,
+			Proxy:   t.Proxy,
 			Timeout: 3 * 1000,
 			Retry:   2,
 		}); err != nil {
@@ -2127,7 +2127,7 @@ func (c *GetFunc) Silver_2_coin() (missKey []string) {
 	}
 
 	{ //交换
-		csrf, _ := c.Cookie.LoadV(`bili_jct`).(string)
+		csrf, _ := t.Cookie.LoadV(`bili_jct`).(string)
 		if csrf == `` {
 			apilog.L(`E: `, "Cookie错误,无bili_jct=")
 			return
@@ -2136,19 +2136,19 @@ func (c *GetFunc) Silver_2_coin() (missKey []string) {
 		post_str := `csrf_token=` + csrf + `&csrf=` + csrf
 
 		Cookie := make(map[string]string)
-		c.Cookie.Range(func(k, v interface{}) bool {
+		t.Cookie.Range(func(k, v interface{}) bool {
 			Cookie[k.(string)] = v.(string)
 			return true
 		})
 
-		req := c.ReqPool.Get()
-		defer c.ReqPool.Put(req)
+		req := t.ReqPool.Get()
+		defer t.ReqPool.Put(req)
 		if err := req.Reqf(reqf.Rval{
 			Url:     `https://api.live.bilibili.com/xlive/revenue/v1/wallet/silver2coin`,
 			PostStr: url.PathEscape(post_str),
 			Header: map[string]string{
 				`Host`:            `api.live.bilibili.com`,
-				`User-Agent`:      `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0`,
+				`User-Agent`:      c.UA,
 				`Accept`:          `application/json, text/plain, */*`,
 				`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
 				`Accept-Encoding`: `gzip, deflate, br`,
@@ -2160,7 +2160,7 @@ func (c *GetFunc) Silver_2_coin() (missKey []string) {
 				`Referer`:         `https://link.bilibili.com/p/center/index`,
 				`Cookie`:          reqf.Map_2_Cookies_String(Cookie),
 			},
-			Proxy:   c.Proxy,
+			Proxy:   t.Proxy,
 			Timeout: 3 * 1000,
 			Retry:   2,
 		}); err != nil {
@@ -2246,7 +2246,7 @@ func GetHisStream() (Uplist []UpItem) {
 		Url: `https://api.bilibili.com/x/web-interface/history/cursor?type=live&ps=10`,
 		Header: map[string]string{
 			`Host`:            `api.live.bilibili.com`,
-			`User-Agent`:      `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0`,
+			`User-Agent`:      c.UA,
 			`Accept`:          `application/json, text/plain, */*`,
 			`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
 			`Accept-Encoding`: `gzip, deflate, br`,
@@ -2325,7 +2325,7 @@ func RoomEntryAction(roomId int) {
 		PostStr: fmt.Sprintf("room_id=%d&platform=pc&csrf_token=%s&csrf=%s&visit_id=", roomId, csrf, csrf),
 		Header: map[string]string{
 			`Host`:            `api.live.bilibili.com`,
-			`User-Agent`:      `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0`,
+			`User-Agent`:      c.UA,
 			`Accept`:          `application/json, text/plain, */*`,
 			`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
 			`Accept-Encoding`: `gzip, deflate, br`,
@@ -2358,13 +2358,13 @@ func RoomEntryAction(roomId int) {
 }
 
 // 获取在线人数
-func (c *GetFunc) getOnlineGoldRank() (misskey []string) {
+func (t *GetFunc) getOnlineGoldRank() (misskey []string) {
 	apilog := apilog.Base_add(`获取在线人数`)
-	if c.UpUid == 0 {
+	if t.UpUid == 0 {
 		misskey = append(misskey, `UpUid`)
 		return
 	}
-	if c.Roomid == 0 {
+	if t.Roomid == 0 {
 		misskey = append(misskey, `Roomid`)
 		return
 	}
@@ -2374,14 +2374,14 @@ func (c *GetFunc) getOnlineGoldRank() (misskey []string) {
 		return
 	} //超额请求阻塞，超时将取消
 
-	req := c.ReqPool.Get()
-	defer c.ReqPool.Put(req)
+	req := t.ReqPool.Get()
+	defer t.ReqPool.Put(req)
 
 	if err := req.Reqf(reqf.Rval{
-		Url: fmt.Sprintf("https://api.live.bilibili.com/xlive/general-interface/v1/rank/getOnlineGoldRank?ruid=%d&roomId=%d&page=1&pageSize=10", c.UpUid, c.Roomid),
+		Url: fmt.Sprintf("https://api.live.bilibili.com/xlive/general-interface/v1/rank/getOnlineGoldRank?ruid=%d&roomId=%d&page=1&pageSize=10", t.UpUid, t.Roomid),
 		Header: map[string]string{
 			`Host`:            `api.live.bilibili.com`,
-			`User-Agent`:      `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0`,
+			`User-Agent`:      c.UA,
 			`Accept`:          `application/json, text/plain, */*`,
 			`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
 			`Accept-Encoding`: `gzip, deflate, br`,
@@ -2389,9 +2389,9 @@ func (c *GetFunc) getOnlineGoldRank() (misskey []string) {
 			`Connection`:      `keep-alive`,
 			`Pragma`:          `no-cache`,
 			`Cache-Control`:   `no-cache`,
-			`Referer`:         fmt.Sprintf("https://live.bilibili.com/%d", c.Roomid),
+			`Referer`:         fmt.Sprintf("https://live.bilibili.com/%d", t.Roomid),
 		},
-		Proxy:   c.Proxy,
+		Proxy:   t.Proxy,
 		Timeout: 3 * 1000,
 	}); err != nil {
 		apilog.L(`E: `, err)
@@ -2410,8 +2410,8 @@ func (c *GetFunc) getOnlineGoldRank() (misskey []string) {
 		return
 	}
 
-	c.OnlineNum = res.Data.OnlineNum
-	apilog.Log_show_control(false).L(`I: `, `在线人数:`, c.OnlineNum)
+	t.OnlineNum = res.Data.OnlineNum
+	apilog.Log_show_control(false).L(`I: `, `在线人数:`, t.OnlineNum)
 	return
 }
 
@@ -2445,7 +2445,7 @@ func Feed_list() (Uplist []J.FollowingDataList) {
 			Url: `https://api.live.bilibili.com/xlive/web-ucenter/user/following?page=` + strconv.Itoa(pageNum) + `&page_size=10`,
 			Header: map[string]string{
 				`Host`:            `api.live.bilibili.com`,
-				`User-Agent`:      `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:103.0) Gecko/20100101 Firefox/103.0`,
+				`User-Agent`:      c.UA,
 				`Accept`:          `application/json, text/plain, */*`,
 				`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
 				`Accept-Encoding`: `gzip, deflate, br`,
