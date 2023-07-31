@@ -360,7 +360,15 @@ func (t *GetFunc) Html() (missKey []string) {
 
 // 配置直播流
 func (t *GetFunc) configStreamType(sts []J.StreamType) {
-	defer apilog.Base_add(`configStreamType`).L(`T: `, fmt.Sprintf("使用直播流 %s %s %s", t.Qn[t.Live_qn], t.StreamType.Format_name, t.StreamType.Codec_name))
+	var chosenType c.StreamType
+
+	defer func() {
+		apilog := apilog.Base_add(`configStreamType`)
+		if _, ok := t.Qn[t.Live_qn]; !ok {
+			apilog.L(`W: `, `未知的清晰度`, t.Live_qn)
+		}
+		apilog.L(`T: `, fmt.Sprintf("使用直播流 %s %s %s", t.Qn[t.Live_qn], chosenType.Format_name, chosenType.Codec_name))
+	}()
 
 	if v, ok := t.Common.K_v.LoadV(`直播流类型`).(string); ok {
 		if st, ok := t.AllStreamType[v]; ok {
@@ -384,6 +392,7 @@ func (t *GetFunc) configStreamType(sts []J.StreamType) {
 					continue
 				}
 
+				chosenType = t.StreamType
 				//当前直播流质量
 				t.Live_qn = v.CurrentQn
 				if t.Live_want_qn == 0 {
@@ -443,6 +452,7 @@ func (t *GetFunc) configStreamType(sts []J.StreamType) {
 						continue
 					}
 
+					chosenType = streamType
 					//当前直播流质量
 					t.Live_qn = v.CurrentQn
 					if t.Live_want_qn == 0 {
