@@ -712,7 +712,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 				readTO        int64 = 5
 			)
 			leastReadUnix.Store(time.Now().Unix())
-			if v, ok := c.C.K_v.LoadV(`flv断流超时s`).(float64); ok && int64(v) > readTO {
+			if v, ok := t.common.K_v.LoadV(`flv断流超时s`).(float64); ok && int64(v) > readTO {
 				readTO = int64(v)
 			}
 
@@ -854,7 +854,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 		}
 		cancel()
 
-		if v1, ok := c.C.K_v.LoadV(`flv断流续接`).(bool); ok && !v1 {
+		if v1, ok := t.common.K_v.LoadV(`flv断流续接`).(bool); ok && !v1 {
 			break
 		}
 		v.DisableAuto()
@@ -874,7 +874,12 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 		fmp4Decoder = &Fmp4Decoder{}
 		keyframe    = slice.New[byte]()
 		frameCount  = 0
+		to          = 3
 	)
+
+	if v, ok := t.common.K_v.LoadV(`fmp4切片下载超时s`).(float64); ok && to < int(v) {
+		to = int(v)
+	}
 
 	// 下载循环
 	for download_seq := []*m4s_link_item{}; ; {
@@ -938,8 +943,8 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 					defer t.reqPool.Put(r)
 					reqConfig := reqf.Rval{
 						Url:         link.Url,
-						Timeout:     3000,
-						WriteLoopTO: 5000,
+						Timeout:     to * 1000,
+						WriteLoopTO: (to + 2) * 1000,
 						Proxy:       t.common.Proxy,
 						Header: map[string]string{
 							`Connection`: `close`,
