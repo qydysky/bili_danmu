@@ -332,14 +332,14 @@ func Start() {
 						},
 						`every100s`: func(_ any) bool { //每100s
 							if time.Now().After(aliveT) {
-								c.C.Danmu_Main_mq.Push_tag(`flash_room`, nil)
+								go c.C.Danmu_Main_mq.Push_tag(`flash_room`, nil)
 								return false
 							}
 							if v, ok := c.C.K_v.LoadV("下播后不记录人气观看人数").(bool); ok && v && !c.C.Liveing {
 								return false
 							}
 							// 在线人数
-							F.Get(c.C).Get(`getOnlineGoldRank`)
+							go F.Get(c.C).Get(`getOnlineGoldRank`)
 							return false
 						},
 						`new day`: func(_ any) bool { //日期更换
