@@ -322,7 +322,7 @@ func Start() {
 							return true
 						},
 						`flash_room`: func(_ any) bool { //重进房时退出当前房间
-							F.Get(c.C).Get(`WSURL`)
+							go F.Get(c.C).Get(`WSURL`)
 							ws_c.Close()
 							return true
 						},
@@ -332,7 +332,7 @@ func Start() {
 						},
 						`every100s`: func(_ any) bool { //每100s
 							if time.Now().After(aliveT) {
-								go c.C.Danmu_Main_mq.Push_tag(`flash_room`, nil)
+								c.C.Danmu_Main_mq.Push_tag(`flash_room`, nil)
 								return false
 							}
 							if v, ok := c.C.K_v.LoadV("下播后不记录人气观看人数").(bool); ok && v && !c.C.Liveing {
@@ -343,18 +343,18 @@ func Start() {
 							return false
 						},
 						`new day`: func(_ any) bool { //日期更换
-							//每日签到
-							F.Dosign()
-							// //获取用户版本  不再需要
-							// go F.Get(`VERSION`)
-							//每日兑换硬币
-							go F.Get(c.C).Silver_2_coin()
-							//附加功能 每日发送弹幕
-							go reply.Entry_danmu()
-							//附加功能 保持牌子点亮
-							go reply.Keep_medal_light()
-							//附加功能 自动发送即将过期礼物
-							go reply.AutoSend_silver_gift()
+							go func() {
+								//每日签到
+								F.Dosign()
+								//每日兑换硬币
+								F.Get(c.C).Silver_2_coin()
+								//附加功能 每日发送弹幕
+								reply.Entry_danmu()
+								//附加功能 保持牌子点亮
+								reply.Keep_medal_light()
+								//附加功能 自动发送即将过期礼物
+								reply.AutoSend_silver_gift()
+							}()
 							return false
 						},
 					})
