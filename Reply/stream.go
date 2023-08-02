@@ -709,7 +709,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 			pipe := pio.NewPipe()
 			var (
 				leastReadUnix atomic.Int64
-				readTO        int64 = 5
+				readTO        int64 = 3
 			)
 			leastReadUnix.Store(time.Now().Unix())
 			if v, ok := t.common.K_v.LoadV(`flv断流超时s`).(float64); ok && int64(v) > readTO {
@@ -728,7 +728,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 					case curT := <-timer.C:
 						if curT.Unix()-leastReadUnix.Load() > readTO {
 							t.log.L(`W: `, fmt.Sprintf("%vs未接收到有效数据", readTO))
-							// 5s未接收到任何数据
+							// 时间段内未接收到任何数据
 							cancel()
 							return
 						}
