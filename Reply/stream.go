@@ -1257,8 +1257,8 @@ func (t *M4SStream) Start() bool {
 					}
 					duration := time.Since(startT)
 
-					// 结束，发送空值停止直播回放
-					t.Stream_msg.PushLock_tag(`data`, []byte{})
+					// 结束，不发送空值停止直播回放
+					// t.Stream_msg.PushLock_tag(`data`, []byte{})
 
 					//指定房间录制回调
 					if v, ok := ms.common.K_v.LoadV("指定房间录制回调").([]any); ok && len(v) > 0 {
