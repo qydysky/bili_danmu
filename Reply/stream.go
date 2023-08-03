@@ -790,7 +790,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 							t.first_buf = make([]byte, len(front_buf))
 							copy(t.first_buf, front_buf)
 							// fmt.Println("write front_buf")
-							t.Stream_msg.PushLock_tag(`data`, t.first_buf)
+							// t.Stream_msg.PushLock_tag(`data`, t.first_buf)
 							t.msg.Push_tag(`load`, t)
 						}
 						if keyframe.Size() != 0 {
@@ -1401,10 +1401,31 @@ func (t *M4SStream) PusherToHttp(w http.ResponseWriter, r *http.Request, startFu
 	}
 
 	//写入头
-	if _, err := w.Write(t.getFirstBuf()); err != nil {
-		return err
-	} else if flushSupport {
-		flusher.Flush()
+	{
+		retry := 5
+		for retry > 0 {
+			select {
+			case <-r.Context().Done():
+				break
+			default:
+			}
+
+			if len(t.getFirstBuf()) != 0 {
+				if _, err := w.Write(t.getFirstBuf()); err != nil {
+					return err
+				} else if flushSupport {
+					flusher.Flush()
+				}
+				break
+			}
+
+			time.Sleep(time.Second)
+			retry -= 1
+		}
+		if retry < 0 {
+			w.WriteHeader(http.StatusNotFound)
+			return errors.New("no stream")
+		}
 	}
 
 	//写入快速启动缓冲
