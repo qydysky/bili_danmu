@@ -1206,6 +1206,15 @@ func (t *M4SStream) Start() bool {
 					contextC, cancel := context.WithCancel(mainContextC)
 					fc.FlashWithCallback(cancel)
 
+					// 分段时长min
+					if l, ok := ms.common.K_v.LoadV("分段时长min").(float64); ok && l > 0 {
+						tc := time.AfterFunc(time.Duration(int64(time.Minute)*int64(l)), func() {
+							ms.log.Base_add(`分段`).L(`I: `, ms.common.Roomid, "ok")
+							ms.msg.Push_tag(`cut`, ms)
+						})
+						defer tc.Stop()
+					}
+
 					// 当stopRec时，取消录制
 					cancelMsg := ms.msg.Pull_tag_only(`stopRec`, func(_ *M4SStream) (disable bool) {
 						cancel()
