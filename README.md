@@ -194,7 +194,7 @@ sqlite3:
     ]
 }
 ```
-上述例子中演示了windows下使用[ffmpeg](https://ffmpeg.org/)~~~，这将使得保存的流文件`0.mp4 or 0.flv`转为正常的视频`1.mp4 or 1.flv`~~~。
+上述例子中演示了windows下使用[ffmpeg](https://ffmpeg.org/) ~~，这将使得保存的流文件`0.mp4 or 0.flv`转为正常的视频`1.mp4 or 1.flv`~~。
 
 注意：命令运行是异步的，如同步执行多个命令，应使用脚本。
 
