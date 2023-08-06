@@ -211,8 +211,19 @@ func (t *M4SStream) fetchCheckStream() bool {
 		return true
 	})
 
+	var nomcdn bool
+	if v, ok := t.common.K_v.LoadV("直播流不使用mcdn").(bool); ok && v {
+		nomcdn = true
+	}
+
+	r := t.reqPool.Get()
+	defer t.reqPool.Put(r)
 	for _, v := range t.common.Live {
-		r := t.reqPool.Get()
+		if nomcdn && strings.Contains(v.Url, ".mcdn.") {
+			t.common.Live = t.common.Live[1:]
+			continue
+		}
+
 		if e := r.Reqf(reqf.Rval{
 			Url:       v.Url,
 			Retry:     10,
@@ -239,11 +250,16 @@ func (t *M4SStream) fetchCheckStream() bool {
 		if r.Response == nil {
 			t.log.L(`W: `, `live响应错误`)
 			t.common.Live = t.common.Live[1:]
+			continue
 		} else if r.Response.StatusCode&200 != 200 {
 			t.log.L(`W: `, `live响应错误`, r.Response.Status)
 			t.common.Live = t.common.Live[1:]
+			continue
 		}
-		t.reqPool.Put(r)
+
+		// 显示使用流服务器
+		u, _ := url.Parse(v.Url)
+		t.log.L(`I: `, `使用流服务器`, u.Host)
 	}
 
 	return len(t.common.Live) != 0
