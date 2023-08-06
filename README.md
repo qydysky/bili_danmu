@@ -76,7 +76,7 @@
 本项目使用github action自动构建，构建过程详见[yml](https://github.com/qydysky/bili_danmu/blob/master/.github/workflows/go.yml)
 
 #### 保存日志至DB
-配置文件中添加配置项`保存日志至db`。大部分可以参考保存弹幕至db,当有些许不同：
+配置文件中添加配置项`保存日志至db`。大部分可以参考保存弹幕至db,但有些许不同：
 
 `insert`语句中不能使用`{...}`的占位符，默认占位符1为Prefix,2为Base,3为具体内容。见下面的mysql实例。
 ```json
@@ -194,7 +194,7 @@ sqlite3:
     ]
 }
 ```
-上述例子中演示了windows下使用[ffmpeg](https://ffmpeg.org/)，这将使得保存的流文件`0.mp4 or 0.flv`转为正常的视频`1.mp4 or 1.flv`。
+上述例子中演示了windows下使用[ffmpeg](https://ffmpeg.org/)~~~，这将使得保存的流文件`0.mp4 or 0.flv`转为正常的视频`1.mp4 or 1.flv`~~~。
 
 注意：命令运行是异步的，如同步执行多个命令，应使用脚本。
 
@@ -352,6 +352,7 @@ ass编码GB18030支持中文
     "直播流清晰度": 10000,
     "直播流类型-help": "flv,fmp4,flvH,fmp4H,带H后缀的为Hevc格式编码",
     "直播流类型": "flv",
+    "直播流不使用mcdn":true,
     "直播流保存位置": "/live",
     "Web服务地址":"0.0.0.0:10000",
     "直播Web服务路径":"/web/",
