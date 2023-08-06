@@ -361,7 +361,7 @@ func StreamOCut(roomid int, title ...string) {
 			if len(title) != 0 {
 				v.(*M4SStream).common.Title = title[0]
 			}
-			v.(*M4SStream).msg.PushLock_tag(`cut`, v.(*M4SStream))
+			v.(*M4SStream).msg.Push_tag(`cut`, v.(*M4SStream))
 			flog.L(`I: `, `已切片 `+strconv.Itoa(roomid))
 		}
 	}
