@@ -300,7 +300,7 @@ ass编码GB18030支持中文
 
 弹幕回放(仅直播流Web服务)
 
-在保存直播流时，如`弹幕回放`为`true`，则会将会将弹幕同时保存
+在保存直播流时，如`弹幕回放`为`true`，则会将会将弹幕同时保存为csv文件。切片或停止录制时，根据csv文件生成[xml文件](https://socialsisteryi.github.io/bilibili-API-collect/docs/danmaku/danmaku_xml.html#xml%E5%BC%B9%E5%B9%95)
 
 在[直播流Web服务](#直播流Web服务)中，点击进入任意一个目录，进行回放，如`弹幕回放`为`true`，则会将会将弹幕回放出来
 
