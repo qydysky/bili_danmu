@@ -35,6 +35,7 @@ import (
 	send "github.com/qydysky/bili_danmu/Send"
 
 	p "github.com/qydysky/part"
+	comp "github.com/qydysky/part/component"
 	file "github.com/qydysky/part/file"
 	limit "github.com/qydysky/part/limit"
 	msgq "github.com/qydysky/part/msgq"
@@ -1603,13 +1604,19 @@ func StartRecDanmu(c context.Context, filePath string) {
 	var Recoder = websocket.Recorder{
 		Server: StreamWs,
 	}
-	if e := Recoder.Start(filePath); e == nil {
+	if e := Recoder.Start(filePath + "0.csv"); e == nil {
 		f.L(`I: `, `开始`)
 	} else {
 		f.L(`E: `, e)
 	}
 	<-c.Done()
 	f.L(`I: `, `结束`)
+
+	// 弹幕录制结束
+	if e := comp.Run[string](`bili_danmu.Reply.StartRecDanmu.Stop`, context.Background(), &filePath); e != nil {
+		f.L(`E: `, e)
+	}
+
 	Recoder.Stop()
 }
 

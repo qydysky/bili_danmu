@@ -1274,7 +1274,7 @@ func (t *M4SStream) Start() bool {
 						}
 						fj.Close()
 					}
-					go StartRecDanmu(contextC, cp+"0.csv")     //保存弹幕
+					go StartRecDanmu(contextC, cp)             //保存弹幕
 					go Ass_f(contextC, cp, cp+"0", time.Now()) //开始ass
 					startT := time.Now()
 					if e := ms.PusherToFile(contextC, cp+`0.`+st, startf, stopf); e != nil {
