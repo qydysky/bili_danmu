@@ -1404,6 +1404,8 @@ func (t *GetFunc) Get_cookie() (missKey []string) {
 			return true
 		})
 
+		r := t.ReqPool.Get()
+		defer t.ReqPool.Put(r)
 		for {
 			//3s刷新查看是否通过
 			time.Sleep(time.Duration(3) * time.Second)
@@ -1413,8 +1415,6 @@ func (t *GetFunc) Get_cookie() (missKey []string) {
 				return
 			}
 
-			r := t.ReqPool.Get()
-			defer t.ReqPool.Put(r)
 			if e := r.Reqf(reqf.Rval{
 				Url:     `https://passport.bilibili.com/qrcode/getLoginInfo`,
 				PostStr: `oauthKey=` + oauth,
@@ -1522,9 +1522,9 @@ func Get_list_in_room() (array []FansMedalI) {
 
 	{ //获取牌子列表
 		var medalList []FansMedalI
+		r := c.C.ReqPool.Get()
+		defer c.C.ReqPool.Put(r)
 		for pageNum := 1; true; pageNum += 1 {
-			r := c.C.ReqPool.Get()
-			defer c.C.ReqPool.Put(r)
 			if e := r.Reqf(reqf.Rval{
 				Url: `https://api.live.bilibili.com/xlive/app-ucenter/v1/fansMedal/panel?page=` + strconv.Itoa(pageNum) + `&page_size=10`,
 				Header: map[string]string{
@@ -1882,9 +1882,9 @@ func (t *GetFunc) Get_LIVE_BUVID() (missKey []string) {
 		"1", //哔哩哔哩直播
 	}
 
+	req := t.ReqPool.Get()
+	defer t.ReqPool.Put(req)
 	for _, roomid := range roomIdList { //获取
-		req := t.ReqPool.Get()
-		defer t.ReqPool.Put(req)
 		if err := req.Reqf(reqf.Rval{
 			Url: `https://api.live.bilibili.com/live/getRoomKanBanModel?roomid=` + roomid,
 			Header: map[string]string{

@@ -379,8 +379,7 @@ func (t *Common) Init() *Common {
 					"currentTime": time.Now().Format(time.DateTime),
 					"state": map[string]any{
 						"base": map[string]any{
-							"reqPoolInUse": t.ReqPool.PoolInUse(),
-							"reqPoolSum":   t.ReqPool.PoolSum(),
+							"reqPoolState": fmt.Sprintf("pooled(%d), nopooled(%d), inuse(%d), nouse(%d), sum(%d)", t.ReqPool.PoolState()...),
 							"numGoroutine": runtime.NumGoroutine(),
 							"goVersion":    runtime.Version(),
 						},
@@ -484,6 +483,7 @@ func (t *Common) loadConf(customConf string) error {
 		if strings.Contains(customConf, "http:") || strings.Contains(customConf, "https:") {
 			//从网址读取
 			req := t.ReqPool.Get()
+			defer t.ReqPool.Put(req)
 			if e := req.Reqf(reqf.Rval{
 				Url: customConf,
 				Header: map[string]string{
@@ -510,7 +510,6 @@ func (t *Common) loadConf(customConf string) error {
 					data[k] = v
 				}
 			}
-			t.ReqPool.Put(req)
 		} else {
 			//从文件读取
 			if bb, err := file.New(customConf, 0, true).ReadAll(100, 1<<16); err != nil {

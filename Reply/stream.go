@@ -701,7 +701,6 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 				`Cookie`:          reqf.Map_2_Cookies_String(CookieM),
 			},
 		}); e != nil && reqf.IsTimeout(e) {
-			t.reqPool.Put(r)
 			v.DisableAuto()
 			continue
 		}
