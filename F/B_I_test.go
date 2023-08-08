@@ -11,3 +11,9 @@ func TestBtoi32(t *testing.T) {
 func TestItob32(t *testing.T) {
 	t.Log(Itob64(1131984000))
 }
+
+func Test1(t *testing.T) {
+	if Btoi([]byte{1, 2, 3, 4, 5}, 0, 4) != int64(Btoi32([]byte{1, 2, 3, 4, 5}, 0)) {
+		t.Fatal()
+	}
+}

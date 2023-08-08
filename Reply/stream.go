@@ -1463,22 +1463,18 @@ func (t *M4SStream) PusherToHttp(w http.ResponseWriter, r *http.Request, startFu
 		}
 	}
 
-	contextC, cancel := context.WithCancel(r.Context())
-
 	//
 	cancelRec := t.Stream_msg.Pull_tag_async(map[string]func([]byte) bool{
 		`data`: func(b []byte) bool {
 			select {
-			case <-contextC.Done():
+			case <-r.Context().Done():
 				return true
 			default:
 			}
 			if len(b) == 0 {
-				cancel()
 				return true
 			}
 			if _, err := w.Write(b); err != nil {
-				cancel()
 				return true
 			} else if flushSupport {
 				flusher.Flush()
@@ -1486,11 +1482,10 @@ func (t *M4SStream) PusherToHttp(w http.ResponseWriter, r *http.Request, startFu
 			return false
 		},
 		`close`: func(_ []byte) bool {
-			cancel()
 			return true
 		},
 	})
-	<-contextC.Done()
+	<-r.Context().Done()
 	cancelRec()
 
 	if e := stopFunc(t); e != nil {
