@@ -136,3 +136,82 @@ func CookieCheck(key []string) (missKey []string) {
 	}
 	return
 }
+
+// just faster, use in right way
+//
+// eg. ParseQuery(`http://1.com/2?workspace=1`, "workspace=") => `1`
+func ParseQuery(rawURL, key string) string {
+	s := 0
+	for i := 0; i < len(rawURL); i++ {
+		if rawURL[i] == '?' {
+			s = i + 1
+			break
+		}
+	}
+
+	for i := s; i < len(rawURL); i++ {
+		for j := 0; i < len(rawURL) && j < len(key); j, i = j+1, i+1 {
+			if rawURL[i] != key[j] {
+				break
+			} else if j == len(key)-1 {
+				s = i + 1
+				i = len(rawURL)
+				break
+			}
+		}
+	}
+
+	d := s
+	for ; d < len(rawURL); d++ {
+		if rawURL[d] == '&' || rawURL[d] == '#' {
+			break
+		}
+	}
+
+	return rawURL[s:d]
+}
+
+// just faster, use in right way
+//
+// eg. ParseHost(`http://1.com/2`) => `1.com`
+func ParseHost(rawURL string) string {
+	s := 0
+	for i := 0; i < len(rawURL); i++ {
+		for j := 0; i < len(rawURL) && j < len("//"); j, i = j+1, i+1 {
+			if rawURL[i] != "//"[j] {
+				break
+			} else if j == len("//")-1 {
+				s = i + 1
+				i = len(rawURL)
+				break
+			}
+		}
+	}
+
+	d := s
+	for i := s; i < len(rawURL); i++ {
+		if rawURL[i] == '/' {
+			d = i
+			break
+		}
+	}
+
+	return rawURL[s:d]
+}
+
+// just faster, use in right way
+//
+// eg. ResolveReferenceLast(`http://1.com/2`, `1`) => `http://1.com/1`
+func ResolveReferenceLast(rawURL, ref string) string {
+	s := 0
+	for i := 0; i < len(rawURL); i++ {
+		if rawURL[i] == '/' {
+			s = i
+		}
+		if rawURL[i] == '?' || rawURL[i] == '#' {
+			break
+		}
+	}
+
+	return rawURL[:s+1] + ref
+}

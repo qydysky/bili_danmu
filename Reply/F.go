@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"net"
 	"net/http"
 	"net/http/pprof"
 	"net/url"
@@ -1399,6 +1400,7 @@ func init() {
 				w.Header().Set("Retry-After", "1")
 				w.WriteHeader(http.StatusServiceUnavailable)
 				flog.L(`E: `, `无指定路径`)
+				return
 			}
 
 			if rpath != `/now/` {
@@ -1493,7 +1495,7 @@ func init() {
 				return
 			}
 
-			w.WriteHeader(http.StatusOK)
+			// w.WriteHeader(http.StatusOK)
 
 			// 推送数据
 			{
@@ -1505,7 +1507,10 @@ func init() {
 					flog.L(`T: `, r.RemoteAddr, `断开直播流`)
 					return nil
 				}
-				if e := currentStreamO.PusherToHttp(w, r, startFunc, stopFunc); e != nil {
+
+				conn, _ := r.Context().Value(c.C.SerF).(net.Conn)
+
+				if e := currentStreamO.PusherToHttp(conn, w, r, startFunc, stopFunc); e != nil {
 					flog.L(`W: `, e)
 				}
 			}

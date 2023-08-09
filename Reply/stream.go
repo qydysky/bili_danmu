@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -258,8 +259,7 @@ func (t *M4SStream) fetchCheckStream() bool {
 		}
 
 		// 显示使用流服务器
-		u, _ := url.Parse(v.Url)
-		t.log.L(`I: `, `使用流服务器`, u.Host)
+		t.log.L(`I: `, `使用流服务器`, F.ParseHost(v.Url))
 	}
 
 	return len(t.common.Live) != 0
@@ -282,20 +282,14 @@ func (t *M4SStream) fetchParseM3U8() (m4s_links []*m4s_link_item, m3u8_addon []b
 			continue
 		}
 
-		m3u8_url, err := url.Parse(v.Url)
-		if err != nil {
-			e = err
-			return
-		}
-
 		// 设置请求参数
 		rval := reqf.Rval{
-			Url:     m3u8_url.String(),
+			Url:     v.Url,
 			Retry:   2,
 			Timeout: 2000,
 			Proxy:   c.C.Proxy,
 			Header: map[string]string{
-				`Host`:            m3u8_url.Host,
+				`Host`:            F.ParseHost(v.Url),
 				`User-Agent`:      c.UA,
 				`Accept`:          `*/*`,
 				`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
@@ -314,7 +308,7 @@ func (t *M4SStream) fetchParseM3U8() (m4s_links []*m4s_link_item, m3u8_addon []b
 		if err := r.Reqf(rval); err != nil {
 			// 1min后重新启用
 			t.common.Live[k].DisableAuto()
-			t.log.L("W: ", fmt.Sprintf("服务器 %s 发生故障 %s", m3u8_url.Host, err.Error()))
+			t.log.L("W: ", fmt.Sprintf("服务器 %s 发生故障 %s", F.ParseHost(v.Url), err.Error()))
 			if t.common.ValidLive() == nil {
 				e = errors.New("全部流服务器发生故障")
 				break
@@ -339,6 +333,7 @@ func (t *M4SStream) fetchParseM3U8() (m4s_links []*m4s_link_item, m3u8_addon []b
 
 		// base64解码
 		if len(m3u8_respon) != 0 && !bytes.Contains(m3u8_respon, []byte("#")) {
+			var err error
 			m3u8_respon, err = base64.StdEncoding.DecodeString(string(m3u8_respon))
 			if err != nil {
 				e = err
@@ -386,13 +381,6 @@ func (t *M4SStream) fetchParseM3U8() (m4s_links []*m4s_link_item, m3u8_addon []b
 				continue
 			}
 
-			//获取切片地址
-			u, err := url.Parse("./" + m4s_link + "?trid=" + m3u8_url.Query().Get("trid"))
-			if err != nil {
-				e = err
-				return
-			}
-
 			{
 				tmpBase := m4s_link
 				// fmt.Println(tmpBase, t.last_m4s != nil)
@@ -412,7 +400,8 @@ func (t *M4SStream) fetchParseM3U8() (m4s_links []*m4s_link_item, m3u8_addon []b
 			// fmt.Println("->", m4s_link)
 			//将切片添加到返回切片数组
 			p := t.getM4s()
-			p.Url = m3u8_url.ResolveReference(u).String()
+			//获取切片地址
+			p.Url = F.ResolveReferenceLast(v.Url, m4s_link+"?trid="+F.ParseQuery(v.Url, "trid="))
 			p.Base = m4s_link
 			p.createdTime = time.Now()
 			tmp = append(tmp, p)
@@ -431,7 +420,7 @@ func (t *M4SStream) fetchParseM3U8() (m4s_links []*m4s_link_item, m3u8_addon []b
 			if timed > 5 && nos-noe == 0 {
 				// 1min后重新启用
 				t.common.Live[k].DisableAuto()
-				t.log.L("W: ", fmt.Sprintf("服务器 %s 发生故障 %d 秒产出了 %d 切片", m3u8_url.Host, int(timed), nos-noe))
+				t.log.L("W: ", fmt.Sprintf("服务器 %s 发生故障 %d 秒产出了 %d 切片", F.ParseHost(v.Url), int(timed), nos-noe))
 				if t.common.ValidLive() == nil {
 					e = errors.New("全部切片服务器发生故障")
 					break
@@ -497,17 +486,11 @@ func (t *M4SStream) fetchParseM3U8() (m4s_links []*m4s_link_item, m3u8_addon []b
 			// 补充m3u8
 			m3u8_addon = append([]byte("#EXTINF:1.00\n"+strconv.Itoa(guess_no)+".m4s\n"), m3u8_addon...)
 
-			//获取切片地址
-			u, err := url.Parse("./" + strconv.Itoa(guess_no) + `.m4s`)
-			if err != nil {
-				e = err
-				return
-			}
-
 			//将切片添加到返回切片数组前
 			p := t.getM4s()
-			p.Url = m3u8_url.ResolveReference(u).String()
 			p.Base = strconv.Itoa(guess_no) + `.m4s`
+			//获取切片地址
+			p.Url = F.ResolveReferenceLast(v.Url, p.Base)
 			p.createdTime = time.Now()
 			m4s_links = append([]*m4s_link_item{p}, m4s_links...)
 		}
@@ -1402,7 +1385,7 @@ func (t *M4SStream) PusherToFile(contextC context.Context, filepath string, star
 }
 
 // 流服务推送方法
-func (t *M4SStream) PusherToHttp(w http.ResponseWriter, r *http.Request, startFunc func(*M4SStream) error, stopFunc func(*M4SStream) error) error {
+func (t *M4SStream) PusherToHttp(conn net.Conn, w http.ResponseWriter, r *http.Request, startFunc func(*M4SStream) error, stopFunc func(*M4SStream) error) error {
 	switch t.stream_type {
 	case `m3u8`:
 		fallthrough
@@ -1463,7 +1446,8 @@ func (t *M4SStream) PusherToHttp(w http.ResponseWriter, r *http.Request, startFu
 	}
 
 	//
-	cancelRec := t.Stream_msg.Pull_tag_async(map[string]func([]byte) bool{
+	var cancelRec func()
+	cancelRec = t.Stream_msg.Pull_tag_async(map[string]func([]byte) bool{
 		`data`: func(b []byte) bool {
 			select {
 			case <-r.Context().Done():
@@ -1473,6 +1457,16 @@ func (t *M4SStream) PusherToHttp(w http.ResponseWriter, r *http.Request, startFu
 			if len(b) == 0 {
 				return true
 			}
+
+			// 1s内写入失败，关闭conn,防止协程泄漏
+			done := time.AfterFunc(time.Second, func() {
+				cancelRec()
+				if conn != nil {
+					println(conn.Close())
+				}
+			}).Stop
+			defer done()
+
 			if _, err := w.Write(b); err != nil {
 				return true
 			} else if flushSupport {
