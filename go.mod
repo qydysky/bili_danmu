@@ -1,11 +1,11 @@
 module github.com/qydysky/bili_danmu
 
-go 1.20
+go 1.21
 
 require (
 	github.com/gotk3/gotk3 v0.6.2
 	github.com/mdp/qrterminal/v3 v3.1.1
-	github.com/qydysky/part v0.28.1-0.20230809171140-df54e42857d2
+	github.com/qydysky/part v0.28.1-0.20230810122650-0b8c64124a46
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966
 	golang.org/x/text v0.12.0
@@ -43,13 +43,13 @@ require (
 	github.com/miekg/dns v1.1.55 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
 	github.com/thedevsaddam/gojsonq/v2 v2.5.2 // indirect
-	github.com/tklauser/go-sysconf v0.3.11 // indirect
+	github.com/tklauser/go-sysconf v0.3.12 // indirect
 	github.com/tklauser/numcpus v0.6.1 // indirect
 	github.com/yusufpapurcu/wmi v1.2.3 // indirect
 	golang.org/x/mod v0.12.0 // indirect
 	golang.org/x/net v0.14.0 // indirect
 	golang.org/x/sys v0.11.0 // indirect
-	golang.org/x/tools v0.11.1 // indirect
+	golang.org/x/tools v0.12.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	modernc.org/sqlite v1.25.0
 	rsc.io/qr v0.2.0 // indirect
