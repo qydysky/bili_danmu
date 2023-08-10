@@ -862,8 +862,23 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 
 func (t *M4SStream) saveStreamM4s() (e error) {
 	// 同时下载数限制
-	var download_limit = &funcCtrl.BlockFuncN{
-		Max: 3,
+	var download_limit = &funcCtrl.BlockFuncN{Max: 3}
+
+	if v, ok := t.common.K_v.LoadV(`debug模式`).(bool); ok && v {
+		ctx, can := context.WithCancel(context.Background())
+		defer can()
+		go func() {
+			ticker := time.NewTicker(time.Minute)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+				}
+				t.log.L(`T: `, fmt.Sprintf("m4sPoolState pooled(%d), nopooled(%d), inuse(%d), nouse(%d), sum(%d)", t.m4s_pool.PoolState()...))
+			}
+		}()
 	}
 
 	//
@@ -1462,7 +1477,7 @@ func (t *M4SStream) PusherToHttp(conn net.Conn, w http.ResponseWriter, r *http.R
 			done := time.AfterFunc(time.Second, func() {
 				cancelRec()
 				if conn != nil {
-					println(conn.Close())
+					conn.Close()
 				}
 			}).Stop
 			defer done()

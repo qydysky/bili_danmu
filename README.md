@@ -238,7 +238,10 @@ config_K_v.json
 }
 ```
 
-另外，当配置文件中的`debug模式`为`true`时，标准包[net/http/pprof](https://pkg.go.dev/net/http/pprof)将在`/debug/pprof/`路径可用，从而可以使用`go tool pprof`工具进行性能调试。
+另外，当配置文件中的`debug模式`为`true`时
+
+- 标准包[net/http/pprof](https://pkg.go.dev/net/http/pprof)将在`/debug/pprof/`路径可用，从而可以使用`go tool pprof`工具进行性能调试。
+- 当录制fmp4时，每1分钟打印m4s池状态
 
 
 #### 自定义config_K_v.json
