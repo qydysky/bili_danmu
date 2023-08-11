@@ -431,10 +431,10 @@ func (t *GetFunc) configStreamType(sts []J.StreamType) {
 
 	apilog.Base_add(`configStreamType`).L(`W: `, "未找到配置的直播流类型，使用默认flv、fmp4")
 
-	// 默认使用flv、fmp4
+	// 默认使用fmp4、flv
 	for _, streamType := range []c.StreamType{
-		t.AllStreamType[`flv`],
 		t.AllStreamType[`fmp4`],
+		t.AllStreamType[`flv`],
 	} {
 
 		for _, v := range sts {
