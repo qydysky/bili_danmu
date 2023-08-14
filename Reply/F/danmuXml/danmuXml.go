@@ -1,4 +1,4 @@
-package danmuxml
+package danmuXml
 
 import (
 	"bytes"
@@ -13,8 +13,10 @@ import (
 	file "github.com/qydysky/part/file"
 )
 
+type Sign struct{}
+
 func init() {
-	if e := comp.Put[string](`bili_danmu.Reply.StartRecDanmu.Stop.danmuxml.toXml`, toXml); e != nil {
+	if e := comp.Put[string](comp.Sign[Sign](), toXml); e != nil {
 		panic(e)
 	}
 }

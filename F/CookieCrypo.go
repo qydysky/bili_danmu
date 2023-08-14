@@ -26,7 +26,6 @@ func CookieGet() []byte {
 				pri = d
 			}
 		} else if pubS, ok := c.C.K_v.LoadV(`cookie加密公钥`).(string); ok && pubS != `` {
-			c.C.Log.Block(1000) //等待所有日志输出完毕
 			priS := ``
 			fmt.Printf("cookie密钥路径: ")
 			_, err := fmt.Scanln(&priS)

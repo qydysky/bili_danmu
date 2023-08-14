@@ -1618,7 +1618,8 @@ func StartRecDanmu(c context.Context, filePath string) {
 	f.L(`I: `, `结束`)
 
 	// 弹幕录制结束
-	if e := comp.Run[string](`bili_danmu.Reply.StartRecDanmu.Stop`, context.Background(), &filePath); e != nil {
+	type empty struct{}
+	if e := comp.Run[string](comp.Sign[empty](`startRecDanmu`, `stop`), context.Background(), &filePath); e != nil {
 		f.L(`E: `, e)
 	}
 

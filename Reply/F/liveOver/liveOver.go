@@ -9,8 +9,11 @@ import (
 	comp "github.com/qydysky/part/component"
 )
 
+type Sign struct{}
+
 func init() {
-	if e := comp.Put[c.Common](`bili_danmu.Reply.wsmsg.preparing.liveOver.sumup`, sumup); e != nil {
+	type empty struct{}
+	if e := comp.Put[c.Common](comp.Sign[Sign](), sumup); e != nil {
 		panic(e)
 	}
 }

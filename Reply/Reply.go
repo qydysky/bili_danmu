@@ -771,7 +771,8 @@ func (replyF) preparing(s string) {
 			var roomId, _ = strconv.Atoi(type_item.Roomid)
 			StreamOStop(roomId)
 			// 下播总结
-			if e := comp.Run(`bili_danmu.Reply.wsmsg.preparing`, context.Background(), c.C); e != nil {
+			type empty struct{}
+			if e := comp.Run(comp.Sign[empty](`preparing`), context.Background(), c.C); e != nil {
 				msglog.L(`E: `, e)
 			}
 		}

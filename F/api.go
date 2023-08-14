@@ -1380,7 +1380,6 @@ func (t *GetFunc) Get_cookie() (missKey []string) {
 			apilog.L(`W: `, `或打开链接扫码登录：`+t.Stream_url.String()+scanPath)
 		}
 
-		apilog.Block(1000)
 		//show qr code in cmd
 		qrterminal.GenerateWithConfig(img_url, qrterminal.Config{
 			Level:     qrterminal.L,

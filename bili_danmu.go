@@ -28,9 +28,7 @@ import (
 var version string
 
 func Start() {
-	var danmulog = c.C.Log.Base(`bilidanmu`)
-	defer danmulog.Block(1000)
-
+	danmulog := c.C.Log.Base(`bilidanmu`)
 	danmulog.L(`I: `, `当前PID:`, c.C.PID)
 	danmulog.L(`I: `, "version: ", strings.TrimSpace(version))
 
