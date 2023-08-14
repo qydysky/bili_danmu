@@ -12,7 +12,6 @@ import (
 type Sign struct{}
 
 func init() {
-	type empty struct{}
 	if e := comp.Put[c.Common](comp.Sign[Sign](), sumup); e != nil {
 		panic(e)
 	}
