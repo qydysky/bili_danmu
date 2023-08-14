@@ -13,10 +13,16 @@ import (
 	file "github.com/qydysky/part/file"
 )
 
-type Sign struct{}
+type Sign struct {
+	// path: csv所在目录，末尾无
+	toXml func(ctx context.Context, path *string) error
+}
 
 func init() {
-	if e := comp.Put[string](comp.Sign[Sign](), toXml); e != nil {
+	sign := Sign{
+		toXml: toXml,
+	}
+	if e := comp.Put[string](comp.Sign[Sign](`toXml`), sign.toXml); e != nil {
 		panic(e)
 	}
 }

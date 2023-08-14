@@ -1551,6 +1551,11 @@ func init() {
 					if !file.New(v+"0.csv", 0, true).IsExist() {
 						w.WriteHeader(http.StatusNotFound)
 						return
+					} else if !file.New(v+"0.xml", 0, true).IsExist() {
+						type empty struct{}
+						if e := comp.Run(comp.Sign[empty](`SerF.player.ws`), context.Background(), &v); e != nil {
+							msglog.L(`E: `, e)
+						}
 					}
 
 					if s, closeF := PlayRecDanmu(v + "0.csv"); s == nil {
