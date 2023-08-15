@@ -14,6 +14,9 @@ func init() {
 		"github.com/qydysky/bili_danmu/Reply.SerF.player.ws": {
 			comp.Sign[danmuXml.Sign](`toXml`),
 		},
+		"github.com/qydysky/bili_danmu/Reply.SerF.player.xml": {
+			comp.Sign[danmuXml.Sign](`toXml`),
+		},
 		"github.com/qydysky/bili_danmu/Reply.preparing": {
 			comp.Sign[liveOver.Sign](`sumup`),
 		},

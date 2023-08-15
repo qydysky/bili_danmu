@@ -236,15 +236,25 @@ __webpack_require__.r(__webpack_exports__);
     let player,
         flvPlayer,
         danmuEmit = document.createElement("div"),
-        config = {
+        ref = new URL(window.location.href).searchParams.get("ref"),
+        danmukuOption = {
+            speed: 7,
+            opacity: 0.7,
+            mount: danmuEmit,
+        };
+    
+    if(ref!="now")danmukuOption.danmuku = "./xml?&ref="+ref;
+
+    let config = {
             conn: undefined,
             container: '.artplayer-app',
-            url: "../stream?_=" + new Date().getTime()+"&ref="+new URL(window.location.href).searchParams.get("ref"),
+            url: "../stream?_=" + new Date().getTime()+"&ref="+ref,
             title: "" + new Date().getTime(),
             type: "flv",
+            lock: true,
             volume: 0.5,
             hotkey: false,
-            isLive: true,
+            isLive: ref=="now",
             muted: false,
             autoplay: true,
             autoMini: true,
@@ -315,12 +325,7 @@ __webpack_require__.r(__webpack_exports__);
                 }
             ],
             plugins: [
-                artplayer_plugin_danmuku__WEBPACK_IMPORTED_MODULE_2___default()({
-                    danmuku: [],
-                    speed: 7,
-                    opacity: 0.7,
-                    mount: danmuEmit,
-                }),
+                artplayer_plugin_danmuku__WEBPACK_IMPORTED_MODULE_2___default()(danmukuOption),
             ],
             icons: {
                 loading: '<img src=' + _img_ploading_gif__WEBPACK_IMPORTED_MODULE_3__["default"] + '>',
@@ -364,7 +369,7 @@ __webpack_require__.r(__webpack_exports__);
      function ws() {
         if (window["WebSocket"]) {
             var interval_handle = 0
-            var conn = new WebSocket("ws://" + window.location.host + window.location.pathname+"ws?&ref="+new URL(window.location.href).searchParams.get("ref"));
+            var conn = new WebSocket("ws://" + window.location.host + window.location.pathname+"ws?&ref="+ref);
             conn.onclose = function (evt) {
                 clearInterval(interval_handle)
             };
@@ -396,10 +401,10 @@ __webpack_require__.r(__webpack_exports__);
         if(player != undefined && player.destroy != undefined)player.destroy();
         player = new (artplayer__WEBPACK_IMPORTED_MODULE_0___default())(config);
         player.on('play', (...args) => {
-            config.conn.send(`play`);
+            if(config.conn != undefined)config.conn.send(`play`);
         });
         player.on('pause', (...args) => {
-            config.conn.send(`pause`);
+            if(config.conn != undefined)config.conn.send(`pause`);
         });
         player.on('video:ended', (...args) => {
             if(config.conn != undefined){
@@ -409,12 +414,12 @@ __webpack_require__.r(__webpack_exports__);
             if(flvPlayer)flvPlayer.unload();
         });
         player.on('artplayerPluginDanmuku:emit', (danmu) => {
-            config.conn.send("%S"+danmu.text);
+            if(config.conn != undefined)config.conn.send("%S"+danmu.text);
         });
         document.addEventListener("resize", player.autoSize)
     }
     
-    ws();
+    if(ref=="now")ws();
     initPlay(config);
 })();
 

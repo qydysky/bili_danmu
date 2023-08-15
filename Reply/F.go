@@ -1553,7 +1553,7 @@ func init() {
 						return
 					} else if !file.New(v+"0.xml", 0, true).IsExist() {
 						type empty struct{}
-						if e := comp.Run(comp.Sign[empty](`SerF.player.ws`), context.Background(), &v); e != nil {
+						if e := comp.Run(comp.Sign[empty](`SerF`, `player`, `ws`), context.Background(), &v); e != nil {
 							msglog.L(`E: `, e)
 						}
 					}
@@ -1597,6 +1597,60 @@ func init() {
 			<-conn
 			//等待会话结束，通道释放
 			<-conn
+		})
+
+		// 弹幕回放xml
+		c.C.SerF.Store(path+"player/xml", func(w http.ResponseWriter, r *http.Request) {
+			if c.DefaultHttpCheck(c.C, w, r, http.MethodGet) {
+				return
+			}
+
+			// 直播流回放连接限制
+			if climit.ReachMax(r) {
+				w.WriteHeader(http.StatusTooManyRequests)
+				_, _ = w.Write([]byte(http.StatusText(http.StatusTooManyRequests)))
+				return
+			}
+
+			var rpath string
+
+			if qref := r.URL.Query().Get("ref"); rpath == "" && qref != "" {
+				rpath = "/" + qref + "/"
+			}
+
+			if rpath == "" {
+				w.Header().Set("Retry-After", "1")
+				w.WriteHeader(http.StatusServiceUnavailable)
+				return
+			}
+
+			if v, ok := c.C.K_v.LoadV(`直播流保存位置`).(string); !ok || v == "" {
+				w.Header().Set("Retry-After", "1")
+				w.WriteHeader(http.StatusServiceUnavailable)
+				flog.L(`W: `, `直播流保存位置无效`)
+			} else {
+				if strings.HasSuffix(v, "/") || strings.HasSuffix(v, "\\") {
+					v += rpath[1:]
+				} else {
+					v += rpath
+				}
+
+				if !file.New(v+"0.xml", 0, true).IsExist() {
+					if !file.New(v+"0.csv", 0, true).IsExist() {
+						w.WriteHeader(http.StatusNotFound)
+						return
+					}
+
+					type empty struct{}
+					if e := comp.Run(comp.Sign[empty](`SerF`, `player`, `xml`), context.Background(), &v); e != nil {
+						msglog.L(`E: `, e)
+					}
+				}
+
+				if e := file.New(v+"0.xml", 0, true).CopyToIoWriter(w, 0, false); e != nil {
+					flog.L(`W: `, e)
+				}
+			}
 		})
 
 		if s, ok := c.C.K_v.LoadV("直播Web服务路径").(string); ok && s != "" {
