@@ -1385,7 +1385,7 @@ func init() {
 			//header
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
 			w.Header().Set("Access-Control-Allow-Headers", "*")
-			w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Methods", "GET")
 			w.Header().Set("Access-Control-Allow-Origin", "*")
 			w.Header().Set("Connection", "keep-alive")
 			w.Header().Set("Content-Transfer-Encoding", "binary")
@@ -1404,7 +1404,12 @@ func init() {
 			}
 
 			if rpath != `/now/` {
-				if v, ok := c.C.K_v.LoadV(`直播流保存位置`).(string); ok && v != "" {
+				if v, ok := c.C.K_v.LoadV(`直播流保存位置`).(string); !ok || v == "" {
+					w.Header().Set("Retry-After", "1")
+					w.WriteHeader(http.StatusServiceUnavailable)
+					flog.L(`W: `, `直播流保存位置无效`)
+					return
+				} else {
 					if strings.HasSuffix(v, "/") || strings.HasSuffix(v, "\\") {
 						v += rpath[1:]
 					} else {
@@ -1419,8 +1424,10 @@ func init() {
 					}
 					if file.New(v+"0.flv", 0, true).IsExist() {
 						v += "0.flv"
+						w.Header().Set("Content-Type", "flv-application/octet-stream")
 					} else if file.New(v+"0.mp4", 0, true).IsExist() {
 						v += "0.mp4"
+						w.Header().Set("Content-Type", "video/mp4")
 					} else {
 						w.Header().Set("Retry-After", "1")
 						w.WriteHeader(http.StatusServiceUnavailable)
@@ -1428,9 +1435,10 @@ func init() {
 						return
 					}
 
+					// 读取区间
 					var rangeHeaderNum int
-					var e error
 					if rangeHeader := r.Header.Get(`range`); rangeHeader != "" {
+						var e error
 						if strings.Index(rangeHeader, "bytes=") != 0 {
 							w.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
 							flog.L(`W: `, `请求的范围不合法:仅支持bytes`)
@@ -1443,37 +1451,42 @@ func init() {
 							w.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
 							flog.L(`W: `, `请求的范围不合法:`, e)
 							return
-						} else if rangeHeaderNum != 0 {
-							w.WriteHeader(http.StatusPartialContent)
+						}
+					}
+
+					// 直播流回放速率
+					var speed, _ = humanize.ParseBytes("1 M")
+					if rc, ok := c.C.K_v.LoadV(`直播流回放速率`).(string); ok {
+						if s, e := humanize.ParseBytes(rc); e != nil {
+							w.WriteHeader(http.StatusServiceUnavailable)
+							flog.L(`W: `, `直播流回放速率不合法:`, e)
+							return
+						} else {
+							speed = s
 						}
 					}
 
 					f := file.New(v, int64(rangeHeaderNum), false)
 					defer f.Close()
 
-					// 直播流回放速率
-					var speed, _ = humanize.ParseBytes("1 M")
-					if rc, ok := c.C.K_v.LoadV(`直播流回放速率`).(string); ok {
-						if s, e := humanize.ParseBytes(rc); e != nil {
-							flog.L(`W: `, `直播流回放速率不合法:`, e)
-						} else {
-							speed = s
+					// 设置当前返回区间，并拷贝
+					if fi, e := f.Stat(); e != nil {
+						w.WriteHeader(http.StatusServiceUnavailable)
+						flog.L(`W: `, e)
+						return
+					} else {
+						var totalSec int64 = 10
+						allSize := fi.Size()
+						targetC := int64(rangeHeaderNum) + int64(speed)*totalSec
+						if allSize < targetC {
+							targetC = allSize
+						}
+						w.Header().Add(`Content-Range`, fmt.Sprintf("bytes %d-%d/%d", rangeHeaderNum, targetC, allSize))
+						w.WriteHeader(http.StatusPartialContent)
+						if e := f.CopyToIoWriterUntil(pweb.WithFlush(w), int64(speed), totalSec, true); e != nil {
+							flog.L(`E: `, e)
 						}
 					}
-
-					go func() {
-						flog.L(`T: `, r.RemoteAddr, `接入录播`, v)
-						<-r.Context().Done()
-						flog.L(`T: `, r.RemoteAddr, `断开录播`, v)
-					}()
-
-					if e := f.CopyToIoWriter(w, int64(speed), true); e != nil {
-						flog.L(`E: `, e)
-					}
-				} else {
-					w.Header().Set("Retry-After", "1")
-					w.WriteHeader(http.StatusServiceUnavailable)
-					flog.L(`W: `, `直播流保存位置无效`)
 				}
 				return
 			}
