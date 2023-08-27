@@ -13,7 +13,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dustin/go-humanize"
 	c "github.com/qydysky/bili_danmu/CV"
 	J "github.com/qydysky/bili_danmu/Json"
 	"github.com/skratchdot/open-golang/open"
@@ -23,6 +22,7 @@ import (
 	file "github.com/qydysky/part/file"
 	funcCtrl "github.com/qydysky/part/funcCtrl"
 	g "github.com/qydysky/part/get"
+	pio "github.com/qydysky/part/io"
 	limit "github.com/qydysky/part/limit"
 	reqf "github.com/qydysky/part/reqf"
 
@@ -1372,7 +1372,7 @@ func (t *GetFunc) Get_cookie() (missKey []string) {
 				if c.DefaultHttpCheck(t.Common, w, r, http.MethodGet) {
 					return
 				}
-				_ = file.New("qr.png", 0, true).CopyToIoWriter(w, humanize.MByte, true)
+				_ = file.New("qr.png", 0, true).CopyToIoWriter(w, pio.CopyConfig{})
 			})
 			if t.K_v.LoadV(`扫码登录自动打开标签页`).(bool) {
 				_ = open.Run(`http://127.0.0.1:` + t.Stream_url.Port() + scanPath)

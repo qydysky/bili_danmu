@@ -70,7 +70,7 @@ func toXml(ctx context.Context, path *string) error {
 	csvf := file.New((*path)+"0.csv", 0, false)
 	var data = Data{}
 	for i := 0; true; i += 1 {
-		if line, e := csvf.ReadUntil('\n', humanize.KByte, humanize.MByte); len(line) != 0 {
+		if line, e := csvf.ReadUntil([]byte{'\n'}, humanize.KByte, humanize.MByte); len(line) != 0 {
 			lined := bytes.SplitN(line, []byte{','}, 3)
 			if len(lined) == 3 {
 				if e := json.Unmarshal(lined[2], &data); e == nil {
@@ -97,6 +97,7 @@ func toXml(ctx context.Context, path *string) error {
 	}
 
 	f := file.New((*path)+"0.xml", 0, false)
+	_ = f.Delete()
 	defer f.Close()
 
 	if _, err := f.Write([]byte(xml.Header), true); err != nil {

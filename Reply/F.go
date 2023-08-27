@@ -38,6 +38,7 @@ import (
 	p "github.com/qydysky/part"
 	comp "github.com/qydysky/part/component"
 	file "github.com/qydysky/part/file"
+	pio "github.com/qydysky/part/io"
 	limit "github.com/qydysky/part/limit"
 	msgq "github.com/qydysky/part/msgq"
 	psync "github.com/qydysky/part/sync"
@@ -942,7 +943,7 @@ func (t *saveToJson) Init() {
 				},
 				`stop`: func(_ []byte) (disable bool) {
 					f := file.New(path, -1, false)
-					_ = f.Seed(-1, 2)
+					_ = f.SeekIndex(-1, file.AtEnd)
 					_, _ = f.Write([]byte("]"), true)
 					f.Close()
 					return true
@@ -1385,7 +1386,7 @@ func init() {
 			//header
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
 			w.Header().Set("Access-Control-Allow-Headers", "*")
-			w.Header().Set("Access-Control-Allow-Methods", "GET")
+			w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Origin", "*")
 			w.Header().Set("Connection", "keep-alive")
 			w.Header().Set("Content-Transfer-Encoding", "binary")
@@ -1475,15 +1476,17 @@ func init() {
 						flog.L(`W: `, e)
 						return
 					} else {
-						var totalSec int64 = 10
+						var count int64 = 5
 						allSize := fi.Size()
-						targetC := int64(rangeHeaderNum) + int64(speed)*totalSec
+						targetC := int64(rangeHeaderNum) + int64(speed)*count
 						if allSize < targetC {
 							targetC = allSize
 						}
-						w.Header().Add(`Content-Range`, fmt.Sprintf("bytes %d-%d/%d", rangeHeaderNum, targetC, allSize))
+
+						w.Header().Add(`Content-Range`, fmt.Sprintf("bytes %d-%d/%d", rangeHeaderNum, targetC-1, allSize))
 						w.WriteHeader(http.StatusPartialContent)
-						if e := f.CopyToIoWriterUntil(pweb.WithFlush(w), int64(speed), totalSec, true); e != nil {
+
+						if e := f.CopyToIoWriter(w, pio.CopyConfig{MaxByte: uint64(targetC - int64(rangeHeaderNum)), BytePerSec: speed}); e != nil {
 							flog.L(`E: `, e)
 						}
 					}
@@ -1660,7 +1663,7 @@ func init() {
 					}
 				}
 
-				if e := file.New(v+"0.xml", 0, true).CopyToIoWriter(w, 0, false); e != nil {
+				if e := file.New(v+"0.xml", 0, true).CopyToIoWriter(w, pio.CopyConfig{}); e != nil {
 					flog.L(`W: `, e)
 				}
 			}
