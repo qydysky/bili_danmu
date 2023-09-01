@@ -35,6 +35,7 @@ import (
 	signal "github.com/qydysky/part/signal"
 	slice "github.com/qydysky/part/slice"
 	pstring "github.com/qydysky/part/strings"
+	pweb "github.com/qydysky/part/web"
 )
 
 type M4SStream struct {
@@ -1400,6 +1401,8 @@ func (t *M4SStream) PusherToFile(contextC context.Context, filepath string, star
 }
 
 // 流服务推送方法
+//
+// 在客户端存在某种代理时，将有可能无法监测到客户端关闭，这有可能导致goroutine泄漏
 func (t *M4SStream) PusherToHttp(conn net.Conn, w http.ResponseWriter, r *http.Request, startFunc func(*M4SStream) error, stopFunc func(*M4SStream) error) error {
 	switch t.stream_type {
 	case `m3u8`:
@@ -1417,10 +1420,7 @@ func (t *M4SStream) PusherToHttp(conn net.Conn, w http.ResponseWriter, r *http.R
 		return e
 	}
 
-	flusher, flushSupport := w.(http.Flusher)
-	if flushSupport {
-		flusher.Flush()
-	}
+	w = pweb.WithFlush(w)
 
 	//写入头
 	{
@@ -1435,8 +1435,6 @@ func (t *M4SStream) PusherToHttp(conn net.Conn, w http.ResponseWriter, r *http.R
 			if len(t.getFirstBuf()) != 0 {
 				if _, err := w.Write(t.getFirstBuf()); err != nil {
 					return err
-				} else if flushSupport {
-					flusher.Flush()
 				}
 				break
 			}
@@ -1455,14 +1453,9 @@ func (t *M4SStream) PusherToHttp(conn net.Conn, w http.ResponseWriter, r *http.R
 		if _, err := w.Write(t.boot_buf); err != nil {
 			return err
 		}
-		if flushSupport {
-			flusher.Flush()
-		}
 	}
 
-	//
-	var cancelRec func()
-	cancelRec = t.Stream_msg.Pull_tag_async(map[string]func([]byte) bool{
+	var cancelRec = t.Stream_msg.Pull_tag_async(map[string]func([]byte) bool{
 		`data`: func(b []byte) bool {
 			select {
 			case <-r.Context().Done():
@@ -1472,20 +1465,10 @@ func (t *M4SStream) PusherToHttp(conn net.Conn, w http.ResponseWriter, r *http.R
 			if len(b) == 0 {
 				return true
 			}
-
-			// 1s内写入失败，关闭conn,防止协程泄漏
-			done := time.AfterFunc(time.Second, func() {
-				cancelRec()
-				if conn != nil {
-					conn.Close()
-				}
-			}).Stop
-			defer done()
-
-			if _, err := w.Write(b); err != nil {
+			if n, err := w.Write(b); err != nil || n == 0 {
 				return true
-			} else if flushSupport {
-				flusher.Flush()
+			} else if e := conn.SetWriteDeadline(time.Now().Add(time.Second * 10)); e != nil {
+				return true
 			}
 			return false
 		},
@@ -1493,6 +1476,7 @@ func (t *M4SStream) PusherToHttp(conn net.Conn, w http.ResponseWriter, r *http.R
 			return true
 		},
 	})
+
 	<-r.Context().Done()
 	cancelRec()
 

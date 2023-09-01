@@ -41,25 +41,10 @@ func resetTS(ctx context.Context, ptr *string) error {
 	var tfhdBuf = make([]byte, 12)
 	var boxBuf = make([]byte, 4)
 	var trackBuf = make([]byte, 4)
-	var timescaleBuf = make([]byte, 4)
-	var timescale int32
+	var mdhdBuf = make([]byte, 4)
+	var timescale = make(map[int32]int32)
 	var opTs = make(map[int32]int)
 	var cuTs = make(map[int32]int)
-
-	if e := f.SeekUntil([]byte("mvhd"), file.AtCurrent, 1<<17, 1<<22); e != nil && !errors.Is(e, file.ErrMaxReadSizeReach) {
-		return e
-	}
-	if _, e := f.Read(boxBuf); e != nil {
-		return e
-	} else if !bytes.Equal(boxBuf, []byte("mvhd")) {
-		return fmt.Errorf("wrong box:%v", string(boxBuf))
-	}
-	_ = f.SeekIndex(12, file.AtCurrent)
-	if _, e := f.Read(timescaleBuf); e != nil {
-		return e
-	}
-	timescale = btoi32(timescaleBuf, 0)
-	fmt.Printf("resetTS timescale:%v\n", timescale)
 
 	for {
 		if e := f.SeekUntil([]byte("tkhd"), file.AtCurrent, 1<<17, 1<<22); e != nil {
@@ -81,12 +66,30 @@ func resetTS(ctx context.Context, ptr *string) error {
 			return e
 		}
 		trackId := btoi32(trackBuf, 0)
-		fmt.Printf("trackId %v\n", trackId)
+
+		if e := f.SeekUntil([]byte("mdhd"), file.AtCurrent, 1<<17, 1<<22); e != nil {
+			if errors.Is(e, file.ErrMaxReadSizeReach) {
+				break
+			}
+			if errors.Is(e, io.EOF) {
+				break
+			}
+			return e
+		}
+		if _, e := f.Read(boxBuf); e != nil {
+			return e
+		} else if !bytes.Equal(boxBuf, []byte("mdhd")) {
+			return fmt.Errorf("wrong box:%v", string(boxBuf))
+		}
+		_ = f.SeekIndex(12, file.AtCurrent)
+		if _, e := f.Read(mdhdBuf); e != nil {
+			return e
+		}
+
 		opTs[trackId] = -1
 		cuTs[trackId] = 0
+		timescale[trackId] = btoi32(mdhdBuf, 0)
 	}
-
-	// fmt.Println("resetTimeStamp Druation %v(%v-%v)", time.Duration(int(time.Second)*(cuTS-opTs)), cuTS, opTs)
 
 	_ = f.SeekIndex(0, file.AtOrigin)
 
@@ -151,26 +154,27 @@ func resetTS(ctx context.Context, ptr *string) error {
 	for k, v := range opTs {
 		fmt.Printf("track %v opTs:%v cuTS:%v\n", k, v, cuTs[k])
 	}
-	// fmt.Println("resetTimeStamp Druation %v(%v-%v)", time.Duration(int(time.Second)*(cuTS-opTs)), cuTS, opTs)
 
-	var duration int32
-	for k, v := range opTs {
-		duration = int32(cuTs[k]-v) / timescale
-		break
+	// reset timestamp
+	// write mvhd
+	{
+		var duration int32
+		for k, v := range opTs {
+			duration = int32(cuTs[k]-v) / timescale[k]
+			break
+		}
+		_ = f.SeekIndex(0, file.AtOrigin)
+		if e := f.SeekUntil([]byte("mvhd"), file.AtCurrent, 1<<17, 1<<22); e != nil {
+			return e
+		}
+		_ = f.SeekIndex(20, file.AtCurrent)
+		fmt.Printf("mvhd %v \n", duration)
+		if _, e := f.Write(itob32(duration), false); e != nil {
+			return e
+		}
 	}
-	fmt.Printf("resetTS dur:%v\n", duration)
 
-	_ = f.SeekIndex(0, file.AtOrigin)
-
-	if e := f.SeekUntil([]byte("mvhd"), file.AtCurrent, 1<<17, 1<<22); !errors.Is(e, file.ErrMaxReadSizeReach) {
-		return e
-	}
-	_ = f.SeekIndex(20, file.AtCurrent)
-	if _, e := f.Write(itob32(duration), false); e != nil {
-		return e
-	}
-
-	// write tkhd
+	// write tkhd mdhd
 	_ = f.SeekIndex(0, file.AtOrigin)
 	for i := 0; i < len(opTs); i++ {
 		if e := f.SeekUntil([]byte("tkhd"), file.AtCurrent, 1<<17, 1<<20); e != nil {
@@ -188,7 +192,27 @@ func resetTS(ctx context.Context, ptr *string) error {
 		}
 		trackID := btoi32(trackBuf, 0)
 		_ = f.SeekIndex(4, file.AtCurrent)
-		if _, e := f.Write(itob32(int32(cuTs[trackID]-opTs[trackID])/timescale), false); e != nil {
+		fmt.Printf("tkhd %v \n", int32(cuTs[trackID]-opTs[trackID])/timescale[trackID])
+		if _, e := f.Write(itob32(int32(cuTs[trackID]-opTs[trackID])/timescale[trackID]), false); e != nil {
+			return e
+		}
+
+		if e := f.SeekUntil([]byte("mdhd"), file.AtCurrent, 1<<17, 1<<22); e != nil {
+			if errors.Is(e, file.ErrMaxReadSizeReach) {
+				continue
+			}
+			if errors.Is(e, io.EOF) {
+				break
+			}
+			return e
+		}
+		if _, e := f.Read(boxBuf); e != nil {
+			return e
+		} else if !bytes.Equal(boxBuf, []byte("mdhd")) {
+			return fmt.Errorf("wrong box:%v", string(boxBuf))
+		}
+		_ = f.SeekIndex(16, file.AtCurrent)
+		if _, e := f.Write(itob32(0), false); e != nil {
 			return e
 		}
 	}

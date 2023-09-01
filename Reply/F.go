@@ -1526,6 +1526,13 @@ func init() {
 
 				conn, _ := r.Context().Value(c.C.SerF).(net.Conn)
 
+				// 在客户端存在某种代理时，将有可能无法监测到客户端关闭，这有可能导致goroutine泄漏
+				if to, ok := c.C.K_v.LoadV(`直播流回放限时min`).(float64); ok && to > 0 {
+					if e := conn.SetDeadline(time.Now().Add(time.Duration(int(time.Minute) * int(to)))); e != nil {
+						flog.L(`W: `, `设置直播流回放限时min错误`, e)
+					}
+				}
+
 				if e := currentStreamO.PusherToHttp(conn, w, r, startFunc, stopFunc); e != nil {
 					flog.L(`W: `, e)
 				}
