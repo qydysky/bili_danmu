@@ -1479,6 +1479,7 @@ func init() {
 					// 	w.Header().Add(`Content-Range`, fmt.Sprintf("bytes %d-%d/%d", rangeHeaderNum, fi.Size(), fi.Size()))
 					// 	w.WriteHeader(http.StatusPartialContent)
 
+					flog.L(`T: `, r.RemoteAddr, `接入录播`+v)
 					if e := f.CopyToIoWriter(pweb.WithFlush(w), pio.CopyConfig{BytePerSec: speed}); e != nil {
 						flog.L(`E: `, e)
 					}
