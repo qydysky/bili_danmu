@@ -1437,23 +1437,23 @@ func init() {
 					}
 
 					// 读取区间
-					var rangeHeaderNum int
-					if rangeHeader := r.Header.Get(`range`); rangeHeader != "" {
-						var e error
-						if strings.Index(rangeHeader, "bytes=") != 0 {
-							w.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
-							flog.L(`W: `, `请求的范围不合法:仅支持bytes`)
-							return
-						} else if strings.Contains(rangeHeader, ",") && strings.Index(rangeHeader, "-") != len(rangeHeader)-1 {
-							w.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
-							flog.L(`W: `, `请求的范围不合法:仅支持向后范围`)
-							return
-						} else if rangeHeaderNum, e = strconv.Atoi(string(rangeHeader[6 : len(rangeHeader)-1])); e != nil {
-							w.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
-							flog.L(`W: `, `请求的范围不合法:`, e)
-							return
-						}
-					}
+					// var rangeHeaderNum int
+					// if rangeHeader := r.Header.Get(`range`); rangeHeader != "" {
+					// 	var e error
+					// 	if strings.Index(rangeHeader, "bytes=") != 0 {
+					// 		w.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
+					// 		flog.L(`W: `, `请求的范围不合法:仅支持bytes`)
+					// 		return
+					// 	} else if strings.Contains(rangeHeader, ",") && strings.Index(rangeHeader, "-") != len(rangeHeader)-1 {
+					// 		w.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
+					// 		flog.L(`W: `, `请求的范围不合法:仅支持向后范围`)
+					// 		return
+					// 	} else if rangeHeaderNum, e = strconv.Atoi(string(rangeHeader[6 : len(rangeHeader)-1])); e != nil {
+					// 		w.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
+					// 		flog.L(`W: `, `请求的范围不合法:`, e)
+					// 		return
+					// 	}
+					// }
 
 					// 直播流回放速率
 					var speed, _ = humanize.ParseBytes("1 M")
@@ -1467,29 +1467,22 @@ func init() {
 						}
 					}
 
-					f := file.New(v, int64(rangeHeaderNum), false)
+					f := file.New(v, 0, false)
 					defer f.Close()
 
 					// 设置当前返回区间，并拷贝
-					if fi, e := f.Stat(); e != nil {
-						w.WriteHeader(http.StatusServiceUnavailable)
-						flog.L(`W: `, e)
-						return
-					} else {
-						var count int64 = 5
-						allSize := fi.Size()
-						targetC := int64(rangeHeaderNum) + int64(speed)*count
-						if allSize < targetC {
-							targetC = allSize
-						}
+					// if fi, e := f.Stat(); e != nil {
+					// 	w.WriteHeader(http.StatusServiceUnavailable)
+					// 	flog.L(`W: `, e)
+					// 	return
+					// } else {
+					// 	w.Header().Add(`Content-Range`, fmt.Sprintf("bytes %d-%d/%d", rangeHeaderNum, fi.Size(), fi.Size()))
+					// 	w.WriteHeader(http.StatusPartialContent)
 
-						w.Header().Add(`Content-Range`, fmt.Sprintf("bytes %d-%d/%d", rangeHeaderNum, targetC-1, allSize))
-						w.WriteHeader(http.StatusPartialContent)
-
-						if e := f.CopyToIoWriter(w, pio.CopyConfig{MaxByte: uint64(targetC - int64(rangeHeaderNum)), BytePerSec: speed}); e != nil {
-							flog.L(`E: `, e)
-						}
+					if e := f.CopyToIoWriter(pweb.WithFlush(w), pio.CopyConfig{BytePerSec: speed}); e != nil {
+						flog.L(`E: `, e)
 					}
+					// }
 				}
 				return
 			}

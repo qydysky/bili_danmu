@@ -265,7 +265,7 @@ __webpack_require__.r(__webpack_exports__);
             playbackRate: true,
             aspectRatio: true,
             fullscreen: true,
-            fullscreenWeb: true,
+            fullscreenWeb: false,
             subtitleOffset: true,
             miniProgressBar: true,
             mutex: true,
