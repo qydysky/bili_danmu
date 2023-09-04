@@ -42,9 +42,9 @@ func resetTS(ctx context.Context, ptr *string) error {
 	var boxBuf = make([]byte, 4)
 	var trackBuf = make([]byte, 4)
 	var mdhdBuf = make([]byte, 4)
-	var timescale = make(map[int32]int32)
-	var opTs = make(map[int32]int)
-	var cuTs = make(map[int32]int)
+	var timescale = make(map[int32]int64)
+	var opTs = make(map[int32]int64)
+	var cuTs = make(map[int32]int64)
 
 	for {
 		if e := f.SeekUntil([]byte("tkhd"), file.AtCurrent, 1<<17, 1<<22); e != nil {
@@ -88,7 +88,7 @@ func resetTS(ctx context.Context, ptr *string) error {
 
 		opTs[trackId] = -1
 		cuTs[trackId] = 0
-		timescale[trackId] = btoi32(mdhdBuf, 0)
+		timescale[trackId] = int64(btoi32(mdhdBuf, 0))
 	}
 
 	_ = f.SeekIndex(0, file.AtOrigin)
@@ -123,7 +123,7 @@ func resetTS(ctx context.Context, ptr *string) error {
 		}
 		switch tfdtBuf[4] {
 		case 0:
-			ts := int(btoi32(tfdtBuf, 12))
+			ts := int64(btoi32(tfdtBuf, 12))
 			cuTs[trackID] = ts
 			if e := f.SeekIndex(-4, file.AtCurrent); e != nil {
 				return e
@@ -135,7 +135,7 @@ func resetTS(ctx context.Context, ptr *string) error {
 				return e
 			}
 		case 1:
-			ts := int(btoi64(tfdtBuf, 8))
+			ts := btoi64(tfdtBuf, 8)
 			cuTs[trackID] = ts
 			if e := f.SeekIndex(-8, file.AtCurrent); e != nil {
 				return e
@@ -143,7 +143,7 @@ func resetTS(ctx context.Context, ptr *string) error {
 			if opTs[trackID] == -1 {
 				opTs[trackID] = ts
 			}
-			if _, e := f.Write(itob64(int64(ts-opTs[trackID])), false); e != nil {
+			if _, e := f.Write(itob64(ts-opTs[trackID]), false); e != nil {
 				return e
 			}
 		default:
@@ -160,7 +160,7 @@ func resetTS(ctx context.Context, ptr *string) error {
 	{
 		var duration int32
 		for k, v := range opTs {
-			duration = int32(cuTs[k]-v) / timescale[k]
+			duration = int32((cuTs[k] - v) / timescale[k])
 			break
 		}
 		_ = f.SeekIndex(0, file.AtOrigin)
@@ -192,8 +192,8 @@ func resetTS(ctx context.Context, ptr *string) error {
 		}
 		trackID := btoi32(trackBuf, 0)
 		_ = f.SeekIndex(4, file.AtCurrent)
-		fmt.Printf("tkhd %v \n", int32(cuTs[trackID]-opTs[trackID])/timescale[trackID])
-		if _, e := f.Write(itob32(int32(cuTs[trackID]-opTs[trackID])/timescale[trackID]), false); e != nil {
+		fmt.Printf("tkhd %v \n", int32((cuTs[trackID]-opTs[trackID])/timescale[trackID]))
+		if _, e := f.Write(itob32(int32((cuTs[trackID]-opTs[trackID])/timescale[trackID])), false); e != nil {
 			return e
 		}
 
