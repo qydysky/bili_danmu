@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"time"
 
 	comp "github.com/qydysky/part/component"
 	file "github.com/qydysky/part/file"
@@ -29,8 +30,9 @@ func init() {
 }
 
 func resetTS(ctx context.Context, ptr *string) error {
+	be := time.Now()
 	fmt.Println("resetTS")
-	defer fmt.Println("resetTS fin")
+	defer fmt.Printf("resetTS fin (%v)\n", time.Since(be))
 
 	f := file.New(*ptr+"0.mp4", 0, false)
 	if !f.IsExist() {
@@ -192,7 +194,7 @@ func resetTS(ctx context.Context, ptr *string) error {
 		}
 		trackID := btoi32(trackBuf, 0)
 		_ = f.SeekIndex(4, file.AtCurrent)
-		fmt.Printf("tkhd %v \n", int32((cuTs[trackID]-opTs[trackID])/timescale[trackID]))
+		fmt.Printf("tkhd %v %v \n", trackID, int32((cuTs[trackID]-opTs[trackID])/timescale[trackID]))
 		if _, e := f.Write(itob32(int32((cuTs[trackID]-opTs[trackID])/timescale[trackID])), false); e != nil {
 			return e
 		}

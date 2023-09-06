@@ -37,6 +37,7 @@ import (
 
 	p "github.com/qydysky/part"
 	comp "github.com/qydysky/part/component"
+	pctx "github.com/qydysky/part/ctx"
 	file "github.com/qydysky/part/file"
 	pio "github.com/qydysky/part/io"
 	limit "github.com/qydysky/part/limit"
@@ -205,7 +206,7 @@ func init() {
 }
 
 // 设定字幕文件名，为""时停止输出
-func Ass_f(contextC context.Context, save_path string, filePath string, st time.Time) {
+func Ass_f(ctx context.Context, save_path string, filePath string, st time.Time) {
 	if !IsOn(`仅保存当前直播间流`) {
 		return
 	}
@@ -225,7 +226,9 @@ func Ass_f(contextC context.Context, save_path string, filePath string, st time.
 	_, _ = f.Write([]byte(ass.header), true)
 	ass.startT = st
 
-	<-contextC.Done()
+	done := pctx.Wait(ctx)
+	defer done()
+
 	ass.file = ""
 	fl.L(`I: `, "结束")
 }
@@ -1677,7 +1680,7 @@ func init() {
 }
 
 // 弹幕回放
-func StartRecDanmu(c context.Context, filePath string) {
+func StartRecDanmu(ctx context.Context, filePath string) {
 	if !IsOn(`仅保存当前直播间流`) || !IsOn("弹幕回放") {
 		return
 	}
@@ -1690,7 +1693,10 @@ func StartRecDanmu(c context.Context, filePath string) {
 	} else {
 		f.L(`E: `, e)
 	}
-	<-c.Done()
+
+	done := pctx.Wait(ctx)
+	defer done()
+
 	f.L(`I: `, `结束`)
 
 	// 弹幕录制结束
