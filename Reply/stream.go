@@ -883,15 +883,20 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 
 	//
 	var (
-		buf         = slice.New[byte]()
-		fmp4Decoder = &Fmp4Decoder{}
-		keyframe    = slice.New[byte]()
-		frameCount  = 0
-		to          = 3
+		buf          = slice.New[byte]()
+		fmp4Decoder  = &Fmp4Decoder{}
+		keyframe     = slice.New[byte]()
+		frameCount   = 0
+		to           = 3
+		fmp4UpdateTo = 7.0
+		fmp4Updated  time.Time
 	)
 
 	if v, ok := t.common.K_v.LoadV(`fmp4切片下载超时s`).(float64); ok && to < int(v) {
 		to = int(v)
+	}
+	if v, ok := t.common.K_v.LoadV(`fmp4列表更新超时s`).(float64); ok && fmp4UpdateTo < v {
+		fmp4UpdateTo = v
 	}
 
 	// 下载循环
@@ -1127,19 +1132,25 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 		// }
 
 		if len(m4s_links) == 0 {
+			if time.Since(fmp4Updated).Seconds() > fmp4UpdateTo {
+				t.log.L(`E: `, `fmp4列表更新超时`)
+				break
+			}
 			time.Sleep(time.Second)
 			continue
-		} else {
-			// 设置最后的切片
-			if t.last_m4s == nil {
-				t.last_m4s = &m4s_link_item{}
-			}
-			for i := len(m4s_links) - 1; i >= 0; i-- {
-				// fmt.Println("set last m4s", m4s_links[i].Base)
-				if !m4s_links[i].isInit() && len(m4s_links[i].Base) > 0 {
-					m4s_links[i].copyTo(t.last_m4s)
-					break
-				}
+		}
+
+		fmp4Updated = time.Now()
+
+		// 设置最后的切片
+		if t.last_m4s == nil {
+			t.last_m4s = &m4s_link_item{}
+		}
+		for i := len(m4s_links) - 1; i >= 0; i-- {
+			// fmt.Println("set last m4s", m4s_links[i].Base)
+			if !m4s_links[i].isInit() && len(m4s_links[i].Base) > 0 {
+				m4s_links[i].copyTo(t.last_m4s)
+				break
 			}
 		}
 
@@ -1357,6 +1368,8 @@ func (t *M4SStream) Start() bool {
 
 func (t *M4SStream) Stop() {
 	if !t.Status.Islive() {
+		t.log.L(`I: `, `正在等待下载完成...`)
+		t.exitSign.Wait()
 		return
 	}
 	t.exitSign = signal.Init()
