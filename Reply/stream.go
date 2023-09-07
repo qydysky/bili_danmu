@@ -1195,8 +1195,11 @@ func (t *M4SStream) Start() bool {
 		t.log.L(`I: `, `初始化录制(`+strconv.Itoa(t.common.Roomid)+`)`)
 
 		defer t.log.L(`I: `, `结束录制(`+strconv.Itoa(t.common.Roomid)+`)`)
-		defer t.exitSign.Done()
-		defer t.Status.Done()
+		defer func() {
+			// use anonymous func avoid data race and unexpect sign wait
+			t.Status.Done()
+			t.exitSign.Done()
+		}()
 
 		// 初始化请求池
 		t.reqPool = t.common.ReqPool

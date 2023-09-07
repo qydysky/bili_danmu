@@ -129,7 +129,7 @@ func Start() {
 			defer cancelfunc()
 		}
 
-		for exit_sign := true; exit_sign; {
+		for exitSign := false; !exitSign; {
 			if c.C.Roomid == 0 {
 				fmt.Println("回车查看指令")
 				ctx, cancel := context.WithCancel(context.Background())
@@ -137,7 +137,7 @@ func Start() {
 				select {
 				case <-c:
 				case <-interrupt_chan:
-					exit_sign = false
+					exitSign = true
 				}
 				cancel1()
 				cancel()
@@ -145,7 +145,7 @@ func Start() {
 				fmt.Print("房间号: ", strconv.Itoa(c.C.Roomid), "\n")
 			}
 
-			if !exit_sign {
+			if exitSign {
 				break
 			}
 
@@ -297,7 +297,7 @@ func Start() {
 					var cancelfunc = c.C.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
 						`interrupt`: func(_ any) (disable bool) {
 							exitloop = true
-							exit_sign = false
+							exitSign = true
 							ws_c.Close()
 							danmulog.L(`I: `, "停止，等待服务器断开连接")
 							reply.StreamOStop(-1) //停止录制
