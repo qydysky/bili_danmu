@@ -594,11 +594,6 @@ func (t *M4SStream) saveStream() (e error) {
 		}
 	}
 
-	// 移除历史流
-	if err := t.removeStream(); err != nil {
-		t.log.L(`W: `, err)
-	}
-
 	// 保存到文件
 	if t.config.save_to_file {
 		// 确保能接收到第一个帧才开始录制
@@ -1268,6 +1263,11 @@ func (t *M4SStream) Start() bool {
 						return nil
 					}
 					ms.getSavepath()
+
+					// 移除历史流
+					if err := ms.removeStream(); err != nil {
+						l.L(`W: `, err)
+					}
 
 					var (
 						cp = ms.Current_save_path

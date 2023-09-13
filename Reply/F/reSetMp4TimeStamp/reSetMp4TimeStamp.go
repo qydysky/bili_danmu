@@ -1,7 +1,6 @@
 package reSetMp4TimeStamp
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -39,14 +38,14 @@ func resetTS(ctx context.Context, ptr *string) error {
 		return nil
 	}
 	defer f.Close()
-	var tfdtBuf = make([]byte, 16)
-	var tfhdBuf = make([]byte, 12)
-	var boxBuf = make([]byte, 4)
-	var trackBuf = make([]byte, 4)
-	var mdhdBuf = make([]byte, 4)
-	var timescale = make(map[int32]int64)
-	var opTs = make(map[int32]int64)
-	var cuTs = make(map[int32]int64)
+
+	var (
+		byte4     = make([]byte, 4)
+		byte16    = make([]byte, 16)
+		bgdts     = make(map[int32]int64)
+		eddts     = make(map[int32]int64)
+		timescale = make(map[int32]int64)
+	)
 
 	for {
 		if e := f.SeekUntil([]byte("tkhd"), file.AtCurrent, 1<<17, 1<<22); e != nil {
@@ -58,43 +57,18 @@ func resetTS(ctx context.Context, ptr *string) error {
 			}
 			return e
 		}
-		if _, e := f.Read(boxBuf); e != nil {
-			return e
-		} else if !bytes.Equal(boxBuf, []byte("tkhd")) {
-			return fmt.Errorf("wrong box:%v", string(boxBuf))
-		}
-		_ = f.SeekIndex(12, file.AtCurrent)
-		if _, e := f.Read(trackBuf); e != nil {
+		_ = f.SeekIndex(16, file.AtCurrent)
+		if _, e := f.Read(byte4); e != nil {
 			return e
 		}
-		trackId := btoi32(trackBuf, 0)
+		trackId := btoi32(byte4, 0)
 
-		if e := f.SeekUntil([]byte("mdhd"), file.AtCurrent, 1<<17, 1<<22); e != nil {
-			if errors.Is(e, file.ErrMaxReadSizeReach) {
-				break
-			}
-			if errors.Is(e, io.EOF) {
-				break
-			}
-			return e
-		}
-		if _, e := f.Read(boxBuf); e != nil {
-			return e
-		} else if !bytes.Equal(boxBuf, []byte("mdhd")) {
-			return fmt.Errorf("wrong box:%v", string(boxBuf))
-		}
-		_ = f.SeekIndex(12, file.AtCurrent)
-		if _, e := f.Read(mdhdBuf); e != nil {
-			return e
-		}
-
-		opTs[trackId] = -1
-		cuTs[trackId] = 0
-		timescale[trackId] = int64(btoi32(mdhdBuf, 0))
+		bgdts[trackId] = -1
+		eddts[trackId] = 0
 	}
 
+	// rewrite dts
 	_ = f.SeekIndex(0, file.AtOrigin)
-
 	for {
 		if e := f.SeekUntil([]byte("tfhd"), file.AtCurrent, 1<<17, 1<<20); e != nil {
 			if errors.Is(e, file.ErrMaxReadSizeReach) {
@@ -105,11 +79,11 @@ func resetTS(ctx context.Context, ptr *string) error {
 			}
 			return e
 		}
-		if _, e := f.Read(tfhdBuf); e != nil {
+		_ = f.SeekIndex(8, file.AtCurrent)
+		if _, e := f.Read(byte4); e != nil {
 			return e
 		}
-
-		trackID := btoi32(tfhdBuf, 8)
+		trackID := btoi32(byte4, 0)
 
 		if e := f.SeekUntil([]byte("tfdt"), file.AtCurrent, 1<<17, 1<<20); e != nil {
 			if errors.Is(e, file.ErrMaxReadSizeReach) {
@@ -120,68 +94,44 @@ func resetTS(ctx context.Context, ptr *string) error {
 			}
 			return e
 		}
-		if _, e := f.Read(tfdtBuf); e != nil {
+		if _, e := f.Read(byte16); e != nil {
 			return e
 		}
-		switch tfdtBuf[4] {
+		switch byte16[4] {
 		case 0:
-			ts := int64(btoi32(tfdtBuf, 12))
-			cuTs[trackID] = ts
+			ts := int64(btoi32(byte16, 12))
+			eddts[trackID] = ts
 			if e := f.SeekIndex(-4, file.AtCurrent); e != nil {
 				return e
 			}
-			if opTs[trackID] == -1 {
-				opTs[trackID] = ts
+			if bgdts[trackID] == -1 {
+				bgdts[trackID] = ts
 			}
-			if _, e := f.Write(itob32(int32(ts-opTs[trackID])), false); e != nil {
+			if _, e := f.Write(itob32(int32(ts-bgdts[trackID])), false); e != nil {
 				return e
 			}
 		case 1:
-			ts := btoi64(tfdtBuf, 8)
-			cuTs[trackID] = ts
+			ts := btoi64(byte16, 8)
+			eddts[trackID] = ts
 			if e := f.SeekIndex(-8, file.AtCurrent); e != nil {
 				return e
 			}
-			if opTs[trackID] == -1 {
-				opTs[trackID] = ts
+			if bgdts[trackID] == -1 {
+				bgdts[trackID] = ts
 			}
-			if _, e := f.Write(itob64(ts-opTs[trackID]), false); e != nil {
+			if _, e := f.Write(itob64(ts-bgdts[trackID]), false); e != nil {
 				return e
 			}
 		default:
-			return fmt.Errorf("unknow tfdt version %x", tfdtBuf[8])
+			return fmt.Errorf("unknow tfdt version %x", byte16[8])
 		}
 	}
 
-	for k, v := range opTs {
-		fmt.Printf("track %v opTs:%v cuTS:%v\n", k, v, cuTs[k])
-	}
-
-	// reset timestamp
-	// write mvhd
-	{
-		var duration int32
-		for k, v := range opTs {
-			duration = int32((cuTs[k] - v) / timescale[k])
-			break
-		}
-		_ = f.SeekIndex(0, file.AtOrigin)
-		if e := f.SeekUntil([]byte("mvhd"), file.AtCurrent, 1<<17, 1<<22); e != nil {
-			return e
-		}
-		_ = f.SeekIndex(20, file.AtCurrent)
-		fmt.Printf("mvhd %v \n", duration)
-		if _, e := f.Write(itob32(duration), false); e != nil {
-			return e
-		}
-	}
-
-	// write tkhd mdhd
 	_ = f.SeekIndex(0, file.AtOrigin)
-	for i := 0; i < len(opTs); i++ {
-		if e := f.SeekUntil([]byte("tkhd"), file.AtCurrent, 1<<17, 1<<20); e != nil {
+	for {
+		if e := f.SeekUntil([]byte("tkhd"), file.AtCurrent, 1<<17, 1<<22); e != nil {
 			if errors.Is(e, file.ErrMaxReadSizeReach) {
-				continue
+				break
 			}
 			if errors.Is(e, io.EOF) {
 				break
@@ -189,13 +139,68 @@ func resetTS(ctx context.Context, ptr *string) error {
 			return e
 		}
 		_ = f.SeekIndex(16, file.AtCurrent)
-		if _, e := f.Read(trackBuf); e != nil {
+		if _, e := f.Read(byte4); e != nil {
 			return e
 		}
-		trackID := btoi32(trackBuf, 0)
-		_ = f.SeekIndex(4, file.AtCurrent)
-		fmt.Printf("tkhd %v %v \n", trackID, int32((cuTs[trackID]-opTs[trackID])/timescale[trackID]))
-		if _, e := f.Write(itob32(int32((cuTs[trackID]-opTs[trackID])/timescale[trackID])), false); e != nil {
+		trackId := btoi32(byte4, 0)
+
+		if e := f.SeekUntil([]byte("mdhd"), file.AtCurrent, 1<<17, 1<<22); e != nil {
+			if errors.Is(e, file.ErrMaxReadSizeReach) {
+				break
+			}
+			if errors.Is(e, io.EOF) {
+				break
+			}
+			return e
+		}
+		_ = f.SeekIndex(16, file.AtCurrent)
+		if _, e := f.Read(byte4); e != nil {
+			return e
+		}
+
+		timescale[trackId] = int64(btoi32(byte4, 0))
+	}
+
+	var duration int32
+	for k, v := range bgdts {
+		fmt.Println(eddts[k], v)
+		duration = int32((eddts[k] - v) / timescale[k])
+		break
+	}
+
+	_ = f.SeekIndex(0, file.AtOrigin)
+	{
+		if e := f.SeekUntil([]byte("moov"), file.AtCurrent, 1<<17, 1<<22); e != nil {
+			return e
+		}
+	}
+
+	// write mvhd
+	_ = f.SeekIndex(0, file.AtOrigin)
+	{
+		if e := f.SeekUntil([]byte("mvhd"), file.AtCurrent, 1<<17, 1<<22); e != nil {
+			return e
+		}
+		_ = f.SeekIndex(20, file.AtCurrent)
+		if _, e := f.Write(itob32(duration), false); e != nil {
+			return e
+		}
+	}
+
+	// write tkhd mdhd
+	_ = f.SeekIndex(0, file.AtOrigin)
+	for {
+		if e := f.SeekUntil([]byte("tkhd"), file.AtCurrent, 1<<17, 1<<20); e != nil {
+			if errors.Is(e, file.ErrMaxReadSizeReach) {
+				break
+			}
+			if errors.Is(e, io.EOF) {
+				break
+			}
+			return e
+		}
+		_ = f.SeekIndex(24, file.AtCurrent)
+		if _, e := f.Write(itob32(duration), false); e != nil {
 			return e
 		}
 
@@ -208,17 +213,11 @@ func resetTS(ctx context.Context, ptr *string) error {
 			}
 			return e
 		}
-		if _, e := f.Read(boxBuf); e != nil {
-			return e
-		} else if !bytes.Equal(boxBuf, []byte("mdhd")) {
-			return fmt.Errorf("wrong box:%v", string(boxBuf))
-		}
-		_ = f.SeekIndex(16, file.AtCurrent)
-		if _, e := f.Write(itob32(0), false); e != nil {
+		_ = f.SeekIndex(20, file.AtCurrent)
+		if _, e := f.Write(itob32(duration), false); e != nil {
 			return e
 		}
 	}
-
 	return nil
 }
 
