@@ -44,6 +44,7 @@ func resetTS(ctx context.Context, ptr *string) error {
 		byte16    = make([]byte, 16)
 		bgdts     = make(map[int32]int64)
 		eddts     = make(map[int32]int64)
+		zdts      = make(map[int32]int64)
 		timescale = make(map[int32]int64)
 	)
 
@@ -65,11 +66,12 @@ func resetTS(ctx context.Context, ptr *string) error {
 
 		bgdts[trackId] = -1
 		eddts[trackId] = 0
+		zdts[trackId] = 0
 	}
 
 	// rewrite dts
 	_ = f.SeekIndex(0, file.AtOrigin)
-	for {
+	for z := int64(1); true; z++ {
 		if e := f.SeekUntil([]byte("tfhd"), file.AtCurrent, 1<<17, 1<<20); e != nil {
 			if errors.Is(e, file.ErrMaxReadSizeReach) {
 				continue
@@ -107,7 +109,10 @@ func resetTS(ctx context.Context, ptr *string) error {
 			if bgdts[trackID] == -1 {
 				bgdts[trackID] = ts
 			}
-			if _, e := f.Write(itob32(int32(ts-bgdts[trackID])), false); e != nil {
+			if zdts[trackID] == 0 {
+				zdts[trackID] = ts - bgdts[trackID]
+			}
+			if _, e := f.Write(itob32(int32(zdts[trackID]*z)), false); e != nil {
 				return e
 			}
 		case 1:
@@ -119,7 +124,10 @@ func resetTS(ctx context.Context, ptr *string) error {
 			if bgdts[trackID] == -1 {
 				bgdts[trackID] = ts
 			}
-			if _, e := f.Write(itob64(ts-bgdts[trackID]), false); e != nil {
+			if zdts[trackID] == 0 {
+				zdts[trackID] = ts - bgdts[trackID]
+			}
+			if _, e := f.Write(itob64(zdts[trackID]*z), false); e != nil {
 				return e
 			}
 		default:
