@@ -59,8 +59,8 @@ func (t *reader) Read(box Box, size int) BoxReader {
 	} else {
 		t.bufChange(size)
 	}
-	t.f.SeekIndex(box.Index, file.AtOrigin)
-	t.f.Read(t.buf)
+	_ = t.f.SeekIndex(box.Index, file.AtOrigin)
+	_, _ = t.f.Read(t.buf)
 	return BoxReader{t.buf}
 }
 
