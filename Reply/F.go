@@ -1440,7 +1440,7 @@ func init() {
 					}
 
 					// 读取区间
-					// var rangeHeaderNum int
+					var rangeHeaderNum int
 					// if rangeHeader := r.Header.Get(`range`); rangeHeader != "" {
 					// 	var e error
 					// 	if strings.Index(rangeHeader, "bytes=") != 0 {
@@ -1470,7 +1470,7 @@ func init() {
 						}
 					}
 
-					f := file.New(v, 0, false)
+					f := file.New(v, int64(rangeHeaderNum), false)
 					defer f.Close()
 
 					// 设置当前返回区间，并拷贝
@@ -1479,7 +1479,7 @@ func init() {
 					// 	flog.L(`W: `, e)
 					// 	return
 					// } else {
-					// 	w.Header().Add(`Content-Range`, fmt.Sprintf("bytes %d-%d/%d", rangeHeaderNum, fi.Size(), fi.Size()))
+					// 	w.Header().Add(`Content-Range`, fmt.Sprintf("bytes %d-%d/%d", rangeHeaderNum, fi.Size()-1, fi.Size()))
 					// 	w.WriteHeader(http.StatusPartialContent)
 
 					flog.L(`T: `, r.RemoteAddr, `接入录播`+v)
