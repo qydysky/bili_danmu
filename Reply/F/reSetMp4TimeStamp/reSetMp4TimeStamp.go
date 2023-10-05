@@ -40,12 +40,12 @@ func resetTS(ctx context.Context, ptr *string) error {
 	defer f.Close()
 
 	var (
-		byte4     = make([]byte, 4)
-		byte16    = make([]byte, 16)
-		bgdts     = make(map[int32]int64)
-		eddts     = make(map[int32]int64)
-		zdts      = make(map[int32]int64)
-		timescale = make(map[int32]int64)
+		byte4  = make([]byte, 4)
+		byte16 = make([]byte, 16)
+		bgdts  = make(map[int32]int64)
+		eddts  = make(map[int32]int64)
+		zdts   = make(map[int32]*guessDts)
+		// timescale = make(map[int32]int64)
 	)
 
 	for {
@@ -66,42 +66,42 @@ func resetTS(ctx context.Context, ptr *string) error {
 
 		bgdts[trackId] = -1
 		eddts[trackId] = 0
-		zdts[trackId] = 0
+		zdts[trackId] = &guessDts{0, 1}
 	}
 
-	_ = f.SeekIndex(0, file.AtOrigin)
-	for {
-		if e := f.SeekUntil([]byte("tkhd"), file.AtCurrent, 1<<17, 1<<22); e != nil {
-			if errors.Is(e, file.ErrMaxReadSizeReach) {
-				break
-			}
-			if errors.Is(e, io.EOF) {
-				break
-			}
-			return e
-		}
-		_ = f.SeekIndex(16, file.AtCurrent)
-		if _, e := f.Read(byte4); e != nil {
-			return e
-		}
-		trackId := btoi32(byte4, 0)
+	// _ = f.SeekIndex(0, file.AtOrigin)
+	// for {
+	// 	if e := f.SeekUntil([]byte("tkhd"), file.AtCurrent, 1<<17, 1<<22); e != nil {
+	// 		if errors.Is(e, file.ErrMaxReadSizeReach) {
+	// 			break
+	// 		}
+	// 		if errors.Is(e, io.EOF) {
+	// 			break
+	// 		}
+	// 		return e
+	// 	}
+	// 	_ = f.SeekIndex(16, file.AtCurrent)
+	// 	if _, e := f.Read(byte4); e != nil {
+	// 		return e
+	// 	}
+	// 	trackId := btoi32(byte4, 0)
 
-		if e := f.SeekUntil([]byte("mdhd"), file.AtCurrent, 1<<17, 1<<22); e != nil {
-			if errors.Is(e, file.ErrMaxReadSizeReach) {
-				break
-			}
-			if errors.Is(e, io.EOF) {
-				break
-			}
-			return e
-		}
-		_ = f.SeekIndex(16, file.AtCurrent)
-		if _, e := f.Read(byte4); e != nil {
-			return e
-		}
+	// 	if e := f.SeekUntil([]byte("mdhd"), file.AtCurrent, 1<<17, 1<<22); e != nil {
+	// 		if errors.Is(e, file.ErrMaxReadSizeReach) {
+	// 			break
+	// 		}
+	// 		if errors.Is(e, io.EOF) {
+	// 			break
+	// 		}
+	// 		return e
+	// 	}
+	// 	_ = f.SeekIndex(16, file.AtCurrent)
+	// 	if _, e := f.Read(byte4); e != nil {
+	// 		return e
+	// 	}
 
-		timescale[trackId] = int64(btoi32(byte4, 0))
-	}
+	// 	timescale[trackId] = int64(btoi32(byte4, 0))
+	// }
 
 	// rewrite dts
 	{
@@ -123,6 +123,7 @@ func resetTS(ctx context.Context, ptr *string) error {
 				return e
 			}
 			trackID := btoi32(byte4, 0)
+			zdtsI := zdts[trackID]
 			if chosenId == -1 {
 				chosenId = trackID
 			}
@@ -142,13 +143,21 @@ func resetTS(ctx context.Context, ptr *string) error {
 			switch byte16[4] {
 			case 0:
 				ts := int64(btoi32(byte16, 12))
-				if eddts[trackID] != 0 && zdts[trackID] != 0 {
-					guessTs := eddts[trackID] + zdts[trackID]
-					if diff(guessTs, ts, 10000) {
-						fmt.Println("diff ts >10", ts, guessTs)
-						ts = guessTs
-					}
-				}
+				// if eddts[trackID] != 0 && zdtsI.zdts != 0 {
+				// 	guessTs := eddts[trackID] + zdtsI.zdts
+				// 	if guessTs != ts {
+				// 		fmt.Println("change", zdtsI.count, zdtsI.zdts)
+				// 		zdtsI.count -= 1
+				// 		if zdtsI.count < 0 {
+				// 			zdtsI.zdts += ts - guessTs
+				// 			zdtsI.count = 1
+				// 		} else {
+				// 			ts = guessTs
+				// 		}
+				// 	} else {
+				// 		zdtsI.count += 1
+				// 	}
+				// }
 				if e := f.SeekIndex(-4, file.AtCurrent); e != nil {
 					return e
 				}
@@ -156,16 +165,12 @@ func resetTS(ctx context.Context, ptr *string) error {
 					bgdts[trackID] = ts
 				}
 				cu := ts - bgdts[trackID]
-				if zdts[trackID] == 0 {
-					zdts[trackID] = cu
+				if zdtsI.zdts == 0 {
+					zdtsI.zdts = cu
 				} else if chosenId == trackID {
-					chosenT = float64(cu) / float64(zdts[trackID])
-				} else {
-					guessCu := int64(chosenT * float64(zdts[trackID]))
-					if diff(cu, guessCu, 10) {
-						fmt.Println("diff cu >10", cu, guessCu)
-						cu = guessCu
-					}
+					chosenT = float64(cu) / float64(zdtsI.zdts)
+				} else if chosenT != -1 {
+					cu = int64(chosenT * float64(zdtsI.zdts))
 				}
 				if _, e := f.Write(itob32(int32(cu)), false); e != nil {
 					return e
@@ -173,13 +178,21 @@ func resetTS(ctx context.Context, ptr *string) error {
 				eddts[trackID] = ts
 			case 1:
 				ts := btoi64(byte16, 8)
-				if eddts[trackID] != 0 && zdts[trackID] != 0 {
-					guessTs := eddts[trackID] + zdts[trackID]
-					if diff(guessTs, ts, 10000) {
-						fmt.Println("diff ts >10", ts, guessTs)
-						ts = guessTs
-					}
-				}
+				// if eddts[trackID] != 0 && zdtsI.zdts != 0 {
+				// 	guessTs := eddts[trackID] + zdtsI.zdts
+				// 	if guessTs != ts {
+				// 		fmt.Println("change", zdtsI.count, zdtsI.zdts)
+				// 		zdtsI.count -= 1
+				// 		if zdtsI.count < 0 {
+				// 			zdtsI.zdts += ts - guessTs
+				// 			zdtsI.count = 1
+				// 		} else {
+				// 			ts = guessTs
+				// 		}
+				// 	} else {
+				// 		zdtsI.count += 1
+				// 	}
+				// }
 				if e := f.SeekIndex(-8, file.AtCurrent); e != nil {
 					return e
 				}
@@ -187,16 +200,12 @@ func resetTS(ctx context.Context, ptr *string) error {
 					bgdts[trackID] = ts
 				}
 				cu := ts - bgdts[trackID]
-				if zdts[trackID] == 0 {
-					zdts[trackID] = cu
+				if zdtsI.zdts == 0 {
+					zdtsI.zdts = cu
 				} else if chosenId == trackID {
-					chosenT = float64(cu) / float64(zdts[trackID])
-				} else {
-					guessCu := int64(chosenT * float64(zdts[trackID]))
-					if diff(cu, guessCu, 10) {
-						fmt.Println("diff cu >10", cu, guessCu)
-						cu = guessCu
-					}
+					chosenT = float64(cu) / float64(zdtsI.zdts)
+				} else if chosenT != -1 {
+					cu = int64(chosenT * float64(zdtsI.zdts))
 				}
 				if _, e := f.Write(itob64(cu), false); e != nil {
 					return e
@@ -267,6 +276,11 @@ func resetTS(ctx context.Context, ptr *string) error {
 	return nil
 }
 
+type guessDts struct {
+	zdts  int64
+	count int64
+}
+
 func btoi64(b []byte, offset int) int64 {
 	s := 8
 	bu := make([]byte, s)
@@ -320,8 +334,4 @@ func itob32(v int32) []byte {
 	b[2] = byte(v >> 8)
 	b[3] = byte(v)
 	return b
-}
-
-func diff(a, b int64, c uint64) bool {
-	return a-b > int64(c) || a-b < -int64(c)
 }
