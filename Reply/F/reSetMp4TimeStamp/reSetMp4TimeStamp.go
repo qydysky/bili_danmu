@@ -143,7 +143,11 @@ func resetTS(ctx context.Context, ptr *string) error {
 			case 0:
 				ts := int64(btoi32(byte16, 12))
 				if eddts[trackID] != 0 && zdts[trackID] != 0 {
-					ts = eddts[trackID] + zdts[trackID]
+					guessTs := eddts[trackID] + zdts[trackID]
+					if diff(guessTs, ts, 10000) {
+						fmt.Println("diff ts >10", ts, guessTs)
+						ts = guessTs
+					}
 				}
 				if e := f.SeekIndex(-4, file.AtCurrent); e != nil {
 					return e
@@ -157,7 +161,11 @@ func resetTS(ctx context.Context, ptr *string) error {
 				} else if chosenId == trackID {
 					chosenT = float64(cu) / float64(zdts[trackID])
 				} else {
-					cu = int64(chosenT * float64(zdts[trackID]))
+					guessCu := int64(chosenT * float64(zdts[trackID]))
+					if diff(cu, guessCu, 10) {
+						fmt.Println("diff cu >10", cu, guessCu)
+						cu = guessCu
+					}
 				}
 				if _, e := f.Write(itob32(int32(cu)), false); e != nil {
 					return e
@@ -166,7 +174,11 @@ func resetTS(ctx context.Context, ptr *string) error {
 			case 1:
 				ts := btoi64(byte16, 8)
 				if eddts[trackID] != 0 && zdts[trackID] != 0 {
-					ts = eddts[trackID] + zdts[trackID]
+					guessTs := eddts[trackID] + zdts[trackID]
+					if diff(guessTs, ts, 10000) {
+						fmt.Println("diff ts >10", ts, guessTs)
+						ts = guessTs
+					}
 				}
 				if e := f.SeekIndex(-8, file.AtCurrent); e != nil {
 					return e
@@ -180,7 +192,11 @@ func resetTS(ctx context.Context, ptr *string) error {
 				} else if chosenId == trackID {
 					chosenT = float64(cu) / float64(zdts[trackID])
 				} else {
-					cu = int64(chosenT * float64(zdts[trackID]))
+					guessCu := int64(chosenT * float64(zdts[trackID]))
+					if diff(cu, guessCu, 10) {
+						fmt.Println("diff cu >10", cu, guessCu)
+						cu = guessCu
+					}
 				}
 				if _, e := f.Write(itob64(cu), false); e != nil {
 					return e
@@ -304,4 +320,8 @@ func itob32(v int32) []byte {
 	b[2] = byte(v >> 8)
 	b[3] = byte(v)
 	return b
+}
+
+func diff(a, b int64, c uint64) bool {
+	return a-b > int64(c) || a-b < -int64(c)
 }
