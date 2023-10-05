@@ -142,6 +142,9 @@ func resetTS(ctx context.Context, ptr *string) error {
 			switch byte16[4] {
 			case 0:
 				ts := int64(btoi32(byte16, 12))
+				if eddts[trackID] != 0 && zdts[trackID] != 0 {
+					ts = eddts[trackID] + zdts[trackID]
+				}
 				if e := f.SeekIndex(-4, file.AtCurrent); e != nil {
 					return e
 				}
@@ -162,6 +165,9 @@ func resetTS(ctx context.Context, ptr *string) error {
 				eddts[trackID] = ts
 			case 1:
 				ts := btoi64(byte16, 8)
+				if eddts[trackID] != 0 && zdts[trackID] != 0 {
+					ts = eddts[trackID] + zdts[trackID]
+				}
 				if e := f.SeekIndex(-8, file.AtCurrent); e != nil {
 					return e
 				}
