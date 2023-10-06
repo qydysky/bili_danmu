@@ -11,7 +11,7 @@ func init() {
 	var linkMap = map[string][]string{
 		"github.com/qydysky/bili_danmu/Reply.startRecDanmu.stop": {
 			comp.Sign[danmuXml.Sign](`toXml`),
-			comp.Sign[reSetMp4TimeStamp.Sign](`resetTS`),
+			comp.Sign[reSetMp4TimeStamp.Sign](`_resetTS`),
 			// comp.Sign[fmp4Tomp4.Sign](`conver`),
 		},
 		"github.com/qydysky/bili_danmu/Reply.SerF.player.ws": {

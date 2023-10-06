@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"io"
+	"math"
 
 	"github.com/dustin/go-humanize"
 	F "github.com/qydysky/bili_danmu/F"
@@ -41,24 +42,25 @@ type ie struct {
 }
 
 type trak struct {
-	timescale   int
-	trackID     int
-	handlerType byte
+	firstTimeStamp int
+	timescale      int
+	trackID        int
+	handlerType    byte
 }
 
 type timeStamp struct {
-	timeStamp   int
-	data        []byte
-	timescale   int
-	handlerType byte
+	timeStamp      int
+	data           []byte
+	firstTimeStamp int
+	handlerType    byte
 }
 
 func (t *timeStamp) getT() float64 {
-	return float64(t.timeStamp) / float64(t.timescale)
+	return float64(t.timeStamp) / float64(t.firstTimeStamp)
 }
 
 type Fmp4Decoder struct {
-	traks map[int]trak
+	traks map[int]*trak
 	buf   *slice.Buf[byte]
 }
 
@@ -89,12 +91,13 @@ func (t *Fmp4Decoder) Init_fmp4(buf []byte) (b []byte, err error) {
 		func(m []ie) bool {
 			tackId := int(F.Btoi(buf, m[0].i+20, 4))
 			if t.traks == nil {
-				t.traks = make(map[int]trak)
+				t.traks = make(map[int]*trak)
 			}
-			t.traks[tackId] = trak{
-				trackID:     tackId,
-				timescale:   int(F.Btoi(buf, m[2].i+20, 4)),
-				handlerType: buf[m[3].i+16],
+			t.traks[tackId] = &trak{
+				trackID:        tackId,
+				firstTimeStamp: -1,
+				timescale:      int(F.Btoi(buf, m[2].i+20, 4)),
+				handlerType:    buf[m[3].i+16],
 			}
 			return false
 		})
@@ -151,8 +154,11 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 			track, ok := t.traks[int(F.Btoi(buf, tfhd+12, 4))]
 			if ok {
 				ts := get_timeStamp(tfdt)
+				if track.firstTimeStamp == -1 {
+					track.firstTimeStamp = ts.timeStamp
+				}
 				ts.handlerType = track.handlerType
-				ts.timescale = track.timescale
+				ts.firstTimeStamp = track.firstTimeStamp
 				return ts, track.handlerType
 			}
 			return
@@ -324,8 +330,8 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 				}
 
 				//sync audio timeStamp
-				if audio.getT() != video.getT() {
-					date := F.Itob64(int64(video.getT() * float64(audio.timescale)))
+				if diff := math.Abs(audio.getT() - video.getT()); diff > 0.00001 {
+					date := F.Itob64(int64(video.getT() * float64(audio.firstTimeStamp)))
 					copy(audio.data, date)
 				}
 
