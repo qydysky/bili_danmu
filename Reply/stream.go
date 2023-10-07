@@ -1205,10 +1205,14 @@ func (t *M4SStream) Start() bool {
 		// 设置事件
 		// 当录制停止时，取消全部录制
 		mainCtx, mainCancel := context.WithCancel(context.Background())
-		mainCtx, done := pctx.WithWait(mainCtx, time.Minute)
+		mainCtx, done := pctx.WithWait(mainCtx, 0, time.Minute)
 		defer func() {
-			if done() != nil {
+			switch done() {
+			case pctx.ErrWaitTo:
 				t.log.L(`E: `, `结束超时`)
+			case pctx.ErrNothingWait:
+				fallthrough
+			default:
 			}
 		}()
 
