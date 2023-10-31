@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"io"
-	"math"
 
 	"github.com/dustin/go-humanize"
 	F "github.com/qydysky/bili_danmu/F"
@@ -330,7 +329,7 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 				}
 
 				//sync audio timeStamp
-				if diff := math.Abs(audio.getT() - video.getT()); diff > 0.00001 {
+				if diff := video.getT() - audio.getT(); diff > 0.00001 {
 					date := F.Itob64(int64(video.getT() * float64(audio.firstTimeStamp)))
 					copy(audio.data, date)
 				}
