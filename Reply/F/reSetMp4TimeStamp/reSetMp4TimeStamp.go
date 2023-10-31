@@ -31,7 +31,7 @@ func init() {
 func resetTS(ctx context.Context, ptr *string) error {
 	be := time.Now()
 	fmt.Println("resetTS")
-	defer fmt.Printf("resetTS fin (%v)\n", time.Since(be))
+	defer func() { fmt.Printf("resetTS fin (%v)\n", time.Since(be)) }()
 
 	f := file.New(*ptr+"0.mp4", 0, false)
 	if !f.IsExist() {
@@ -105,8 +105,6 @@ func resetTS(ctx context.Context, ptr *string) error {
 
 	// rewrite dts
 	{
-		var chosenId int32 = -1
-		var chosenT float64 = -1
 		_ = f.SeekIndex(0, file.AtOrigin)
 		for {
 			if e := f.SeekUntil([]byte("tfhd"), file.AtCurrent, 1<<17, 1<<20); e != nil {
@@ -123,10 +121,6 @@ func resetTS(ctx context.Context, ptr *string) error {
 				return e
 			}
 			trackID := btoi32(byte4, 0)
-			zdtsI := zdts[trackID]
-			if chosenId == -1 {
-				chosenId = trackID
-			}
 
 			if e := f.SeekUntil([]byte("tfdt"), file.AtCurrent, 1<<17, 1<<20); e != nil {
 				if errors.Is(e, file.ErrMaxReadSizeReach) {
@@ -143,71 +137,25 @@ func resetTS(ctx context.Context, ptr *string) error {
 			switch byte16[4] {
 			case 0:
 				ts := int64(btoi32(byte16, 12))
-				// if eddts[trackID] != 0 && zdtsI.zdts != 0 {
-				// 	guessTs := eddts[trackID] + zdtsI.zdts
-				// 	if guessTs != ts {
-				// 		fmt.Println("change", zdtsI.count, zdtsI.zdts)
-				// 		zdtsI.count -= 1
-				// 		if zdtsI.count < 0 {
-				// 			zdtsI.zdts += ts - guessTs
-				// 			zdtsI.count = 1
-				// 		} else {
-				// 			ts = guessTs
-				// 		}
-				// 	} else {
-				// 		zdtsI.count += 1
-				// 	}
-				// }
 				if e := f.SeekIndex(-4, file.AtCurrent); e != nil {
 					return e
 				}
 				if bgdts[trackID] == -1 {
 					bgdts[trackID] = ts
 				}
-				cu := ts - bgdts[trackID]
-				if zdtsI.zdts == 0 {
-					zdtsI.zdts = cu
-				} else if chosenId == trackID {
-					chosenT = float64(cu) / float64(zdtsI.zdts)
-				} else if chosenT != -1 {
-					cu = int64(chosenT * float64(zdtsI.zdts))
-				}
-				if _, e := f.Write(itob32(int32(cu)), false); e != nil {
+				if _, e := f.Write(itob32(int32(ts-bgdts[trackID])), false); e != nil {
 					return e
 				}
 				eddts[trackID] = ts
 			case 1:
 				ts := btoi64(byte16, 8)
-				// if eddts[trackID] != 0 && zdtsI.zdts != 0 {
-				// 	guessTs := eddts[trackID] + zdtsI.zdts
-				// 	if guessTs != ts {
-				// 		fmt.Println("change", zdtsI.count, zdtsI.zdts)
-				// 		zdtsI.count -= 1
-				// 		if zdtsI.count < 0 {
-				// 			zdtsI.zdts += ts - guessTs
-				// 			zdtsI.count = 1
-				// 		} else {
-				// 			ts = guessTs
-				// 		}
-				// 	} else {
-				// 		zdtsI.count += 1
-				// 	}
-				// }
 				if e := f.SeekIndex(-8, file.AtCurrent); e != nil {
 					return e
 				}
 				if bgdts[trackID] == -1 {
 					bgdts[trackID] = ts
 				}
-				cu := ts - bgdts[trackID]
-				if zdtsI.zdts == 0 {
-					zdtsI.zdts = cu
-				} else if chosenId == trackID {
-					chosenT = float64(cu) / float64(zdtsI.zdts)
-				} else if chosenT != -1 {
-					cu = int64(chosenT * float64(zdtsI.zdts))
-				}
-				if _, e := f.Write(itob64(cu), false); e != nil {
+				if _, e := f.Write(itob64(ts-bgdts[trackID]), false); e != nil {
 					return e
 				}
 				eddts[trackID] = ts

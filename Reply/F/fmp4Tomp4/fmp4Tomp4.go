@@ -35,7 +35,7 @@ var (
 func conver(ctx context.Context, ptr *string) error {
 	be := time.Now()
 	fmt.Println("conver")
-	defer fmt.Printf("conver fin (%v)\n", time.Since(be))
+	defer func() { fmt.Printf("conver fin (%v)\n", time.Since(be)) }()
 
 	sf := file.New(*ptr+"0.mp4", 0, false)
 	if !sf.IsExist() {
