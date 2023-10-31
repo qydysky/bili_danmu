@@ -1482,7 +1482,10 @@ func init() {
 					// 	w.Header().Add(`Content-Range`, fmt.Sprintf("bytes %d-%d/%d", rangeHeaderNum, fi.Size()-1, fi.Size()))
 					// 	w.WriteHeader(http.StatusPartialContent)
 
-					flog.L(`T: `, r.RemoteAddr, `接入录播`+v)
+					flog.L(`T: `, r.RemoteAddr, `接入录播`)
+					ts := time.Now()
+					defer func() { flog.L(`T: `, r.RemoteAddr, `断开录播`, time.Since(ts)) }()
+
 					if e := f.CopyToIoWriter(pweb.WithFlush(w), pio.CopyConfig{BytePerSec: speed}); e != nil {
 						flog.L(`E: `, e)
 					}
@@ -1513,11 +1516,11 @@ func init() {
 			// 推送数据
 			{
 				startFunc := func(_ *M4SStream) error {
-					flog.L(`T: `, r.RemoteAddr, `接入直播流`)
+					flog.L(`T: `, r.RemoteAddr, `接入直播`)
 					return nil
 				}
 				stopFunc := func(_ *M4SStream) error {
-					flog.L(`T: `, r.RemoteAddr, `断开直播流`)
+					flog.L(`T: `, r.RemoteAddr, `断开直播`)
 					return nil
 				}
 
