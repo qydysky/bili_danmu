@@ -70,6 +70,7 @@
     "直播流类型-help": "flv,fmp4,flvH,fmp4H,带H后缀的为Hevc格式编码",
     "直播流类型": "fmp4",
     "直播流不使用mcdn": false,
+    "直播流接收n帧才保存": 3,
     "flv断流超时s": 5,
     "flv断流续接": true,
     "fmp4切片下载超时s": 3,

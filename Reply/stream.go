@@ -48,13 +48,15 @@ type M4SStream struct {
 	stream_type          string                //流类型
 	Stream_msg           *msgq.MsgType[[]byte] //流数据消息 tag:data
 	first_buf            []byte                //m4s起始块 or flv起始块
+	frameCount           uint                  //关键帧数量
 	boot_buf             []byte                //快速启动缓冲
 	boot_buf_locker      funcCtrl.BlockFunc
 	last_m4s             *m4s_link_item           //最后一个切片
 	m4s_pool             *pool.Buf[m4s_link_item] //切片pool
 	common               *c.Common                //通用配置副本
 	Current_save_path    string                   //明确的直播流保存目录
-	// 事件周期 start: 开始实例 startRec：开始录制 load：接收到视频头 firstFrame: 接收到第一个关键帧 cut：切 stopRec：结束录制 stop：结束实例
+	// 事件周期 start: 开始实例 startRec：开始录制 load：接收到视频头
+	// keyFrame: 接收到关键帧 cut：切 stopRec：结束录制 stop：结束实例
 	msg               *msgq.MsgType[*M4SStream] //实例的各种事件回调
 	Callback_start    func(*M4SStream) error    //实例开始的回调
 	Callback_startRec func(*M4SStream) error    //录制开始的回调
@@ -580,6 +582,7 @@ func (t *M4SStream) saveStream() (e error) {
 	// 清除初始值
 	t.last_m4s = nil
 	t.first_buf = nil
+	t.frameCount = 0
 
 	if s, ok := t.common.K_v.LoadV("直播Web服务路径").(string); ok && s != "" {
 		t.log.L(`I: `, "Web服务地址:", t.common.Stream_url.String()+s)
@@ -596,12 +599,20 @@ func (t *M4SStream) saveStream() (e error) {
 
 	// 保存到文件
 	if t.config.save_to_file {
-		// 确保能接收到第一个帧才开始录制
-		var cancelfirstFrame = t.msg.Pull_tag_only(`firstFrame`, func(ms *M4SStream) (disable bool) {
-			ms.msg.Push_tag(`cut`, ms)
-			return true
+		var startCount uint = 3
+		if s, ok := t.common.K_v.LoadV("直播流接收n帧才保存").(float64); ok && s > 0 && uint(s) > startCount {
+			startCount = uint(s)
+		}
+		// 确保能接收到第n个帧才开始录制
+		var cancelkeyFrame = t.msg.Pull_tag_only(`keyFrame`, func(ms *M4SStream) (disable bool) {
+			if startCount <= t.frameCount {
+				ms.msg.Push_tag(`cut`, ms)
+				return true
+			}
+			t.log.L(`T: `, fmt.Sprintf("%d帧后开始录制", startCount-t.frameCount))
+			return false
 		})
-		defer cancelfirstFrame()
+		defer cancelkeyFrame()
 	}
 
 	// 获取流
@@ -740,11 +751,10 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 			// read
 			go func() {
 				var (
-					ticker     = time.NewTicker(time.Second)
-					buff       = slice.New[byte]()
-					keyframe   = slice.New[byte]()
-					buf        = make([]byte, 1<<16)
-					frameCount = 0
+					ticker   = time.NewTicker(time.Second)
+					buff     = slice.New[byte]()
+					keyframe = slice.New[byte]()
+					buf      = make([]byte, 1<<16)
 				)
 
 				for {
@@ -795,10 +805,8 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 							t.bootBufPush(keyframe.GetPureBuf())
 							keyframe.Reset()
 							t.Stream_msg.PushLock_tag(`data`, t.boot_buf)
-							frameCount += 1
-							if frameCount == 1 {
-								t.msg.Push_tag(`firstFrame`, t)
-							}
+							t.frameCount += 1
+							t.msg.Push_tag(`keyFrame`, t)
 						}
 						if last_available_offset > 1 {
 							// fmt.Println("write Sync")
@@ -881,7 +889,6 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 		buf          = slice.New[byte]()
 		fmp4Decoder  = &Fmp4Decoder{}
 		keyframe     = slice.New[byte]()
-		frameCount   = 0
 		to           = 3
 		fmp4UpdateTo = 7.0
 		fmp4Updated  time.Time
@@ -1072,10 +1079,8 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 				t.bootBufPush(keyframe.GetPureBuf())
 				keyframe.Reset()
 				t.Stream_msg.PushLock_tag(`data`, t.boot_buf)
-				frameCount += 1
-				if frameCount == 1 {
-					t.msg.Push_tag(`firstFrame`, t)
-				}
+				t.frameCount += 1
+				t.msg.Push_tag(`keyFrame`, t)
 			}
 
 			_ = buf.RemoveFront(last_available_offset)
