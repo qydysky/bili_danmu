@@ -5,7 +5,7 @@ go 1.21
 require (
 	github.com/gotk3/gotk3 v0.6.2
 	github.com/mdp/qrterminal/v3 v3.1.1
-	github.com/qydysky/part v0.28.1-0.20231031132212-5e6cc320f6db
+	github.com/qydysky/part v0.28.1-0.20231101183328-e06a1ded4858
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966
 	golang.org/x/text v0.13.0

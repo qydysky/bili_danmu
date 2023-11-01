@@ -243,7 +243,7 @@ __webpack_require__.r(__webpack_exports__);
             mount: danmuEmit,
         };
     
-    if(ref!="now")danmukuOption.danmuku = "./xml?&ref="+ref;
+    // if(ref!="now")danmukuOption.danmuku = "./xml?&ref="+ref;
 
     let config = {
             conn: undefined,
@@ -254,7 +254,7 @@ __webpack_require__.r(__webpack_exports__);
             lock: true,
             volume: 0.5,
             hotkey: false,
-            isLive: ref=="now",
+            isLive: true,
             muted: false,
             autoplay: true,
             autoMini: true,
@@ -419,7 +419,7 @@ __webpack_require__.r(__webpack_exports__);
         document.addEventListener("resize", player.autoSize)
     }
     
-    if(ref=="now")ws();
+    ws();
     initPlay(config);
 })();
 

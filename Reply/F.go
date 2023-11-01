@@ -226,8 +226,9 @@ func Ass_f(ctx context.Context, save_path string, filePath string, st time.Time)
 	_, _ = f.Write([]byte(ass.header), true)
 	ass.startT = st
 
-	done := pctx.Wait(ctx)
+	ctx, done := pctx.WaitCtx(ctx)
 	defer done()
+	<-ctx.Done()
 
 	ass.file = ""
 	fl.L(`I: `, "结束")
@@ -1697,8 +1698,9 @@ func StartRecDanmu(ctx context.Context, filePath string) {
 		f.L(`E: `, e)
 	}
 
-	done := pctx.Wait(ctx)
+	ctx, done := pctx.WaitCtx(ctx)
 	defer done()
+	<-ctx.Done()
 
 	f.L(`I: `, `结束`)
 
