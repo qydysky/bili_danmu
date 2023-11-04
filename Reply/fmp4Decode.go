@@ -3,7 +3,9 @@ package reply
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
+	"math"
 
 	"github.com/dustin/go-humanize"
 	F "github.com/qydysky/bili_danmu/F"
@@ -41,21 +43,33 @@ type ie struct {
 }
 
 type trak struct {
-	firstTimeStamp int
-	timescale      int
-	trackID        int
-	handlerType    byte
+	// firstTimeStamp int
+	// lastTimeStamp  int
+	timescale   int
+	trackID     int
+	handlerType byte
 }
 
 type timeStamp struct {
-	timeStamp      int
-	data           []byte
-	firstTimeStamp int
-	handlerType    byte
+	// firstTimeStamp int
+	timeStamp   int
+	timescale   int
+	data        []byte
+	handlerType byte
 }
 
+// func (t *timeStamp) resetTs() {
+// 	t.timeStamp -= t.firstTimeStamp
+// 	switch len(t.data) {
+// 	case 4:
+// 		copy(t.data, F.Itob32(int32(t.timeStamp)))
+// 	case 8:
+// 		copy(t.data, F.Itob64(int64(t.timeStamp)))
+// 	}
+// }
+
 func (t *timeStamp) getT() float64 {
-	return float64(t.timeStamp) / float64(t.firstTimeStamp)
+	return float64(t.timeStamp) / float64(t.timescale)
 }
 
 type Fmp4Decoder struct {
@@ -73,12 +87,12 @@ func (t *Fmp4Decoder) Init_fmp4(buf []byte) (b []byte, err error) {
 
 	err = deal(ies,
 		[]string{"ftyp", "moov"},
-		func(m []ie) bool {
+		func(m []ie) (bool, error) {
 			ftypI = m[0].i
 			ftypE = m[0].e
 			moovI = m[1].i
 			moovE = m[1].e
-			return true
+			return true, nil
 		})
 
 	if err != nil {
@@ -87,18 +101,19 @@ func (t *Fmp4Decoder) Init_fmp4(buf []byte) (b []byte, err error) {
 
 	err = deal(ies,
 		[]string{"tkhd", "mdia", "mdhd", "hdlr"},
-		func(m []ie) bool {
+		func(m []ie) (bool, error) {
 			tackId := int(F.Btoi(buf, m[0].i+20, 4))
 			if t.traks == nil {
 				t.traks = make(map[int]*trak)
 			}
 			t.traks[tackId] = &trak{
-				trackID:        tackId,
-				firstTimeStamp: -1,
-				timescale:      int(F.Btoi(buf, m[2].i+20, 4)),
-				handlerType:    buf[m[3].i+16],
+				trackID: tackId,
+				// firstTimeStamp: -1,
+				// lastTimeStamp:  -1,
+				timescale:   int(F.Btoi(buf, m[2].i+20, 4)),
+				handlerType: buf[m[3].i+16],
 			}
-			return false
+			return false, nil
 		})
 
 	if err != nil {
@@ -140,7 +155,7 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 			switch buf[tfdt+8] {
 			case 0:
 				ts.data = buf[tfdt+16 : tfdt+20]
-				ts.timeStamp = int(F.Btoi(buf, tfdt+16, 4))
+				ts.timeStamp = int(F.Btoi32(buf, tfdt+16))
 			case 1:
 				ts.data = buf[tfdt+12 : tfdt+20]
 				ts.timeStamp = int(F.Btoi64(buf, tfdt+12))
@@ -153,11 +168,19 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 			track, ok := t.traks[int(F.Btoi(buf, tfhd+12, 4))]
 			if ok {
 				ts := get_timeStamp(tfdt)
-				if track.firstTimeStamp == -1 {
-					track.firstTimeStamp = ts.timeStamp
-				}
+				// if track.firstTimeStamp == -1 {
+				// 	track.firstTimeStamp = ts.timeStamp
+				// }
+
+				// ts.firstTimeStamp = track.firstTimeStamp
 				ts.handlerType = track.handlerType
-				ts.firstTimeStamp = track.firstTimeStamp
+				ts.timescale = track.timescale
+
+				// if ts.timeStamp > track.lastTimeStamp {
+				// 	track.lastTimeStamp = ts.timeStamp
+				// 	ts.resetTs()
+				// }
+
 				return ts, track.handlerType
 			}
 			return
@@ -213,8 +236,8 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 		[][]string{
 			{"moof", "mfhd", "traf", "tfhd", "tfdt", "trun", "mdat"},
 			{"moof", "mfhd", "traf", "tfhd", "tfdt", "trun", "traf", "tfhd", "tfdt", "trun", "mdat"}},
-		[]func(m []ie) bool{
-			func(m []ie) bool {
+		[]func(m []ie) (bool, error){
+			func(m []ie) (bool, error) {
 				var (
 					keyframeMoof = buf[m[5].i+20] == byte(0x02)
 					// moofSN       = int(F.Btoi(buf, m[1].i+12, 4))
@@ -228,7 +251,7 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 							t.buf.Reset()
 							haveKeyframe = false
 							cu = m[0].i
-							return false
+							return false, nil
 						}
 					}
 					if nil != check_set_maxT(ts, func(_ timeStamp) error {
@@ -239,7 +262,7 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 						cu = m[0].i
 						return errors.New("skip")
 					}) {
-						return false
+						return false, nil
 					}
 				}
 
@@ -259,9 +282,9 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 				if haveKeyframe {
 					_ = t.buf.Append(buf[m[0].i:m[6].e])
 				}
-				return false
+				return false, nil
 			},
-			func(m []ie) bool {
+			func(m []ie) (bool, error) {
 				var (
 					keyframeMoof = buf[m[5].i+20] == byte(0x02) || buf[m[9].i+20] == byte(0x02)
 					// moofSN       = int(F.Btoi(buf, m[1].i+12, 4))
@@ -279,7 +302,7 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 							t.buf.Reset()
 							haveKeyframe = false
 							cu = m[0].i
-							return false
+							return false, nil
 						}
 					}
 					switch handlerType {
@@ -296,7 +319,7 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 						cu = m[0].i
 						return errors.New("skip")
 					}) {
-						return false
+						return false, nil
 					}
 				}
 				{
@@ -307,7 +330,7 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 							t.buf.Reset()
 							haveKeyframe = false
 							cu = m[0].i
-							return false
+							return false, nil
 						}
 					}
 					switch handlerType {
@@ -324,14 +347,14 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 						cu = m[0].i
 						return errors.New("skip")
 					}) {
-						return false
+						return false, nil
 					}
 				}
 
 				//sync audio timeStamp
-				if diff := video.getT() - audio.getT(); diff > 0.00001 {
-					date := F.Itob64(int64(video.getT() * float64(audio.firstTimeStamp)))
-					copy(audio.data, date)
+				if math.Abs(video.getT()-audio.getT()) > 0.1 {
+					return false, fmt.Errorf("时间戳不匹配%v %v", video.timeStamp, audio.timeStamp)
+					// copy(video.data, F.Itob64(int64(audio.getT()*float64(video.timescale))))
 				}
 
 				//deal frame
@@ -348,16 +371,16 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 				if haveKeyframe {
 					_ = t.buf.Append(buf[m[0].i:m[10].e])
 				}
-				return false
+				return false, nil
 			}})
 	return
 }
 
-func deal(ies []ie, boxNames []string, fs func([]ie) (breakloop bool)) (err error) {
-	return deals(ies, [][]string{boxNames}, []func([]ie) (breakloop bool){fs})
+func deal(ies []ie, boxNames []string, fs func([]ie) (breakloop bool, err error)) (err error) {
+	return deals(ies, [][]string{boxNames}, []func([]ie) (breakloop bool, err error){fs})
 }
 
-func deals(ies []ie, boxNames [][]string, fs []func([]ie) (breakloop bool)) (err error) {
+func deals(ies []ie, boxNames [][]string, fs []func([]ie) (breakloop bool, e error)) (err error) {
 	if len(boxNames) != len(fs) {
 		panic("boxNames与fs数量不相等")
 	}
@@ -368,7 +391,9 @@ func deals(ies []ie, boxNames [][]string, fs []func([]ie) (breakloop bool)) (err
 				matchCounts[i] += 1
 				if matchCounts[i] == len(boxNames[i]) {
 					matchCounts[i] = 0
-					if fs[i](ies[cu-len(boxNames[i])+1 : cu+1]) {
+					if breakloop, e := fs[i](ies[cu-len(boxNames[i])+1 : cu+1]); e != nil {
+						return e
+					} else if breakloop {
 						boxNames = append(boxNames[:i], boxNames[i+1:]...)
 						fs = append(fs[:i], fs[i+1:]...)
 						matchCounts = append(matchCounts[:i], matchCounts[i+1:]...)

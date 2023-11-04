@@ -287,7 +287,6 @@ func (t *M4SStream) fetchParseM3U8() (m4s_links []*m4s_link_item, m3u8_addon []b
 		// 设置请求参数
 		rval := reqf.Rval{
 			Url:     v.Url,
-			Retry:   2,
 			Timeout: 2000,
 			Proxy:   c.C.Proxy,
 			Header: map[string]string{
@@ -1055,16 +1054,17 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 				if !errors.Is(err, io.EOF) {
 					t.log.L(`E: `, err)
 
+					//丢弃所有数据
+					buf.Reset()
+
 					// no, _ := v.getNo()
 					// file.New("error/"+strconv.Itoa(no)+".m4s", 0, true).Write(buf.getCopyBuf(), true)
 					// file.New("error/"+strconv.Itoa(no)+"S.m4s", 0, true).Write(v.data, true)
 
-					if err.Error() == "未初始化traks" {
-						e = err
-						return
-					}
-					//丢弃所有数据
-					buf.Reset()
+					// if err.Error() == "未初始化traks" {
+					e = err
+					return
+					// }
 				} else {
 					keyframe.Reset()
 					last_available_offset = 0

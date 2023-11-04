@@ -1403,8 +1403,7 @@ func init() {
 
 			if rpath == "" {
 				w.Header().Set("Retry-After", "1")
-				w.WriteHeader(http.StatusServiceUnavailable)
-				flog.L(`E: `, `无指定路径`)
+				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
 
@@ -1508,7 +1507,7 @@ func init() {
 			// 未准备好
 			if currentStreamO == nil || !currentStreamO.Status.Islive() {
 				w.Header().Set("Retry-After", "1")
-				w.WriteHeader(http.StatusServiceUnavailable)
+				w.WriteHeader(http.StatusNotFound)
 				return
 			}
 
