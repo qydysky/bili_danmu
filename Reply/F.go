@@ -294,7 +294,7 @@ func StreamOCommon(roomid int) (array []*c.Common) {
 // 获取实例的录制状态
 func StreamOStatus(roomid int) (Islive bool) {
 	v, ok := streamO.Load(roomid)
-	return ok && (v.(*M4SStream).Status.Islive() || v.(*M4SStream).exitSign.Islive())
+	return ok && (!pctx.Done(v.(*M4SStream).Status) || v.(*M4SStream).exitSign.Islive())
 }
 
 // 开始实例
@@ -337,7 +337,7 @@ func StreamOStop(roomid int) {
 			if c.C.Roomid == _roomid {
 				return true
 			}
-			if v.(*M4SStream).Status.Islive() {
+			if !pctx.Done(v.(*M4SStream).Status) {
 				v.(*M4SStream).Stop()
 			}
 			streamO.Delete(_roomid)
@@ -345,7 +345,7 @@ func StreamOStop(roomid int) {
 		})
 	case -1: // 所有房间
 		streamO.Range(func(k, v interface{}) bool {
-			if v.(*M4SStream).Status.Islive() {
+			if !pctx.Done(v.(*M4SStream).Status) {
 				v.(*M4SStream).Stop()
 			}
 			streamO.Delete(k)
@@ -353,7 +353,7 @@ func StreamOStop(roomid int) {
 		})
 	default: // 针对某房间
 		if v, ok := streamO.Load(roomid); ok {
-			if v.(*M4SStream).Status.Islive() {
+			if !pctx.Done(v.(*M4SStream).Status) {
 				v.(*M4SStream).Stop()
 			}
 			streamO.Delete(roomid)
@@ -364,7 +364,7 @@ func StreamOStop(roomid int) {
 // 实例切断
 func StreamOCut(roomid int, title ...string) {
 	if v, ok := streamO.Load(roomid); ok {
-		if v.(*M4SStream).Status.Islive() {
+		if !pctx.Done(v.(*M4SStream).Status) {
 			if len(title) != 0 {
 				v.(*M4SStream).common.Title = title[0]
 			}
@@ -1505,7 +1505,7 @@ func init() {
 			})
 
 			// 未准备好
-			if currentStreamO == nil || !currentStreamO.Status.Islive() {
+			if currentStreamO == nil || pctx.Done(currentStreamO.Status) {
 				w.Header().Set("Retry-After", "1")
 				w.WriteHeader(http.StatusNotFound)
 				return

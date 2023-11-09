@@ -93,7 +93,9 @@ func Search_stream_tag(buf []byte, keyframe *slice.Buf[byte]) (front_buf []byte,
 			buf_offset = tag_offset + 1
 			last_available_offset = buf_offset
 			// fmt.Printf("tag_size error %x\n",buf[tag_offset:tag_offset+tag_header_size])
-			continue //tag_size error
+			// continue //tag_size error
+			err = errors.New(`[decoder]tag_size error`)
+			return
 		}
 
 		tag_size_check := int(F.Btoi32(buf[tag_offset+tag_header_size+tag_size:tag_offset+tag_header_size+tag_size+previou_tag_size], 0))
@@ -104,7 +106,9 @@ func Search_stream_tag(buf []byte, keyframe *slice.Buf[byte]) (front_buf []byte,
 			buf_offset = tag_offset + 1
 			last_available_offset = buf_offset
 			// fmt.Printf("tag_size_check error %x\n",buf[tag_offset:tag_offset+tag_header_size])
-			continue //tag_size_check error
+			// continue //tag_size_check error
+			err = errors.New(`[decoder]tag_size_check error`)
+			return
 		}
 
 		time_stamp := int(F.Btoi32([]byte{buf[tag_offset+7], buf[tag_offset+4], buf[tag_offset+5], buf[tag_offset+6]}, 0))
