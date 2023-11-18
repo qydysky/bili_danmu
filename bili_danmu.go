@@ -15,6 +15,7 @@ import (
 	c "github.com/qydysky/bili_danmu/CV"
 	F "github.com/qydysky/bili_danmu/F"
 	reply "github.com/qydysky/bili_danmu/Reply"
+	"github.com/qydysky/bili_danmu/Reply/F/recStartEnd"
 	send "github.com/qydysky/bili_danmu/Send"
 	Cmd "github.com/qydysky/bili_danmu/cmd"
 	sys "github.com/qydysky/part/sys"
@@ -87,6 +88,10 @@ func Start() {
 		F.Dosign()
 		// 附加功能 savetojson
 		reply.SaveToJson.Init()
+		// 指定房间录制区间
+		if err := recStartEnd.InitF.Run(context.Background(), c.C); err != nil {
+			danmulog.Base("功能", "指定房间录制区间").L(`E: `, err)
+		}
 
 		//使用带tag的消息队列在功能间传递消息
 		{
@@ -285,9 +290,20 @@ func Start() {
 					reply.Danmuji_auto()
 				}
 				{ //附加功能 进房间发送弹幕 直播流保存 每日签到
+					_ = recStartEnd.LoopCheck.Run(context.Background(), recStartEnd.StreamCtl{
+						C:     c.C,
+						State: reply.StreamOStatus,
+						Start: reply.StreamOStart,
+						End:   reply.StreamOStop,
+						Cut:   func(i int) { reply.StreamOCut(i) },
+					})
 					go F.Dosign()
 					go reply.Entry_danmu()
-					go reply.StreamOStart(c.C.Roomid)
+					if e := recStartEnd.RecStartCheck.Run(context.Background(), c.C); e == nil {
+						go reply.StreamOStart(c.C.Roomid)
+					} else {
+						danmulog.Base("功能", "指定房间录制区间").L(`I: `, c.C.Roomid, e)
+					}
 					go F.RoomEntryAction(c.C.Roomid)
 				}
 

@@ -9,19 +9,8 @@ import (
 	comp "github.com/qydysky/part/component"
 )
 
-type Sign struct {
-	// 下播总结
-	sumup func(ctx context.Context, ptr *c.Common) error
-}
-
-func init() {
-	sign := Sign{
-		sumup: sumup,
-	}
-	if e := comp.Put[c.Common](comp.Sign[Sign](`sumup`), sign.sumup); e != nil {
-		panic(e)
-	}
-}
+// *c.Common
+var Sumup = comp.NewComp(sumup)
 
 func sumup(ctx context.Context, ptr *c.Common) error {
 	dura := time.Since(ptr.Live_Start_Time).Round(time.Second)

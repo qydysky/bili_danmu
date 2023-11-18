@@ -13,10 +13,11 @@ import (
 	brotli "github.com/andybalholm/brotli"
 	c "github.com/qydysky/bili_danmu/CV"
 	F "github.com/qydysky/bili_danmu/F"
+	"github.com/qydysky/bili_danmu/Reply/F/liveOver"
+	"github.com/qydysky/bili_danmu/Reply/F/recStartEnd"
 	ws_msg "github.com/qydysky/bili_danmu/Reply/ws_msg"
 	send "github.com/qydysky/bili_danmu/Send"
 	p "github.com/qydysky/part"
-	comp "github.com/qydysky/part/component"
 	mq "github.com/qydysky/part/msgq"
 	pstrings "github.com/qydysky/part/strings"
 )
@@ -772,7 +773,7 @@ func (replyF) preparing(s string) {
 			StreamOStop(roomId)
 			// 下播总结
 			type empty struct{}
-			if e := comp.Run(comp.Sign[empty](`preparing`), context.Background(), c.C); e != nil {
+			if e := liveOver.Sumup.Run(context.Background(), c.C); e != nil {
 				msglog.L(`E: `, e)
 			}
 		}
@@ -804,7 +805,15 @@ func (replyF) live(s string) {
 			if v, ok := c.C.K_v.LoadV(`仅保存当前直播间流`).(bool); ok && v {
 				StreamOStop(-2) //停止其他房间录制
 			}
-			StreamOStart(c.C.Roomid)
+			if e := recStartEnd.RecStartCheck.Run(context.Background(), c.C); e == nil {
+				if StreamOStatus(c.C.Roomid) {
+					StreamOCut(c.C.Roomid)
+				} else {
+					StreamOStart(c.C.Roomid)
+				}
+			} else {
+				msglog.L(`W: `, "房间", type_item.Roomid, e)
+			}
 			//有时不返回弹幕 开播刷新弹幕
 			c.C.Danmu_Main_mq.Push_tag(`flash_room`, nil)
 		}()

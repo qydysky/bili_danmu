@@ -33,10 +33,10 @@ import (
 	c "github.com/qydysky/bili_danmu/CV"
 	F "github.com/qydysky/bili_danmu/F"
 	_ "github.com/qydysky/bili_danmu/Reply/F"
+	"github.com/qydysky/bili_danmu/Reply/F/danmuXml"
 	send "github.com/qydysky/bili_danmu/Send"
 
 	p "github.com/qydysky/part"
-	comp "github.com/qydysky/part/component"
 	pctx "github.com/qydysky/part/ctx"
 	file "github.com/qydysky/part/file"
 	pio "github.com/qydysky/part/io"
@@ -1576,7 +1576,7 @@ func init() {
 						return
 					} else if !file.New(v+"0.xml", 0, true).IsExist() {
 						type empty struct{}
-						if e := comp.Run(comp.Sign[empty](`SerF`, `player`, `ws`), context.Background(), &v); e != nil {
+						if e := danmuXml.DanmuXml.Run(context.Background(), &v); e != nil {
 							msglog.L(`E: `, e)
 						}
 					}
@@ -1665,7 +1665,7 @@ func init() {
 					}
 
 					type empty struct{}
-					if e := comp.Run(comp.Sign[empty](`SerF`, `player`, `xml`), context.Background(), &v); e != nil {
+					if e := danmuXml.DanmuXml.Run(context.Background(), &v); e != nil {
 						msglog.L(`E: `, e)
 					}
 				}
@@ -1705,8 +1705,8 @@ func StartRecDanmu(ctx context.Context, filePath string) {
 
 	// 弹幕录制结束
 	type empty struct{}
-	if e := comp.Run[string](comp.Sign[empty](`startRecDanmu`, `stop`), context.Background(), &filePath); e != nil {
-		f.L(`E: `, e)
+	if e := danmuXml.DanmuXml.Run(context.Background(), &filePath); e != nil {
+		msglog.L(`E: `, e)
 	}
 
 	Recoder.Stop()

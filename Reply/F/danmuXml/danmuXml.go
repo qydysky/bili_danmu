@@ -13,19 +13,8 @@ import (
 	file "github.com/qydysky/part/file"
 )
 
-type Sign struct {
-	// path: csv所在目录，末尾无
-	toXml func(ctx context.Context, path *string) error
-}
-
-func init() {
-	sign := Sign{
-		toXml: toXml,
-	}
-	if e := comp.Put[string](comp.Sign[Sign](`toXml`), sign.toXml); e != nil {
-		panic(e)
-	}
-}
+// path
+var DanmuXml = comp.NewComp(toXml)
 
 type danmu struct {
 	XMLName    xml.Name `xml:"i"`

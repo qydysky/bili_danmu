@@ -1,0 +1,166 @@
+package recStartEnd
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"math"
+	"time"
+
+	c "github.com/qydysky/bili_danmu/CV"
+	comp "github.com/qydysky/part/component"
+	log "github.com/qydysky/part/log"
+	"golang.org/x/exp/slices"
+)
+
+var (
+	InitF         = comp.NewComp(initf)
+	RecStartCheck = comp.NewComp(recStartCheck)
+	LoopCheck     = comp.NewComp(loopCheck)
+)
+
+type dur struct {
+	start int
+	end   int
+}
+
+var (
+	logg        *log.Log_interface
+	roomSetting map[int][]dur
+	timePoints  []int
+)
+
+func initf(ctx context.Context, ptr *c.Common) (err error) {
+	if list, ok := ptr.K_v.LoadV("指定房间录制区间").([]any); ok {
+		logg = ptr.Log.Base("功能", "指定房间录制区间")
+		defer func() {
+			if err != nil {
+				clear(roomSetting)
+				clear(timePoints)
+			}
+		}()
+		if roomSetting == nil {
+			roomSetting = make(map[int][]dur)
+		}
+		clear(roomSetting)
+		for _, v := range list {
+			if vm, ok := v.(map[string]any); ok {
+				if roomid, ok := vm["roomid"].(float64); ok && int(roomid) > 0 {
+					var durs []dur
+					if sts, ok := vm["fromTo"].([]any); ok {
+						for _, v := range sts {
+							if vm, ok := v.(map[string]any); ok {
+								var durv dur
+								if start, ok := vm["start"].(string); ok {
+									if tt, e := time.Parse(time.TimeOnly, start); e != nil {
+										err = e
+										return
+									} else {
+										durv.start = tt.Hour()*3600 + tt.Minute()*60 + tt.Second() + 1
+										timePoints = append(timePoints, durv.start)
+									}
+								}
+								if end, ok := vm["end"].(string); ok {
+									if tt, e := time.Parse(time.TimeOnly, end); e != nil {
+										err = e
+										return
+									} else {
+										durv.end = tt.Hour()*3600 + tt.Minute()*60 + tt.Second() + 1
+										timePoints = append(timePoints, durv.end)
+									}
+								}
+								durs = append(durs, durv)
+							}
+						}
+					}
+					logg.L(`T: `, "加载规则", fmt.Sprintf("%d %d条", int(roomid), len(durs)))
+					roomSetting[int(roomid)] = durs
+				}
+			}
+		}
+		slices.Sort(timePoints)
+	}
+	return nil
+}
+
+func recStartCheck(ctx context.Context, ptr *c.Common) error {
+	if setting, ok := roomSetting[ptr.Roomid]; ok {
+		now := time.Now()
+		t := now.Hour()*3600 + now.Minute()*60 + now.Second() + 1
+		for _, v := range setting {
+			if v.start != 0 && v.end != 0 && t <= v.end && t >= v.start {
+				return nil
+			}
+		}
+		return errors.New("当前不在设定时间段内")
+	}
+	return nil
+}
+
+type StreamCtl struct {
+	C     *c.Common
+	State func(int) bool
+	Start func(int)
+	End   func(int)
+	Cut   func(int)
+}
+
+var streamCtl StreamCtl
+
+func loopCheck(ctx context.Context, ptr StreamCtl) error {
+	streamCtl = ptr
+	setNextFunc()
+	return nil
+}
+
+func setNextFunc() {
+	if len(timePoints) == 0 {
+		return
+	}
+
+	now := time.Now()
+	t := now.Hour()*3600 + now.Minute()*60 + now.Second() + 1
+
+	var tmp []int
+	for i := 0; i < len(timePoints); i++ {
+		if t > timePoints[i] {
+			tmp = append(tmp, timePoints[i]+60*60*24-t)
+		} else {
+			tmp = append(tmp, timePoints[i]-t)
+		}
+	}
+	slices.Sort(tmp)
+
+	// logg.L(`T: `, "下个时间点", time.Now().Add(time.Second*time.Duration(tmp[0])).Format(time.DateTime))
+
+	time.AfterFunc(time.Second*time.Duration(tmp[0]), func() {
+		if streamCtl.C.Liveing {
+			if setting, ok := roomSetting[streamCtl.C.Roomid]; ok {
+				now := time.Now()
+				t := now.Hour()*3600 + now.Minute()*60 + now.Second() + 1
+				for _, v := range setting {
+					if v.start != 0 && math.Abs(float64(t-v.start)) < 5 {
+						if streamCtl.State(streamCtl.C.Roomid) {
+							logg.L(`T: `, "切片", streamCtl.C.Roomid)
+							streamCtl.Cut(streamCtl.C.Roomid)
+						} else {
+							logg.L(`T: `, "开始", streamCtl.C.Roomid)
+							streamCtl.Start(streamCtl.C.Roomid)
+						}
+						time.Sleep(time.Second * 5)
+						break
+					}
+					if v.end != 0 && math.Abs(float64(t-v.end)) < 5 {
+						if streamCtl.State(streamCtl.C.Roomid) {
+							logg.L(`T: `, "结束", streamCtl.C.Roomid)
+							streamCtl.End(streamCtl.C.Roomid)
+						}
+						time.Sleep(time.Second * 5)
+						break
+					}
+				}
+			}
+		}
+		setNextFunc()
+	})
+}
