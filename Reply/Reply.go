@@ -13,6 +13,7 @@ import (
 	brotli "github.com/andybalholm/brotli"
 	c "github.com/qydysky/bili_danmu/CV"
 	F "github.com/qydysky/bili_danmu/F"
+	"github.com/qydysky/bili_danmu/Reply/F/danmuReLiveTriger"
 	"github.com/qydysky/bili_danmu/Reply/F/liveOver"
 	"github.com/qydysky/bili_danmu/Reply/F/recStartEnd"
 	ws_msg "github.com/qydysky/bili_danmu/Reply/ws_msg"
@@ -1138,8 +1139,7 @@ func (replyF) danmu(s string) {
 		saveDanmuToDB.init(c.C)
 		saveDanmuToDB.danmu(item)
 		// 对指定弹幕重新录制
-		danmuReLiveTriger.Init(c.C)
-		danmuReLiveTriger.Check(item.uid, item.msg)
+		_ = danmuReLiveTriger.Check.Run(context.Background(), danmuReLiveTriger.Danmu{Uid: item.uid, Msg: item.msg})
 		// 语言tts 私信
 		{
 			if item.uid != "" {

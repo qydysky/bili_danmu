@@ -15,6 +15,7 @@ import (
 	c "github.com/qydysky/bili_danmu/CV"
 	F "github.com/qydysky/bili_danmu/F"
 	reply "github.com/qydysky/bili_danmu/Reply"
+	"github.com/qydysky/bili_danmu/Reply/F/danmuReLiveTriger"
 	"github.com/qydysky/bili_danmu/Reply/F/recStartEnd"
 	send "github.com/qydysky/bili_danmu/Send"
 	Cmd "github.com/qydysky/bili_danmu/cmd"
@@ -99,6 +100,13 @@ func Start() {
 				End:   reply.StreamOStop,
 				Cut:   func(i int) { reply.StreamOCut(i) },
 			})
+		}
+		// 指定弹幕重启录制
+		if err := danmuReLiveTriger.Init.Run(context.Background(), danmuReLiveTriger.DanmuReLiveTriger{
+			StreamCut: reply.StreamOCut,
+			C:         c.C,
+		}); err != nil {
+			danmulog.Base("功能", "指定弹幕重启录制").L(`E: `, err)
 		}
 
 		//使用带tag的消息队列在功能间传递消息

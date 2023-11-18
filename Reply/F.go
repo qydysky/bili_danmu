@@ -18,7 +18,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"database/sql"
@@ -1749,44 +1748,6 @@ func (t *Communicate) Count() int {
 
 func (t *Communicate) Store(k interface{}) {
 	t.Buf.Store(k, nil)
-}
-
-// 指定弹幕重启录制
-var danmuReLiveTriger DanmuReLiveTriger
-
-type DanmuReLiveTriger struct {
-	l      map[string]struct{}
-	reload atomic.Bool
-	init   sync.Once
-}
-
-func (t *DanmuReLiveTriger) Init(c *c.Common) {
-	t.init.Do(func() {
-		t.l = make(map[string]struct{})
-		if v, ok := c.K_v.LoadV(`指定弹幕重启录制`).([]any); ok && len(v) > 0 {
-			for i := 0; i < len(v); i++ {
-				var item = v[i].(map[string]any)
-				var uid = strings.TrimSpace(item["uid"].(string))
-				var danmu = strings.TrimSpace(item["danmu"].(string))
-				if uid != "" && danmu != "" {
-					t.l[uid+" "+danmu] = struct{}{}
-				}
-			}
-		}
-	})
-}
-
-func (t *DanmuReLiveTriger) Check(uid, msg string) {
-	if _, ok := t.l[uid+" "+msg]; ok {
-		if t.reload.CompareAndSwap(false, true) {
-			flog.Base_add("指定弹幕重启录制").L(`I: `, uid, msg, "请求重启录制")
-			go func() {
-				StreamOCut(c.C.Roomid)
-				time.Sleep(time.Minute)
-				t.reload.Store(false)
-			}()
-		}
-	}
 }
 
 // 保存弹幕至db
