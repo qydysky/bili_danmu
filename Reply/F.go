@@ -1662,8 +1662,6 @@ func init() {
 						w.WriteHeader(http.StatusNotFound)
 						return
 					}
-
-					type empty struct{}
 					if e := danmuXml.DanmuXml.Run(context.Background(), &v); e != nil {
 						msglog.L(`E: `, e)
 					}
@@ -1703,7 +1701,6 @@ func StartRecDanmu(ctx context.Context, filePath string) {
 	f.L(`I: `, `结束`)
 
 	// 弹幕录制结束
-	type empty struct{}
 	if e := danmuXml.DanmuXml.Run(context.Background(), &filePath); e != nil {
 		msglog.L(`E: `, e)
 	}

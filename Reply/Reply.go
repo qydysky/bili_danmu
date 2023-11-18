@@ -772,7 +772,6 @@ func (replyF) preparing(s string) {
 			var roomId, _ = strconv.Atoi(type_item.Roomid)
 			StreamOStop(roomId)
 			// 下播总结
-			type empty struct{}
 			if e := liveOver.Sumup.Run(context.Background(), c.C); e != nil {
 				msglog.L(`E: `, e)
 			}
