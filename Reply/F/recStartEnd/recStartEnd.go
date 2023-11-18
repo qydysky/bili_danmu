@@ -87,12 +87,18 @@ func recStartCheck(ctx context.Context, ptr *c.Common) error {
 	if setting, ok := roomSetting[ptr.Roomid]; ok {
 		now := time.Now()
 		t := now.Hour()*3600 + now.Minute()*60 + now.Second() + 1
+		var hasSpace = false
 		for _, v := range setting {
-			if v.start != 0 && v.end != 0 && t <= v.end && t >= v.start {
-				return nil
+			if v.start != 0 && v.end != 0 {
+				hasSpace = true
+				if t <= v.end && t >= v.start {
+					return nil
+				}
 			}
 		}
-		return errors.New("当前不在设定时间段内")
+		if hasSpace {
+			return errors.New("当前不在设定时间段内")
+		}
 	}
 	return nil
 }

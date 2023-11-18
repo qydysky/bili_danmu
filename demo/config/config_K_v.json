@@ -104,7 +104,7 @@
             "after":["ffmpeg","-i","0.{type}","-y","-c","copy","1.{type}"]
         }
     ],
-    "指定房间录制区间-help":"指定roomid的房间在指定时间段内将会开启录制.start时检查是否在直播,是则开始录制,如已在录制则切片.end时停止录制.在开播时,若在start与end之间,则录制,5s内只能触发一个fromTo",
+    "指定房间录制区间-help":"指定roomid的房间在指定时间段内将会开启录制.start时检查是否在直播,是则开始录制,如已在录制则切片.end时停止录制.在开播时,若同时有start与end的fromTo,且当前在start与end之间,则录制,若无同时有start与end,则开播就录制。5s内只能触发一个fromTo",
     "指定房间录制区间":[
         {
             "roomid":0,

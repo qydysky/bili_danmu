@@ -82,7 +82,7 @@
  
 - `start`时检查是否在直播，是则开始录制，如已在录制则切片。
 - `end`时如已在录制则停止录制。
-- 在开播时,若在`start`与`end`之间，则录制，不在则不录制（仅检查同时有`start`，`end`的`fromTo`）。
+- 存在同时有`start`，`end`的`fromTo`，则开播时，若在`start`与`end`之间，则录制。不存在同时有`start`，`end`的`fromTo`，则一开播就录制。
 - 5s内只能触发一个`fromTo`，所以同房间各`start`、`end`之间间隔不要少于5s。
 
 ```json
