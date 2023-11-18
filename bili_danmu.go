@@ -91,6 +91,14 @@ func Start() {
 		// 指定房间录制区间
 		if err := recStartEnd.InitF.Run(context.Background(), c.C); err != nil {
 			danmulog.Base("功能", "指定房间录制区间").L(`E: `, err)
+		} else {
+			_ = recStartEnd.LoopCheck.Run(context.Background(), recStartEnd.StreamCtl{
+				C:     c.C,
+				State: reply.StreamOStatus,
+				Start: reply.StreamOStart,
+				End:   reply.StreamOStop,
+				Cut:   func(i int) { reply.StreamOCut(i) },
+			})
 		}
 
 		//使用带tag的消息队列在功能间传递消息
@@ -290,13 +298,6 @@ func Start() {
 					reply.Danmuji_auto()
 				}
 				{ //附加功能 进房间发送弹幕 直播流保存 每日签到
-					_ = recStartEnd.LoopCheck.Run(context.Background(), recStartEnd.StreamCtl{
-						C:     c.C,
-						State: reply.StreamOStatus,
-						Start: reply.StreamOStart,
-						End:   reply.StreamOStop,
-						Cut:   func(i int) { reply.StreamOCut(i) },
-					})
 					go F.Dosign()
 					go reply.Entry_danmu()
 					if e := recStartEnd.RecStartCheck.Run(context.Background(), c.C); e == nil {
