@@ -29,3 +29,4 @@ demo/coverage.txt
 coverage.txt
 demo/danmu.sqlite3
 plugin/*.go
+bili_danmu.go

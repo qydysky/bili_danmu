@@ -16,9 +16,11 @@ import (
 	F "github.com/qydysky/bili_danmu/F"
 	reply "github.com/qydysky/bili_danmu/Reply"
 	"github.com/qydysky/bili_danmu/Reply/F/danmuReLiveTriger"
+	"github.com/qydysky/bili_danmu/Reply/F/genCpuPprof"
 	"github.com/qydysky/bili_danmu/Reply/F/recStartEnd"
 	send "github.com/qydysky/bili_danmu/Send"
 	Cmd "github.com/qydysky/bili_danmu/cmd"
+	pctx "github.com/qydysky/part/ctx"
 	sys "github.com/qydysky/part/sys"
 
 	msgq "github.com/qydysky/part/msgq"
@@ -43,8 +45,16 @@ func Start() {
 	var stop = sys.Sys().PreventSleep()
 	defer stop.Done()
 
+	mainCtx, mainDone := pctx.WithWait(context.Background(), 0, time.Minute)
+	defer func() {
+		danmulog.L(`I: `, `等待协程结束`, time.Minute)
+		if e := mainDone(); e != nil {
+			danmulog.L(`W: `, `等待退出超时`)
+		}
+	}()
+
 	// 用户中断
-	var cancelInterrupt, interrupt_chan = c.C.Danmu_Main_mq.Pull_tag_chan(`interrupt`, 2, context.Background())
+	var cancelInterrupt, interrupt_chan = c.C.Danmu_Main_mq.Pull_tag_chan(`interrupt`, 2, mainCtx)
 	defer cancelInterrupt()
 
 	//ctrl+c退出
@@ -90,10 +100,10 @@ func Start() {
 		// 附加功能 savetojson
 		reply.SaveToJson.Init()
 		// 指定房间录制区间
-		if err := recStartEnd.InitF.Run(context.Background(), c.C); err != nil {
+		if err := recStartEnd.InitF.Run(mainCtx, c.C); err != nil {
 			danmulog.Base("功能", "指定房间录制区间").L(`E: `, err)
 		} else {
-			_ = recStartEnd.LoopCheck.Run(context.Background(), recStartEnd.StreamCtl{
+			_ = recStartEnd.LoopCheck.Run(mainCtx, recStartEnd.StreamCtl{
 				C:     c.C,
 				State: reply.StreamOStatus,
 				Start: reply.StreamOStart,
@@ -102,11 +112,17 @@ func Start() {
 			})
 		}
 		// 指定弹幕重启录制
-		if err := danmuReLiveTriger.Init.Run(context.Background(), danmuReLiveTriger.DanmuReLiveTriger{
+		if err := danmuReLiveTriger.Init.Run(mainCtx, danmuReLiveTriger.DanmuReLiveTriger{
 			StreamCut: reply.StreamOCut,
 			C:         c.C,
 		}); err != nil {
 			danmulog.Base("功能", "指定弹幕重启录制").L(`E: `, err)
+		}
+		// pgo gen
+		if file, ok := c.C.K_v.LoadV("生成pgo").(string); ok {
+			if e := genCpuPprof.Start.Run(mainCtx, file); e != nil {
+				danmulog.Base("功能", "生成pgo").L(`E: `, e)
+			}
 		}
 
 		//使用带tag的消息队列在功能间传递消息
@@ -153,7 +169,7 @@ func Start() {
 		for exitSign := false; !exitSign; {
 			if c.C.Roomid == 0 {
 				fmt.Println("回车查看指令")
-				ctx, cancel := context.WithCancel(context.Background())
+				ctx, cancel := context.WithCancel(mainCtx)
 				cancel1, c := c.C.Danmu_Main_mq.Pull_tag_chan(`change_room`, 1, ctx)
 				select {
 				case <-c:
@@ -246,7 +262,7 @@ func Start() {
 					wsmsg.PushLock_tag(`send`, &ws.WsMsg{
 						Msg: F.HelloGen(c.C.Roomid, c.C.Token),
 					})
-					waitCheckAuth, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+					waitCheckAuth, cancel := context.WithTimeout(mainCtx, 5*time.Second)
 					doneAuth := wsmsg.Pull_tag_only(`rec`, func(wm *ws.WsMsg) (disable bool) {
 						if F.HelloChe(wm.Msg) {
 							cancel()
@@ -308,7 +324,7 @@ func Start() {
 				{ //附加功能 进房间发送弹幕 直播流保存 每日签到
 					go F.Dosign()
 					go reply.Entry_danmu()
-					if e := recStartEnd.RecStartCheck.Run(context.Background(), c.C); e == nil {
+					if e := recStartEnd.RecStartCheck.Run(mainCtx, c.C); e == nil {
 						go reply.StreamOStart(c.C.Roomid)
 					} else {
 						danmulog.Base("功能", "指定房间录制区间").L(`I: `, c.C.Roomid, e)
@@ -383,7 +399,7 @@ func Start() {
 					})
 
 					{
-						cancel, c := wsmsg.Pull_tag_chan(`exit`, 1, context.Background())
+						cancel, c := wsmsg.Pull_tag_chan(`exit`, 1, mainCtx)
 						<-c
 						cancel()
 					}
@@ -400,6 +416,5 @@ func Start() {
 			reply.SaveToJson.Close()
 			reply.StreamOStop(-1)
 		}
-		danmulog.L(`I: `, "结束退出")
 	}
 }
