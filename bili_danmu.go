@@ -47,9 +47,11 @@ func Start() {
 
 	mainCtx, mainDone := pctx.WithWait(context.Background(), 0, time.Minute)
 	defer func() {
-		danmulog.L(`I: `, `等待协程结束`, time.Minute)
-		if e := mainDone(); e != nil {
+		danmulog.L(`I: `, fmt.Sprintf("等待%v协程结束", time.Minute))
+		if e := mainDone(); errors.Is(e, pctx.ErrWaitTo) {
 			danmulog.L(`W: `, `等待退出超时`)
+		} else {
+			danmulog.L(`I: `, "结束")
 		}
 	}()
 

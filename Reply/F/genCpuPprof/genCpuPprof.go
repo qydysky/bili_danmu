@@ -12,6 +12,9 @@ import (
 var Start = comp.NewComp(start)
 
 func start(ctx context.Context, file string) error {
+	if file == "" {
+		return nil
+	}
 	pgo := pfile.New(file, 0, false)
 	if pgo.IsExist() {
 		_ = pgo.Delete()
