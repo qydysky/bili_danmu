@@ -267,7 +267,7 @@ func (t *M4SStream) fetchCheckStream() bool {
 	return len(t.common.Live) != 0
 }
 
-func (t *M4SStream) fetchParseM3U8() (m4s_links []*m4s_link_item, m3u8_addon []byte, e error) {
+func (t *M4SStream) fetchParseM3U8(fmp4ListUpdateTo float64) (m4s_links []*m4s_link_item, m3u8_addon []byte, e error) {
 	if t.common.ValidLive() == nil {
 		e = errors.New("全部流服务器发生故障")
 		return
@@ -303,7 +303,7 @@ func (t *M4SStream) fetchParseM3U8() (m4s_links []*m4s_link_item, m3u8_addon []b
 			},
 		}
 		if !t.stream_last_modified.IsZero() {
-			rval.Header[`If-Modified-Since`] = t.stream_last_modified.Add(time.Second).Format("Mon, 02 Jan 2006 15:04:05 CST")
+			rval.Header[`If-Modified-Since`] = t.stream_last_modified.Add(time.Second).Format(time.RFC1123)
 		}
 
 		if err := r.Reqf(rval); err != nil {
@@ -324,7 +324,7 @@ func (t *M4SStream) fetchParseM3U8() (m4s_links []*m4s_link_item, m3u8_addon []b
 
 		// 保存最后m3u8修改时间
 		if last_mod, ok := r.Response.Header[`Last-Modified`]; ok && len(last_mod) > 0 {
-			if lm, e := time.Parse("Mon, 02 Jan 2006 15:04:05 CST", last_mod[0]); e == nil {
+			if lm, e := time.Parse(time.RFC1123, last_mod[0]); e == nil {
 				t.stream_last_modified = lm
 			}
 		}
@@ -409,6 +409,18 @@ func (t *M4SStream) fetchParseM3U8() (m4s_links []*m4s_link_item, m3u8_addon []b
 		}
 
 		if len(tmp) == 0 {
+			if t.last_m4s != nil &&
+				!t.last_m4s.createdTime.IsZero() &&
+				time.Since(t.last_m4s.createdTime).Seconds() > fmp4ListUpdateTo {
+				// 1min后重新启用
+				t.common.Live[k].DisableAuto()
+				t.log.L("W: ", fmt.Sprintf("服务器 %s 发生故障 %.2f 秒未产出切片", F.ParseHost(v.Url), time.Since(t.last_m4s.createdTime).Seconds()))
+				if t.common.ValidLive() == nil {
+					e = errors.New("全部切片服务器发生故障")
+					break
+				}
+				continue
+			}
 			// fmt.Println("->", "empty", lastNo)
 			return
 		}
@@ -876,19 +888,18 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 
 	//
 	var (
-		buf          = slice.New[byte]()
-		fmp4Decoder  = &Fmp4Decoder{}
-		keyframe     = slice.New[byte]()
-		to           = 3
-		fmp4UpdateTo = 7.0
-		fmp4Updated  time.Time
+		buf              = slice.New[byte]()
+		fmp4Decoder      = &Fmp4Decoder{}
+		keyframe         = slice.New[byte]()
+		to               = 3
+		fmp4ListUpdateTo = 5.0
 	)
 
 	if v, ok := t.common.K_v.LoadV(`fmp4切片下载超时s`).(float64); ok && to < int(v) {
 		to = int(v)
 	}
-	if v, ok := t.common.K_v.LoadV(`fmp4列表更新超时s`).(float64); ok && fmp4UpdateTo < v {
-		fmp4UpdateTo = v
+	if v, ok := t.common.K_v.LoadV(`fmp4列表更新超时s`).(float64); ok && fmp4ListUpdateTo < v {
+		fmp4ListUpdateTo = v
 	}
 
 	// 下载循环
@@ -1099,8 +1110,13 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 			}
 		}
 
+		// 避免过于频繁的请求
+		if t.last_m4s != nil && time.Since(t.last_m4s.createdTime) < time.Second {
+			time.Sleep(time.Second)
+		}
+
 		// 获取解析m3u8
-		var m4s_links, _, err = t.fetchParseM3U8()
+		var m4s_links, _, err = t.fetchParseM3U8(fmp4ListUpdateTo)
 		if err != nil {
 			t.log.L(`E: `, `获取解析m3u8发生错误`, err)
 			// if len(download_seq) != 0 {
@@ -1121,17 +1137,6 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 		// 		fmt.Println(m4s_links[i].getNo())
 		// 	}
 		// }
-
-		if len(m4s_links) == 0 {
-			if time.Since(fmp4Updated).Seconds() > fmp4UpdateTo {
-				t.log.L(`E: `, `fmp4列表更新超时`)
-				break
-			}
-			time.Sleep(time.Second)
-			continue
-		}
-
-		fmp4Updated = time.Now()
 
 		// 设置最后的切片
 		if t.last_m4s == nil {
