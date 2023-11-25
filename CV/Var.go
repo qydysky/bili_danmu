@@ -8,6 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"net/url"
 	"os"
@@ -255,12 +256,18 @@ func (t *Common) Init() *Common {
 
 	t.ReqPool = pool.New(
 		func() *reqf.Req {
+			// if pc, file, line, ok := runtime.Caller(2); ok {
+			// 	fmt.Printf("call by %s\n\t%s:%d\n", runtime.FuncForPC(pc).Name(), file, line)
+			// }
 			return reqf.New()
 		},
 		func(t *reqf.Req) bool {
 			return t.IsLive()
 		},
 		func(t *reqf.Req) *reqf.Req {
+			// if pc, file, line, ok := runtime.Caller(2); ok {
+			// 	fmt.Printf("call by %s\n\t%s:%d\n", runtime.FuncForPC(pc).Name(), file, line)
+			// }
 			return t
 		},
 		func(t *reqf.Req) *reqf.Req {
@@ -387,7 +394,7 @@ func (t *Common) Init() *Common {
 								"inuse":    reqState[2],
 								"nouse":    reqState[3],
 								"sum":      reqState[4],
-								"qts":      reqState[5],
+								"qts":      math.Round(reqState[5].(float64)*100) / 100,
 							},
 							"numGoroutine": runtime.NumGoroutine(),
 							"goVersion":    runtime.Version(),
