@@ -21,7 +21,13 @@ jobs:
         go-version: ${{ matrix.go }}
 
     - name: Check out code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
+      with:
+        lfs: true
+
+    - name: Checkout LFS objects
+      run: git lfs checkout
+
 
     - name: golangci-lint
       uses: golangci/golangci-lint-action@v3
@@ -55,8 +61,13 @@ jobs:
         go-version: ${{ matrix.go }}
 
     - name: Check out code
-      uses: actions/checkout@v3
-      
+      uses: actions/checkout@v4
+      with:
+        lfs: true
+
+    - name: Checkout LFS objects
+      run: git lfs checkout
+
     - name: Build
       run: |
         sudo apt-get update
@@ -90,7 +101,13 @@ jobs:
         go-version: ${{ matrix.go }}
 
     - name: Check out code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
+      with:
+        lfs: true
+
+    - name: Checkout LFS objects
+      run: git lfs checkout
+
 
     - name: Build
       run: |
