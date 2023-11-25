@@ -374,12 +374,21 @@ func (t *Common) Init() *Common {
 					gcAvgS = time.Since(t.StartT).Seconds() / float64(memStats.NumGC)
 				}
 
+				reqState := t.ReqPool.PoolState()
+
 				ResStruct{0, "ok", map[string]any{
 					"startTime":   t.StartT.Format(time.DateTime),
 					"currentTime": time.Now().Format(time.DateTime),
 					"state": map[string]any{
 						"base": map[string]any{
-							"reqPoolState": fmt.Sprintf("pooled(%d), nopooled(%d), inuse(%d), nouse(%d), sum(%d)", t.ReqPool.PoolState()...),
+							"reqPoolState": map[string]any{
+								"pooled":   reqState[0],
+								"nopooled": reqState[1],
+								"inuse":    reqState[2],
+								"nouse":    reqState[3],
+								"sum":      reqState[4],
+								"qts":      reqState[5],
+							},
 							"numGoroutine": runtime.NumGoroutine(),
 							"goVersion":    runtime.Version(),
 						},

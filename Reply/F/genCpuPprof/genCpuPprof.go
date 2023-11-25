@@ -1,34 +1,67 @@
 package genCpuPprof
 
 import (
+	"bytes"
 	"context"
 	"runtime/pprof"
+	"sync"
+	"time"
 
 	comp "github.com/qydysky/part/component"
 	pctx "github.com/qydysky/part/ctx"
 	pfile "github.com/qydysky/part/file"
+	pio "github.com/qydysky/part/io"
 )
 
 var Start = comp.NewComp(start)
+
+var (
+	timer = time.NewTicker(time.Minute)
+	once  sync.Once
+)
 
 func start(ctx context.Context, file string) error {
 	if file == "" {
 		return nil
 	}
-	pgo := pfile.New(file, 0, false)
-	if pgo.IsExist() {
-		_ = pgo.Delete()
-	}
-	pgo.Create()
-	if err := pprof.StartCPUProfile(pgo.File()); err != nil {
-		return err
-	}
-	go func() {
-		ctx1, done1 := pctx.WaitCtx(ctx)
-		defer done1()
-		<-ctx1.Done()
-		pprof.StopCPUProfile()
-		pgo.Close()
-	}()
+	go once.Do(
+		func() {
+			ctx1, done1 := pctx.WaitCtx(ctx)
+			defer done1()
+
+			var buf bytes.Buffer
+			var bufB = pio.RWC{
+				R: buf.Read,
+				W: buf.Write,
+				C: func() error {
+					buf.Reset()
+					return nil
+				},
+			}
+
+			for {
+				_ = bufB.C()
+
+				if err := pprof.StartCPUProfile(bufB); err != nil {
+					return
+				}
+				select {
+				case <-timer.C:
+					pprof.StopCPUProfile()
+				case <-ctx1.Done():
+					pprof.StopCPUProfile()
+					return
+				}
+				pgo := pfile.New(file, 0, false)
+				if pgo.IsExist() {
+					_ = pgo.Delete()
+				}
+				pgo.Create()
+
+				_ = pgo.CopyFromIoReader(bufB, pio.CopyConfig{})
+
+				pgo.Close()
+			}
+		})
 	return nil
 }
