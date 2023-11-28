@@ -543,22 +543,22 @@ func (t *M4SStream) removeStream() (e error) {
 
 			var (
 				oldest   float64
-				oldIndex int = -1
+				oldIndex []int
 			)
 			for i, n := 0, len(list); i < n; i++ {
 				if list[i].IsDir() && len(list[i].Name()) > 20 {
 					if tt, err := time.Parse("2006_01_02-15_04_05", list[i].Name()[:19]); err == nil {
 						if ts := time.Since(tt).Seconds(); ts > d*24*60*60 && ts > oldest {
 							oldest = ts
-							oldIndex = i
+							oldIndex = append(oldIndex, i)
 						}
 					}
 				}
 			}
 
-			if oldIndex != -1 {
-				t.log.L(`I: `, "移除历史流", v+"/"+list[oldIndex].Name())
-				return os.RemoveAll(v + "/" + list[oldIndex].Name())
+			for n, i := 2, len(oldIndex)-1; n > 0 && i >= 0; n, i = n-1, i-1 {
+				t.log.L(`I: `, "移除历史流", v+"/"+list[oldIndex[i]].Name())
+				os.RemoveAll(v + "/" + list[oldIndex[i]].Name())
 			}
 		}
 	}
