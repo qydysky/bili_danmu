@@ -17,6 +17,7 @@ var msglog = c.C.Log.Base(`Msg`)
 
 // Msg类型数据处理方法map
 var Msg_map = map[string]func(replyF, string){
+	`DM_INTERACTION`:                    nil, //他们都在说
 	`BENEFIT_CARD_CLEAN`:                nil,
 	`WEALTH_NOTIFY`:                     replyF.wealth_notify, //荣耀等级提示
 	`LOG_IN_NOTICE`:                     replyF.log_in_notice, //登录提示
