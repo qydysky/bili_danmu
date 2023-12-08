@@ -111,6 +111,9 @@ func (t *m4s_link_item) isInit() bool {
 
 func (t *m4s_link_item) getNo() (int, error) {
 	var base = t.Base
+	if t.Base == "" {
+		return 0, nil
+	}
 	if t.isInit() {
 		base = base[1:]
 	}
