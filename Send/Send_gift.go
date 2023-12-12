@@ -29,6 +29,11 @@ func Send_gift(gift_id, bag_id, gift_num int) {
 		return
 	}
 
+	if c.C.Locked {
+		log.L(`W: `, "房间被封禁")
+		return
+	}
+
 	{ //发送请求（银瓜子礼物）
 		csrf, _ := c.C.Cookie.LoadV(`bili_jct`).(string)
 		if csrf == `` {

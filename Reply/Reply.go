@@ -104,6 +104,18 @@ func (replyF) defaultMsg(s string) {
 	msglog.Base_add("Unknow").L(`W: `, s)
 }
 
+// 房间封禁提示
+func (replyF) room_lock(s string) {
+	msglog := msglog.Base_add("房")
+	var j ws_msg.ROOM_LOCK
+	if e := json.Unmarshal([]byte(s), &j); e != nil {
+		msglog.L(`E: `, e)
+		return
+	}
+	Gui_show(fmt.Sprintf("房间被封禁,解锁时间:%s", j.Expire), `0room`)
+	msglog.L(`W: `, fmt.Sprintf("房间被封禁,解锁时间:%s", j.Expire))
+}
+
 // 荣耀等级提示
 func (replyF) wealth_notify(s string) {
 	msglog := msglog.Base_add("房")
