@@ -1312,7 +1312,7 @@ func (t *GetFunc) Get_cookie() (missKey []string) {
 		r := t.ReqPool.Get()
 		defer t.ReqPool.Put(r)
 		if e := r.Reqf(reqf.Rval{
-			Url:     `https://passport.bilibili.com/qrcode/getLoginUrl`,
+			Url:     `https://passport.bilibili.com/x/passport-login/web/qrcode/generate?source=main-fe-header`,
 			Proxy:   t.Proxy,
 			Timeout: 10 * 1000,
 			Retry:   2,
@@ -1320,14 +1320,7 @@ func (t *GetFunc) Get_cookie() (missKey []string) {
 			apilog.L(`E: `, e)
 			return
 		}
-		var res struct {
-			Code   int  `json:"code"`
-			Status bool `json:"status"`
-			Data   struct {
-				Url      string `json:"url"`
-				OauthKey string `json:"oauthKey"`
-			} `json:"data"`
-		}
+		var res J.QrcodeLogin
 		if e := json.Unmarshal(r.Respon, &res); e != nil {
 			apilog.L(`E: `, e)
 			return
@@ -1336,22 +1329,18 @@ func (t *GetFunc) Get_cookie() (missKey []string) {
 			apilog.L(`E: `, `code != 0`)
 			return
 		}
-		if !res.Status {
-			apilog.L(`E: `, `status == false`)
-			return
-		}
 
-		if res.Data.Url == `` {
-			apilog.L(`E: `, `Data.Urls == ""`)
+		if res.Data.URL == `` {
+			apilog.L(`E: `, `Data.URL == ""`)
 			return
 		} else {
-			img_url = res.Data.Url
+			img_url = res.Data.URL
 		}
-		if res.Data.OauthKey == `` {
-			apilog.L(`E: `, `Data.OauthKey == ""`)
+		if res.Data.QrcodeKey == `` {
+			apilog.L(`E: `, `Data.QrcodeKey == ""`)
 			return
 		} else {
-			oauth = res.Data.OauthKey
+			oauth = res.Data.QrcodeKey
 		}
 	}
 
@@ -1387,7 +1376,7 @@ func (t *GetFunc) Get_cookie() (missKey []string) {
 			BlackChar: `  `,
 			WhiteChar: `OO`,
 		})
-		apilog.L(`W: `, `手机扫命令行二维码登录。如不登录，修改配置文件"扫码登录"为false`)
+		apilog.L(`I: `, `手机扫命令行二维码登录。如不登录，修改配置文件"扫码登录"为false`)
 		time.Sleep(time.Second)
 	}
 
@@ -1405,7 +1394,7 @@ func (t *GetFunc) Get_cookie() (missKey []string) {
 
 		r := t.ReqPool.Get()
 		defer t.ReqPool.Put(r)
-		for {
+		for pollC := 10; pollC > 0; pollC-- {
 			//3s刷新查看是否通过
 			time.Sleep(time.Duration(3) * time.Second)
 
@@ -1415,12 +1404,9 @@ func (t *GetFunc) Get_cookie() (missKey []string) {
 			}
 
 			if e := r.Reqf(reqf.Rval{
-				Url:     `https://passport.bilibili.com/qrcode/getLoginInfo`,
-				PostStr: `oauthKey=` + oauth,
+				Url: `https://passport.bilibili.com/x/passport-login/web/qrcode/poll?qrcode_key=` + oauth + `&source=main-fe-header`,
 				Header: map[string]string{
-					`Content-Type`: `application/x-www-form-urlencoded; charset=UTF-8`,
-					`Referer`:      `https://passport.bilibili.com/login`,
-					`Cookie`:       reqf.Map_2_Cookies_String(Cookie),
+					`Cookie`: reqf.Map_2_Cookies_String(Cookie),
 				},
 				Proxy:   t.Proxy,
 				Timeout: 10 * 1000,
@@ -1430,28 +1416,24 @@ func (t *GetFunc) Get_cookie() (missKey []string) {
 				return
 			}
 
-			var res struct {
-				Status  bool   `josn:"status"`
-				Message string `json:"message"`
-			}
+			var res J.QrcodeLoginPoll
 
 			if e := json.Unmarshal(r.Respon, &res); e != nil {
 				apilog.L(`E: `, e.Error(), string(r.Respon))
 			}
 
-			if !res.Status {
-				if res.Message == `Can't Match oauthKey~` {
-					apilog.L(`W: `, `登录超时`)
-					return
-				}
-			} else {
-				apilog.L(`W: `, `登录，并保存了cookie`)
+			if res.Code != 0 {
+				apilog.L(`W: `, res.Message)
+				return
+			} else if res.Data.Code == 0 {
+				apilog.L(`I: `, `登录，并保存了cookie`)
 				if e := save_cookie(r.Response.Cookies()); e != nil {
 					apilog.L(`E: `, e)
 				}
-				break
+				return
 			}
 		}
+		apilog.L(`W: `, `扫码超时`)
 	}
 	return
 }
