@@ -347,10 +347,9 @@ func (t *GetFunc) Html() (missKey []string) {
 					t.Note += strconv.Itoa(rank)
 				}
 				//直播间是否被封禁
-				if j.RoomInfoRes.Data.RoomInfo.LockStatus == 1 {
+				t.Locked = j.RoomInfoRes.Data.RoomInfo.LockStatus == 1
+				if t.Locked {
 					apilog.L(`W: `, "直播间封禁中")
-					t.Locked = true
-					return
 				}
 			}
 		}
@@ -569,10 +568,9 @@ func (c *GetFunc) getInfoByRoom() (missKey []string) {
 				c.Note += strconv.Itoa(rank)
 			}
 			//直播间是否被封禁
-			if j.Data.RoomInfo.LockStatus == 1 {
+			c.Locked = j.Data.RoomInfo.LockStatus == 1
+			if c.Locked {
 				apilog.L(`W: `, "直播间封禁中")
-				c.Locked = true
-				return
 			}
 		}
 	}
