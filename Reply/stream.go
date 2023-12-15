@@ -428,12 +428,12 @@ func (t *M4SStream) fetchParseM3U8(fmp4ListUpdateTo float64) (m4s_links []*m4s_l
 			return
 		}
 
-		// 检查是否服务器发生故障,产出多个切片
+		// 检查是否服务器发生故障,产出切片错误
 		if t.last_m4s != nil {
 			timed := tmp[len(tmp)-1].createdTime.Sub(t.last_m4s.createdTime).Seconds()
 			nos, _ := tmp[len(tmp)-1].getNo()
 			noe, _ := t.last_m4s.getNo()
-			if timed > 5 && nos-noe == 0 {
+			if (timed > 5 && nos-noe == 0) || (nos-noe > 50) {
 				// 1min后重新启用
 				t.common.Live[k].DisableAuto()
 				t.log.L("W: ", fmt.Sprintf("服务器 %s 发生故障 %d 秒产出了 %d 切片", F.ParseHost(v.Url), int(timed), nos-noe))
