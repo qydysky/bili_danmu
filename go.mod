@@ -5,15 +5,15 @@ go 1.21
 require (
 	github.com/gotk3/gotk3 v0.6.2
 	github.com/mdp/qrterminal/v3 v3.2.0
-	github.com/qydysky/part v0.28.20231209070216
+	github.com/qydysky/part v0.28.20231214150658
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966
 	golang.org/x/text v0.14.0
 )
 
 require (
-	github.com/google/uuid v1.4.0
-	golang.org/x/exp v0.0.0-20231206192017-f3f8817b8deb
+	github.com/google/uuid v1.5.0
+	golang.org/x/exp v0.0.0-20231214170342-aacd6d4b4611
 )
 
 require (
@@ -24,7 +24,7 @@ require (
 	lukechampine.com/uint128 v1.3.0 // indirect
 	modernc.org/cc/v3 v3.41.0 // indirect
 	modernc.org/ccgo/v3 v3.16.15 // indirect
-	modernc.org/libc v1.37.1 // indirect
+	modernc.org/libc v1.37.5 // indirect
 	modernc.org/mathutil v1.6.0 // indirect
 	modernc.org/memory v1.7.2 // indirect
 	modernc.org/opt v0.1.3 // indirect
@@ -50,9 +50,9 @@ require (
 	golang.org/x/mod v0.14.0 // indirect
 	golang.org/x/net v0.19.0 // indirect
 	golang.org/x/sys v0.15.0 // indirect
-	golang.org/x/tools v0.16.0 // indirect
+	golang.org/x/tools v0.16.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	modernc.org/sqlite v1.27.0
+	modernc.org/sqlite v1.28.0
 	rsc.io/qr v0.2.0 // indirect
 )
 
