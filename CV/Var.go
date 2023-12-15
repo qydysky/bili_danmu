@@ -340,7 +340,7 @@ func (t *Common) Init() *Common {
 			ReadTimeout:       time.Duration(int(time.Second) * readTimeout),
 			ReadHeaderTimeout: time.Duration(int(time.Second) * readHeaderTimeout),
 			IdleTimeout:       time.Duration(int(time.Second) * idleTimeout),
-		}, t.SerF)
+		}, t.SerF, t.SerF.LoadPerfix)
 
 		if limits, ok := t.K_v.LoadV(`Web服务连接限制`).([]any); ok {
 			for i := 0; i < len(limits); i++ {
