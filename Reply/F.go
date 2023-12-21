@@ -1242,7 +1242,7 @@ func init() {
 
 		// 直播流主页
 		c.C.SerF.Store(path, func(w http.ResponseWriter, r *http.Request) {
-			if c.DefaultHttpCheck(c.C, w, r, http.MethodGet) {
+			if c.DefaultHttpCheck(c.C, w, r, http.MethodGet, http.MethodHead) {
 				return
 			}
 

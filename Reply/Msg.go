@@ -83,7 +83,7 @@ var Msg_map = map[string]func(replyF, string){
 	"WELCOME_GUARD":                     nil,                       //replyF.welcome_guard,//大航海进入 ？已废弃？
 	"DANMU_MSG":                         replyF.danmu,              //弹幕
 	"DANMU_MSG:4:0:2:2:2:0":             replyF.danmu,              //弹幕
-	"DANMU_MSG:3:7:1:1:1:1":             replyF.danmu,              //弹幕
+	"DANMU_MSG:3:7:1:1:1:1":             nil,                       //弹幕
 	"ROOM_CHANGE":                       replyF.room_change,        //房间信息分区改变
 	"ROOM_SILENT_OFF":                   replyF.roomsilent,         //禁言结束
 	"ROOM_SILENT_ON":                    replyF.roomsilent,         //禁言开始
