@@ -1440,22 +1440,22 @@ func init() {
 
 					// 读取区间
 					var rangeHeaderNum int
-					// if rangeHeader := r.Header.Get(`range`); rangeHeader != "" {
-					// 	var e error
-					// 	if strings.Index(rangeHeader, "bytes=") != 0 {
-					// 		w.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
-					// 		flog.L(`W: `, `请求的范围不合法:仅支持bytes`)
-					// 		return
-					// 	} else if strings.Contains(rangeHeader, ",") && strings.Index(rangeHeader, "-") != len(rangeHeader)-1 {
-					// 		w.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
-					// 		flog.L(`W: `, `请求的范围不合法:仅支持向后范围`)
-					// 		return
-					// 	} else if rangeHeaderNum, e = strconv.Atoi(string(rangeHeader[6 : len(rangeHeader)-1])); e != nil {
-					// 		w.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
-					// 		flog.L(`W: `, `请求的范围不合法:`, e)
-					// 		return
-					// 	}
-					// }
+					if rangeHeader := r.Header.Get(`range`); rangeHeader != "" {
+						var e error
+						if strings.Index(rangeHeader, "bytes=") != 0 {
+							w.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
+							flog.L(`W: `, `请求的范围不合法:仅支持bytes`)
+							return
+						} else if strings.Contains(rangeHeader, ",") && strings.Index(rangeHeader, "-") != len(rangeHeader)-1 {
+							w.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
+							flog.L(`W: `, `请求的范围不合法:仅支持向后范围`)
+							return
+						} else if rangeHeaderNum, e = strconv.Atoi(string(rangeHeader[6 : len(rangeHeader)-1])); e != nil {
+							w.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
+							flog.L(`W: `, `请求的范围不合法:`, e)
+							return
+						}
+					}
 
 					// 直播流回放速率
 					var speed, _ = humanize.ParseBytes("1 M")
