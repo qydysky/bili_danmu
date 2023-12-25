@@ -980,27 +980,27 @@ func (replyF) popularity_red_pocket_start(s string) {
 }
 
 // Msg-元气赏连抽
-func (replyF) common_notice_danmaku(s string) {
-	msglog := msglog.Base_add("房")
+// func (replyF) common_notice_danmaku(s string) {
+// 	msglog := msglog.Base_add("房")
 
-	var type_item ws_msg.COMMON_NOTICE_DANMAKU
-	if e := json.Unmarshal([]byte(s), &type_item); e != nil {
-		msglog.L(`E: `, e)
-	}
-	var tmp = type_item.Data.ContentSegments
-	if len(tmp) == 0 {
-		return
-	}
+// 	var type_item ws_msg.COMMON_NOTICE_DANMAKU
+// 	if e := json.Unmarshal([]byte(s), &type_item); e != nil {
+// 		msglog.L(`E: `, e)
+// 	}
+// 	var tmp = type_item.Data.ContentSegments
+// 	if len(tmp) == 0 {
+// 		return
+// 	}
 
-	Gui_show(tmp[0].Text, "0room")
-	c.C.Danmu_Main_mq.Push_tag(`tts`, Danmu_mq_t{ //传入消息队列
-		uid: "0room",
-		m: map[string]string{
-			`{msg}`: tmp[0].Text,
-		},
-	})
-	msglog.L(`I: `, "元气赏连抽", tmp)
-}
+// 	Gui_show(tmp[0].Text, "0room")
+// 	c.C.Danmu_Main_mq.Push_tag(`tts`, Danmu_mq_t{ //传入消息队列
+// 		uid: "0room",
+// 		m: map[string]string{
+// 			`{msg}`: tmp[0].Text,
+// 		},
+// 	})
+// 	msglog.L(`I: `, "元气赏连抽", tmp)
+// }
 
 // Msg-小消息
 func (replyF) little_message_box(s string) {
