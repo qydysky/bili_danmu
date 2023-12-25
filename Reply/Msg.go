@@ -105,7 +105,7 @@ var Msg_map = map[string]func(replyF, string){
 	"POPULARITY_RED_POCKET_NEW":         replyF.popularity_red_pocket_new,   //老板打赏新礼物红包
 	"POPULARITY_RED_POCKET_START":       replyF.popularity_red_pocket_start, //老板打赏礼物红包开始
 	"POPULARITY_RED_POCKET_WINNER_LIST": nil,                                //老板打赏礼物红包的得奖名单
-	"COMMON_NOTICE_DANMAKU":             replyF.common_notice_danmaku,       //元气赏连抽
+	"COMMON_NOTICE_DANMAKU":             nil,                                //replyF.common_notice_danmaku,       //元气赏连抽
 	"ACTIVITY_BANNER_CHANGE":            nil,                                //活动标题改变
 	"ACTIVITY_BANNER_CHANGE_V2":         replyF.activity_banner_change_v2,   //活动标题改变v2
 	"VIDEO_CONNECTION_JOIN_START":       replyF.video_connection_join_start, //开始了与某人的视频连线
