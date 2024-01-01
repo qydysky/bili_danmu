@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
-	"strings"
 	"time"
 
 	c "github.com/qydysky/bili_danmu/CV"
@@ -28,13 +27,10 @@ import (
 	ws "github.com/qydysky/part/websocket"
 )
 
-//go:embed VERSION
-var version string
-
 func Start() {
 	danmulog := c.C.Log.Base(`bilidanmu`)
 	danmulog.L(`I: `, `当前PID:`, c.C.PID)
-	danmulog.L(`I: `, "version: ", strings.TrimSpace(version))
+	danmulog.L(`I: `, "version: ", c.C.Version)
 
 	//检查配置
 	if c.C.K_v.Len() == 0 {

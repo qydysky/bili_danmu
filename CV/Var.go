@@ -3,6 +3,7 @@ package cv
 import (
 	"context"
 	"database/sql"
+	_ "embed"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -31,6 +32,9 @@ import (
 	_ "modernc.org/sqlite"
 )
 
+//go:embed VERSION
+var version string
+
 type StreamType struct {
 	Protocol_name string
 	Format_name   string
@@ -39,6 +43,7 @@ type StreamType struct {
 
 type Common struct {
 	PID               int                   `json:"pid"`           //进程id
+	Version           string                `json:"version"`       //版本
 	Uid               int                   `json:"-"`             //client uid
 	Live              []LiveQn              `json:"-"`             //直播流链接
 	Live_qn           int                   `json:"liveQn"`        //当前直播流质量
@@ -119,6 +124,7 @@ func (t *Common) IsOn(key string) bool {
 func (t *Common) Copy() *Common {
 	var c = Common{
 		PID:               t.PID,
+		Version:           t.Version,
 		Uid:               t.Uid,
 		Live:              t.Live,
 		Live_qn:           t.Live_qn,
@@ -197,6 +203,7 @@ func (t *Common) ValidLive() *LiveQn {
 
 func (t *Common) Init() *Common {
 	t.PID = os.Getpid()
+	t.Version = version
 	t.StartT = time.Now()
 
 	t.AllStreamType = map[string]StreamType{
@@ -381,20 +388,21 @@ func (t *Common) Init() *Common {
 					gcAvgS = time.Since(t.StartT).Seconds() / float64(memStats.NumGC)
 				}
 
-				reqState := t.ReqPool.PoolState()
+				reqState := t.ReqPool.State()
 
 				ResStruct{0, "ok", map[string]any{
+					"version":     strings.TrimSpace(t.Version),
 					"startTime":   t.StartT.Format(time.DateTime),
 					"currentTime": time.Now().Format(time.DateTime),
 					"state": map[string]any{
 						"base": map[string]any{
 							"reqPoolState": map[string]any{
-								"pooled":   reqState[0],
-								"nopooled": reqState[1],
-								"inuse":    reqState[2],
-								"nouse":    reqState[3],
-								"sum":      reqState[4],
-								"qts":      math.Round(reqState[5].(float64)*100) / 100,
+								"pooled":   reqState.Pooled,
+								"nopooled": reqState.Nopooled,
+								"inuse":    reqState.Inuse,
+								"nouse":    reqState.Nouse,
+								"sum":      reqState.Sum,
+								"qts":      math.Round(reqState.GetPerSec*100) / 100,
 							},
 							"numGoroutine": runtime.NumGoroutine(),
 							"goVersion":    runtime.Version(),

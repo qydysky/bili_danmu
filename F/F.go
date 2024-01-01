@@ -65,8 +65,13 @@ func HelloGen(roomid int, key string) []byte {
 
 	var obj = `{"uid":` + strconv.Itoa(c.C.Uid) +
 		`,"roomid":` + strconv.Itoa(roomid) +
-		`,"protover":` + strconv.Itoa(c.Protover) +
-		`,"platform":"` + c.Platform +
+		`,"protover":` + strconv.Itoa(c.Protover)
+
+	if buvid, ok := c.C.Cookie.LoadV("buvid3").(string); ok {
+		obj += `,"buvid":"` + buvid + `"`
+	}
+
+	obj += `,"platform":"` + c.Platform +
 		// `","clientver":"` + c.VERSION + //delete at 2021 4 14
 		`","type":` + strconv.Itoa(c.Type) +
 		`,"key":"` + key + `"}`

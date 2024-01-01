@@ -884,7 +884,9 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 					return
 				case <-ticker.C:
 				}
-				t.log.L(`T: `, fmt.Sprintf("m4sPoolState pooled/no(%d/%d), inuse/no(%d/%d), sum(%d), qts(%.2f)", t.m4s_pool.PoolState()...))
+				reqState := t.m4s_pool.State()
+				t.log.L(`T: `, fmt.Sprintf("m4sPoolState pooled/no(%d/%d), inuse/no(%d/%d), sum(%d), qts(%.2f)",
+					reqState.Pooled, reqState.Nopooled, reqState.Inuse, reqState.Nouse, reqState.Sum, reqState.GetPerSec))
 			}
 		}()
 	}
