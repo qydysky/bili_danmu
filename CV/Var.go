@@ -203,7 +203,7 @@ func (t *Common) ValidLive() *LiveQn {
 
 func (t *Common) Init() *Common {
 	t.PID = os.Getpid()
-	t.Version = version
+	t.Version = strings.TrimSpace(version)
 	t.StartT = time.Now()
 
 	t.AllStreamType = map[string]StreamType{
@@ -391,7 +391,7 @@ func (t *Common) Init() *Common {
 				reqState := t.ReqPool.State()
 
 				ResStruct{0, "ok", map[string]any{
-					"version":     strings.TrimSpace(t.Version),
+					"version":     t.Version,
 					"startTime":   t.StartT.Format(time.DateTime),
 					"currentTime": time.Now().Format(time.DateTime),
 					"state": map[string]any{
