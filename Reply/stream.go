@@ -900,6 +900,9 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 		fmp4ListUpdateTo = 5.0
 	)
 
+	if v, ok := t.common.K_v.LoadV(`fmp4音视频时间戳容差s`).(float64); ok && v > 0.1 {
+		fmp4Decoder.AVTDiff = v
+	}
 	if v, ok := t.common.K_v.LoadV(`fmp4切片下载超时s`).(float64); ok && to < int(v) {
 		to = int(v)
 	}

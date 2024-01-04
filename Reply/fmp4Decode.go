@@ -75,6 +75,8 @@ func (t *timeStamp) getT() float64 {
 type Fmp4Decoder struct {
 	traks map[int]*trak
 	buf   *slice.Buf[byte]
+
+	AVTDiff float64 // 音视频时间戳容差
 }
 
 func (t *Fmp4Decoder) Init_fmp4(buf []byte) (b []byte, err error) {
@@ -352,8 +354,11 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 				}
 
 				//sync audio timeStamp
-				if math.Abs(video.getT()-audio.getT()) > 0.1 {
-					return false, fmt.Errorf("时间戳不匹配%v %v", video.timeStamp, audio.timeStamp)
+				if t.AVTDiff <= 0.1 {
+					t.AVTDiff = 0.1
+				}
+				if diff := math.Abs(video.getT() - audio.getT()); diff > t.AVTDiff {
+					return false, fmt.Errorf("时间戳不匹配 %v %v (或许应调整fmp4音视频时间戳容差s>%.2f)", video.timeStamp, audio.timeStamp, diff)
 					// copy(video.data, F.Itob64(int64(audio.getT()*float64(video.timescale))))
 				}
 
