@@ -79,7 +79,7 @@ jobs:
         sudo apt-get update
         sudo apt-get install libgtk-3-dev libcairo2-dev libglib2.0-dev
         go get .
-        CGO_ENABLED=0 go build -pgo=auto -v -buildmode=exe -o demo.run main.go
+        CGO_ENABLED=0 go build -pgo=auto -v -buildmode=exe main.go
       
     - name: zip
       run: zip -q -r ubuntu_go${{ matrix.go }}.zip demo
@@ -117,7 +117,7 @@ jobs:
         cd demo
         go get .
         set CGO_ENABLED=0
-        go build -pgo=auto -v -buildmode=exe -o demo.exe main.go
+        go build -pgo=auto -v -buildmode=exe main.go
         
     - name: zip
       run: .\7za.exe a -r .\windows_go${{ matrix.go }}.zip ./demo
@@ -126,3 +126,41 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         path: ./windows_go${{ matrix.go }}.zip
+       
+  mac-build:
+    name: build_macos_go${{ matrix.go }}
+    needs: [buildtest]
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        go: [ '1.21' ]
+    steps:
+    - name: Set up Go${{ matrix.go }}
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ matrix.go }}
+
+    - name: Check out code
+      uses: actions/checkout@v4
+      with:
+        lfs: true
+
+    - name: Checkout LFS objects
+      run: git lfs checkout
+
+
+    - name: Build
+      run: |
+        git rev-parse --short HEAD > CV/VERSION
+        cd demo
+        go get .
+        set CGO_ENABLED=0
+        go build -pgo=auto -v -buildmode=exe main.go
+        
+    - name: zip
+      run: zip -q -r macos_go${{ matrix.go }}.zip demo
+      
+    - name: Upload a Build Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        path: ./macos_go${{ matrix.go }}.zip
