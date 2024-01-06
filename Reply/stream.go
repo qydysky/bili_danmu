@@ -1294,6 +1294,7 @@ func (t *M4SStream) Start() bool {
 						pathInfo.Uname = ms.common.Uname
 						pathInfo.UpUid = ms.common.UpUid
 						pathInfo.Roomid = ms.common.Roomid
+						pathInfo.Format = st
 						pathInfo.Qn = c.C.Qn[ms.common.Live_qn]
 						pathInfo.Name = ms.common.Title
 						pathInfo.StartT = time.Now().Format(time.DateTime)

@@ -1143,6 +1143,7 @@ type paf struct {
 	Name       string `json:"name"`
 	StartT     string `json:"startT"`
 	Path       string `json:"path"`
+	Format     string `json:"format"`
 	StartLiveT string `json:"startLiveT"`
 }
 
@@ -1156,6 +1157,12 @@ func getRecInfo(dirpath string) (pathInfo paf, err error) {
 			dirfName := path.Base(dirf.File().Name())
 			if len(dirfName) > 20 {
 				pathInfo = paf{Name: dirfName[20:], StartT: dirfName[:19], Path: dirfName}
+			}
+			mp4f := file.New(dirpath+string(os.PathSeparator)+"0.mp4", 0, true)
+			if mp4f.IsExist() {
+				pathInfo.Format = "mp4"
+			} else {
+				pathInfo.Format = "flv"
 			}
 		}
 		// 从0.json获取信息
