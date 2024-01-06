@@ -42,3 +42,20 @@ func Test_SearchUP(t *testing.T) {
 		t.Fatal()
 	}
 }
+
+func Test_Title(t *testing.T) {
+	//获取cookie
+	Get(c.C).Get(`Cookie`)
+	//获取LIVE_BUVID
+	Get(c.C).Get(`LIVE_BUVID`)
+	c.C.Roomid = 394988
+	Get(c.C).getRoomBaseInfo()
+	if c.C.Title == `` {
+		t.Fatal()
+	}
+	c.C.Title = ``
+	Get(c.C).getInfoByRoom()
+	if c.C.Title == `` {
+		t.Fatal()
+	}
+}
