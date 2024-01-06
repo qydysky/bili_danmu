@@ -1265,21 +1265,7 @@ func (t *M4SStream) Start() bool {
 					})
 					defer cancelMsg()
 
-					l := ms.log.Base_add(`文件保存`)
-					startf := func(_ *M4SStream) error {
-						l.L(`T: `, `开始`)
-						return nil
-					}
-					stopf := func(_ *M4SStream) error {
-						l.L(`T: `, `结束`)
-						return nil
-					}
 					ms.getSavepath()
-
-					// 移除历史流
-					if err := ms.removeStream(); err != nil {
-						l.L(`W: `, err)
-					}
 
 					var (
 						cp = ms.Current_save_path
@@ -1287,26 +1273,41 @@ func (t *M4SStream) Start() bool {
 						cr = ms.common.Roomid
 					)
 
-					// savestate
-					{
-						fj := file.New(cp+"0.json", 0, true)
-						var pathInfo paf
-						pathInfo.Uname = ms.common.Uname
-						pathInfo.UpUid = ms.common.UpUid
-						pathInfo.Roomid = ms.common.Roomid
-						pathInfo.Format = st
-						pathInfo.Qn = c.C.Qn[ms.common.Live_qn]
-						pathInfo.Name = ms.common.Title
-						pathInfo.StartT = time.Now().Format(time.DateTime)
-						pathInfo.StartLiveT = ms.common.Live_Start_Time.Format(time.DateTime)
-						pathInfo.Path = path.Base(cp)
-						if pathInfoJson, err := json.Marshal(pathInfo); err != nil {
-							l.L(`E: `, err)
-						} else if _, err := fj.Write(pathInfoJson, true); err != nil {
-							l.L(`E: `, err)
-						}
-						fj.Close()
+					l := ms.log.Base_add(`文件保存`)
+					startf := func(_ *M4SStream) error {
+						l.L(`T: `, `开始`)
+						return nil
 					}
+					stopf := func(_ *M4SStream) error {
+						// savestate
+						{
+							fj := file.New(cp+"0.json", 0, true)
+							var pathInfo paf
+							pathInfo.Uname = ms.common.Uname
+							pathInfo.UpUid = ms.common.UpUid
+							pathInfo.Roomid = ms.common.Roomid
+							pathInfo.Format = st
+							pathInfo.Qn = c.C.Qn[ms.common.Live_qn]
+							pathInfo.Name = ms.common.Title
+							pathInfo.StartT = time.Now().Format(time.DateTime)
+							pathInfo.StartLiveT = ms.common.Live_Start_Time.Format(time.DateTime)
+							pathInfo.Path = path.Base(cp)
+							if pathInfoJson, err := json.Marshal(pathInfo); err != nil {
+								l.L(`E: `, err)
+							} else if _, err := fj.Write(pathInfoJson, true); err != nil {
+								l.L(`E: `, err)
+							}
+							fj.Close()
+						}
+						l.L(`T: `, `结束`)
+						return nil
+					}
+
+					// 移除历史流
+					if err := ms.removeStream(); err != nil {
+						l.L(`W: `, err)
+					}
+
 					go StartRecDanmu(contextC, cp)             //保存弹幕
 					go Ass_f(contextC, cp, cp+"0", time.Now()) //开始ass
 					startT := time.Now()
