@@ -244,7 +244,7 @@ __webpack_require__.r(__webpack_exports__);
             type: new URL(window.location.href).searchParams.get("format")||"flv",
             volume: 0.5,
             hotkey: false,
-            isLive: new URL(window.location.href).searchParams.get("ref")=='now',
+            isLive: true,
             muted: false,
             autoplay: true,
             autoMini: true,
