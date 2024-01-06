@@ -1281,15 +1281,23 @@ func (t *M4SStream) Start() bool {
 					stopf := func(_ *M4SStream) error {
 						// savestate
 						{
-							fj := file.New(cp+"0.json", 0, true)
 							var pathInfo paf
+							fj := file.New(cp+"0.json", 0, true)
+							if fj.IsExist() {
+								if data, err := fj.ReadAll(1<<18, 1<<20); err != nil && !errors.Is(err, io.EOF) {
+									l.L(`E: `, err)
+								} else if err := json.Unmarshal(data, &pathInfo); err != nil {
+									l.L(`E: `, err)
+								}
+								fj.Delete()
+							}
 							pathInfo.Uname = ms.common.Uname
 							pathInfo.UpUid = ms.common.UpUid
 							pathInfo.Roomid = ms.common.Roomid
 							pathInfo.Format = st
 							pathInfo.Qn = c.C.Qn[ms.common.Live_qn]
 							pathInfo.Name = ms.common.Title
-							pathInfo.StartT = time.Now().Format(time.DateTime)
+							pathInfo.EndT = time.Now().Format(time.DateTime)
 							pathInfo.StartLiveT = ms.common.Live_Start_Time.Format(time.DateTime)
 							pathInfo.Path = path.Base(cp)
 							if pathInfoJson, err := json.Marshal(pathInfo); err != nil {
@@ -1308,8 +1316,33 @@ func (t *M4SStream) Start() bool {
 						l.L(`W: `, err)
 					}
 
+					// savestate
+					{
+						fj := file.New(cp+"0.json", 0, true)
+						if fj.IsExist() {
+							fj.Delete()
+						}
+						var pathInfo paf
+						pathInfo.Uname = ms.common.Uname
+						pathInfo.UpUid = ms.common.UpUid
+						pathInfo.Roomid = ms.common.Roomid
+						pathInfo.Format = st
+						pathInfo.Qn = c.C.Qn[ms.common.Live_qn]
+						pathInfo.Name = ms.common.Title
+						pathInfo.StartT = time.Now().Format(time.DateTime)
+						pathInfo.StartLiveT = ms.common.Live_Start_Time.Format(time.DateTime)
+						pathInfo.Path = path.Base(cp)
+						if pathInfoJson, err := json.Marshal(pathInfo); err != nil {
+							l.L(`E: `, err)
+						} else if _, err := fj.Write(pathInfoJson, true); err != nil {
+							l.L(`E: `, err)
+						}
+						fj.Close()
+					}
+
 					go StartRecDanmu(contextC, cp)             //保存弹幕
 					go Ass_f(contextC, cp, cp+"0", time.Now()) //开始ass
+
 					startT := time.Now()
 					if e := ms.PusherToFile(contextC, cp+`0.`+st, startf, stopf); e != nil {
 						l.L(`E: `, e)

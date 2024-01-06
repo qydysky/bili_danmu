@@ -1142,6 +1142,7 @@ type paf struct {
 	Qn         string `json:"qn"`
 	Name       string `json:"name"`
 	StartT     string `json:"startT"`
+	EndT       string `json:"endT"`
 	Path       string `json:"path"`
 	Format     string `json:"format"`
 	StartLiveT string `json:"startLiveT"`
