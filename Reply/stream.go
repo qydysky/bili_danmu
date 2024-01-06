@@ -1321,7 +1321,9 @@ func (t *M4SStream) Start() bool {
 					{
 						fj := file.New(cp+"0.json", 0, true)
 						if fj.IsExist() {
-							fj.Delete()
+							if err := fj.Delete(); err != nil {
+								l.L(`E: `, err)
+							}
 						}
 						var pathInfo paf
 						pathInfo.Uname = ms.common.Uname
