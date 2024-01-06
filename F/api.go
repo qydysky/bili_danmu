@@ -63,33 +63,40 @@ func (c *GetFunc) Get(key string) {
 				c.GetUid,
 			},
 			`UpUid`: { //主播uid
+				c.getRoomBaseInfo,
 				c.getInfoByRoom,
 				c.getRoomPlayInfo,
 				c.Html,
 			},
 			`Live_Start_Time`: { //直播开始时间
+				c.getRoomBaseInfo,
 				c.getInfoByRoom,
 				c.getRoomPlayInfo,
 				c.Html,
 			},
 			`Liveing`: { //是否在直播
+				c.getRoomBaseInfo,
 				c.getInfoByRoom,
 				c.getRoomPlayInfo,
 				c.Html,
 			},
 			`Title`: { //直播间标题
+				c.getRoomBaseInfo,
 				c.getInfoByRoom,
 				c.Html,
 			},
 			`Uname`: { //主播名
+				c.getRoomBaseInfo,
 				c.getInfoByRoom,
 				c.Html,
 			},
 			`ParentAreaID`: { //分区
+				c.getRoomBaseInfo,
 				c.getInfoByRoom,
 				c.Html,
 			},
 			`AreaID`: { //子分区
+				c.getRoomBaseInfo,
 				c.getInfoByRoom,
 				c.Html,
 			},
@@ -490,6 +497,81 @@ func (t *GetFunc) configStreamType(sts []J.StreamType) {
 
 func (c *GetFunc) missRoomId() (missKey []string) {
 	apilog.Base_add(`missRoomId`).L(`E: `, `missRoomId`)
+	return
+}
+
+func (c *GetFunc) getRoomBaseInfo() (missKey []string) {
+	fkey := `getRoomBaseInfo`
+
+	if v, ok := c.Cache.LoadV(fkey).(cacheItem); ok && v.exceeded.After(time.Now()) {
+		return
+	}
+
+	apilog := apilog.Base_add(`getRoomBaseInfo`)
+
+	if c.Roomid == 0 {
+		missKey = append(missKey, `Roomid`)
+		return
+	}
+
+	Roomid := strconv.Itoa(c.Roomid)
+
+	{ //使用其他api
+		req := c.Common.ReqPool.Get()
+		defer c.Common.ReqPool.Put(req)
+		if err := req.Reqf(reqf.Rval{
+			Url: "https://api.live.bilibili.com/xlive/web-room/v1/index/getRoomBaseInfo?req_biz=link-center&room_ids=" + Roomid,
+			Header: map[string]string{
+				`Referer`: "https://link.bilibili.com/p/center/index",
+			},
+			Proxy:   c.Proxy,
+			Timeout: 10 * 1000,
+		}); err != nil {
+			apilog.L(`E: `, err)
+			return
+		}
+
+		//Roominfores
+		{
+			var j J.GetRoomBaseInfo
+
+			if e := json.Unmarshal(req.Respon, &j); e != nil {
+				apilog.L(`E: `, e)
+				return
+			} else if j.Code != 0 {
+				apilog.L(`E: `, j.Message)
+				return
+			}
+
+			if data, ok := j.Data.ByRoomIds[Roomid]; ok {
+				//主播id
+				c.UpUid = data.UID
+				//子分区
+				c.AreaID = data.AreaID
+				//分区
+				c.ParentAreaID = data.ParentAreaID
+				//直播间标题
+				c.Title = data.Title
+				//直播开始时间
+				if ti, e := time.Parse(time.DateTime, data.LiveTime); e != nil && !ti.IsZero() {
+					c.Live_Start_Time = ti
+				}
+				//是否在直播
+				c.Liveing = data.LiveStatus == 1
+				//主播名
+				c.Uname = data.Uname
+				//房间id
+				if data.RoomID != 0 {
+					c.Roomid = data.RoomID
+				}
+			}
+		}
+	}
+
+	c.Cache.Store(fkey, cacheItem{
+		data:     nil,
+		exceeded: time.Now().Add(time.Second * 2),
+	})
 	return
 }
 

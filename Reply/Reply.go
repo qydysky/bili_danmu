@@ -19,6 +19,7 @@ import (
 	ws_msg "github.com/qydysky/bili_danmu/Reply/ws_msg"
 	send "github.com/qydysky/bili_danmu/Send"
 	p "github.com/qydysky/part"
+	funcCtrl "github.com/qydysky/part/funcCtrl"
 	mq "github.com/qydysky/part/msgq"
 	pstrings "github.com/qydysky/part/strings"
 )
@@ -535,27 +536,66 @@ func (replyF) special_gift(s string) {
 
 }
 
+var roomChangeFC funcCtrl.FlashFunc
+
 // Msg-房间信息改变，标题等
 func (replyF) room_change(s string) {
-	title := p.Json().GetValFromS(s, "data.title")
-	area_name := p.Json().GetValFromS(s, "data.area_name")
+	var type_item ws_msg.ROOM_CHANGE
+
+	if e := json.Unmarshal([]byte(s), &type_item); e != nil {
+		msglog.L(`E: `, e)
+	}
+
+	change := c.C.AreaID != type_item.Data.AreaID || c.C.Title != type_item.Data.Title
+
+	if c.C.Title != type_item.Data.Title {
+		StreamOCut(c.C.Roomid, type_item.Data.Title)
+	} else if c.C.AreaID == type_item.Data.AreaID {
+		// 直播间标题引入审核机制，触发审核时会接收到一个roomchange但标题不变
+		cancle := make(chan struct{})
+		roomChangeFC.FlashWithCallback(func() {
+			close(cancle)
+		})
+
+		go func(roomid int, oldTitle string) {
+			for tryC := 30; tryC > 0 && c.C.Roomid == roomid; tryC-- {
+				select {
+				case <-cancle:
+					return
+				case <-time.After(time.Second * 30):
+					F.Get(c.C).Get(`Title`)
+					if c.C.Roomid == roomid && c.C.Title != oldTitle {
+						StreamOCut(c.C.Roomid, c.C.Title)
+						var sh = []any{"房间改变", c.C.Title}
+						Gui_show(Itos(sh), "0room")
+						msglog.Base_add("房").L(`I: `, sh...)
+						return
+					}
+				}
+			}
+		}(c.C.Roomid, c.C.Title)
+	}
+
+	if type_item.Data.AreaID != 0 {
+		c.C.AreaID = type_item.Data.AreaID
+	}
+	if type_item.Data.ParentAreaID != 0 {
+		c.C.ParentAreaID = type_item.Data.ParentAreaID
+	}
 
 	var sh = []interface{}{"房间改变"}
-
-	if c.C.Title != title.(string) {
-		StreamOCut(c.C.Roomid, title.(string))
+	if type_item.Data.Title != "" {
+		sh = append(sh, type_item.Data.Title)
+		c.C.Title = type_item.Data.Title
+	}
+	if type_item.Data.AreaName != "" {
+		sh = append(sh, type_item.Data.AreaName)
 	}
 
-	if title != nil {
-		sh = append(sh, title)
-		c.C.Title = title.(string)
+	if change {
+		Gui_show(Itos(sh), "0room")
+		msglog.Base_add("房").L(`I: `, sh...)
 	}
-	if area_name != nil {
-		sh = append(sh, area_name)
-	}
-	Gui_show(Itos(sh), "0room")
-
-	msglog.Base_add("房").L(`I: `, sh...)
 }
 
 // Msg-超管警告
