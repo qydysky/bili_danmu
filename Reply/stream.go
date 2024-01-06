@@ -1288,8 +1288,9 @@ func (t *M4SStream) Start() bool {
 									l.L(`E: `, err)
 								} else if err := json.Unmarshal(data, &pathInfo); err != nil {
 									l.L(`E: `, err)
+								} else if err := fj.Delete(); err != nil {
+									l.L(`E: `, err)
 								}
-								fj.Delete()
 							}
 							pathInfo.Uname = ms.common.Uname
 							pathInfo.UpUid = ms.common.UpUid
