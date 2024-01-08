@@ -1412,7 +1412,7 @@ func init() {
 			if key, e := expirer.Reg(r.URL.Query().Get("key"), time.Second*30); e != nil {
 				w.WriteHeader(http.StatusForbidden)
 			} else {
-				w.Write([]byte(key))
+				_, _ = w.Write([]byte(key))
 			}
 		})
 
