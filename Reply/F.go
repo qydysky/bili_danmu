@@ -1300,6 +1300,29 @@ func init() {
 			}
 			w = cache.Cache(path+"filePath", time.Second*5, w)
 
+			var filePaths []paf
+
+			// 获取当前房间的
+			var currentStreamO *M4SStream
+			streamO.Range(func(key, value interface{}) bool {
+				if key != nil && c.C.Roomid == key.(int) {
+					currentStreamO = value.(*M4SStream)
+					return false
+				}
+				return true
+			})
+			if currentStreamO != nil && currentStreamO.Common().Liveing {
+				filePaths = append(filePaths, paf{
+					Name:       "Now: " + currentStreamO.Common().Title,
+					Path:       "now",
+					Qn:         c.C.Qn[currentStreamO.Common().Live_qn],
+					Uname:      currentStreamO.Common().Uname,
+					Format:     currentStreamO.stream_type,
+					StartT:     time.Now().Format(time.DateTime),
+					StartLiveT: currentStreamO.Common().Live_Start_Time.Format(time.DateTime),
+				})
+			}
+
 			if v, ok := c.C.K_v.LoadV(`直播流保存位置`).(string); ok && v != "" {
 				dir := file.New(v, 0, true)
 				defer dir.Close()
@@ -1307,8 +1330,6 @@ func init() {
 					c.ResStruct{Code: -1, Message: "not dir", Data: nil}.Write(w)
 					return
 				}
-
-				var filePaths []paf
 
 				if fs, e := dir.DirFiles(); e != nil {
 					c.ResStruct{Code: -1, Message: e.Error(), Data: nil}.Write(w)
@@ -1330,12 +1351,11 @@ func init() {
 				sort.Slice(filePaths, func(i, j int) bool {
 					return filePaths[i].StartT > filePaths[j].StartT
 				})
-
-				c.ResStruct{Code: 0, Message: "ok", Data: filePaths}.Write(w)
-			} else {
+			} else if len(filePaths) == 0 {
 				c.ResStruct{Code: -1, Message: "直播流保存位置无效", Data: nil}.Write(w)
 				flog.L(`W: `, `直播流保存位置无效`)
 			}
+			c.ResStruct{Code: 0, Message: "ok", Data: filePaths}.Write(w)
 		})
 
 		// 直播流播放器
@@ -1382,6 +1402,20 @@ func init() {
 			_, _ = w.Write(b)
 		})
 
+		// 对于经过代理层，有可能浏览器标签页已经关闭，但代理层不关闭连接，导致连接不能释放
+		var expirer = &pweb.Exprier{}
+		if v, ok := c.C.K_v.LoadV(`直播流回放连接检查`).(float64); ok && v > 0 {
+			expirer.Max = int(v)
+		}
+
+		c.C.SerF.Store(path+"keepAlive", func(w http.ResponseWriter, r *http.Request) {
+			if key, e := expirer.Reg(r.URL.Query().Get("key"), time.Second*30); e != nil {
+				w.WriteHeader(http.StatusForbidden)
+			} else {
+				w.Write([]byte(key))
+			}
+		})
+
 		// 流地址
 		c.C.SerF.Store(path+"stream", func(w http.ResponseWriter, r *http.Request) {
 			if c.DefaultHttpCheck(c.C, w, r, http.MethodGet) {
@@ -1393,6 +1427,12 @@ func init() {
 				w.WriteHeader(http.StatusTooManyRequests)
 				return
 			}
+
+			done := expirer.LoopCheck(r.URL.Query().Get("key"), func(key string, e error) {
+				flog.L(`T: `, key, e)
+				_ = c.C.SerF.GetConn(r).Close()
+			})
+			defer done()
 
 			//header
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
@@ -1493,7 +1533,7 @@ func init() {
 					ts := time.Now()
 					defer func() { flog.L(`T: `, r.RemoteAddr, `断开录播`, time.Since(ts)) }()
 
-					if e := f.CopyToIoWriter(pweb.WithFlush(w), pio.CopyConfig{BytePerSec: speed}); e != nil {
+					if e := f.CopyToIoWriter(w, pio.CopyConfig{BytePerSec: speed}); e != nil {
 						flog.L(`E: `, e)
 					}
 					// }
@@ -1534,11 +1574,11 @@ func init() {
 				conn, _ := r.Context().Value(c.C.SerF).(net.Conn)
 
 				// 在客户端存在某种代理时，将有可能无法监测到客户端关闭，这有可能导致goroutine泄漏
-				if to, ok := c.C.K_v.LoadV(`直播流回放限时min`).(float64); ok && to > 0 {
-					if e := conn.SetDeadline(time.Now().Add(time.Duration(int(time.Minute) * int(to)))); e != nil {
-						flog.L(`W: `, `设置直播流回放限时min错误`, e)
-					}
-				}
+				// if to, ok := c.C.K_v.LoadV(`直播流回放限时min`).(float64); ok && to > 0 {
+				// 	if e := conn.SetDeadline(time.Now().Add(time.Duration(int(time.Minute) * int(to)))); e != nil {
+				// 		flog.L(`W: `, `设置直播流回放限时min错误`, e)
+				// 	}
+				// }
 
 				if e := currentStreamO.PusherToHttp(conn, w, r, startFunc, stopFunc); e != nil {
 					flog.L(`W: `, e)
