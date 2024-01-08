@@ -412,6 +412,7 @@ ass编码GB18030支持中文
     "直播Web服务路径":"/web/",
     "直播Web可以发送弹幕":false,
     "直播流回放速率": "3 MB",
+    "直播流回放连接检查": 100,
     "Web服务连接限制": [
         {
             "cidr":"0.0.0.0/0",
@@ -435,6 +436,8 @@ ass编码GB18030支持中文
     "cookie解密私钥": "private.pem",
     "debug模式-help":"在/debug/pprof/启用调试",
     "debug模式":true,
+    "生成pgo":"default.pgo",
+    "扫码登录":true,
     "保存弹幕至db": {
         "dbname": "postgres",
         "url":"postgres://postgres:qydysky@192.168.31.103:5432/postgres?sslmode=disable",
