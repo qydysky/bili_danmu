@@ -1428,7 +1428,7 @@ func init() {
 				return
 			}
 
-			done := expirer.LoopCheck(r.URL.Query().Get("key"), func(key string, e error) {
+			done := expirer.LoopCheck(r.URL.Query().Get("key"), time.Second*30, func(key string, e error) {
 				flog.L(`T: `, key, e)
 				_ = c.C.SerF.GetConn(r).Close()
 			})
