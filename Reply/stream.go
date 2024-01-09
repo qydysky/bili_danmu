@@ -121,26 +121,6 @@ func (t *m4s_link_item) getNo() (int, error) {
 }
 
 func (t *M4SStream) getM4s() (p *m4s_link_item) {
-	if t.m4s_pool == nil {
-		t.m4s_pool = pool.New(
-			func() *m4s_link_item {
-				return &m4s_link_item{
-					data: slice.New[byte](),
-				}
-			},
-			func(t *m4s_link_item) bool {
-				return t.createdTime.After(t.pooledTime) || time.Now().Before(t.pooledTime.Add(time.Second*10))
-			},
-			func(t *m4s_link_item) *m4s_link_item {
-				return t.reset()
-			},
-			func(t *m4s_link_item) *m4s_link_item {
-				t.pooledTime = time.Now()
-				return t
-			},
-			50,
-		)
-	}
 	return t.m4s_pool.Get()
 }
 
@@ -1205,6 +1185,26 @@ func (t *M4SStream) Start() bool {
 
 		// 初始化请求池
 		t.reqPool = t.common.ReqPool
+
+		// 初始化池
+		t.m4s_pool = pool.New(
+			func() *m4s_link_item {
+				return &m4s_link_item{
+					data: slice.New[byte](),
+				}
+			},
+			func(t *m4s_link_item) bool {
+				return t.createdTime.After(t.pooledTime) || time.Now().Before(t.pooledTime.Add(time.Second*10))
+			},
+			func(t *m4s_link_item) *m4s_link_item {
+				return t.reset()
+			},
+			func(t *m4s_link_item) *m4s_link_item {
+				t.pooledTime = time.Now()
+				return t
+			},
+			50,
+		)
 
 		// 初始化切片消息
 		t.Stream_msg = msgq.NewType[[]byte]()
