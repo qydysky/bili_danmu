@@ -1428,10 +1428,14 @@ func init() {
 				return
 			}
 
-			done := expirer.LoopCheck(r.URL.Query().Get("key"), time.Second*30, func(key string, e error) {
+			done, e := expirer.LoopCheck(r.URL.Query().Get("key"), time.Second*30, func(key string, e error) {
 				flog.L(`T: `, key, e)
 				_ = c.C.SerF.GetConn(r).Close()
 			})
+			if e != nil {
+				w.WriteHeader(http.StatusForbidden)
+				return
+			}
 			defer done()
 
 			//header
