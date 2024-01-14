@@ -26,6 +26,7 @@ import (
 	F "github.com/qydysky/bili_danmu/F"
 
 	pctx "github.com/qydysky/part/ctx"
+	pe "github.com/qydysky/part/errors"
 	file "github.com/qydysky/part/file"
 	funcCtrl "github.com/qydysky/part/funcCtrl"
 	pio "github.com/qydysky/part/io"
@@ -292,7 +293,7 @@ func (t *M4SStream) fetchParseM3U8(fmp4ListUpdateTo float64) (m4s_links []*m4s_l
 		if err := r.Reqf(rval); err != nil {
 			// 1min后重新启用
 			t.common.Live[k].DisableAuto()
-			t.log.L("W: ", fmt.Sprintf("服务器 %s 发生故障 %s", F.ParseHost(v.Url), err.Error()))
+			t.log.L("W: ", fmt.Sprintf("服务器 %s 发生故障 %s", F.ParseHost(v.Url), pe.ErrorFormat(err, pe.ErrSimplifyFunc)))
 			if t.common.ValidLive() == nil {
 				e = errors.New("全部流服务器发生故障")
 				break
