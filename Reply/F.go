@@ -1402,6 +1402,9 @@ func init() {
 		}
 
 		c.C.SerF.Store(path+"keepAlive", func(w http.ResponseWriter, r *http.Request) {
+			if c.DefaultHttpCheck(c.C, w, r, http.MethodGet) {
+				return
+			}
 			if key, e := expirer.Reg(r.URL.Query().Get("key"), time.Second*30); e != nil {
 				w.WriteHeader(http.StatusForbidden)
 			} else {
