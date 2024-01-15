@@ -1364,13 +1364,6 @@ func init() {
 				return
 			}
 
-			// 直播流回放连接限制
-			if climit.ReachMax(r) {
-				w.WriteHeader(http.StatusTooManyRequests)
-				_, _ = w.Write([]byte(http.StatusText(http.StatusTooManyRequests)))
-				return
-			}
-
 			p := strings.TrimPrefix(r.URL.Path, path+"player/")
 			if len(p) == 0 || p[len(p)-1] == '/' {
 				p += "index.html"
@@ -1596,7 +1589,7 @@ func init() {
 			}
 
 			// 直播流回放连接限制
-			if climit.ReachMax(r) {
+			if climit.AddCount(r) {
 				w.WriteHeader(http.StatusTooManyRequests)
 				_, _ = w.Write([]byte(http.StatusText(http.StatusTooManyRequests)))
 				return
@@ -1674,13 +1667,6 @@ func init() {
 		// 弹幕回放xml
 		c.C.SerF.Store(path+"player/xml", func(w http.ResponseWriter, r *http.Request) {
 			if c.DefaultHttpCheck(c.C, w, r, http.MethodGet) {
-				return
-			}
-
-			// 直播流回放连接限制
-			if climit.ReachMax(r) {
-				w.WriteHeader(http.StatusTooManyRequests)
-				_, _ = w.Write([]byte(http.StatusText(http.StatusTooManyRequests)))
 				return
 			}
 
