@@ -59,3 +59,69 @@ func Test_Title(t *testing.T) {
 		t.Fatal()
 	}
 }
+
+func Test_Html(t *testing.T) {
+	//获取cookie
+	Get(c.C).Get(`Cookie`)
+	//获取LIVE_BUVID
+	Get(c.C).Get(`LIVE_BUVID`)
+	c.C.Roomid = 394988
+	c.C.UpUid = 0
+	Get(c.C).Html()
+	if c.C.UpUid == 0 {
+		t.Fatal()
+	}
+}
+
+func Test_getRoomPlayInfo(t *testing.T) {
+	//获取cookie
+	Get(c.C).Get(`Cookie`)
+	//获取LIVE_BUVID
+	Get(c.C).Get(`LIVE_BUVID`)
+	c.C.Roomid = 394988
+	c.C.UpUid = 0
+	Get(c.C).getRoomPlayInfo()
+	if c.C.UpUid == 0 {
+		t.Fatal()
+	}
+}
+
+func Test_getRoomPlayInfoByQn(t *testing.T) {
+	//获取cookie
+	Get(c.C).Get(`Cookie`)
+	//获取LIVE_BUVID
+	Get(c.C).Get(`LIVE_BUVID`)
+	c.C.Roomid = 394988
+	c.C.UpUid = 0
+	Get(c.C).getRoomPlayInfoByQn()
+	if c.C.UpUid == 0 {
+		t.Fatal()
+	}
+}
+
+func Test_getDanmuInfo(t *testing.T) {
+	//获取cookie
+	Get(c.C).Get(`Cookie`)
+	//获取LIVE_BUVID
+	Get(c.C).Get(`LIVE_BUVID`)
+	c.C.Roomid = 394988
+	c.C.WSURL = []string{}
+	Get(c.C).getDanmuInfo()
+	if len(c.C.WSURL) == 0 {
+		t.Fatal()
+	}
+}
+
+func Test_Get_guardNum(t *testing.T) {
+	//获取cookie
+	Get(c.C).Get(`Cookie`)
+	//获取LIVE_BUVID
+	Get(c.C).Get(`LIVE_BUVID`)
+	c.C.Roomid = 394988
+	c.C.GuardNum = -1
+	Get(c.C).Html()
+	Get(c.C).Get_guardNum()
+	if c.C.GuardNum == -1 {
+		t.Fatal()
+	}
+}

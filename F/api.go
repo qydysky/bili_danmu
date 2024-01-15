@@ -326,7 +326,7 @@ func (t *GetFunc) Html() (missKey []string) {
 				if !t.Liveing {
 					t.Live_qn = 0
 					t.AcceptQn = t.Qn
-					t.Live = []c.LiveQn{}
+					clear(t.Live)
 					return
 				}
 
@@ -415,7 +415,7 @@ func (t *GetFunc) configStreamType(sts []J.StreamType) {
 					t.AcceptQn = tmp
 				}
 				//直播流链接
-				t.Live = []c.LiveQn{}
+				clear(t.Live)
 				for _, v1 := range v.URLInfo {
 					item := c.LiveQn{
 						Url: v1.Host + v.BaseURL + v1.Extra,
@@ -475,7 +475,7 @@ func (t *GetFunc) configStreamType(sts []J.StreamType) {
 						t.AcceptQn = tmp
 					}
 					//直播流链接
-					t.Live = []c.LiveQn{}
+					clear(t.Live)
 					for _, v1 := range v.URLInfo {
 						item := c.LiveQn{
 							Url: v1.Host + v.BaseURL + v1.Extra,
@@ -730,7 +730,7 @@ func (t *GetFunc) getRoomPlayInfo() (missKey []string) {
 		if !t.Liveing {
 			t.Live_qn = 0
 			t.AcceptQn = t.Qn
-			t.Live = []c.LiveQn{}
+			clear(t.Live)
 			return
 		}
 
@@ -825,7 +825,7 @@ func (t *GetFunc) getRoomPlayInfoByQn() (missKey []string) {
 		if !t.Liveing {
 			t.Live_qn = 0
 			t.AcceptQn = t.Qn
-			t.Live = []c.LiveQn{}
+			clear(t.Live)
 			return
 		}
 

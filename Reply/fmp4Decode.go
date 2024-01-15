@@ -231,7 +231,7 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 
 	ies, e := decode(buf, "moof")
 	if e != nil {
-		return
+		return 0, e
 	}
 
 	err = deals(ies,
@@ -428,7 +428,7 @@ func decode(buf []byte, reSyncboxName string) (m []ie, err error) {
 			err = E
 			if reSyncI := bytes.Index(buf[cu:], []byte(reSyncboxName)); reSyncI != -1 {
 				cu += reSyncI - 4
-				m = []ie{}
+				clear(m)
 				continue
 			}
 			err = errors.New(E.Error() + " > 未能reSync")

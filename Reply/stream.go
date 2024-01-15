@@ -455,7 +455,7 @@ func (t *M4SStream) fetchParseM3U8(fmp4ListUpdateTo float64) (m4s_links []*m4s_l
 					if index := bytes.Index(m3u8_addon, []byte(m4s_link.Base)); index != -1 {
 						index += len([]byte(m4s_link.Base))
 						if index == len(m3u8_addon) {
-							m3u8_addon = []byte{}
+							clear(m3u8_addon)
 						} else {
 							m3u8_addon = m3u8_addon[index+1:]
 						}
