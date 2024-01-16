@@ -54,7 +54,7 @@ func Search_stream_tag(buf []byte, keyframe *slice.Buf[byte]) (front_buf []byte,
 			// if sign != 0x00 {
 			// fmt.Printf("front_buf error:%x\n", sign)
 			// }
-			clear(front_buf)
+			front_buf = front_buf[:0]
 		}
 		if bufl := keyframe.Size(); confirm_num != bufl {
 			_ = keyframe.RemoveBack(bufl - confirm_num)

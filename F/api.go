@@ -326,7 +326,7 @@ func (t *GetFunc) Html() (missKey []string) {
 				if !t.Liveing {
 					t.Live_qn = 0
 					t.AcceptQn = t.Qn
-					clear(t.Live)
+					t.Live = t.Live[:0]
 					return
 				}
 
@@ -366,83 +366,35 @@ func (t *GetFunc) Html() (missKey []string) {
 
 // 配置直播流
 func (t *GetFunc) configStreamType(sts []J.StreamType) {
-	var chosenType c.StreamType
+	var (
+		wantTypes []c.StreamType
+		chosen    int = -1
+	)
 
 	defer func() {
 		apilog := apilog.Base_add(`configStreamType`)
+		if chosen == -1 {
+			apilog.L(`E: `, `未能选择到流`)
+			return
+		}
 		if _, ok := t.Qn[t.Live_qn]; !ok {
 			apilog.L(`W: `, `未知的清晰度`, t.Live_qn)
 		}
-		apilog.L(`T: `, fmt.Sprintf("使用直播流 %s %s %s", t.Qn[t.Live_qn], chosenType.Format_name, chosenType.Codec_name))
+		apilog.L(`T: `, fmt.Sprintf("使用 %d 条直播流 %s %s %s", len(t.Live), t.Qn[t.Live_qn], wantTypes[chosen].Format_name, wantTypes[chosen].Codec_name))
 	}()
 
+	// 期望类型
 	if v, ok := t.Common.K_v.LoadV(`直播流类型`).(string); ok {
 		if st, ok := t.AllStreamType[v]; ok {
-			t.StreamType = st
+			wantTypes = append(wantTypes, st)
 		}
 	}
+	// 默认类型
+	wantTypes = append(wantTypes, t.AllStreamType[`fmp4`], t.AllStreamType[`flv`])
 
-	// 查找配置类型是否存在
-	for _, v := range sts {
-		if v.ProtocolName != t.StreamType.Protocol_name {
-			continue
-		}
+	t.Live = t.Live[:0]
 
-		for _, v := range v.Format {
-			if v.FormatName != t.StreamType.Format_name {
-				continue
-			}
-
-			for _, v := range v.Codec {
-				if v.CodecName != t.StreamType.Codec_name {
-					continue
-				}
-
-				chosenType = t.StreamType
-				//当前直播流质量
-				t.Live_qn = v.CurrentQn
-				if t.Live_want_qn == 0 {
-					t.Live_want_qn = v.CurrentQn
-				}
-				//允许的清晰度
-				{
-					var tmp = make(map[int]string)
-					for _, v := range v.AcceptQn {
-						if s, ok := t.Qn[v]; ok {
-							tmp[v] = s
-						}
-					}
-					t.AcceptQn = tmp
-				}
-				//直播流链接
-				clear(t.Live)
-				for _, v1 := range v.URLInfo {
-					item := c.LiveQn{
-						Url: v1.Host + v.BaseURL + v1.Extra,
-					}
-
-					if query, e := url.ParseQuery(v1.Extra); e == nil {
-						if expires, e := strconv.Atoi(query.Get("expires")); e == nil {
-							item.Expires = expires
-						}
-					}
-
-					t.Live = append(t.Live, item)
-				}
-
-				return
-			}
-		}
-	}
-
-	apilog.Base_add(`configStreamType`).L(`W: `, "未找到配置的直播流类型，使用默认flv、fmp4")
-
-	// 默认使用fmp4、flv
-	for _, streamType := range []c.StreamType{
-		t.AllStreamType[`fmp4`],
-		t.AllStreamType[`flv`],
-	} {
-
+	for k, streamType := range wantTypes {
 		for _, v := range sts {
 			if v.ProtocolName != streamType.Protocol_name {
 				continue
@@ -458,7 +410,7 @@ func (t *GetFunc) configStreamType(sts []J.StreamType) {
 						continue
 					}
 
-					chosenType = streamType
+					chosen = k
 					//当前直播流质量
 					t.Live_qn = v.CurrentQn
 					if t.Live_want_qn == 0 {
@@ -475,7 +427,6 @@ func (t *GetFunc) configStreamType(sts []J.StreamType) {
 						t.AcceptQn = tmp
 					}
 					//直播流链接
-					clear(t.Live)
 					for _, v1 := range v.URLInfo {
 						item := c.LiveQn{
 							Url: v1.Host + v.BaseURL + v1.Extra,
@@ -489,6 +440,9 @@ func (t *GetFunc) configStreamType(sts []J.StreamType) {
 
 						t.Live = append(t.Live, item)
 					}
+
+					// 已选定并设置好参数 退出
+					return
 				}
 			}
 		}
@@ -730,7 +684,7 @@ func (t *GetFunc) getRoomPlayInfo() (missKey []string) {
 		if !t.Liveing {
 			t.Live_qn = 0
 			t.AcceptQn = t.Qn
-			clear(t.Live)
+			t.Live = t.Live[:0]
 			return
 		}
 
@@ -825,7 +779,7 @@ func (t *GetFunc) getRoomPlayInfoByQn() (missKey []string) {
 		if !t.Liveing {
 			t.Live_qn = 0
 			t.AcceptQn = t.Qn
-			clear(t.Live)
+			t.Live = t.Live[:0]
 			return
 		}
 
@@ -1544,7 +1498,7 @@ func (c *GetFunc) Get_other_cookie() {
 		return
 	}
 
-	if e := save_cookie(r.Response.Cookies()); e != nil {
+	if e := save_cookie(r.Response.Cookies()); e != nil && !errors.Is(e, ErrNoCookiesSave) {
 		apilog.L(`E: `, e)
 	}
 }
@@ -2261,9 +2215,11 @@ func (t *GetFunc) Silver_2_coin() (missKey []string) {
 	return
 }
 
+var ErrNoCookiesSave = errors.New("ErrNoCookiesSave")
+
 func save_cookie(Cookies []*http.Cookie) error {
 	if len(Cookies) == 0 {
-		return errors.New("no cookie")
+		return ErrNoCookiesSave
 	}
 
 	for k, v := range reqf.Cookies_List_2_Map(Cookies) {

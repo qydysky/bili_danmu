@@ -428,7 +428,7 @@ func decode(buf []byte, reSyncboxName string) (m []ie, err error) {
 			err = E
 			if reSyncI := bytes.Index(buf[cu:], []byte(reSyncboxName)); reSyncI != -1 {
 				cu += reSyncI - 4
-				clear(m)
+				m = m[:0]
 				continue
 			}
 			err = errors.New(E.Error() + " > 未能reSync")
