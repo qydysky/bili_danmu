@@ -1272,40 +1272,39 @@ func (t *M4SStream) Start() bool {
 
 					ms.getSavepath()
 
+					var pathInfo = paf{
+						Uname:           ms.common.Uname,
+						UpUid:           ms.common.UpUid,
+						Roomid:          ms.common.Roomid,
+						Qn:              c.C.Qn[ms.common.Live_qn],
+						Name:            ms.common.Title,
+						StartT:          time.Now().Format(time.DateTime),
+						Path:            path.Base(ms.Current_save_path),
+						CurrentSavePath: ms.Current_save_path,
+						Format:          ms.stream_type,
+						StartLiveT:      ms.common.Live_Start_Time.Format(time.DateTime),
+					}
+
 					l := ms.log.Base_add(`文件保存`)
 					startf := func(_ *M4SStream) error {
 						l.L(`T: `, `开始`)
 						return nil
 					}
-					stopf := func(ms *M4SStream) error {
+					stopf := func(_ *M4SStream) error {
 						// savestate
 						{
-							var pathInfo paf
-							fj := file.New(ms.Current_save_path+"0.json", 0, true)
+							fj := file.New(pathInfo.CurrentSavePath+"0.json", 0, true)
 							if fj.IsExist() {
-								if data, err := fj.ReadAll(1<<18, 1<<20); err != nil && !errors.Is(err, io.EOF) {
-									l.L(`E: `, err)
-								} else if err := json.Unmarshal(data, &pathInfo); err != nil {
-									l.L(`E: `, err)
-								} else if err := fj.Delete(); err != nil {
+								if err := fj.Delete(); err != nil {
 									l.L(`E: `, err)
 								}
 							}
-							pathInfo.Uname = ms.common.Uname
-							pathInfo.UpUid = ms.common.UpUid
-							pathInfo.Roomid = ms.common.Roomid
-							pathInfo.Format = ms.stream_type
-							pathInfo.Qn = c.C.Qn[ms.common.Live_qn]
-							pathInfo.Name = ms.common.Title
 							pathInfo.EndT = time.Now().Format(time.DateTime)
-							pathInfo.StartLiveT = ms.common.Live_Start_Time.Format(time.DateTime)
-							pathInfo.Path = path.Base(ms.Current_save_path)
 							if pathInfoJson, err := json.Marshal(pathInfo); err != nil {
 								l.L(`E: `, err)
 							} else if _, err := fj.Write(pathInfoJson, true); err != nil {
 								l.L(`E: `, err)
 							}
-							fj.Close()
 						}
 						l.L(`T: `, `结束`)
 						return nil
@@ -1316,30 +1315,15 @@ func (t *M4SStream) Start() bool {
 						l.L(`W: `, err)
 					}
 
-					var (
-						cp = ms.Current_save_path
-						st = ms.stream_type
-						cr = ms.common.Roomid
-					)
-
 					// savestate
 					{
-						fj := file.New(cp+"0.json", 0, true)
+
+						fj := file.New(pathInfo.CurrentSavePath+"0.json", 0, true)
 						if fj.IsExist() {
 							if err := fj.Delete(); err != nil {
 								l.L(`E: `, err)
 							}
 						}
-						var pathInfo paf
-						pathInfo.Uname = ms.common.Uname
-						pathInfo.UpUid = ms.common.UpUid
-						pathInfo.Roomid = ms.common.Roomid
-						pathInfo.Format = st
-						pathInfo.Qn = c.C.Qn[ms.common.Live_qn]
-						pathInfo.Name = ms.common.Title
-						pathInfo.StartT = time.Now().Format(time.DateTime)
-						pathInfo.StartLiveT = ms.common.Live_Start_Time.Format(time.DateTime)
-						pathInfo.Path = path.Base(cp)
 						if pathInfoJson, err := json.Marshal(pathInfo); err != nil {
 							l.L(`E: `, err)
 						} else if _, err := fj.Write(pathInfoJson, true); err != nil {
@@ -1348,11 +1332,11 @@ func (t *M4SStream) Start() bool {
 						fj.Close()
 					}
 
-					go StartRecDanmu(contextC, cp)             //保存弹幕
-					go Ass_f(contextC, cp, cp+"0", time.Now()) //开始ass
+					go StartRecDanmu(contextC, pathInfo.CurrentSavePath)                                   //保存弹幕
+					go Ass_f(contextC, pathInfo.CurrentSavePath, pathInfo.CurrentSavePath+"0", time.Now()) //开始ass
 
 					startT := time.Now()
-					if e := ms.PusherToFile(contextC, cp+`0.`+st, startf, stopf); e != nil {
+					if e := ms.PusherToFile(contextC, pathInfo.CurrentSavePath+`0.`+pathInfo.Format, startf, stopf); e != nil {
 						l.L(`E: `, e)
 					}
 					duration := time.Since(startT)
@@ -1365,7 +1349,7 @@ func (t *M4SStream) Start() bool {
 						l := l.Base(`录制回调`)
 						for i := 0; i < len(v); i++ {
 							if vm, ok := v[i].(map[string]any); ok {
-								if roomid, ok := vm["roomid"].(float64); ok && int(roomid) == cr {
+								if roomid, ok := vm["roomid"].(float64); ok && int(roomid) == pathInfo.Roomid {
 									var (
 										durationS, _ = vm["durationS"].(float64)
 										after, _     = vm["after"].([]any)
@@ -1374,12 +1358,12 @@ func (t *M4SStream) Start() bool {
 										var cmds []string
 										for i := 0; i < len(after); i++ {
 											if cmd, ok := after[i].(string); ok && cmd != "" {
-												cmds = append(cmds, strings.ReplaceAll(cmd, "{type}", st))
+												cmds = append(cmds, strings.ReplaceAll(cmd, "{type}", pathInfo.Format))
 											}
 										}
 
 										cmd := exec.Command(cmds[0], cmds[1:]...)
-										cmd.Dir = cp
+										cmd.Dir = pathInfo.CurrentSavePath
 										l.L(`I: `, "启动", cmd.Args)
 										if e := cmd.Run(); e != nil {
 											l.L(`E: `, e)

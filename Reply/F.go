@@ -1136,16 +1136,17 @@ func SendStreamWs(item Danmu_item) {
 
 // 录播目录信息
 type paf struct {
-	Uname      string `json:"uname"`
-	UpUid      int    `json:"upUid"`
-	Roomid     int    `json:"roomid"`
-	Qn         string `json:"qn"`
-	Name       string `json:"name"`
-	StartT     string `json:"startT"`
-	EndT       string `json:"endT"`
-	Path       string `json:"path"`
-	Format     string `json:"format"`
-	StartLiveT string `json:"startLiveT"`
+	Uname           string `json:"uname"`
+	UpUid           int    `json:"upUid"`
+	Roomid          int    `json:"roomid"`
+	Qn              string `json:"qn"`
+	Name            string `json:"name"`
+	StartT          string `json:"startT"`
+	EndT            string `json:"endT"`
+	Path            string `json:"path"`
+	CurrentSavePath string `json:"-"`
+	Format          string `json:"format"`
+	StartLiveT      string `json:"startLiveT"`
 }
 
 // 获取录播目录信息
