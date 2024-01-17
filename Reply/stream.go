@@ -1272,22 +1272,16 @@ func (t *M4SStream) Start() bool {
 
 					ms.getSavepath()
 
-					var (
-						cp = ms.Current_save_path
-						st = ms.stream_type
-						cr = ms.common.Roomid
-					)
-
 					l := ms.log.Base_add(`文件保存`)
 					startf := func(_ *M4SStream) error {
 						l.L(`T: `, `开始`)
 						return nil
 					}
-					stopf := func(_ *M4SStream) error {
+					stopf := func(ms *M4SStream) error {
 						// savestate
 						{
 							var pathInfo paf
-							fj := file.New(cp+"0.json", 0, true)
+							fj := file.New(ms.Current_save_path+"0.json", 0, true)
 							if fj.IsExist() {
 								if data, err := fj.ReadAll(1<<18, 1<<20); err != nil && !errors.Is(err, io.EOF) {
 									l.L(`E: `, err)
@@ -1300,12 +1294,12 @@ func (t *M4SStream) Start() bool {
 							pathInfo.Uname = ms.common.Uname
 							pathInfo.UpUid = ms.common.UpUid
 							pathInfo.Roomid = ms.common.Roomid
-							pathInfo.Format = st
+							pathInfo.Format = ms.stream_type
 							pathInfo.Qn = c.C.Qn[ms.common.Live_qn]
 							pathInfo.Name = ms.common.Title
 							pathInfo.EndT = time.Now().Format(time.DateTime)
 							pathInfo.StartLiveT = ms.common.Live_Start_Time.Format(time.DateTime)
-							pathInfo.Path = path.Base(cp)
+							pathInfo.Path = path.Base(ms.Current_save_path)
 							if pathInfoJson, err := json.Marshal(pathInfo); err != nil {
 								l.L(`E: `, err)
 							} else if _, err := fj.Write(pathInfoJson, true); err != nil {
@@ -1321,6 +1315,12 @@ func (t *M4SStream) Start() bool {
 					if err := ms.removeStream(); err != nil {
 						l.L(`W: `, err)
 					}
+
+					var (
+						cp = ms.Current_save_path
+						st = ms.stream_type
+						cr = ms.common.Roomid
+					)
 
 					// savestate
 					{
