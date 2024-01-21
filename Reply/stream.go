@@ -1263,11 +1263,13 @@ func (t *M4SStream) Start() bool {
 
 					// 分段时长min
 					if l, ok := ms.common.K_v.LoadV("分段时长min").(float64); ok && l > 0 {
-						tc := time.AfterFunc(time.Duration(int64(time.Minute)*int64(l)), func() {
-							ms.log.Base_add(`分段`).L(`I: `, ms.common.Roomid, "ok")
+						cutT := time.Duration(int64(time.Minute) * int64(l))
+						ml := ms.log.Base_add(`分段`)
+						ml.L(`I: `, fmt.Sprintf("分段启动 %v", cutT))
+						defer time.AfterFunc(cutT, func() {
+							ml.L(`I: `, ms.common.Roomid, "ok")
 							ms.msg.Push_tag(`cut`, ms)
-						})
-						defer tc.Stop()
+						}).Stop()
 					}
 
 					// 当stopRec时，取消录制
