@@ -20,9 +20,9 @@ var (
 	once  sync.Once
 )
 
-func start(ctx context.Context, file string) error {
+func start(ctx context.Context, file string) (any, error) {
 	if file == "" {
-		return nil
+		return nil, nil
 	}
 	go once.Do(
 		func() {
@@ -63,5 +63,5 @@ func start(ctx context.Context, file string) error {
 				pgo.Close()
 			}
 		})
-	return nil
+	return nil, nil
 }

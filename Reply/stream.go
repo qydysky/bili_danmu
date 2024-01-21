@@ -5,7 +5,6 @@ import (
 	"context"
 	"crypto/md5"
 	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -15,7 +14,6 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
-	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -25,6 +23,7 @@ import (
 	c "github.com/qydysky/bili_danmu/CV"
 	F "github.com/qydysky/bili_danmu/F"
 
+	videoInfo "github.com/qydysky/bili_danmu/Reply/F/videoInfo"
 	pctx "github.com/qydysky/part/ctx"
 	pe "github.com/qydysky/part/errors"
 	file "github.com/qydysky/part/file"
@@ -1150,6 +1149,14 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 	return
 }
 
+func (t *M4SStream) GetStreamType() string {
+	return t.stream_type
+}
+
+func (t *M4SStream) GetSavePath() string {
+	return t.Current_save_path
+}
+
 func (t *M4SStream) Start() bool {
 	// 清晰度-1 or 路径存在问题 不保存
 	if t.config.want_qn == -1 || t.config.save_path == "" {
@@ -1272,40 +1279,12 @@ func (t *M4SStream) Start() bool {
 
 					ms.getSavepath()
 
-					var pathInfo = paf{
-						Uname:           ms.common.Uname,
-						UpUid:           ms.common.UpUid,
-						Roomid:          ms.common.Roomid,
-						Qn:              c.C.Qn[ms.common.Live_qn],
-						Name:            ms.common.Title,
-						StartT:          time.Now().Format(time.DateTime),
-						Path:            path.Base(ms.Current_save_path),
-						CurrentSavePath: ms.Current_save_path,
-						Format:          ms.stream_type,
-						StartLiveT:      ms.common.Live_Start_Time.Format(time.DateTime),
-					}
-
 					l := ms.log.Base_add(`文件保存`)
 					startf := func(_ *M4SStream) error {
 						l.L(`T: `, `开始`)
 						return nil
 					}
 					stopf := func(_ *M4SStream) error {
-						// savestate
-						{
-							fj := file.New(pathInfo.CurrentSavePath+"0.json", 0, true)
-							if fj.IsExist() {
-								if err := fj.Delete(); err != nil {
-									l.L(`E: `, err)
-								}
-							}
-							pathInfo.EndT = time.Now().Format(time.DateTime)
-							if pathInfoJson, err := json.Marshal(pathInfo); err != nil {
-								l.L(`E: `, err)
-							} else if _, err := fj.Write(pathInfoJson, true); err != nil {
-								l.L(`E: `, err)
-							}
-						}
 						l.L(`T: `, `结束`)
 						return nil
 					}
@@ -1316,27 +1295,15 @@ func (t *M4SStream) Start() bool {
 					}
 
 					// savestate
-					{
-
-						fj := file.New(pathInfo.CurrentSavePath+"0.json", 0, true)
-						if fj.IsExist() {
-							if err := fj.Delete(); err != nil {
-								l.L(`E: `, err)
-							}
-						}
-						if pathInfoJson, err := json.Marshal(pathInfo); err != nil {
-							l.L(`E: `, err)
-						} else if _, err := fj.Write(pathInfoJson, true); err != nil {
-							l.L(`E: `, err)
-						}
-						fj.Close()
+					if e, _ := videoInfo.Save.Run(contextC, ms); e != nil {
+						l.L(`E: `, e)
 					}
 
-					go StartRecDanmu(contextC, pathInfo.CurrentSavePath)                                   //保存弹幕
-					go Ass_f(contextC, pathInfo.CurrentSavePath, pathInfo.CurrentSavePath+"0", time.Now()) //开始ass
+					go StartRecDanmu(contextC, ms.GetSavePath())                           //保存弹幕
+					go Ass_f(contextC, ms.GetSavePath(), ms.GetSavePath()+"0", time.Now()) //开始ass
 
 					startT := time.Now()
-					if e := ms.PusherToFile(contextC, pathInfo.CurrentSavePath+`0.`+pathInfo.Format, startf, stopf); e != nil {
+					if e := ms.PusherToFile(contextC, ms.GetSavePath()+`0.`+ms.GetStreamType(), startf, stopf); e != nil {
 						l.L(`E: `, e)
 					}
 					duration := time.Since(startT)
@@ -1349,7 +1316,7 @@ func (t *M4SStream) Start() bool {
 						l := l.Base(`录制回调`)
 						for i := 0; i < len(v); i++ {
 							if vm, ok := v[i].(map[string]any); ok {
-								if roomid, ok := vm["roomid"].(float64); ok && int(roomid) == pathInfo.Roomid {
+								if roomid, ok := vm["roomid"].(float64); ok && int(roomid) == ms.common.Roomid {
 									var (
 										durationS, _ = vm["durationS"].(float64)
 										after, _     = vm["after"].([]any)
@@ -1358,12 +1325,12 @@ func (t *M4SStream) Start() bool {
 										var cmds []string
 										for i := 0; i < len(after); i++ {
 											if cmd, ok := after[i].(string); ok && cmd != "" {
-												cmds = append(cmds, strings.ReplaceAll(cmd, "{type}", pathInfo.Format))
+												cmds = append(cmds, strings.ReplaceAll(cmd, "{type}", ms.GetStreamType()))
 											}
 										}
 
 										cmd := exec.Command(cmds[0], cmds[1:]...)
-										cmd.Dir = pathInfo.CurrentSavePath
+										cmd.Dir = ms.GetSavePath()
 										l.L(`I: `, "启动", cmd.Args)
 										if e := cmd.Run(); e != nil {
 											l.L(`E: `, e)
@@ -1419,6 +1386,10 @@ func (t *M4SStream) Stop() {
 	t.log.L(`I: `, `正在等待下载完成...`)
 	t.exitSign.Wait()
 	t.log.L(`I: `, `结束`)
+}
+
+func (t *M4SStream) Cut() {
+	t.msg.Push_tag(`cut`, t)
 }
 
 // 保存到文件

@@ -32,7 +32,7 @@ type DanmuReLiveTriger struct {
 	C         *c.Common
 }
 
-func initf(ctx context.Context, ptr DanmuReLiveTriger) error {
+func initf(ctx context.Context, ptr DanmuReLiveTriger) (any, error) {
 	l = make(map[string]*regexp.Regexp)
 	if v, ok := ptr.C.K_v.LoadV(`指定弹幕重启录制`).([]any); ok && len(v) > 0 {
 		logg = ptr.C.Log.Base("指定弹幕重启录制")
@@ -45,7 +45,7 @@ func initf(ctx context.Context, ptr DanmuReLiveTriger) error {
 			if uid != "" && danmu != "" {
 				if reg, e := regexp.Compile(danmu); e != nil {
 					clear(l)
-					return e
+					return nil, e
 				} else {
 					l[uid] = reg
 				}
@@ -55,14 +55,14 @@ func initf(ctx context.Context, ptr DanmuReLiveTriger) error {
 			logg.L(`T: `, `加载`, len(l), `条规则`)
 		}
 	}
-	return nil
+	return nil, nil
 }
 
 type Danmu struct {
 	Uid, Msg string
 }
 
-func check(ctx context.Context, item Danmu) error {
+func check(ctx context.Context, item Danmu) (any, error) {
 	if reg, ok := l[item.Uid]; ok {
 		if ss := reg.FindStringSubmatch(item.Msg); len(ss) > 0 {
 			if reload.CompareAndSwap(false, true) {
@@ -80,5 +80,5 @@ func check(ctx context.Context, item Danmu) error {
 			}
 		}
 	}
-	return nil
+	return nil, nil
 }

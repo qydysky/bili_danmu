@@ -546,11 +546,19 @@ func (replyF) room_change(s string) {
 		msglog.L(`E: `, e)
 	}
 
-	change := c.C.AreaID != type_item.Data.AreaID || c.C.Title != type_item.Data.Title
+	if type_item.Data.AreaID != 0 {
+		c.C.AreaID = type_item.Data.AreaID
+	}
+	if type_item.Data.ParentAreaID != 0 {
+		c.C.ParentAreaID = type_item.Data.ParentAreaID
+	}
+	if type_item.Data.Title != "" {
+		c.C.Title = type_item.Data.Title
+	}
 
-	if c.C.Title != type_item.Data.Title {
-		StreamOCut(c.C.Roomid, type_item.Data.Title)
-	} else if c.C.AreaID == type_item.Data.AreaID {
+	StreamOCut(c.C.Roomid, type_item.Data.Title)
+
+	if c.C.Title == type_item.Data.Title && c.C.AreaID == type_item.Data.AreaID {
 		// 直播间标题引入审核机制，触发审核时会接收到一个roomchange但标题不变
 		cancle := make(chan struct{})
 		roomChangeFC.FlashWithCallback(func() {
@@ -565,7 +573,6 @@ func (replyF) room_change(s string) {
 				case <-time.After(time.Second * 30):
 					F.Get(c.C).Get(`Title`)
 					if c.C.Roomid == roomid && c.C.Title != oldTitle {
-						StreamOCut(c.C.Roomid, c.C.Title)
 						var sh = []any{"房间改变", c.C.Title}
 						Gui_show(Itos(sh), "0room")
 						msglog.Base_add("房").L(`I: `, sh...)
@@ -574,28 +581,12 @@ func (replyF) room_change(s string) {
 				}
 			}
 		}(c.C.Roomid, c.C.Title)
+		return
 	}
 
-	if type_item.Data.AreaID != 0 {
-		c.C.AreaID = type_item.Data.AreaID
-	}
-	if type_item.Data.ParentAreaID != 0 {
-		c.C.ParentAreaID = type_item.Data.ParentAreaID
-	}
-
-	var sh = []interface{}{"房间改变"}
-	if type_item.Data.Title != "" {
-		sh = append(sh, type_item.Data.Title)
-		c.C.Title = type_item.Data.Title
-	}
-	if type_item.Data.AreaName != "" {
-		sh = append(sh, type_item.Data.AreaName)
-	}
-
-	if change {
-		Gui_show(Itos(sh), "0room")
-		msglog.Base_add("房").L(`I: `, sh...)
-	}
+	var sh = []any{"房间改变", type_item.Data.Title, type_item.Data.AreaName}
+	Gui_show(Itos(sh), "0room")
+	msglog.Base_add("房").L(`I: `, sh...)
 }
 
 // Msg-超管警告
@@ -825,7 +816,7 @@ func (replyF) preparing(s string) {
 			var roomId, _ = strconv.Atoi(type_item.Roomid)
 			StreamOStop(roomId)
 			// 下播总结
-			if e := liveOver.Sumup.Run(context.Background(), c.C); e != nil {
+			if _, e := liveOver.Sumup.Run(context.Background(), c.C); e != nil {
 				msglog.L(`E: `, e)
 			}
 		}
@@ -857,7 +848,7 @@ func (replyF) live(s string) {
 			if v, ok := c.C.K_v.LoadV(`仅保存当前直播间流`).(bool); ok && v {
 				StreamOStop(-2) //停止其他房间录制
 			}
-			if e := recStartEnd.RecStartCheck.Run(context.Background(), c.C); e == nil {
+			if _, e := recStartEnd.RecStartCheck.Run(context.Background(), c.C); e == nil {
 				if StreamOStatus(c.C.Roomid) {
 					StreamOCut(c.C.Roomid)
 				} else {
@@ -1191,7 +1182,7 @@ func (replyF) danmu(s string) {
 		saveDanmuToDB.init(c.C)
 		saveDanmuToDB.danmu(item)
 		// 对指定弹幕重新录制
-		_ = danmuReLiveTriger.Check.Run(context.Background(), danmuReLiveTriger.Danmu{Uid: item.uid, Msg: item.msg})
+		_, _ = danmuReLiveTriger.Check.Run(context.Background(), danmuReLiveTriger.Danmu{Uid: item.uid, Msg: item.msg})
 		// 语言tts 私信
 		{
 			if item.uid != "" {

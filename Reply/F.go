@@ -12,8 +12,6 @@ import (
 	"net/http"
 	"net/http/pprof"
 	"net/url"
-	"os"
-	"path"
 	"sort"
 	"strconv"
 	"strings"
@@ -33,6 +31,7 @@ import (
 	F "github.com/qydysky/bili_danmu/F"
 	_ "github.com/qydysky/bili_danmu/Reply/F"
 	"github.com/qydysky/bili_danmu/Reply/F/danmuXml"
+	videoInfo "github.com/qydysky/bili_danmu/Reply/F/videoInfo"
 	send "github.com/qydysky/bili_danmu/Send"
 
 	p "github.com/qydysky/part"
@@ -365,9 +364,9 @@ func StreamOCut(roomid int, title ...string) {
 	if v, ok := streamO.Load(roomid); ok {
 		if !pctx.Done(v.(*M4SStream).Status) {
 			if len(title) != 0 {
-				v.(*M4SStream).common.Title = title[0]
+				v.(*M4SStream).Common().Title = title[0]
 			}
-			v.(*M4SStream).msg.Push_tag(`cut`, v.(*M4SStream))
+			v.(*M4SStream).Cut()
 			flog.L(`I: `, `已切片 `+strconv.Itoa(roomid))
 		}
 	}
@@ -1134,60 +1133,6 @@ func SendStreamWs(item Danmu_item) {
 	})
 }
 
-// 录播目录信息
-type paf struct {
-	Uname           string `json:"uname"`
-	UpUid           int    `json:"upUid"`
-	Roomid          int    `json:"roomid"`
-	Qn              string `json:"qn"`
-	Name            string `json:"name"`
-	StartT          string `json:"startT"`
-	EndT            string `json:"endT"`
-	Path            string `json:"path"`
-	CurrentSavePath string `json:"-"`
-	Format          string `json:"format"`
-	StartLiveT      string `json:"startLiveT"`
-}
-
-// 获取录播目录信息
-func getRecInfo(dirpath string) (pathInfo paf, err error) {
-	dirf := file.New(dirpath, 0, true)
-	defer dirf.Close()
-	if dirf.IsDir() {
-		// 从文件夹获取信息
-		{
-			dirfName := path.Base(dirf.File().Name())
-			if len(dirfName) > 20 {
-				pathInfo = paf{Name: dirfName[20:], StartT: dirfName[:19], Path: dirfName}
-			}
-			mp4f := file.New(dirpath+string(os.PathSeparator)+"0.mp4", 0, true)
-			if mp4f.IsExist() {
-				pathInfo.Format = "mp4"
-			} else {
-				pathInfo.Format = "flv"
-			}
-		}
-		// 从0.json获取信息
-		{
-			json0 := file.New(dirpath+string(os.PathSeparator)+"0.json", 0, true)
-			if !json0.IsExist() {
-				return
-			}
-			defer json0.Close()
-			if data, e := json0.ReadAll(1<<8, 1<<16); e != nil && !errors.Is(e, io.EOF) {
-				err = e
-				return
-			} else {
-				if e := json.Unmarshal(data, &pathInfo); e != nil {
-					err = e
-					return
-				}
-			}
-		}
-	}
-	return
-}
-
 func init() {
 	flog := flog.Base_add(`直播Web服务`)
 	if path, ok := c.C.K_v.LoadV(`直播Web服务路径`).(string); ok {
@@ -1301,7 +1246,7 @@ func init() {
 			}
 			w = cache.Cache(path+"filePath", time.Second*5, w)
 
-			var filePaths []paf
+			var filePaths []*videoInfo.Paf
 
 			// 获取当前房间的
 			var currentStreamO *M4SStream
@@ -1312,17 +1257,17 @@ func init() {
 				}
 				return true
 			})
-			if currentStreamO != nil && currentStreamO.Common().Liveing {
-				filePaths = append(filePaths, paf{
-					Name:       "Now: " + currentStreamO.Common().Title,
-					Path:       "now",
-					Qn:         c.C.Qn[currentStreamO.Common().Live_qn],
-					Uname:      currentStreamO.Common().Uname,
-					Format:     currentStreamO.stream_type,
-					StartT:     time.Now().Format(time.DateTime),
-					StartLiveT: currentStreamO.Common().Live_Start_Time.Format(time.DateTime),
-				})
-			}
+			// if currentStreamO != nil && currentStreamO.Common().Liveing {
+			// 	filePaths = append(filePaths, struct{
+			// 		Name:       "Now: " + currentStreamO.Common().Title,
+			// 		Path:       "now",
+			// 		Qn:         c.C.Qn[currentStreamO.Common().Live_qn],
+			// 		Uname:      currentStreamO.Common().Uname,
+			// 		Format:     currentStreamO.stream_type,
+			// 		StartT:     time.Now().Format(time.DateTime),
+			// 		StartLiveT: currentStreamO.Common().Live_Start_Time.Format(time.DateTime),
+			// 	})
+			// }
 
 			if v, ok := c.C.K_v.LoadV(`直播流保存位置`).(string); ok && v != "" {
 				dir := file.New(v, 0, true)
@@ -1337,18 +1282,23 @@ func init() {
 					return
 				} else {
 					for i, n := 0, len(fs); i < n; i++ {
-						if filePath, e := getRecInfo((fs[i])); e != nil {
-							c.ResStruct{Code: -1, Message: e.Error(), Data: nil}.Write(w)
-							return
+						if filePath, e := videoInfo.Get.Run(context.Background(), fs[i]); e != nil {
+							flog.L(`W: `, fs[i], e)
+							continue
 						} else {
 							if t, e := time.Parse("2006_01_02-15_04_05", filePath.StartT); e == nil {
 								filePath.StartT = t.Format(time.DateTime)
+							}
+							if currentStreamO != nil &&
+								currentStreamO.Common().Liveing &&
+								strings.Contains(currentStreamO.GetSavePath(), filePath.Path) {
+								filePath.Name = "Now:" + filePath.Name
+								filePath.Path = "now"
 							}
 							filePaths = append(filePaths, filePath)
 						}
 					}
 				}
-
 				sort.Slice(filePaths, func(i, j int) bool {
 					return filePaths[i].StartT > filePaths[j].StartT
 				})
@@ -1622,7 +1572,7 @@ func init() {
 						w.WriteHeader(http.StatusNotFound)
 						return
 					} else if !file.New(v+"0.xml", 0, true).IsExist() {
-						if e := danmuXml.DanmuXml.Run(context.Background(), &v); e != nil {
+						if _, e := danmuXml.DanmuXml.Run(context.Background(), &v); e != nil {
 							msglog.L(`E: `, e)
 						}
 					}
@@ -1702,7 +1652,7 @@ func init() {
 						w.WriteHeader(http.StatusNotFound)
 						return
 					}
-					if e := danmuXml.DanmuXml.Run(context.Background(), &v); e != nil {
+					if _, e := danmuXml.DanmuXml.Run(context.Background(), &v); e != nil {
 						msglog.L(`E: `, e)
 					}
 				}
@@ -1741,7 +1691,7 @@ func StartRecDanmu(ctx context.Context, filePath string) {
 	f.L(`I: `, `结束`)
 
 	// 弹幕录制结束
-	if e := danmuXml.DanmuXml.Run(context.Background(), &filePath); e != nil {
+	if _, e := danmuXml.DanmuXml.Run(context.Background(), &filePath); e != nil {
 		msglog.L(`E: `, e)
 	}
 

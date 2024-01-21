@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	c "github.com/qydysky/bili_danmu/CV"
+	videoInfo "github.com/qydysky/bili_danmu/Reply/F/videoInfo"
 	psql "github.com/qydysky/part/sql"
 )
 
@@ -55,7 +56,7 @@ func TestSaveDanmuToDB(t *testing.T) {
 }
 
 func Test_getRecInfo(t *testing.T) {
-	pathInfo, err := getRecInfo("testdata/live/2023_07_10-14_49_10-22259479-10000-644c3e-vfv")
+	pathInfo, err := videoInfo.Get.Run(context.Background(), "testdata/live/2023_07_10-14_49_10-22259479-10000-644c3e-vfv")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -30,7 +30,7 @@ var (
 	timePoints  []int
 )
 
-func initf(ctx context.Context, ptr *c.Common) (err error) {
+func initf(ctx context.Context, ptr *c.Common) (_ any, err error) {
 	if list, ok := ptr.K_v.LoadV("指定房间录制区间").([]any); ok {
 		logg = ptr.Log.Base("功能", "指定房间录制区间")
 		defer func() {
@@ -80,10 +80,10 @@ func initf(ctx context.Context, ptr *c.Common) (err error) {
 		}
 		slices.Sort(timePoints)
 	}
-	return nil
+	return nil, nil
 }
 
-func recStartCheck(ctx context.Context, ptr *c.Common) error {
+func recStartCheck(ctx context.Context, ptr *c.Common) (any, error) {
 	if setting, ok := roomSetting[ptr.Roomid]; ok {
 		now := time.Now()
 		t := now.Hour()*3600 + now.Minute()*60 + now.Second() + 1
@@ -92,15 +92,15 @@ func recStartCheck(ctx context.Context, ptr *c.Common) error {
 			if v.start != 0 && v.end != 0 {
 				hasSpace = true
 				if t <= v.end && t >= v.start {
-					return nil
+					return nil, nil
 				}
 			}
 		}
 		if hasSpace {
-			return errors.New("当前不在设定时间段内")
+			return nil, errors.New("当前不在设定时间段内")
 		}
 	}
-	return nil
+	return nil, nil
 }
 
 type StreamCtl struct {
@@ -113,10 +113,10 @@ type StreamCtl struct {
 
 var streamCtl StreamCtl
 
-func loopCheck(ctx context.Context, ptr StreamCtl) error {
+func loopCheck(ctx context.Context, ptr StreamCtl) (any, error) {
 	streamCtl = ptr
 	setNextFunc()
-	return nil
+	return nil, nil
 }
 
 func setNextFunc() {

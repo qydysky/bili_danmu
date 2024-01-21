@@ -12,7 +12,7 @@ import (
 // *c.Common
 var Sumup = comp.NewComp(sumup)
 
-func sumup(ctx context.Context, ptr *c.Common) error {
+func sumup(ctx context.Context, ptr *c.Common) (any, error) {
 	dura := time.Since(ptr.Live_Start_Time).Round(time.Second)
 	if ptr.Live_Start_Time.IsZero() {
 		ptr.Log.Base(`功能`, `下播总结`).L(`I: `, fmt.Sprintf("%d 未直播", ptr.Roomid))
@@ -26,5 +26,5 @@ func sumup(ctx context.Context, ptr *c.Common) error {
 		ptr.Log.Base(`功能`, `下播总结`).L(`I: `, fmt.Sprintf("%d 时长 %s 营收 %.2f元 %.2f元/分 人数 %d人 %.2f人/分", ptr.Roomid, dura, ptr.Rev, yperm, ptr.Watched, pperm))
 
 	}
-	return nil
+	return nil, nil
 }

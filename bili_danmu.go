@@ -98,10 +98,10 @@ func Start() {
 		// 附加功能 savetojson
 		reply.SaveToJson.Init()
 		// 指定房间录制区间
-		if err := recStartEnd.InitF.Run(mainCtx, c.C); err != nil {
+		if _, err := recStartEnd.InitF.Run(mainCtx, c.C); err != nil {
 			danmulog.Base("功能", "指定房间录制区间").L(`E: `, err)
 		} else {
-			_ = recStartEnd.LoopCheck.Run(mainCtx, recStartEnd.StreamCtl{
+			_, _ = recStartEnd.LoopCheck.Run(mainCtx, recStartEnd.StreamCtl{
 				C:     c.C,
 				State: reply.StreamOStatus,
 				Start: reply.StreamOStart,
@@ -110,7 +110,7 @@ func Start() {
 			})
 		}
 		// 指定弹幕重启录制
-		if err := danmuReLiveTriger.Init.Run(mainCtx, danmuReLiveTriger.DanmuReLiveTriger{
+		if _, err := danmuReLiveTriger.Init.Run(mainCtx, danmuReLiveTriger.DanmuReLiveTriger{
 			StreamCut: reply.StreamOCut,
 			C:         c.C,
 		}); err != nil {
@@ -118,7 +118,7 @@ func Start() {
 		}
 		// pgo gen
 		if file, ok := c.C.K_v.LoadV("生成pgo").(string); ok {
-			if e := genCpuPprof.Start.Run(mainCtx, file); e != nil {
+			if _, e := genCpuPprof.Start.Run(mainCtx, file); e != nil {
 				danmulog.Base("功能", "生成pgo").L(`E: `, e)
 			}
 		}
@@ -322,7 +322,7 @@ func Start() {
 				{ //附加功能 进房间发送弹幕 直播流保存 每日签到
 					go F.Dosign()
 					go reply.Entry_danmu()
-					if e := recStartEnd.RecStartCheck.Run(mainCtx, c.C); e == nil {
+					if _, e := recStartEnd.RecStartCheck.Run(mainCtx, c.C); e == nil {
 						go reply.StreamOStart(c.C.Roomid)
 					} else {
 						danmulog.Base("功能", "指定房间录制区间").L(`I: `, c.C.Roomid, e)

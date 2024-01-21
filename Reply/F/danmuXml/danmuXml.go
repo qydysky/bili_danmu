@@ -45,7 +45,7 @@ type Data struct {
 	Time  float64   `json:"time"`
 }
 
-func toXml(ctx context.Context, path *string) error {
+func toXml(ctx context.Context, path *string) (any, error) {
 	d := danmu{
 		Chatserver: "chat.bilibili.com",
 		Chatid:     0,
@@ -82,7 +82,7 @@ func toXml(ctx context.Context, path *string) error {
 
 	output, err := xml.MarshalIndent(d, "", "    ")
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	f := file.New((*path)+"0.xml", 0, false)
@@ -90,12 +90,12 @@ func toXml(ctx context.Context, path *string) error {
 	defer f.Close()
 
 	if _, err := f.Write([]byte(xml.Header), true); err != nil {
-		return err
+		return nil, err
 	}
 
 	if _, err := f.Write(output, true); err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return nil, nil
 }
