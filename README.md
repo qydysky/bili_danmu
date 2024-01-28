@@ -3,7 +3,7 @@
 [![codecov](https://codecov.io/gh/qydysky/bili_danmu/branch/master/graph/badge.svg?token=2R7031P47C)](https://codecov.io/gh/qydysky/bili_danmu)
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fqydysky%2Fbili_danmu.svg?type=small)](https://app.fossa.com/projects/git%2Bgithub.com%2Fqydysky%2Fbili_danmu?ref=badge_small)
 [![少年Pi的直播回放](https://img.shields.io/website?up_message=%E5%9C%A8%E7%BA%BF&down_message=%E7%A6%BB%E7%BA%BF&url=http%3A%2F%2F8.134.76.53%3A8080%2Fweb%2F&label=%E5%B0%91%E5%B9%B4Pi%E7%9A%84%E7%9B%B4%E6%92%AD%E5%9B%9E%E6%94%BE)](https://r.qydysky.org/bili)
-
+[![弹幕库](https://img.shields.io/website?url=http%3A%2F%2F8.134.76.53%3A8081&label=%E5%BC%B9%E5%B9%95%E5%BA%93)](https://r.qydysky.org/danmu)
 
 ![commits](https://img.shields.io/github/commit-activity/m/qydysky/bili_danmu)
 ![GitHub all releases](https://img.shields.io/github/downloads/qydysky/bili_danmu/total)
