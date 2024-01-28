@@ -503,6 +503,9 @@ func (t *M4SStream) removeStream() (e error) {
 			)
 			for i, n := 0, len(list); i < n; i++ {
 				if list[i].IsDir() && len(list[i].Name()) > 20 {
+					if file.New(v+"/"+list[i].Name()+"/.keep", 0, true).IsExist() {
+						continue
+					}
 					if tt, err := time.Parse("2006_01_02-15_04_05", list[i].Name()[:19]); err == nil {
 						if ts := time.Since(tt).Seconds(); ts > d*24*60*60 && ts > oldest {
 							oldest = ts
