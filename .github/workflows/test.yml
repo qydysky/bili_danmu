@@ -85,7 +85,7 @@ jobs:
       run: zip -q -r ubuntu_go${{ matrix.go }}.zip demo
       
     - name: Upload a Build Artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         path: ./ubuntu_go${{ matrix.go }}.zip
         
@@ -123,7 +123,7 @@ jobs:
       run: .\7za.exe a -r .\windows_go${{ matrix.go }}.zip ./demo
       
     - name: Upload a Build Artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         path: ./windows_go${{ matrix.go }}.zip
        
@@ -161,6 +161,6 @@ jobs:
       run: zip -q -r macos_go${{ matrix.go }}.zip demo
       
     - name: Upload a Build Artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         path: ./macos_go${{ matrix.go }}.zip

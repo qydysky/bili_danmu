@@ -106,7 +106,7 @@ func (t *m4s_link_item) reset() *m4s_link_item {
 }
 
 func (t *m4s_link_item) isInit() bool {
-	return strings.Contains(t.Base, "h")
+	return len(t.Base) > 0 && t.Base[0] == 'h'
 }
 
 func (t *m4s_link_item) getNo() (int, error) {
@@ -278,7 +278,7 @@ func (t *M4SStream) fetchCheckStream() bool {
 	return t.common.ValidLive() != nil
 }
 
-func (t *M4SStream) fetchParseM3U8(fmp4ListUpdateTo float64) (m4s_links []*m4s_link_item, m3u8_addon []byte, e error) {
+func (t *M4SStream) fetchParseM3U8(fmp4ListUpdateTo float64) (m4s_links []*m4s_link_item, e error) {
 	if t.common.ValidLive() == nil {
 		e = errors.New("全部流服务器发生故障")
 		return
@@ -354,7 +354,7 @@ func (t *M4SStream) fetchParseM3U8(fmp4ListUpdateTo float64) (m4s_links []*m4s_l
 		}
 
 		// 解析m3u8
-		var tmp []*m4s_link_item
+		// var tmp []*m4s_link_item
 		var lastNo int
 		if t.last_m4s != nil {
 			lastNo, _ = t.last_m4s.getNo()
@@ -365,20 +365,6 @@ func (t *M4SStream) fetchParseM3U8(fmp4ListUpdateTo float64) (m4s_links []*m4s_l
 			}
 
 			var m4s_link string //切片文件名
-
-			//获取附加的m3u8字节 忽略bili定制拓展
-			if !bytes.Contains(line, []byte(`#EXT-X-BILI`)) {
-				if t.last_m4s == nil {
-					m3u8_addon = append(m3u8_addon, line...)
-					m3u8_addon = append(m3u8_addon, []byte("\n")...)
-				} else {
-					if bytes.Contains(line, []byte(`#EXTINF`)) ||
-						!bytes.Contains(line, []byte(`#`)) {
-						m3u8_addon = append(m3u8_addon, line...)
-						m3u8_addon = append(m3u8_addon, []byte("\n")...)
-					}
-				}
-			}
 
 			//获取切片文件名
 			if bytes.Contains(line, []byte("EXT-X-MAP")) {
@@ -394,6 +380,7 @@ func (t *M4SStream) fetchParseM3U8(fmp4ListUpdateTo float64) (m4s_links []*m4s_l
 			}
 
 			{
+				// 只增加新的切片
 				tmpBase := m4s_link
 				// fmt.Println(tmpBase, t.last_m4s != nil)
 				if tmpBase[0] == 'h' {
@@ -416,10 +403,10 @@ func (t *M4SStream) fetchParseM3U8(fmp4ListUpdateTo float64) (m4s_links []*m4s_l
 			p.Url = F.ResolveReferenceLast(v.Url, m4s_link+"?trid="+F.ParseQuery(v.Url, "trid="))
 			p.Base = m4s_link
 			p.createdTime = time.Now()
-			tmp = append(tmp, p)
+			m4s_links = append(m4s_links, p)
 		}
 
-		if len(tmp) == 0 {
+		if len(m4s_links) == 0 {
 			if t.last_m4s != nil &&
 				!t.last_m4s.createdTime.IsZero() &&
 				time.Since(t.last_m4s.createdTime).Seconds() > fmp4ListUpdateTo {
@@ -438,8 +425,8 @@ func (t *M4SStream) fetchParseM3U8(fmp4ListUpdateTo float64) (m4s_links []*m4s_l
 
 		// 检查是否服务器发生故障,产出切片错误
 		if t.last_m4s != nil {
-			timed := tmp[len(tmp)-1].createdTime.Sub(t.last_m4s.createdTime).Seconds()
-			nos, _ := tmp[len(tmp)-1].getNo()
+			timed := m4s_links[len(m4s_links)-1].createdTime.Sub(t.last_m4s.createdTime).Seconds()
+			nos, _ := m4s_links[len(m4s_links)-1].getNo()
 			noe, _ := t.last_m4s.getNo()
 			if (timed > 5 && nos-noe == 0) || (nos-noe > 50) {
 				// 1min后重新启用
@@ -453,70 +440,28 @@ func (t *M4SStream) fetchParseM3U8(fmp4ListUpdateTo float64) (m4s_links []*m4s_l
 			}
 		}
 
-		m4s_links = append(m4s_links, tmp...)
+		// m4s_links = append(m4s_links, tmp...)
 
 		// 首次下载
 		if t.last_m4s == nil {
 			return
 		}
 
-		// 去掉初始段 及 last之前的切片
-		{
-			last_no, _ := t.last_m4s.getNo()
-			for k := 0; k < len(m4s_links); k++ {
-				m4s_link := m4s_links[k]
-				// 剔除初始段
-				if m4s_link.isInit() {
-					m4s_links = append(m4s_links[:k], m4s_links[k+1:]...)
-					k--
-					continue
-				}
-				no, _ := m4s_link.getNo()
-				if no < last_no {
-					continue
-				} else if no == last_no {
-					// 只返回新增加的切片,去掉无用切片
-					t.putM4s(m4s_links[:k+1]...)
-					slice.DelFront(&m4s_links, k+1)
-					// 只返回新增加的m3u8_addon字节
-					if index := bytes.Index(m3u8_addon, []byte(m4s_link.Base)); index != -1 {
-						index += len([]byte(m4s_link.Base))
-						if index == len(m3u8_addon) {
-							m3u8_addon = m3u8_addon[:0]
-						} else {
-							m3u8_addon = m3u8_addon[index+1:]
-						}
-					}
-					return
-				} else if no == last_no+1 {
-					// 刚刚好承接之前的结尾
-					return
-				} else {
-					break
-				}
-			}
-		}
-
-		// 来到此处说明出现了丢失 尝试补充
-		guess_end_no, _ := m4s_links[0].getNo()
-		current_no, _ := t.last_m4s.getNo()
-
-		if guess_end_no < current_no {
+		// 刚刚好承接之前的结尾
+		if linksFirstNo, _ := m4s_links[0].getNo(); linksFirstNo == lastNo+1 {
 			return
-		}
-
-		t.log.L(`I: `, `发现`, guess_end_no-current_no-1, `个切片遗漏，重新下载`)
-		for guess_no := guess_end_no - 1; guess_no > current_no; guess_no-- {
-			// 补充m3u8
-			m3u8_addon = append([]byte("#EXTINF:1.00\n"+strconv.Itoa(guess_no)+".m4s\n"), m3u8_addon...)
-
-			//将切片添加到返回切片数组前
-			p := t.getM4s()
-			p.Base = strconv.Itoa(guess_no) + `.m4s`
-			//获取切片地址
-			p.Url = F.ResolveReferenceLast(v.Url, p.Base)
-			p.createdTime = time.Now()
-			slice.AddFront(&m4s_links, p)
+		} else {
+			// 来到此处说明出现了丢失 尝试补充
+			t.log.L(`I: `, `发现`, linksFirstNo-lastNo-1, `个切片遗漏，重新下载`)
+			for guess_no := linksFirstNo - 1; guess_no > lastNo; guess_no-- {
+				//将切片添加到返回切片数组前
+				p := t.getM4s()
+				p.Base = strconv.Itoa(guess_no) + `.m4s`
+				//获取切片地址
+				p.Url = F.ResolveReferenceLast(v.Url, p.Base)
+				p.createdTime = time.Now()
+				slice.AddFront(&m4s_links, p)
+			}
 		}
 
 		// 请求解析成功，退出获取循环
@@ -1109,7 +1054,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 		}
 
 		// 获取解析m3u8
-		var m4s_links, _, err = t.fetchParseM3U8(fmp4ListUpdateTo)
+		var m4s_links, err = t.fetchParseM3U8(fmp4ListUpdateTo)
 		if err != nil {
 			t.log.L(`E: `, `获取解析m3u8发生错误`, err)
 			// if len(download_seq) != 0 {
