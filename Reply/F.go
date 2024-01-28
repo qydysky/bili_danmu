@@ -40,6 +40,7 @@ import (
 	pio "github.com/qydysky/part/io"
 	limit "github.com/qydysky/part/limit"
 	msgq "github.com/qydysky/part/msgq"
+	slice "github.com/qydysky/part/slice"
 	psync "github.com/qydysky/part/sync"
 	pweb "github.com/qydysky/part/web"
 	websocket "github.com/qydysky/part/websocket"
@@ -762,7 +763,7 @@ func Lessdanmuf(s string) (show bool) {
 	} //完全无用
 
 	Jiezouf(lessdanmu.buf)
-	lessdanmu.buf = append(lessdanmu.buf[1:], s)
+	slice.DelFront(&lessdanmu.buf, 1)
 
 	show = o < lessdanmu.threshold
 

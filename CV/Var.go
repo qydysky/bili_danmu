@@ -260,26 +260,22 @@ func (t *Common) Init() *Common {
 			time.Sleep(time.Second * time.Duration(100))
 		}
 	}()
-
 	t.ReqPool = pool.New(
-		func() *reqf.Req {
-			// if pc, file, line, ok := runtime.Caller(2); ok {
-			// 	fmt.Printf("call by %s\n\t%s:%d\n", runtime.FuncForPC(pc).Name(), file, line)
-			// }
-			return reqf.New()
+		pool.PoolFunc[reqf.Req]{
+			New: func() *reqf.Req {
+				return reqf.New()
+			},
+			InUse: func(r *reqf.Req) bool {
+				return r.IsLive()
+			},
+			Reuse: func(r *reqf.Req) *reqf.Req {
+				return r
+			},
+			Pool: func(r *reqf.Req) *reqf.Req {
+				return r
+			},
 		},
-		func(t *reqf.Req) bool {
-			return t.IsLive()
-		},
-		func(t *reqf.Req) *reqf.Req {
-			// if pc, file, line, ok := runtime.Caller(2); ok {
-			// 	fmt.Printf("call by %s\n\t%s:%d\n", runtime.FuncForPC(pc).Name(), file, line)
-			// }
-			return t
-		},
-		func(t *reqf.Req) *reqf.Req {
-			return t
-		}, 100,
+		100,
 	)
 
 	var (
