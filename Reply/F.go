@@ -361,16 +361,19 @@ func StreamOStop(roomid int) {
 }
 
 // 实例切断
-func StreamOCut(roomid int, title ...string) {
+func StreamOCut(roomid int) (setTitle func(string)) {
 	if v, ok := streamO.Load(roomid); ok {
 		if !pctx.Done(v.(*M4SStream).Status) {
-			if len(title) != 0 {
-				v.(*M4SStream).Common().Title = title[0]
-			}
 			v.(*M4SStream).Cut()
 			flog.L(`I: `, `已切片 `+strconv.Itoa(roomid))
+			return func(title string) {
+				if title != "" {
+					v.(*M4SStream).Common().Title = title
+				}
+			}
 		}
 	}
+	return func(s string) {}
 }
 
 // type Obs struct {

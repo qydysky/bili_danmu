@@ -111,8 +111,10 @@ func Start() {
 		}
 		// 指定弹幕重启录制
 		if _, err := danmuReLiveTriger.Init.Run(mainCtx, danmuReLiveTriger.DanmuReLiveTriger{
-			StreamCut: reply.StreamOCut,
-			C:         c.C,
+			StreamCut: func(i int, title ...string) {
+				reply.StreamOCut(i)(title[0])
+			},
+			C: c.C,
 		}); err != nil {
 			danmulog.Base("功能", "指定弹幕重启录制").L(`E: `, err)
 		}

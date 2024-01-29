@@ -556,7 +556,7 @@ func (replyF) room_change(s string) {
 		c.C.Title = type_item.Data.Title
 	}
 
-	StreamOCut(c.C.Roomid, type_item.Data.Title)
+	setTitle := StreamOCut(c.C.Roomid)
 
 	if c.C.Title == type_item.Data.Title && c.C.AreaID == type_item.Data.AreaID {
 		// 直播间标题引入审核机制，触发审核时会接收到一个roomchange但标题不变
@@ -573,6 +573,7 @@ func (replyF) room_change(s string) {
 				case <-time.After(time.Second * 30):
 					F.Get(c.C).Get(`Title`)
 					if c.C.Roomid == roomid && c.C.Title != oldTitle {
+						setTitle(c.C.Title)
 						var sh = []any{"房间改变", c.C.Title}
 						Gui_show(Itos(sh), "0room")
 						msglog.Base_add("房").L(`I: `, sh...)
@@ -584,6 +585,7 @@ func (replyF) room_change(s string) {
 		return
 	}
 
+	setTitle(type_item.Data.Title)
 	var sh = []any{"房间改变", type_item.Data.Title, type_item.Data.AreaName}
 	Gui_show(Itos(sh), "0room")
 	msglog.Base_add("房").L(`I: `, sh...)
