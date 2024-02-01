@@ -12,7 +12,7 @@ require (
 )
 
 require (
-	github.com/google/uuid v1.5.0
+	github.com/google/uuid v1.6.0
 	golang.org/x/exp v0.0.0-20240119083558-1b970713d09a
 )
 
@@ -24,7 +24,7 @@ require (
 	lukechampine.com/uint128 v1.3.0 // indirect
 	modernc.org/cc/v3 v3.41.0 // indirect
 	modernc.org/ccgo/v3 v3.16.15 // indirect
-	modernc.org/libc v1.40.6 // indirect
+	modernc.org/libc v1.40.10 // indirect
 	modernc.org/mathutil v1.6.0 // indirect
 	modernc.org/memory v1.7.2 // indirect
 	modernc.org/opt v0.1.3 // indirect
@@ -39,14 +39,14 @@ require (
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-sql-driver/mysql v1.7.1
 	github.com/gorilla/websocket v1.5.1 // indirect
-	github.com/klauspost/compress v1.17.4 // indirect
+	github.com/klauspost/compress v1.17.5 // indirect
 	github.com/lib/pq v1.10.9
 	github.com/miekg/dns v1.1.58 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
 	github.com/thedevsaddam/gojsonq/v2 v2.5.2 // indirect
 	github.com/tklauser/go-sysconf v0.3.13 // indirect
 	github.com/tklauser/numcpus v0.7.0 // indirect
-	github.com/yusufpapurcu/wmi v1.2.3 // indirect
+	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	golang.org/x/mod v0.14.0 // indirect
 	golang.org/x/net v0.20.0 // indirect
 	golang.org/x/sys v0.16.0 // indirect

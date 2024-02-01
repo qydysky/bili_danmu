@@ -644,7 +644,7 @@ func (t *GetFunc) getRoomPlayInfo() (missKey []string) {
 		req := t.Common.ReqPool.Get()
 		defer t.Common.ReqPool.Put(req)
 		if err := req.Reqf(reqf.Rval{
-			Url: "https://api.live.bilibili.com/xlive/web-room/v2/index/getRoomPlayInfo?no_playurl=0&mask=1&qn=0&platform=web&protocol=0,1&format=0,2&codec=0,1&room_id=" + Roomid,
+			Url: "https://api.live.bilibili.com/xlive/web-room/v2/index/getRoomPlayInfo?protocol=0,1&format=0,1,2&codec=0,1,2&qn=0&platform=web&ptype=8&dolby=5&panorama=1&room_id=" + Roomid,
 			Header: map[string]string{
 				`Referer`: "https://live.bilibili.com/" + Roomid,
 				`Cookie`:  reqf.Map_2_Cookies_String(Cookie),
@@ -739,7 +739,7 @@ func (t *GetFunc) getRoomPlayInfoByQn() (missKey []string) {
 		req := t.Common.ReqPool.Get()
 		defer t.Common.ReqPool.Put(req)
 		if err := req.Reqf(reqf.Rval{
-			Url: "https://api.live.bilibili.com/xlive/web-room/v2/index/getRoomPlayInfo?no_playurl=0&mask=1&qn=" + strconv.Itoa(t.Live_qn) + "&platform=web&protocol=0,1&format=0,2&codec=0,1&room_id=" + Roomid,
+			Url: fmt.Sprintf("https://api.live.bilibili.com/xlive/web-room/v2/index/getRoomPlayInfo?room_id=%s&protocol=0,1&format=0,1,2&codec=0,1,2&qn=%d&platform=web&ptype=8&dolby=5&panorama=1", Roomid, t.Live_qn),
 			Header: map[string]string{
 				`Referer`: "https://live.bilibili.com/" + Roomid,
 				`Cookie`:  reqf.Map_2_Cookies_String(Cookie),

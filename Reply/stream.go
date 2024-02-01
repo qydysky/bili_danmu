@@ -17,6 +17,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -50,7 +51,7 @@ type M4SStream struct {
 	first_buf            []byte                //m4s起始块 or flv起始块
 	frameCount           uint                  //关键帧数量
 	boot_buf             []byte                //快速启动缓冲
-	boot_buf_locker      funcCtrl.BlockFunc
+	boot_buf_locker      sync.RWMutex
 	last_m4s             *m4s_link_item           //最后一个切片
 	m4s_pool             *pool.Buf[m4s_link_item] //切片pool
 	common               *c.Common                //通用配置副本
@@ -237,10 +238,8 @@ func (t *M4SStream) fetchCheckStream() bool {
 		}
 
 		if e := r.Reqf(reqf.Rval{
-			Url:       v.Url,
-			Retry:     10,
-			SleepTime: 1000,
-			Proxy:     t.common.Proxy,
+			Url:   v.Url,
+			Proxy: t.common.Proxy,
 			Header: map[string]string{
 				`User-Agent`:      c.UA,
 				`Accept`:          `*/*`,
@@ -764,7 +763,10 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 							}
 							t.bootBufPush(keyframe.GetPureBuf())
 							keyframe.Reset()
-							t.Stream_msg.PushLock_tag(`data`, t.boot_buf)
+							_ = t.bootBufRead(func(data []byte) error {
+								t.Stream_msg.PushLock_tag(`data`, data)
+								return nil
+							})
 							t.frameCount += 1
 							t.msg.Push_tag(`keyFrame`, t)
 						}
@@ -1021,7 +1023,10 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 			if !keyframe.IsEmpty() {
 				t.bootBufPush(keyframe.GetPureBuf())
 				keyframe.Reset()
-				t.Stream_msg.PushLock_tag(`data`, t.boot_buf)
+				_ = t.bootBufRead(func(data []byte) error {
+					t.Stream_msg.PushLock_tag(`data`, data)
+					return nil
+				})
 				t.frameCount += 1
 				t.msg.Push_tag(`keyFrame`, t)
 			}
@@ -1435,10 +1440,15 @@ func (t *M4SStream) PusherToHttp(conn net.Conn, w http.ResponseWriter, r *http.R
 	}
 
 	//写入快速启动缓冲
-	if len(t.boot_buf) != 0 {
-		if _, err := w.Write(t.boot_buf); err != nil {
-			return err
+	if err := t.bootBufRead(func(data []byte) error {
+		if len(data) != 0 {
+			if _, err := w.Write(data); err != nil {
+				return err
+			}
 		}
+		return nil
+	}); err != nil {
+		return err
 	}
 
 	var cancelRec = t.Stream_msg.Pull_tag_async(map[string]func([]byte) bool{
@@ -1474,10 +1484,16 @@ func (t *M4SStream) PusherToHttp(conn net.Conn, w http.ResponseWriter, r *http.R
 }
 
 func (t *M4SStream) bootBufPush(buf []byte) {
-	t.boot_buf_locker.Block()
-	defer t.boot_buf_locker.UnBlock()
+	t.boot_buf_locker.Lock()
+	defer t.boot_buf_locker.Unlock()
 	if len(t.boot_buf) < len(buf) {
 		t.boot_buf = append(t.boot_buf, make([]byte, len(buf)-len(t.boot_buf))...)
 	}
 	t.boot_buf = t.boot_buf[:copy(t.boot_buf, buf)]
+}
+
+func (t *M4SStream) bootBufRead(r func(data []byte) error) error {
+	t.boot_buf_locker.RLock()
+	defer t.boot_buf_locker.RUnlock()
+	return r(t.boot_buf)
 }
