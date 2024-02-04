@@ -860,8 +860,9 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 		keyframe         = slice.New[byte]()
 		lastM4s          *m4s_link_item
 		to               = 3
-		waitT            = 1.0
 		fmp4ListUpdateTo = 5.0
+		fmp4Count        = 0
+		startT           = time.Now()
 	)
 
 	if v, ok := t.common.K_v.LoadV(`fmp4音视频时间戳容差s`).(float64); ok && v > 0.1 {
@@ -876,16 +877,6 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 
 	// 下载循环
 	for download_seq := []*m4s_link_item{}; ; {
-
-		// 刷新流地址
-		// if !flashingSer && int64(t.common.Live[0].Expires)-time.Now().Unix() < 60 {
-		// 	flashingSer = true
-		// 	t.log.L(`T: `, `刷新流地址...`)
-		// 	go func() {
-		// 		t.fetchCheckStream()
-		// 		flashingSer = false
-		// 	}()
-		// }
 
 		// 存在待下载切片
 		if len(download_seq) != 0 {
@@ -1076,12 +1067,14 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 		}
 
 		// 避免过于频繁的请求
-		if len(m4s_links) < 2 {
-			waitT += 0.5
-		} else if len(m4s_links) > 2 {
-			waitT -= 0.5
+		fmp4Count += len(m4s_links)
+		if dru := time.Since(startT).Seconds(); dru > fmp4ListUpdateTo && fmp4Count == 0 {
+			e = fmt.Errorf("%.2f 秒未产出切片", dru)
+			t.log.L("E: ", "获取解析m3u8发生错误", e)
+			break
+		} else {
+			time.Sleep(time.Second * time.Duration(dru/float64(fmp4Count+1)+1))
 		}
-		time.Sleep(time.Second * time.Duration(waitT))
 
 		// 设置最后的切片
 		for i := len(m4s_links) - 1; i >= 0; i-- {
