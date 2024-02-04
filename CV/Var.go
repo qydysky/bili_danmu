@@ -91,6 +91,10 @@ type LiveQn struct {
 	Expires      int //流到期时间
 }
 
+func (t *LiveQn) SetUrl(url string) {
+	t.Url = url
+}
+
 func (t *LiveQn) Host() string {
 	if liveUrl, e := url.Parse(t.Url); e == nil {
 		return liveUrl.Host
