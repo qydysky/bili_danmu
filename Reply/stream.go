@@ -75,6 +75,7 @@ type M4SStream_Config struct {
 type m4s_link_item struct {
 	Url          string           // m4s链接
 	Base         string           // m4s文件名
+	isHeader     bool             // m4sHeader
 	status       int              // 下载状态 0:未下载 1:正在下载 2:下载完成 3:下载失败
 	tryDownCount int              // 下载次数 当=3时，不再下载，忽略此块
 	err          error            // 下载中出现的错误
@@ -86,6 +87,7 @@ type m4s_link_item struct {
 func (t *m4s_link_item) copyTo(to *m4s_link_item) {
 	// fmt.Println("copy to ", t.Base)
 	to.Url = t.Url
+	to.isHeader = t.isHeader
 	to.Base = t.Base
 	to.status = t.status
 	to.tryDownCount = t.tryDownCount
@@ -97,6 +99,7 @@ func (t *m4s_link_item) reset() *m4s_link_item {
 		return t
 	}
 	t.Url = ""
+	t.isHeader = false
 	t.Base = ""
 	t.status = 0
 	t.tryDownCount = 0
@@ -106,7 +109,7 @@ func (t *m4s_link_item) reset() *m4s_link_item {
 }
 
 func (t *m4s_link_item) isInit() bool {
-	return len(t.Base) > 0 && t.Base[0] == 'h'
+	return t.isHeader
 }
 
 func (t *m4s_link_item) getNo() (int, error) {
@@ -359,55 +362,54 @@ func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo floa
 		if lastM4s != nil {
 			lastNo, _ = lastM4s.getNo()
 		}
-		for _, line := range bytes.Split(m3u8_respon, []byte("\n")) {
+
+		m3u := bytes.Split(m3u8_respon, []byte("\n"))
+		for i := 0; i < len(m3u); i++ {
+			line := m3u[i]
 			if len(line) == 0 {
 				continue
 			}
 
-			var m4s_link string //切片文件名
+			var (
+				m4s_link string //切片文件名
+				isHeader bool
+			)
 
-			//获取切片文件名
-			if bytes.Contains(line, []byte("EXT-X-MAP")) {
-				o := bytes.Index(line, []byte(`EXT-X-MAP:URI="`)) + 15
-				e := bytes.Index(line[o:], []byte(`"`)) + o
-				m4s_link = string(line[o:e])
-			} else if bytes.Contains(line, []byte("#EXT-X")) { //忽略扩展标签
-				continue
-			} else if bytes.Contains(line, []byte(".m4s")) {
-				m4s_link = string(line)
-			} else if bytes.HasPrefix(line, []byte("http")) {
-				// m3u8 指向新连接
-				newUrl := strings.TrimSpace(string(line))
-				t.log.L(`I: `, `指向新连接`, v.Host(), "=>", F.ParseHost(newUrl))
-				v.SetUrl(newUrl)
-				continue
-			} else {
-				continue
-			}
-
-			{
-				// 只增加新的切片
-				tmpBase := m4s_link
-				// fmt.Println(tmpBase, lastM4s != nil)
-				if tmpBase[0] == 'h' {
+			if line[0] == '#' {
+				if strings.HasPrefix(string(line), "#EXT-X-MAP") {
 					if lastM4s != nil {
 						continue
-					} else {
-						tmpBase = tmpBase[1:]
 					}
+					e := bytes.Index(line[16:], []byte(`"`)) + 16
+					m4s_link = string(line[16:e])
+					isHeader = true
+				} else if strings.HasPrefix(string(line), "#EXT-X-STREAM-INF") {
+					// m3u8 指向新连接
+					i += 1
+					line = m3u[i]
+					newUrl := strings.TrimSpace(string(line))
+					t.log.L(`I: `, `指向新连接`, v.Host(), "=>", F.ParseHost(newUrl))
+					v.SetUrl(newUrl)
+					continue
+				} else {
+					continue
 				}
-				if no, _ := strconv.Atoi(tmpBase[:len(tmpBase)-4]); lastNo >= no {
-					// fmt.Println("skip", no)
+			} else {
+				m4s_link = string(line)
+			}
+
+			if !isHeader {
+				// 只增加新的切片
+				if no, _ := strconv.Atoi(m4s_link[:len(m4s_link)-4]); lastNo >= no {
 					continue
 				}
 			}
 
-			// fmt.Println("->", m4s_link)
 			//将切片添加到返回切片数组
 			p := t.getM4s()
-			//获取切片地址
 			p.Url = F.ResolveReferenceLast(v.Url, m4s_link+"?trid="+F.ParseQuery(v.Url, "trid="))
 			p.Base = m4s_link
+			p.isHeader = isHeader
 			p.createdTime = time.Now()
 			m4s_links = append(m4s_links, p)
 		}
@@ -461,7 +463,7 @@ func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo floa
 				//将切片添加到返回切片数组前
 				p := t.getM4s()
 				p.Base = strconv.Itoa(guess_no) + `.m4s`
-				//获取切片地址
+				p.isHeader = false
 				p.Url = F.ResolveReferenceLast(v.Url, p.Base)
 				p.createdTime = time.Now()
 				slice.AddFront(&m4s_links, p)
