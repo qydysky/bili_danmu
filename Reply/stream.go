@@ -78,7 +78,6 @@ type m4s_link_item struct {
 	isHeader     bool             // m4sHeader
 	status       int              // 下载状态 0:未下载 1:正在下载 2:下载完成 3:下载失败
 	tryDownCount int              // 下载次数 当=3时，不再下载，忽略此块
-	err          error            // 下载中出现的错误
 	data         *slice.Buf[byte] // 下载的数据
 	createdTime  time.Time        // 创建时间
 	pooledTime   time.Time        // 到pool时间
@@ -945,17 +944,13 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 			// v := download_seq[k]
 
 			if download_seq[k].status != 2 {
-				if err := download_seq[k].err; err != nil {
-					t.log.L(`E: `, `切片下载发生错误:`, err)
-					e = err
-					return
-				}
 				if download_seq[k].tryDownCount >= 3 {
 					//下载了2次，任未下载成功，忽略此块
-					t.putM4s(download_seq[k])
-					download_seq = append(download_seq[:k], download_seq[k+1:]...)
-					k -= 1
-					continue
+					t.putM4s(download_seq...)
+					//丢弃所有数据
+					buf.Reset()
+					t.log.L(`E: `, `切片下载失败`)
+					return errors.New(`切片下载失败`)
 				} else {
 					break
 				}
@@ -963,8 +958,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 
 			// no, _ := download_seq[k].getNo()
 			// fmt.Println("download_seq ", no, download_seq[k].status, download_seq[k].data.Size(), len(t.first_buf))
-
-			if strings.Contains(download_seq[k].Base, `h`) {
+			if download_seq[k].isInit() {
 				if front_buf, e := fmp4Decoder.Init_fmp4(download_seq[k].data.GetPureBuf()); e != nil {
 					t.log.L(`E: `, e, `重试!`)
 					download_seq[k].status = 3
@@ -997,15 +991,8 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 			if err != nil {
 				if !errors.Is(err, io.EOF) {
 					t.log.L(`E: `, err)
-
 					//丢弃所有数据
 					buf.Reset()
-
-					// no, _ := v.getNo()
-					// file.New("error/"+strconv.Itoa(no)+".m4s", 0, true).Write(buf.getCopyBuf(), true)
-					// file.New("error/"+strconv.Itoa(no)+"S.m4s", 0, true).Write(v.data, true)
-
-					// if err.Error() == "未初始化traks" {
 					e = err
 					return
 					// }
