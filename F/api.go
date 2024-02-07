@@ -1384,13 +1384,27 @@ func (t *GetFunc) Get_cookie() (missKey []string) {
 	}
 
 	{ //生成二维码
-		if e := qr.WriteFile(img_url, qr.Medium, 256, `qr.png`); e != nil || !p.Checkfile().IsExist(`qr.png`) {
-			apilog.L(`E: `, `qr error`)
-			return
+		biliUrl := img_url
+		if redPath, ok := t.K_v.LoadV("扫码路径重定向").(string); ok && redPath != "" {
+			urlp, e := url.Parse(redPath)
+			if e != nil {
+				apilog.L(`E: `, `qr error`, e)
+				return
+			}
+			if urlp.Hostname() != "" {
+				biliUrl = urlp.String()
+				//启动web
+				t.SerF.Store(urlp.Path, func(w http.ResponseWriter, r *http.Request) {
+					if c.DefaultHttpCheck(t.Common, w, r, http.MethodGet) {
+						return
+					}
+					w.Header().Add("Location", img_url)
+					w.WriteHeader(http.StatusTemporaryRedirect)
+				})
+			}
 		}
-		defer os.RemoveAll(`qr.png`)
-		//启动web
 		if scanPath, ok := t.K_v.LoadV("扫码登录路径").(string); ok && scanPath != "" {
+			//启动web
 			t.SerF.Store(scanPath, func(w http.ResponseWriter, r *http.Request) {
 				if c.DefaultHttpCheck(t.Common, w, r, http.MethodGet) {
 					return
@@ -1402,9 +1416,13 @@ func (t *GetFunc) Get_cookie() (missKey []string) {
 			}
 			apilog.L(`W: `, `或打开链接扫码登录：`+t.Stream_url.String()+scanPath)
 		}
-
+		if e := qr.WriteFile(biliUrl, qr.Medium, 256, `qr.png`); e != nil || !p.Checkfile().IsExist(`qr.png`) {
+			apilog.L(`E: `, `qr error`)
+			return
+		}
+		defer os.RemoveAll(`qr.png`)
 		//show qr code in cmd
-		qrterminal.GenerateWithConfig(img_url, qrterminal.Config{
+		qrterminal.GenerateWithConfig(biliUrl, qrterminal.Config{
 			Level:     qrterminal.L,
 			Writer:    os.Stdout,
 			BlackChar: `  `,
