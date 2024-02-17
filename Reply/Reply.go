@@ -564,9 +564,12 @@ func (replyF) room_change(s string) {
 		roomChangeFC.FlashWithCallback(func() {
 			close(cancle)
 		})
-
-		go func(roomid int, oldTitle string) {
-			for tryC := 30; tryC > 0 && c.C.Roomid == roomid; tryC-- {
+		tryS := 900.0
+		if v, ok := c.C.K_v.LoadV("标题修改检测s").(float64); ok && v > tryS {
+			tryS = v
+		}
+		go func(stopT time.Time, roomid int, oldTitle string) {
+			for time.Now().Before(stopT) && c.C.Roomid == roomid {
 				select {
 				case <-cancle:
 					return
@@ -581,7 +584,7 @@ func (replyF) room_change(s string) {
 					}
 				}
 			}
-		}(c.C.Roomid, c.C.Title)
+		}(time.Now().Add(time.Second*time.Duration(tryS)), c.C.Roomid, c.C.Title)
 		return
 	}
 

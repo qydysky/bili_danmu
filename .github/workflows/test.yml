@@ -33,7 +33,7 @@ jobs:
 
 
     - name: golangci-lint
-      uses: golangci/golangci-lint-action@v3
+      uses: golangci/golangci-lint-action@v4
       with:
         args: --timeout 5m --verbose
 
@@ -45,7 +45,7 @@ jobs:
         CGO_ENABLED=0 go test -v --cover -coverprofile=coverage ./...
 
     - name: Codecov
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v4
       with:
         token: ${{secrets.CODECOV_TOKEN}}
         file: coverage
