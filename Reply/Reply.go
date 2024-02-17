@@ -584,6 +584,9 @@ func (replyF) room_change(s string) {
 					}
 				}
 			}
+			if c.C.Roomid == roomid {
+				msglog.Base_add("房").L(`W: `, `指定时长内标题未修改，可能需要调大标题修改检测s`)
+			}
 		}(time.Now().Add(time.Second*time.Duration(tryS)), c.C.Roomid, c.C.Title)
 		return
 	}
