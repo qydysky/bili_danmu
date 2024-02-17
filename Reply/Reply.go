@@ -546,16 +546,6 @@ func (replyF) room_change(s string) {
 		msglog.L(`E: `, e)
 	}
 
-	if type_item.Data.AreaID != 0 {
-		c.C.AreaID = type_item.Data.AreaID
-	}
-	if type_item.Data.ParentAreaID != 0 {
-		c.C.ParentAreaID = type_item.Data.ParentAreaID
-	}
-	if type_item.Data.Title != "" {
-		c.C.Title = type_item.Data.Title
-	}
-
 	setTitle := StreamOCut(c.C.Roomid)
 
 	if c.C.Title == type_item.Data.Title && c.C.AreaID == type_item.Data.AreaID {
@@ -591,7 +581,16 @@ func (replyF) room_change(s string) {
 		return
 	}
 
-	setTitle(type_item.Data.Title)
+	if type_item.Data.AreaID != 0 {
+		c.C.AreaID = type_item.Data.AreaID
+	}
+	if type_item.Data.ParentAreaID != 0 {
+		c.C.ParentAreaID = type_item.Data.ParentAreaID
+	}
+	if type_item.Data.Title != "" {
+		c.C.Title = type_item.Data.Title
+	}
+	setTitle(c.C.Title)
 	var sh = []any{"房间改变", type_item.Data.Title, type_item.Data.AreaName}
 	Gui_show(Itos(sh), "0room")
 	msglog.Base_add("房").L(`I: `, sh...)
