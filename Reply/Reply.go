@@ -546,54 +546,54 @@ func (replyF) room_change(s string) {
 		msglog.L(`E: `, e)
 	}
 
+	// 切换分区
+	if c.C.AreaID != type_item.Data.AreaID {
+		c.C.AreaID = type_item.Data.AreaID
+		c.C.ParentAreaID = type_item.Data.ParentAreaID
+		var sh = []any{"分区改变", type_item.Data.AreaName}
+		Gui_show(Itos(sh), "0room")
+		msglog.Base_add("房").L(`I: `, sh...)
+		return
+	}
+
 	setTitle := StreamOCut(c.C.Roomid)
 
-	if c.C.Title == type_item.Data.Title && c.C.AreaID == type_item.Data.AreaID {
+	// 标题改变
+	if c.C.Title != type_item.Data.Title {
+		c.C.Title = type_item.Data.Title
+		setTitle(c.C.Title)
+		var sh = []any{"标题改变", c.C.Title}
+		Gui_show(Itos(sh), "0room")
+		msglog.Base_add("房").L(`I: `, sh...)
+	} else {
 		// 直播间标题引入审核机制，触发审核时会接收到一个roomchange但标题不变
-		cancle := make(chan struct{})
-		roomChangeFC.FlashWithCallback(func() {
-			close(cancle)
-		})
 		tryS := 900.0
 		if v, ok := c.C.K_v.LoadV("标题修改检测s").(float64); ok && v > tryS {
 			tryS = v
 		}
-		go func(stopT time.Time, roomid int, oldTitle string) {
-			for time.Now().Before(stopT) && c.C.Roomid == roomid {
+
+		ctx, cancle := context.WithTimeout(context.Background(), time.Second*time.Duration(tryS))
+		roomChangeFC.FlashWithCallback(cancle)
+
+		go func(ctx context.Context, roomid int, oldTitle string) {
+			for c.C.Roomid == roomid {
 				select {
-				case <-cancle:
+				case <-ctx.Done():
+					msglog.Base_add("房").L(`W: `, `指定时长内标题未修改，可能需要调大标题修改检测s`)
 					return
 				case <-time.After(time.Second * 30):
 					F.Get(c.C).Get(`Title`)
 					if c.C.Roomid == roomid && c.C.Title != oldTitle {
 						setTitle(c.C.Title)
-						var sh = []any{"房间改变", c.C.Title}
+						var sh = []any{"标题改变", c.C.Title}
 						Gui_show(Itos(sh), "0room")
 						msglog.Base_add("房").L(`I: `, sh...)
 						return
 					}
 				}
 			}
-			if c.C.Roomid == roomid {
-				msglog.Base_add("房").L(`W: `, `指定时长内标题未修改，可能需要调大标题修改检测s`)
-			}
-		}(time.Now().Add(time.Second*time.Duration(tryS)), c.C.Roomid, c.C.Title)
-		return
+		}(ctx, c.C.Roomid, c.C.Title)
 	}
-
-	if type_item.Data.AreaID != 0 {
-		c.C.AreaID = type_item.Data.AreaID
-	}
-	if type_item.Data.ParentAreaID != 0 {
-		c.C.ParentAreaID = type_item.Data.ParentAreaID
-	}
-	if type_item.Data.Title != "" {
-		c.C.Title = type_item.Data.Title
-	}
-	setTitle(c.C.Title)
-	var sh = []any{"房间改变", type_item.Data.Title, type_item.Data.AreaName}
-	Gui_show(Itos(sh), "0room")
-	msglog.Base_add("房").L(`I: `, sh...)
 }
 
 // Msg-超管警告
