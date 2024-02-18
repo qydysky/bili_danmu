@@ -426,7 +426,7 @@ func (t *Common) Init() *Common {
 		t.Stream_url, _ = url.Parse(`http://` + serAdress)
 	}
 
-	if val, exist := t.K_v.Load("http代理地址"); exist {
+	if val, exist := t.K_v.Load("代理地址"); exist {
 		t.Proxy = val.(string)
 	}
 
