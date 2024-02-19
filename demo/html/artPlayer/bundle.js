@@ -11539,6 +11539,47 @@ __webpack_require__.r(__webpack_exports__);
                 indicator: '<img width="16" heigth="16" src=' + _img_indicator_svg__WEBPACK_IMPORTED_MODULE_5__["default"] + '>',
             },
             customType: {
+                mp4: function (video, url) {
+                    var mediaSource = new MediaSource();
+                    mediaSource.addEventListener('sourceopen', () => {
+                        // Create a new SourceBuffer
+                        var sourceBuffer = mediaSource.addSourceBuffer('video/mp4; codecs="avc1.640032,mp4a.40.2"');
+                        sourceBuffer.mode = "sequence";
+                        sourceBuffer.addEventListener('error', (event) => {
+                            console.error('SourceBuffer error:', event);
+                        });
+
+                        fetch(url)
+                        // Retrieve its body as ReadableStream
+                        .then((response) => {
+                            const reader = response.body.getReader();
+                            sourceBuffer.addEventListener("updateend", ()=>{
+                                reader.read().then(({ done, value }) => {
+                                    if (done) {
+                                        console.log('fin');
+                                        mediaSource.endOfStream();
+                                        console.log(mediaSource.readyState);
+                                        return;
+                                    }
+                                    sourceBuffer.appendBuffer(value);
+                                });
+                            });
+
+                            // load first frame
+                            reader.read().then(({ done, value }) => {
+                                if (done) {
+                                    console.log('fin');
+                                    mediaSource.endOfStream();
+                                    console.log(mediaSource.readyState);
+                                    return;
+                                }
+                                sourceBuffer.appendBuffer(value);
+                            });
+                        })
+                        .catch((err) => console.error(err));
+                    });
+                    video.src = URL.createObjectURL(mediaSource);
+                },
                 flv: function (video, url) {
                     var needUnload = true;
                     if(flvPlayer){
@@ -11606,9 +11647,7 @@ __webpack_require__.r(__webpack_exports__);
     function initPlay(config) {
         if(player != undefined && player.destroy != undefined)player.destroy();
         player = new (artplayer__WEBPACK_IMPORTED_MODULE_0___default())(config);
-
         ws(player);
-
         player.on('video:play', (...args) => {
             if(config.conn != undefined)config.conn.send(`play`);
         });
