@@ -11444,7 +11444,125 @@ __webpack_require__.r(__webpack_exports__);
 
 
 (() => {
-    let player,
+    class FIFO {
+        #ok=false;
+        #db;
+        #cu=1;
+
+        constructor(okf) {
+            const that = this;
+            const indexedDB = window.indexedDB;
+            if (!indexedDB) {
+                console.error("IndexedDB could not be found in this browser.");
+            }
+
+            const DBDeleteRequest = window.indexedDB.deleteDatabase("FIFO");
+            DBDeleteRequest.onerror = (event) => {
+                console.error("Error deleting database.");
+            };
+            DBDeleteRequest.onsuccess = (event) => {
+                console.log("Database deleted successfully");
+            };
+
+            const request = indexedDB.open("FIFO", 1);
+
+            request.onerror = function (event) {
+                console.error("An error occurred with IndexedDB");
+                console.error(event);
+            };
+            
+            request.onupgradeneeded = function () {
+                that.#db = request.result;
+                that.#db.createObjectStore("fifo", { keyPath: "id", autoIncrement: true });
+            };
+            
+            request.onsuccess = function () {
+                console.log("Database opened successfully");
+                that.#db = request.result;
+                that.#ok = true;
+                okf(that);
+            };
+        }
+
+        size(f){
+            if(!this.#ok)return;
+            const transaction = this.#db.transaction("fifo", "readwrite");
+            transaction.onerror = (event) => {
+                console.error("An error occurred with put");
+                console.error(event);
+            };
+            transaction.oncomplete = function () {};
+
+            const store = transaction.objectStore("fifo");
+            const idQuery = store.count();
+            idQuery.onsuccess = function () {
+                f(transaction,idQuery.result);
+            };
+        }
+
+        put(data){
+            if(!this.#ok)return;
+            const transaction = this.#db.transaction("fifo", "readwrite");
+            transaction.onerror = (event) => {
+                console.error("An error occurred with put");
+                console.error(event);
+            };
+            transaction.oncomplete = function () {};
+
+            const store = transaction.objectStore("fifo");
+            store.put({ data: data });
+
+            transaction.commit();
+        }
+
+        get(before, f){
+            if(!this.#ok)return;
+
+            const that = this;
+            this.size((tx, count) => {
+                if(!before(count))return;
+                if(count==0)return;
+                const store = tx.objectStore("fifo");
+                const idQuery = store.get(that.#cu);
+                idQuery.onsuccess = function () {
+                    const idDelete = store.delete(idQuery.result.id);
+                    idDelete.onsuccess = function () {
+                        that.#cu = idQuery.result.id+1;
+                    };
+                    f(count-1, idQuery.result.data);
+                };
+            });
+        }
+
+        close(){
+            if(this.#ok)this.#db.close();
+
+            const DBDeleteRequest = window.indexedDB.deleteDatabase("FIFO");
+            DBDeleteRequest.onerror = (event) => {
+                console.error("Error deleting database.");
+            };
+            DBDeleteRequest.onsuccess = (event) => {
+                console.log("Database deleted successfully");
+            };
+        }
+    }
+
+    stream_http__WEBPACK_IMPORTED_MODULE_7___default().get('../keepAlive', function (res) {
+        res.on('data', function (buf) {
+            config.url += "&key="+buf;
+            initPlay(config);
+            setInterval(function () {
+                stream_http__WEBPACK_IMPORTED_MODULE_7___default().get('../keepAlive?key='+buf, function (res) {})
+            },15000);
+        });
+    })
+
+    let mp4LoadFromDB = 20,
+        mp4StopFromDB = 40,
+        mp4LoadFromWeb = 1000,
+        mp4StopFromWeb = 2000,
+        tabUnload = false,
+        player,
         flvPlayer,
         danmuEmit = document.createElement("div"),
         config = {
@@ -11540,45 +11658,90 @@ __webpack_require__.r(__webpack_exports__);
             },
             customType: {
                 mp4: function (video, url) {
-                    var mediaSource = new MediaSource();
-                    mediaSource.addEventListener('sourceopen', () => {
-                        // Create a new SourceBuffer
-                        var sourceBuffer = mediaSource.addSourceBuffer('video/mp4; codecs="avc1.640032,mp4a.40.2"');
-                        sourceBuffer.mode = "sequence";
-                        sourceBuffer.addEventListener('error', (event) => {
-                            console.error('SourceBuffer error:', event);
-                        });
-
-                        fetch(url)
-                        // Retrieve its body as ReadableStream
-                        .then((response) => {
-                            const reader = response.body.getReader();
+                    new FIFO((fifo)=>{
+                        var mediaSource = new MediaSource();
+                        mediaSource.addEventListener('sourceopen', () => {
+                            // Create a new SourceBuffer
+                            var sourceBuffer = mediaSource.addSourceBuffer('video/mp4; codecs="avc1.640032,mp4a.40.2"');
+                            var mscBuf = ()=>{
+                                if(sourceBuffer.buffered.length == 0)return 0;
+                                else return sourceBuffer.buffered.end(sourceBuffer.buffered.length-1) - player.currentTime
+                            };
+    
+                            sourceBuffer.mode = "sequence";
+    
+                            sourceBuffer.addEventListener('error', (event) => {
+                                console.error('SourceBuffer error:', event);
+                            });
+    
+                            var runUpdate = false;
                             sourceBuffer.addEventListener("updateend", ()=>{
-                                reader.read().then(({ done, value }) => {
-                                    if (done) {
-                                        console.log('fin');
+                                fifo.get((size)=>{
+                                    runUpdate = size > 0 && mscBuf() < mp4StopFromDB;
+                                    return runUpdate;
+                                },(size, value)=>{
+                                    sourceBuffer.appendBuffer(value);
+                                });
+                            });
+    
+                            fetch(url)
+                            // Retrieve its body as ReadableStream
+                            .then((response) => {
+                                const reader = response.body.getReader();
+    
+                                var fin = false;
+                                var loading = false;
+                                var loadf = ()=>
+                                fifo.size((_,size)=>{
+                                    if (fin && size==0 && mediaSource.readyState=="open") {
+                                        console.log("fin");
                                         mediaSource.endOfStream();
                                         console.log(mediaSource.readyState);
                                         return;
                                     }
-                                    sourceBuffer.appendBuffer(value);
+                                    if(!sourceBuffer || sourceBuffer.updating)return setTimeout(loadf, 1000);
+    
+                                    var mscb = mscBuf();
+    
+                                    if(size >= mp4LoadFromWeb && runUpdate){
+                                        console.log("web   db (%d) %s msc (%d)", size, runUpdate?">":" ", mscb);
+                                        return setTimeout(loadf, 1000);
+                                    }
+    
+                                    if (!loading && size < mp4StopFromWeb)reader.read().then(pump);
+                                    function pump({ done, value }) {
+                                        loading = true;
+                                        if (done || tabUnload){
+                                            loading = false;
+                                            fin = true;
+                                            return;
+                                        }
+                                        fifo.put(value);
+                                        size+=1;
+                                        if (size < mp4StopFromWeb)return reader.read().then(pump);
+                                        else loading = false;
+                                    }
+    
+                                    if(mscBuf() < mp4LoadFromDB)
+                                        fifo.get((size)=>{
+                                            runUpdate = size > 0 && mscBuf() < mp4StopFromDB;
+                                            return runUpdate;
+                                        },(size, value)=>{
+                                            console.log("web %s db (%d) %s msc (%d)", loading?">":" ", size, runUpdate?">":" ", mscb);
+                                            sourceBuffer.appendBuffer(value);
+                                        });
+                                    else console.log("web %s db (%d) %s msc (%d)", loading?">":" ", size, runUpdate?">":" ", mscb);
+                                    return setTimeout(loadf, 1000);
                                 });
-                            });
-
-                            // load first frame
-                            reader.read().then(({ done, value }) => {
-                                if (done) {
-                                    console.log('fin');
-                                    mediaSource.endOfStream();
-                                    console.log(mediaSource.readyState);
-                                    return;
-                                }
-                                sourceBuffer.appendBuffer(value);
-                            });
-                        })
-                        .catch((err) => console.error(err));
+                                loadf();
+                            })
+                            .catch((err) => console.error(err));
+                        });
+                        console.log("init 4");
+                        window.player = video;
+                        video.src = URL.createObjectURL(mediaSource);
+                        video.pause();
                     });
-                    video.src = URL.createObjectURL(mediaSource);
                 },
                 flv: function (video, url) {
                     var needUnload = true;
@@ -11664,21 +11827,13 @@ __webpack_require__.r(__webpack_exports__);
         player.on('artplayerPluginDanmuku:emit', (danmu) => {
             if(config.conn != undefined)config.conn.send("%S"+danmu.text);
         });
-        document.addEventListener("resize", player.autoSize)
-    }
-    
-
-    stream_http__WEBPACK_IMPORTED_MODULE_7___default().get('../keepAlive', function (res) {
-        res.on('data', function (buf) {
-            config.url += "&key="+buf;
-            initPlay(config);
-            setInterval(function () {
-                stream_http__WEBPACK_IMPORTED_MODULE_7___default().get('../keepAlive?key='+buf, function (res) {})
-            },15000);
+        document.addEventListener("resize", player.autoSize);
+        window.addEventListener('beforeunload', function (e) {
+            tabUnload = true;
+            e.preventDefault();
         });
-    })
+    }
 })();
-
 })();
 
 /******/ })()
