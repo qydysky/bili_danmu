@@ -11445,27 +11445,24 @@ __webpack_require__.r(__webpack_exports__);
 
 (() => {
     class FIFO {
+        #indexedDB;
         #ok=false;
         #db;
         #size=0;
         #cu=1;
+        #dbN="FIFO"+new Date().getTime();
+        #objN="fifo"+new Date().getTime();
 
         constructor(okf) {
             const that = this;
-            const indexedDB = window.indexedDB;
-            if (!indexedDB) {
+            this.#indexedDB = window.indexedDB;
+            if (!this.#indexedDB) {
                 console.error("IndexedDB could not be found in this browser.");
             }
 
-            const DBDeleteRequest = window.indexedDB.deleteDatabase("FIFO");
-            DBDeleteRequest.onerror = (event) => {
-                console.error("Error deleting database.");
-            };
-            DBDeleteRequest.onsuccess = (event) => {
-                console.log("Database deleted successfully");
-            };
+            this.close();
 
-            const request = indexedDB.open("FIFO", 1);
+            const request = this.#indexedDB.open(this.#dbN, 1);
 
             request.onerror = function (event) {
                 console.error("An error occurred with IndexedDB");
@@ -11474,7 +11471,7 @@ __webpack_require__.r(__webpack_exports__);
             
             request.onupgradeneeded = function () {
                 that.#db = request.result;
-                that.#db.createObjectStore("fifo", { keyPath: "id", autoIncrement: true });
+                that.#db.createObjectStore(that.#objN, { keyPath: "id", autoIncrement: true });
             };
             
             request.onsuccess = function () {
@@ -11487,17 +11484,17 @@ __webpack_require__.r(__webpack_exports__);
 
         #getTx(mode,func) {
             if(!this.#ok)return;
-            const transaction = this.#db.transaction("fifo", mode);
+            const transaction = this.#db.transaction(this.#objN, mode);
             transaction.onerror = (event) => {
                 console.error("An error occurred with put");
                 console.error(event);
             };
             transaction.oncomplete = function () {};
-            return func(transaction, transaction.objectStore("fifo"));
+            return func(transaction, transaction.objectStore(this.#objN));
         }
 
         #stillTx(transaction,func) {
-            return func(transaction, transaction.objectStore("fifo"));
+            return func(transaction, transaction.objectStore(this.#objN));
         }
 
         size(){
@@ -11550,14 +11547,18 @@ __webpack_require__.r(__webpack_exports__);
 
         close(){
             if(this.#ok)this.#db.close();
+            return new Promise((resolve, reject) => {
+                const DBDeleteRequest = this.#indexedDB.deleteDatabase(this.#dbN);
+                DBDeleteRequest.onerror = (event) => {
+                    console.error("Error deleting database.");  
+                };
 
-            const DBDeleteRequest = window.indexedDB.deleteDatabase("FIFO");
-            DBDeleteRequest.onerror = (event) => {
-                console.error("Error deleting database.");
-            };
-            DBDeleteRequest.onsuccess = (event) => {
-                console.log("Database deleted successfully");
-            };
+                DBDeleteRequest.onsuccess = (event) => {
+                    console.log("Database deleted successfully");
+                    console.log(event.result); // should be undefined
+                    resolve();
+                };
+            });
         }
     }
 
@@ -11569,15 +11570,16 @@ __webpack_require__.r(__webpack_exports__);
         //     fifo.put(4).then(size=>size!=4?console.error("size:4 ",size):console.log("4ok"));
         //     fifo.size().then(size=>size!=4?console.error("size:4 ",size):console.log("5ok"));
         //     console.log('1!')
-        //     await fifo.get().then(result=>console.log(result));
+        //     await fifo.get().then(result=>console.log(result)).catch(()=>{});
         //     console.log('2!')
-        //     await fifo.get().then(result=>console.log(result));
+        //     await fifo.get().then(result=>console.log(result)).catch(()=>{});
         //     console.log('3!')
+        //     fifo.close();
         //     console.log("fin");
         // });
     }
 
-    console.log("init 22");
+    console.log("init 24");
     let mp4LoadFromDB = 20,
         mp4StopFromDB = 30,
         mp4LoadFromWeb = 1000,
@@ -11680,6 +11682,10 @@ __webpack_require__.r(__webpack_exports__);
             customType: {
                 mp4: function (video, url) {
                     new FIFO(fifo => {
+                        window.addEventListener('beforeunload', function (e) {
+                            fifo.close();
+                        });
+
                         var mediaSource = new MediaSource();
                         mediaSource.addEventListener('sourceopen', () => {
                             // Create a new SourceBuffer
@@ -11848,7 +11854,6 @@ __webpack_require__.r(__webpack_exports__);
         document.addEventListener("resize", player.autoSize);
         window.addEventListener('beforeunload', function (e) {
             tabUnload = true;
-            e.preventDefault();
         });
     }
 
