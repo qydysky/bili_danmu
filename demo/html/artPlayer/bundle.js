@@ -11447,6 +11447,7 @@ __webpack_require__.r(__webpack_exports__);
     class FIFO {
         #ok=false;
         #db;
+        #size=0;
         #cu=1;
 
         constructor(okf) {
@@ -11480,57 +11481,70 @@ __webpack_require__.r(__webpack_exports__);
                 console.log("Database opened successfully");
                 that.#db = request.result;
                 that.#ok = true;
-                okf(that);
+                if(okf)okf(that);
             };
         }
 
-        size(f){
+        #getTx(mode,func) {
             if(!this.#ok)return;
-            const transaction = this.#db.transaction("fifo", "readwrite");
+            const transaction = this.#db.transaction("fifo", mode);
             transaction.onerror = (event) => {
                 console.error("An error occurred with put");
                 console.error(event);
             };
             transaction.oncomplete = function () {};
+            return func(transaction, transaction.objectStore("fifo"));
+        }
 
-            const store = transaction.objectStore("fifo");
-            const idQuery = store.count();
-            idQuery.onsuccess = function () {
-                f(transaction,idQuery.result);
-            };
+        #stillTx(transaction,func) {
+            return func(transaction, transaction.objectStore("fifo"));
+        }
+
+        size(){
+            return new Promise((resolve) => resolve(this.#size));
+        }
+
+        showSize(){
+            return this.#getTx("readonly",  (transaction, store)=>{
+                const idQuery = store.count();
+                idQuery.onsuccess = function () {
+                    console.log(this.#size);
+                };
+            });
         }
 
         put(data){
-            if(!this.#ok)return;
-            const transaction = this.#db.transaction("fifo", "readwrite");
-            transaction.onerror = (event) => {
-                console.error("An error occurred with put");
-                console.error(event);
-            };
-            transaction.oncomplete = function () {};
-
-            const store = transaction.objectStore("fifo");
-            store.put({ data: data });
-
-            transaction.commit();
+            const that = this;
+            return this.#getTx("readwrite",  (transaction, store)=>{
+                return new Promise((resolve) => {
+                    store.put({ data: data });
+                    that.#size += 1;
+                    resolve(that.#size);
+                });
+            });
         }
 
-        get(before, f){
-            if(!this.#ok)return;
-
+        get(){
             const that = this;
-            this.size((tx, count) => {
-                if(!before(count))return;
-                if(count==0)return;
-                const store = tx.objectStore("fifo");
-                const idQuery = store.get(that.#cu);
-                idQuery.onsuccess = function () {
-                    const idDelete = store.delete(idQuery.result.id);
-                    idDelete.onsuccess = function () {
-                        that.#cu = idQuery.result.id+1;
+            return this.#getTx("readwrite", (transaction, store)=>{
+                return new Promise((resolve, reject) => {
+                    const idQuery = store.get(that.#cu);
+                    idQuery.onsuccess = async function () {
+                        if(idQuery.result){
+                            that.#size -= 1;
+                            that.#cu += 1;
+                            await that.#stillTx(transaction,  (transaction, store)=>{
+                                return new Promise((resolve) => {
+                                    transaction.oncomplete = function () {
+                                        resolve(idQuery.result);
+                                    };
+                                    store.delete(idQuery.result.id)
+                                });
+                            });
+                            resolve(idQuery.result);
+                        } else reject();
                     };
-                    f(count-1, idQuery.result.data);
-                };
+                });
             });
         }
 
@@ -11547,18 +11561,25 @@ __webpack_require__.r(__webpack_exports__);
         }
     }
 
-    stream_http__WEBPACK_IMPORTED_MODULE_7___default().get('../keepAlive', function (res) {
-        res.on('data', function (buf) {
-            config.url += "&key="+buf;
-            initPlay(config);
-            setInterval(function () {
-                stream_http__WEBPACK_IMPORTED_MODULE_7___default().get('../keepAlive?key='+buf, function (res) {})
-            },15000);
-        });
-    })
+    {
+        // new FIFO(async fifo=>{
+        //     fifo.put(1).then(size=>size!=1?console.error("size:1 ",size):console.log("1ok"));
+        //     fifo.put(2).then(size=>size!=2?console.error("size:2 ",size):console.log("2ok"));
+        //     fifo.put(3).then(size=>size!=3?console.error("size:3 ",size):console.log("3ok"));
+        //     fifo.put(4).then(size=>size!=4?console.error("size:4 ",size):console.log("4ok"));
+        //     fifo.size().then(size=>size!=4?console.error("size:4 ",size):console.log("5ok"));
+        //     console.log('1!')
+        //     await fifo.get().then(result=>console.log(result));
+        //     console.log('2!')
+        //     await fifo.get().then(result=>console.log(result));
+        //     console.log('3!')
+        //     console.log("fin");
+        // });
+    }
 
+    console.log("init 22");
     let mp4LoadFromDB = 20,
-        mp4StopFromDB = 40,
+        mp4StopFromDB = 30,
         mp4LoadFromWeb = 1000,
         mp4StopFromWeb = 2000,
         tabUnload = false,
@@ -11658,7 +11679,7 @@ __webpack_require__.r(__webpack_exports__);
             },
             customType: {
                 mp4: function (video, url) {
-                    new FIFO((fifo)=>{
+                    new FIFO(fifo => {
                         var mediaSource = new MediaSource();
                         mediaSource.addEventListener('sourceopen', () => {
                             // Create a new SourceBuffer
@@ -11676,11 +11697,10 @@ __webpack_require__.r(__webpack_exports__);
     
                             var runUpdate = false;
                             sourceBuffer.addEventListener("updateend", ()=>{
-                                fifo.get((size)=>{
+                                fifo.size().then(size=>{
                                     runUpdate = size > 0 && mscBuf() < mp4StopFromDB;
-                                    return runUpdate;
-                                },(size, value)=>{
-                                    sourceBuffer.appendBuffer(value);
+                                    if(!runUpdate)return;
+                                    fifo.get().then(({data})=>sourceBuffer.appendBuffer(data)).catch(() => {});
                                 });
                             });
     
@@ -11692,7 +11712,7 @@ __webpack_require__.r(__webpack_exports__);
                                 var fin = false;
                                 var loading = false;
                                 var loadf = ()=>
-                                fifo.size((_,size)=>{
+                                fifo.size().then(size=>{
                                     if (fin && size==0 && mediaSource.readyState=="open") {
                                         console.log("fin");
                                         mediaSource.endOfStream();
@@ -11704,7 +11724,7 @@ __webpack_require__.r(__webpack_exports__);
                                     var mscb = mscBuf();
     
                                     if(size >= mp4LoadFromWeb && runUpdate){
-                                        console.log("web   db (%d) %s msc (%d)", size, runUpdate?">":" ", mscb);
+                                        console.log("web %s db (%d) %s msc (%d)", loading?">":" ", size, runUpdate?">":" ", mscb);
                                         return setTimeout(loadf, 1000);
                                     }
     
@@ -11723,12 +11743,11 @@ __webpack_require__.r(__webpack_exports__);
                                     }
     
                                     if(mscBuf() < mp4LoadFromDB)
-                                        fifo.get((size)=>{
+                                        fifo.size().then(size=>{
                                             runUpdate = size > 0 && mscBuf() < mp4StopFromDB;
-                                            return runUpdate;
-                                        },(size, value)=>{
+                                            if(!runUpdate)return;
                                             console.log("web %s db (%d) %s msc (%d)", loading?">":" ", size, runUpdate?">":" ", mscb);
-                                            sourceBuffer.appendBuffer(value);
+                                            fifo.get().then(({data})=>sourceBuffer.appendBuffer(data)).catch(() => {});
                                         });
                                     else console.log("web %s db (%d) %s msc (%d)", loading?">":" ", size, runUpdate?">":" ", mscb);
                                     return setTimeout(loadf, 1000);
@@ -11737,7 +11756,6 @@ __webpack_require__.r(__webpack_exports__);
                             })
                             .catch((err) => console.error(err));
                         });
-                        console.log("init 4");
                         window.player = video;
                         video.src = URL.createObjectURL(mediaSource);
                         video.pause();
@@ -11833,6 +11851,16 @@ __webpack_require__.r(__webpack_exports__);
             e.preventDefault();
         });
     }
+
+    stream_http__WEBPACK_IMPORTED_MODULE_7___default().get('../keepAlive', function (res) {
+        res.on('data', function (buf) {
+            config.url += "&key="+buf;
+            initPlay(config);
+            setInterval(function () {
+                stream_http__WEBPACK_IMPORTED_MODULE_7___default().get('../keepAlive?key='+buf, function (res) {})
+            },15000);
+        });
+    })
 })();
 })();
 
