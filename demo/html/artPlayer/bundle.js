@@ -11453,14 +11453,14 @@ __webpack_require__.r(__webpack_exports__);
         #dbN="FIFO"+new Date().getTime();
         #objN="fifo"+new Date().getTime();
 
-        constructor(okf) {
+        constructor(okf = (_)=>{}) {
             const that = this;
             this.#indexedDB = window.indexedDB;
             if (!this.#indexedDB) {
                 console.error("IndexedDB could not be found in this browser.");
             }
 
-            this.close();
+            this.close().catch();
 
             const request = this.#indexedDB.open(this.#dbN, 1);
 
@@ -11533,59 +11533,280 @@ __webpack_require__.r(__webpack_exports__);
                             await that.#stillTx(transaction,  (transaction, store)=>{
                                 return new Promise((resolve) => {
                                     transaction.oncomplete = function () {
-                                        resolve(idQuery.result);
+                                        resolve();
                                     };
                                     store.delete(idQuery.result.id)
                                 });
                             });
-                            resolve(idQuery.result);
+                            resolve({size: that.#size, data: idQuery.result.data});
                         } else reject();
                     };
                 });
             });
         }
 
+        /**
+         * @returns .then(e=>{}).catch(e=>{});
+         */
         close(){
             if(this.#ok)this.#db.close();
             return new Promise((resolve, reject) => {
                 const DBDeleteRequest = this.#indexedDB.deleteDatabase(this.#dbN);
                 DBDeleteRequest.onerror = (event) => {
-                    console.error("Error deleting database.");  
+                    reject("Error deleting database.");
                 };
 
                 DBDeleteRequest.onsuccess = (event) => {
-                    console.log("Database deleted successfully");
-                    console.log(event.result); // should be undefined
-                    resolve();
+                    if(event.result===undefined)resolve("Database deleted successfully.");
+                    else reject("Error deleting fail.");
                 };
+            });
+        }
+
+        deleteOnExit() {
+            let that = this;
+            window.addEventListener('beforeunload', function (e) {
+                that.close().catch(()=>{});
+            });
+        }
+
+        static test() {
+            new FIFO(async fifo=>{
+                fifo.put(1).then(size=>size!=1?console.error("size:1 ",size):console.log("1ok"));
+                fifo.put(2).then(size=>size!=2?console.error("size:2 ",size):console.log("2ok"));
+                fifo.put(3).then(size=>size!=3?console.error("size:3 ",size):console.log("3ok"));
+                fifo.put(4).then(size=>size!=4?console.error("size:4 ",size):console.log("4ok"));
+                fifo.size().then(size=>size!=4?console.error("size:4 ",size):console.log("5ok"));
+                console.log('1!')
+                await fifo.get().then(result=>result.id!=1?console.error(result):console.log("6ok")).catch(()=>{});
+                console.log('2!')
+                await fifo.get().then(result=>result.id!=2?console.error(result):console.log("7ok")).catch(()=>{});
+                console.log('3!')
+                fifo.close().then(r=>console.log(r)).catch(result=>console.error(result));
+                console.log("fin");
             });
         }
     }
 
-    {
-        // new FIFO(async fifo=>{
-        //     fifo.put(1).then(size=>size!=1?console.error("size:1 ",size):console.log("1ok"));
-        //     fifo.put(2).then(size=>size!=2?console.error("size:2 ",size):console.log("2ok"));
-        //     fifo.put(3).then(size=>size!=3?console.error("size:3 ",size):console.log("3ok"));
-        //     fifo.put(4).then(size=>size!=4?console.error("size:4 ",size):console.log("4ok"));
-        //     fifo.size().then(size=>size!=4?console.error("size:4 ",size):console.log("5ok"));
-        //     console.log('1!')
-        //     await fifo.get().then(result=>console.log(result)).catch(()=>{});
-        //     console.log('2!')
-        //     await fifo.get().then(result=>console.log(result)).catch(()=>{});
-        //     console.log('3!')
-        //     fifo.close();
-        //     console.log("fin");
-        // });
+    class EventPromise {
+        #eventEL = document.createElement("_");
+        
+        eventCall(name, data = undefined, el = this.#eventEL){
+            let e = new Event(name, {bubbles: true, cancelable: false})
+            e.detail = data;
+            el.dispatchEvent(e);
+        }
+
+        promise(name, bootFunc = ({event: event})=>{}){
+            return EventPromise.toPromise(this, name, bootFunc);
+        }
+
+        /**
+         * cover event listener to promise
+         * @param {*} object 
+         * @param {*} event name 
+         * @param {*} bootFunc {event: event} => {}
+         * @returns .then(({event: event, data: data}) => {}).catch(({event: event, error: error}) => {})
+         */
+        static toPromise(object, name, bootFunc = ({event: event})=>{}){
+            return new Promise((resolve, reject) => {
+                let event = object.addEventListener(name, data =>{
+                    object.removeEventListener(name, event);
+                    resolve({object:object, name:name, event: event, data: data});
+                });
+                try {
+                    bootFunc({event: event});
+                } catch (error) {
+                    object.removeEventListener(name, event);
+                    reject({object:object, name:name, event: event, error: error});
+                }
+            });
+        }
+
+        addEventListener(name, func, el = this.#eventEL){
+            let eventFunc = e=>func(e.detail);
+            el.addEventListener(name, eventFunc);
+            return eventFunc;
+        }
+
+        removeEventListener(name, eventFunc, el = this.#eventEL){
+            el.addEventListener(name, eventFunc);
+        }
+
+        constructor(name){
+            this.#eventEL = document.createElement(name);
+        }
+
+        static test(){
+            let ep = new EventPromise();
+            ep.addEventListener("test", data=>{
+                if (data=="ss")console.log("event ok");
+                else console.error(data);
+            });
+            ep.promise("test").then(data=>{
+                if (data=="ss")console.log("promise ok");
+                else console.error(data);
+            });
+            ep.eventCall('test','ss');
+        }
     }
 
-    console.log("init 24");
-    let mp4LoadFromDB = 20,
-        mp4StopFromDB = 30,
-        mp4LoadFromWeb = 1000,
-        mp4StopFromWeb = 2000,
-        tabUnload = false,
-        player,
+    class MSC extends EventPromise {
+        #exit = false;
+        #fifo;
+
+        #url = "";
+        #loadedRange = 0;
+        #video;
+        #fifoL = 0;
+        #bufLen = 0;
+        #sourceBuffer;
+
+        #mp4LoadFromDB = 20;
+        #mp4StopFromDB = 30;
+        #mp4LoadFromWeb = 1000;
+        #mp4StopFromWeb = 2000;
+
+        #loopIfFalse(f, miliSec = 1000, rejectFail = false){
+            return new Promise((reslove, reject)=>{
+                if(f())return reslove();
+                let l = () => setTimeout(()=>{
+                    if(f())return reslove();
+                    else if(rejectFail)return reject();
+                    else return l();
+                },miliSec);
+                l();
+            });
+        }
+
+        #fetchLoop = () => {
+            let that = this;
+            var reqHeaders = new Headers();
+            reqHeaders.append("Range", "bytes="+that.#loadedRange+"-");
+
+            fetch(new Request(that.#url,{
+                method: "GET",
+                headers: reqHeaders,
+                mode: "cors",
+                cache: "default",
+            }))
+            .then((response) => {
+                const reader = response.body.getReader();
+                reader.read().then(function pump({ done, value }) {
+                    if(done)return that.eventCall("fetch.done", "ok");
+                    if(that.#exit)return;
+                    
+                    that.#loadedRange += value.length;
+                    that.#fifo.put(value).then(tfifoL=>{that.#fifoL = tfifoL;});
+
+                    if(that.#fifoL>that.#mp4StopFromWeb){
+                        reader.cancel();
+                        return that.#loopIfFalse(()=>that.#fifoL<that.#mp4LoadFromWeb).then(()=>that.#fetchLoop());
+                    }
+                    return reader.read().then(pump);
+                });
+            })
+            .catch(({event: event, error: error}) => that.eventCall("error", error));
+        }
+
+        #sourceBufferLoop = () => {
+            let that = this;
+            let deal = () => {
+                if(that.#exit)return;
+
+                if(that.#sourceBuffer.buffered.length != 0)that.#bufLen = that.#sourceBuffer.buffered.end(that.#sourceBuffer.buffered.length-1) - that.#video.currentTime;
+                else that.#bufLen = 0;
+
+                if(that.#bufLen<that.#mp4StopFromDB){
+                    return that.#fifo.get()
+                    .then(({size: size, data: data})=>{
+                        that.#fifoL = size;
+                        that.#sourceBuffer.appendBuffer(data);
+                    })
+                    .catch(()=>setTimeout(deal, 1000));
+                } else {
+                    return that.#loopIfFalse(()=>{
+                        if(that.#sourceBuffer.buffered.length != 0)that.#bufLen = that.#sourceBuffer.buffered.end(that.#sourceBuffer.buffered.length-1) - that.#video.currentTime;
+                        else that.#bufLen = 0;
+                        return that.#bufLen<that.#mp4LoadFromDB;
+                    }).then(deal);
+                }
+            };
+
+            that.#sourceBuffer.addEventListener("updateend", deal);
+            deal();
+        }
+
+        #stateLoop(){
+            let that = this;
+            setTimeout(()=>{
+                if(that.#exit)return;
+                console.log("fifo %d buf %d", that.#fifoL, that.#bufLen);
+                that.#stateLoop();
+            }, 1000);
+        }
+
+        #watchExit(){
+            let exitf = (o) => {
+                console.error(o);
+                this.#exit = true;
+                this.#fifo.close().catch(()=>{});
+            }
+
+            this.promise("fetch.done").then(exitf).catch(()=>{});
+            EventPromise.toPromise(window, "beforeunload").then(exitf).catch(()=>{});
+            EventPromise.toPromise(this.#video, "error").then(exitf).catch(()=>{});
+            EventPromise.toPromise(this.#sourceBuffer, "error").then(exitf).catch(()=>{});
+        }
+
+        constructor({
+            video: video, 
+            url: url, 
+            mimeType: mimeType = 'video/mp4; codecs="avc1.640032,mp4a.40.2"', 
+            mode: mode = "sequence",
+            mp4LoadFromDB = 20,
+            mp4StopFromDB = 30,
+            mp4LoadFromWeb = 1000,
+            mp4StopFromWeb = 2000
+        }){
+            super();
+
+            let that = this;
+            that.#url = url;
+            that.#video = video;
+            that.#mp4LoadFromDB = mp4LoadFromDB;
+            that.#mp4StopFromDB = mp4StopFromDB;
+            that.#mp4LoadFromWeb = mp4LoadFromWeb;
+            that.#mp4StopFromWeb = mp4StopFromWeb;
+
+            var mediaSource = new MediaSource();
+            mediaSource.addEventListener('sourceopen', () => {
+
+                that.eventCall("mediaSource.sourceopen");
+
+                that.#sourceBuffer = mediaSource.addSourceBuffer(mimeType);
+                that.#sourceBuffer.mode = mode;
+
+                that.#watchExit();
+
+                that.#stateLoop();
+
+                that.#sourceBufferLoop();
+
+                that.#fetchLoop();
+            });
+
+            new FIFO(fifo => {
+                console.log(that);
+                that.#fifo = fifo;
+                that.#video.src = URL.createObjectURL(mediaSource);
+                that.#video.pause();
+            });
+        }
+    }
+
+    console.log("init 29");
+        let player,
         flvPlayer,
         danmuEmit = document.createElement("div"),
         config = {
@@ -11680,93 +11901,7 @@ __webpack_require__.r(__webpack_exports__);
                 indicator: '<img width="16" heigth="16" src=' + _img_indicator_svg__WEBPACK_IMPORTED_MODULE_5__["default"] + '>',
             },
             customType: {
-                mp4: function (video, url) {
-                    new FIFO(fifo => {
-                        window.addEventListener('beforeunload', function (e) {
-                            fifo.close();
-                        });
-
-                        var mediaSource = new MediaSource();
-                        mediaSource.addEventListener('sourceopen', () => {
-                            // Create a new SourceBuffer
-                            var sourceBuffer = mediaSource.addSourceBuffer('video/mp4; codecs="avc1.640032,mp4a.40.2"');
-                            var mscBuf = ()=>{
-                                if(sourceBuffer.buffered.length == 0)return 0;
-                                else return sourceBuffer.buffered.end(sourceBuffer.buffered.length-1) - player.currentTime
-                            };
-    
-                            sourceBuffer.mode = "sequence";
-    
-                            sourceBuffer.addEventListener('error', (event) => {
-                                console.error('SourceBuffer error:', event);
-                            });
-    
-                            var runUpdate = false;
-                            sourceBuffer.addEventListener("updateend", ()=>{
-                                fifo.size().then(size=>{
-                                    runUpdate = size > 0 && mscBuf() < mp4StopFromDB;
-                                    if(!runUpdate)return;
-                                    fifo.get().then(({data})=>sourceBuffer.appendBuffer(data)).catch(() => {});
-                                });
-                            });
-    
-                            fetch(url)
-                            // Retrieve its body as ReadableStream
-                            .then((response) => {
-                                const reader = response.body.getReader();
-    
-                                var fin = false;
-                                var loading = false;
-                                var loadf = ()=>
-                                fifo.size().then(size=>{
-                                    if (fin && size==0 && mediaSource.readyState=="open") {
-                                        console.log("fin");
-                                        mediaSource.endOfStream();
-                                        console.log(mediaSource.readyState);
-                                        return;
-                                    }
-                                    if(!sourceBuffer || sourceBuffer.updating)return setTimeout(loadf, 1000);
-    
-                                    var mscb = mscBuf();
-    
-                                    if(size >= mp4LoadFromWeb && runUpdate){
-                                        console.log("web %s db (%d) %s msc (%d)", loading?">":" ", size, runUpdate?">":" ", mscb);
-                                        return setTimeout(loadf, 1000);
-                                    }
-    
-                                    if (!loading && size < mp4StopFromWeb)reader.read().then(pump);
-                                    function pump({ done, value }) {
-                                        loading = true;
-                                        if (done || tabUnload){
-                                            loading = false;
-                                            fin = true;
-                                            return;
-                                        }
-                                        fifo.put(value);
-                                        size+=1;
-                                        if (size < mp4StopFromWeb)return reader.read().then(pump);
-                                        else loading = false;
-                                    }
-    
-                                    if(mscBuf() < mp4LoadFromDB)
-                                        fifo.size().then(size=>{
-                                            runUpdate = size > 0 && mscBuf() < mp4StopFromDB;
-                                            if(!runUpdate)return;
-                                            console.log("web %s db (%d) %s msc (%d)", loading?">":" ", size, runUpdate?">":" ", mscb);
-                                            fifo.get().then(({data})=>sourceBuffer.appendBuffer(data)).catch(() => {});
-                                        });
-                                    else console.log("web %s db (%d) %s msc (%d)", loading?">":" ", size, runUpdate?">":" ", mscb);
-                                    return setTimeout(loadf, 1000);
-                                });
-                                loadf();
-                            })
-                            .catch((err) => console.error(err));
-                        });
-                        window.player = video;
-                        video.src = URL.createObjectURL(mediaSource);
-                        video.pause();
-                    });
-                },
+                mp4: (video, url) => new MSC({video: video, url: url}),
                 flv: function (video, url) {
                     var needUnload = true;
                     if(flvPlayer){
@@ -11802,8 +11937,8 @@ __webpack_require__.r(__webpack_exports__);
      */
      function ws(player) {
         if (window["WebSocket"]) {
-            var interval_handle = 0
             var conn = new WebSocket("ws://" + window.location.host + window.location.pathname+"ws?&ref="+new URL(window.location.href).searchParams.get("ref"));
+            let interval_handle = undefined;
             conn.onclose = function (evt) {
                 clearInterval(interval_handle)
             };
@@ -11816,18 +11951,21 @@ __webpack_require__.r(__webpack_exports__);
                         border: data.style.border,
                         mode: data.style.mode,
                     });
+                    if(!interval_handle)interval_handle = setInterval(()=>{
+                        if(conn && player && player.currentTime)conn.send(player.currentTime);
+                    },3000);
                 } catch (e) {
                     console.log(e)
                     console.log(evt.data)
                 }
             };
+            conn.onerror = () => {
+                clearInterval(interval_handle)
+            };
             conn.onopen = function () {
                 conn.send(`pause`);
                 config.conn = conn;
             };
-            interval_handle = setInterval(()=>{
-                if(player.currentTime != undefined)conn.send(player.currentTime);
-            },3000);
         }
     }
 
@@ -11852,9 +11990,9 @@ __webpack_require__.r(__webpack_exports__);
             if(config.conn != undefined)config.conn.send("%S"+danmu.text);
         });
         document.addEventListener("resize", player.autoSize);
-        window.addEventListener('beforeunload', function (e) {
-            tabUnload = true;
-        });
+        // window.addEventListener('beforeunload', function (e) {
+        //     tabUnload = true;
+        // });
     }
 
     stream_http__WEBPACK_IMPORTED_MODULE_7___default().get('../keepAlive', function (res) {
