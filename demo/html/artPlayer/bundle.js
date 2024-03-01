@@ -11653,7 +11653,8 @@ __webpack_require__.r(__webpack_exports__);
 
     class MSC extends EventPromise {
         #fetchDone = false;
-        #exit = () => this.#bufLen <= 1 && this.#fifoL == 0 && this.#fetchDone;
+        #forceExit = false;
+        #exit = () => this.#forceExit || this.#bufLen <= 1 && this.#fifoL == 0 && this.#fetchDone;
         #fifo;
 
         #id = new Date().getTime();
@@ -11761,6 +11762,7 @@ __webpack_require__.r(__webpack_exports__);
 
         #watchExit(){
             let exitf = (o) => {
+                this.#forceExit = true;
                 this.removeEventListener("mediaSource.sourceended", exitf);
                 this.removeEventListener("beforeunload", exitf, window);
                 this.removeEventListener("mediaSource.error", exitf);
