@@ -12016,6 +12016,7 @@ __webpack_require__.r(__webpack_exports__);
         });
         player.on('video:ended', (...args) => {
             if(config.conn != undefined){
+                player.plugins.artplayerPluginDanmuku.load();
                 config.conn.close();
                 config.conn = undefined;
             }
