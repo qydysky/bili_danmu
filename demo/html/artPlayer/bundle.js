@@ -11652,15 +11652,18 @@ __webpack_require__.r(__webpack_exports__);
     }
 
     class MSC extends EventPromise {
-        #exit = false;
+        #fetchDone = false;
+        #exit = () => this.#bufLen <= 1 && this.#fifoL == 0 && this.#fetchDone;
         #fifo;
 
+        #id = new Date().getTime();
         #url = "";
         #loadedRange = 0;
         #video;
         #fifoL = 0;
         #bufLen = 0;
         #sourceBuffer;
+        #mediaSource;
 
         #mp4LoadFromDB = 20;
         #mp4StopFromDB = 30;
@@ -11694,28 +11697,36 @@ __webpack_require__.r(__webpack_exports__);
                 const reader = response.body.getReader();
                 reader.read().then(function pump({ done, value }) {
                     if(done)return that.eventCall("fetch.done", "ok");
-                    if(that.#exit)return;
+                    if(that.#exit())return;
                     
                     that.#loadedRange += value.length;
                     that.#fifo.put(value).then(tfifoL=>{that.#fifoL = tfifoL;});
 
                     if(that.#fifoL>that.#mp4StopFromWeb){
                         reader.cancel();
-                        return that.#loopIfFalse(()=>that.#fifoL<that.#mp4LoadFromWeb).then(()=>that.#fetchLoop());
+                        return that.#loopIfFalse(()=>that.#exit() || that.#fifoL<that.#mp4LoadFromWeb).then(()=>that.#fetchLoop());
                     }
                     return reader.read().then(pump);
                 });
             })
-            .catch(({event: event, error: error}) => that.eventCall("error", error));
+            .catch(({event: event, error: error}) => that.eventCall("error", {altmsg: error}));
         }
 
         #sourceBufferLoop = () => {
             let that = this;
             let deal = () => {
-                if(that.#exit)return;
 
-                if(that.#sourceBuffer.buffered.length != 0)that.#bufLen = that.#sourceBuffer.buffered.end(that.#sourceBuffer.buffered.length-1) - that.#video.currentTime;
+                if(that.#mediaSource.sourceBuffers.length != 0 && that.#sourceBuffer.buffered.length != 0)
+                    that.#bufLen = that.#sourceBuffer.buffered.end(that.#sourceBuffer.buffered.length-1) - that.#video.currentTime;
                 else that.#bufLen = 0;
+
+                if(that.#exit()){
+                    try {
+                        that.eventCall("mediaSource.sourceended");
+                        that.#mediaSource.endOfStream();
+                    } catch {}
+                    return;
+                }
 
                 if(that.#bufLen<that.#mp4StopFromDB){
                     return that.#fifo.get()
@@ -11726,34 +11737,41 @@ __webpack_require__.r(__webpack_exports__);
                     .catch(()=>setTimeout(deal, 1000));
                 } else {
                     return that.#loopIfFalse(()=>{
-                        if(that.#sourceBuffer.buffered.length != 0)that.#bufLen = that.#sourceBuffer.buffered.end(that.#sourceBuffer.buffered.length-1) - that.#video.currentTime;
+                        if(that.#mediaSource.sourceBuffers.length != 0 && that.#sourceBuffer.buffered.length != 0)
+                            that.#bufLen = that.#sourceBuffer.buffered.end(that.#sourceBuffer.buffered.length-1) - that.#video.currentTime;
                         else that.#bufLen = 0;
-                        return that.#bufLen<that.#mp4LoadFromDB;
+                        return that.#exit() || that.#bufLen<that.#mp4LoadFromDB;
                     }).then(deal);
                 }
             };
 
             that.#sourceBuffer.addEventListener("updateend", deal);
+            
             deal();
         }
 
         #stateLoop(){
             let that = this;
             setTimeout(()=>{
-                if(that.#exit)return;
-                console.log("fifo %d buf %d", that.#fifoL, that.#bufLen);
+                if(that.#exit())return;
+                console.log("[%s] fifo: %d buf: %d", that.#id, that.#fifoL, that.#bufLen);
                 that.#stateLoop();
-            }, 1000);
+            }, 2000);
         }
 
         #watchExit(){
             let exitf = (o) => {
-                console.error(o);
-                this.#exit = true;
-                this.#fifo.close().catch(()=>{});
+                this.removeEventListener("mediaSource.sourceended", exitf);
+                this.removeEventListener("beforeunload", exitf, window);
+                this.removeEventListener("mediaSource.error", exitf);
+                this.removeEventListener("error", exitf, this.#video);
+                this.removeEventListener("error", exitf, this.#sourceBuffer);
+                if(o.event && o.event.name && o.event.name.indexOf("error") != -1)console.error(o);
+                else console.log(o);
+                if(o.event && o.event.altmsg)alert(o.altmsg);
             }
-
-            this.promise("fetch.done").then(exitf).catch(()=>{});
+            this.promise("mediaSource.sourceended").then(exitf).catch(()=>{});
+            this.promise("mediaSource.error").then(exitf).catch(()=>{});
             EventPromise.toPromise(window, "beforeunload").then(exitf).catch(()=>{});
             EventPromise.toPromise(this.#video, "error").then(exitf).catch(()=>{});
             EventPromise.toPromise(this.#sourceBuffer, "error").then(exitf).catch(()=>{});
@@ -11779,13 +11797,28 @@ __webpack_require__.r(__webpack_exports__);
             that.#mp4LoadFromWeb = mp4LoadFromWeb;
             that.#mp4StopFromWeb = mp4StopFromWeb;
 
-            var mediaSource = new MediaSource();
-            mediaSource.addEventListener('sourceopen', () => {
+            if (!MediaSource.isTypeSupported(mimeType)) {
+                that.eventCall("mediaSource.error", {altmsg: mimeType+" not Supported"});
+                return;
+            }
+
+            this.#mediaSource = new MediaSource();
+            this.#mediaSource.addEventListener('sourceopen', () => {
 
                 that.eventCall("mediaSource.sourceopen");
 
-                that.#sourceBuffer = mediaSource.addSourceBuffer(mimeType);
+                that.#sourceBuffer = that.#mediaSource.addSourceBuffer(mimeType);
                 that.#sourceBuffer.mode = mode;
+
+                if(that.#mediaSource.sourceBuffers.length == 0){
+                    that.eventCall("mediaSource.error", {altmsg: "addSourceBuffer error"});
+                    return;
+                }
+
+                this.promise("fetch.done").then(()=>{
+                    that.#fetchDone = true;
+                    console.log("[%s] fetch.done", that.#id);
+                });
 
                 that.#watchExit();
 
@@ -11798,14 +11831,14 @@ __webpack_require__.r(__webpack_exports__);
 
             new FIFO(fifo => {
                 console.log(that);
+                fifo.deleteOnExit();
                 that.#fifo = fifo;
-                that.#video.src = URL.createObjectURL(mediaSource);
-                that.#video.pause();
+                that.#video.src = URL.createObjectURL(that.#mediaSource);
             });
         }
     }
 
-    console.log("init 29");
+    console.log("init 31");
         let player,
         flvPlayer,
         danmuEmit = document.createElement("div"),
@@ -11999,8 +12032,10 @@ __webpack_require__.r(__webpack_exports__);
         res.on('data', function (buf) {
             config.url += "&key="+buf;
             initPlay(config);
-            setInterval(function () {
-                stream_http__WEBPACK_IMPORTED_MODULE_7___default().get('../keepAlive?key='+buf, function (res) {})
+            let i = setInterval(function () {
+                stream_http__WEBPACK_IMPORTED_MODULE_7___default().get('../keepAlive?key='+buf, function (res) {
+                    if (res.statusCode>=300)clearInterval(i);
+                })
             },15000);
         });
     })
