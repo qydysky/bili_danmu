@@ -12014,6 +12014,21 @@ __webpack_require__.r(__webpack_exports__);
         player.on('pause', (...args) => {
             if(config.conn != undefined)config.conn.send(`pause`);
         });
+        player.on('video:error', (...args) => {
+            console.log("clear danmu");
+            player.plugins.artplayerPluginDanmuku.config({
+                danmuku: [],
+                speed: 7,
+                opacity: 0.7,
+                mount: danmuEmit,
+            });
+            player.plugins.artplayerPluginDanmuku.load();
+            if(config.conn != undefined){
+                config.conn.close();
+                config.conn = undefined;
+            }
+            ws(player);
+        });
         player.on('video:ended', (...args) => {
             if(config.conn != undefined){
                 config.conn.close();
