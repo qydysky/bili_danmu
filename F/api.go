@@ -497,26 +497,29 @@ func (c *GetFunc) getRoomBaseInfo() (missKey []string) {
 				return
 			}
 
-			if data, ok := j.Data.ByRoomIds[Roomid]; ok {
-				//主播id
-				c.UpUid = data.UID
-				//子分区
-				c.AreaID = data.AreaID
-				//分区
-				c.ParentAreaID = data.ParentAreaID
-				//直播间标题
-				c.Title = data.Title
-				//直播开始时间
-				if ti, e := time.Parse(time.DateTime, data.LiveTime); e != nil && !ti.IsZero() {
-					c.Live_Start_Time = ti
-				}
-				//是否在直播
-				c.Liveing = data.LiveStatus == 1
-				//主播名
-				c.Uname = data.Uname
-				//房间id
-				if data.RoomID != 0 {
-					c.Roomid = data.RoomID
+			for k, data := range j.Data.ByRoomIds {
+				if Roomid == k || Roomid == strconv.Itoa(data.ShortID) {
+					//主播id
+					c.UpUid = data.UID
+					//子分区
+					c.AreaID = data.AreaID
+					//分区
+					c.ParentAreaID = data.ParentAreaID
+					//直播间标题
+					c.Title = data.Title
+					//直播开始时间
+					if ti, e := time.Parse(time.DateTime, data.LiveTime); e != nil && !ti.IsZero() {
+						c.Live_Start_Time = ti
+					}
+					//是否在直播
+					c.Liveing = data.LiveStatus == 1
+					//主播名
+					c.Uname = data.Uname
+					//房间id
+					if data.RoomID != 0 {
+						c.Roomid = data.RoomID
+					}
+					break
 				}
 			}
 		}
