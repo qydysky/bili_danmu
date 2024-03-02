@@ -1351,16 +1351,16 @@ func init() {
 		})
 
 		// 对于经过代理层，有可能浏览器标签页已经关闭，但代理层不关闭连接，导致连接不能释放
-		var expirer = &pweb.Exprier{}
+		var expirer = pweb.NewExprier(0)
 		if v, ok := c.C.K_v.LoadV(`直播流回放连接检查`).(float64); ok && v > 0 {
-			expirer.Max = int(v)
+			expirer.SetMax(int(v))
 		}
 
 		c.C.SerF.Store(path+"keepAlive", func(w http.ResponseWriter, r *http.Request) {
 			if c.DefaultHttpCheck(c.C, w, r, http.MethodGet) {
 				return
 			}
-			if key, e := expirer.Reg(r.URL.Query().Get("key"), time.Second*30); e != nil {
+			if key, e := expirer.Reg(time.Second*30, r.URL.Query().Get("key")); e != nil {
 				w.WriteHeader(http.StatusForbidden)
 			} else {
 				_, _ = w.Write([]byte(key))
@@ -1379,14 +1379,12 @@ func init() {
 				return
 			}
 
-			done, e := expirer.LoopCheck(r.URL.Query().Get("key"), time.Second*30, func(key string, e error) {
+			if e := expirer.LoopCheck(r.Context(), r.URL.Query().Get("key"), func(key string, e error) {
 				_ = c.C.SerF.GetConn(r).Close()
-			})
-			if e != nil {
+			}); e != nil {
 				w.WriteHeader(http.StatusTooManyRequests)
 				return
 			}
-			defer done()
 
 			//header
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
