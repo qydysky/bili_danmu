@@ -1575,7 +1575,7 @@ func init() {
 						return
 					} else if !file.New(v+"0.xml", 0, true).IsExist() {
 						if _, e := danmuXml.DanmuXml.Run(context.Background(), &v); e != nil {
-							msglog.L(`E: `, e)
+							flog.L(`E: `, e)
 						}
 					}
 
@@ -1584,6 +1584,12 @@ func init() {
 						return
 					} else {
 						defer closeF()
+						defer s.Interface().Pull_tag(map[string]func(any) (disable bool){
+							`error`: func(a any) (disable bool) {
+								flog.L(`T: `, a)
+								return false
+							},
+						})()
 						//获取通道
 						conn := s.WS(w, r)
 						//由通道获取本次会话id，并测试 提示
