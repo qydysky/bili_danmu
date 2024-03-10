@@ -1467,10 +1467,8 @@ func (t *M4SStream) PusherToHttp(conn net.Conn, w http.ResponseWriter, r *http.R
 func (t *M4SStream) bootBufPush(buf []byte) {
 	t.boot_buf_locker.Lock()
 	defer t.boot_buf_locker.Unlock()
-	if len(t.boot_buf) < len(buf) {
-		t.boot_buf = append(t.boot_buf, make([]byte, len(buf)-len(t.boot_buf))...)
-	}
-	t.boot_buf = t.boot_buf[:copy(t.boot_buf, buf)]
+	t.boot_buf = t.boot_buf[:0]
+	t.boot_buf = append(t.boot_buf, buf...)
 }
 
 func (t *M4SStream) bootBufRead(r func(data []byte) error) error {
