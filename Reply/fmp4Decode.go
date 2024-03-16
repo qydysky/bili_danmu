@@ -273,7 +273,7 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 				//deal frame
 				if keyframeMoof {
 					if v, e := t.buf.HadModified(bufModified); e == nil && v && !t.buf.IsEmpty() {
-						_ = keyframe.Append(t.buf.GetPureBuf())
+						_ = t.buf.AppendTo(keyframe)
 						cu = m[0].i
 						t.buf.Reset()
 					}
@@ -365,7 +365,7 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 				//deal frame
 				if keyframeMoof {
 					if v, e := t.buf.HadModified(bufModified); e == nil && v && !t.buf.IsEmpty() {
-						_ = keyframe.Append(t.buf.GetPureBuf())
+						_ = t.buf.AppendTo(keyframe)
 						cu = m[0].i
 						t.buf.Reset()
 					}

@@ -740,7 +740,9 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 
 					if !buff.IsEmpty() {
 						keyframe.Reset()
-						front_buf, last_available_offset, e := Search_stream_tag(buff.GetPureBuf(), keyframe)
+						buf, unlock := buff.GetPureBufRLock()
+						front_buf, last_available_offset, e := Search_stream_tag(buf, keyframe)
+						unlock()
 						if e != nil {
 							if strings.Contains(e.Error(), `no found available tag`) {
 								continue
@@ -766,7 +768,9 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 								pctx.PutVal(cancelC, &errCtx, errors.New(`flv未接收到起始段`))
 								break
 							}
-							t.bootBufPush(keyframe.GetPureBuf())
+							buf, unlock := keyframe.GetPureBufRLock()
+							t.bootBufPush(buf)
+							unlock()
 							keyframe.Reset()
 							_ = t.bootBufRead(func(data []byte) error {
 								t.Stream_msg.PushLock_tag(`data`, data)
@@ -959,18 +963,23 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 			// no, _ := download_seq[k].getNo()
 			// fmt.Println("download_seq ", no, download_seq[k].status, download_seq[k].data.Size(), len(t.first_buf))
 			if download_seq[k].isInit() {
-				if front_buf, e := fmp4Decoder.Init_fmp4(download_seq[k].data.GetPureBuf()); e != nil {
-					t.log.L(`E: `, e, `重试!`)
-					download_seq[k].status = 3
-					break
-				} else {
-					for _, trak := range fmp4Decoder.traks {
-						// fmt.Println(`T: `, "找到trak:", string(trak.handlerType), trak.trackID, trak.timescale)
-						t.log.L(`T: `, "找到trak:", string(trak.handlerType), trak.trackID, trak.timescale)
+				{
+					buf, unlock := download_seq[k].data.GetPureBufRLock()
+					front_buf, e := fmp4Decoder.Init_fmp4(buf)
+					unlock()
+					if e != nil {
+						t.log.L(`E: `, e, `重试!`)
+						download_seq[k].status = 3
+						break
+					} else {
+						for _, trak := range fmp4Decoder.traks {
+							// fmt.Println(`T: `, "找到trak:", string(trak.handlerType), trak.trackID, trak.timescale)
+							t.log.L(`T: `, "找到trak:", string(trak.handlerType), trak.trackID, trak.timescale)
+						}
+						t.first_buf = make([]byte, len(front_buf))
+						copy(t.first_buf, front_buf)
+						t.msg.Push_tag(`load`, t)
 					}
-					t.first_buf = make([]byte, len(front_buf))
-					copy(t.first_buf, front_buf)
-					t.msg.Push_tag(`load`, t)
 				}
 				t.putM4s(download_seq[k])
 				download_seq = append(download_seq[:k], download_seq[k+1:]...)
@@ -983,11 +992,15 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 				continue
 			}
 
-			_ = buf.Append(download_seq[k].data.GetPureBuf())
+			_ = download_seq[k].data.AppendTo(buf)
 			t.putM4s(download_seq[k])
 			download_seq = append(download_seq[:k], download_seq[k+1:]...)
 			k -= 1
-			last_available_offset, err := fmp4Decoder.Search_stream_fmp4(buf.GetPureBuf(), keyframe)
+
+			buff, unlock := buf.GetPureBufRLock()
+			last_available_offset, err := fmp4Decoder.Search_stream_fmp4(buff, keyframe)
+			unlock()
+
 			if err != nil {
 				if !errors.Is(err, io.EOF) {
 					t.log.L(`E: `, err)
@@ -1007,7 +1020,9 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 
 			// 传递关键帧
 			if !keyframe.IsEmpty() {
-				t.bootBufPush(keyframe.GetPureBuf())
+				buf, unlock := keyframe.GetPureBufRLock()
+				t.bootBufPush(buf)
+				unlock()
 				keyframe.Reset()
 				_ = t.bootBufRead(func(data []byte) error {
 					t.Stream_msg.PushLock_tag(`data`, data)
