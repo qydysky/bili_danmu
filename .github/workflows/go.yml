@@ -81,7 +81,7 @@ jobs:
       run: zip -q -r ubuntu_go${{ matrix.go }}.zip demo
 
     - name: Upload a Release Asset
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       with:
         draft: true
         files: |
@@ -121,7 +121,7 @@ jobs:
       run: .\7za.exe a -r .\windows_go${{ matrix.go }}.zip ./demo
 
     - name: Upload a Release Asset
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       with:
         draft: true
         files: |
@@ -161,7 +161,7 @@ jobs:
       run: zip -q -r macos_go${{ matrix.go }}.zip demo
 
     - name: Upload a Release Asset
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       with:
         draft: true
         files: |

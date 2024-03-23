@@ -838,8 +838,6 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 }
 
 func (t *M4SStream) saveStreamM4s() (e error) {
-	// 同时下载数限制
-	var download_limit = &funcCtrl.BlockFuncN{Max: 3}
 
 	if v, ok := t.common.K_v.LoadV(`debug模式`).(bool); ok && v {
 		cancle := make(chan struct{})
@@ -858,8 +856,9 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 		}()
 	}
 
-	//
 	var (
+		// 同时下载数限制
+		downloadLimit    = funcCtrl.NewBlockFuncN(3)
 		buf              = slice.New[byte]()
 		fmp4Decoder      = &Fmp4Decoder{}
 		keyframe         = slice.New[byte]()
@@ -886,6 +885,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 		// 存在待下载切片
 		if len(download_seq) != 0 {
 			var downingCount = 0 //本轮下载数量
+
 			// 下载切片
 			for _, v := range download_seq {
 
@@ -901,9 +901,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 				}
 				downingCount += 1
 
-				download_limit.Block(func() {
-					time.Sleep(time.Millisecond * 10)
-				})
+				done := downloadLimit.Block()
 
 				// 故障转移
 				if v.status == 3 {
@@ -923,7 +921,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 				}
 
 				go func(link *m4s_link_item) {
-					defer download_limit.UnBlock()
+					defer done()
 
 					link.download(t.reqPool, reqf.Rval{
 						Timeout:     to * 1000,
@@ -937,10 +935,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 			}
 
 			// 等待队列下载完成
-			download_limit.BlockAll(func() {
-				time.Sleep(time.Millisecond * 10)
-			})
-			download_limit.UnBlockAll()
+			downloadLimit.BlockAll()()
 		}
 
 		// 传递已下载切片
