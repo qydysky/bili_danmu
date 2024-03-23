@@ -73,15 +73,15 @@ type Common struct {
 	AcceptQn          map[int]string `json:"-"`             //允许的直播流质量
 	Qn                map[int]string `json:"-"`             //全部直播流质量
 	// StreamType        StreamType            `json:"streamType"`    //当前直播流类型
-	AllStreamType map[string]StreamType `json:"-"`      //直播流类型
-	K_v           syncmap.Map           `json:"-"`      //配置文件
-	Log           *log.Log_interface    `json:"-"`      //日志
-	Danmu_Main_mq *mq.Msgq              `json:"-"`      //消息
-	ReqPool       *pool.Buf[reqf.Req]   `json:"-"`      //请求池
-	SerF          *web.WebPath          `json:"-"`      //web服务处理
-	SerLimit      *web.Limits           `json:"-"`      //Web服务连接限制
-	StartT        time.Time             `json:"startT"` //启动时间
-	Cache         syncmap.Map           `json:"-"`      //缓存
+	AllStreamType map[string]StreamType `json:"-"` //直播流类型
+	K_v           syncmap.Map           `json:"-"` //配置文件
+	Log           *log.Log_interface    `json:"-"` //日志
+	Danmu_Main_mq *mq.Msgq              `json:"-"` //消息
+	ReqPool       *pool.Buf[reqf.Req]   `json:"-"` //请求池
+	SerF          *web.WebPath          `json:"-"` //web服务处理
+	SerLimit      *web.Limits           `json:"-"` //Web服务连接限制
+	StartT        time.Time             `json:"-"` //启动时间
+	Cache         syncmap.Map           `json:"-"` //缓存
 }
 
 type LiveQn struct {
@@ -572,7 +572,7 @@ type ResStruct struct {
 
 func (t ResStruct) Write(w http.ResponseWriter) []byte {
 	w.Header().Set("Content-Type", "application/json")
-	data, e := json.Marshal(t)
+	data, e := json.MarshalIndent(t, "", "    ")
 	if e != nil {
 		t.Code = -1
 		t.Data = nil
