@@ -770,12 +770,9 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 							}
 							buf, unlock := keyframe.GetPureBufRLock()
 							t.bootBufPush(buf)
+							t.Stream_msg.PushLock_tag(`data`, buf)
 							unlock()
 							keyframe.Reset()
-							_ = t.bootBufRead(func(data []byte) error {
-								t.Stream_msg.PushLock_tag(`data`, data)
-								return nil
-							})
 							t.frameCount += 1
 							t.msg.Push_tag(`keyFrame`, t)
 						}
@@ -816,7 +813,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 				if reqf.IsCancel(err) {
 					t.log.L(`I: `, `flv下载停止`, F.ParseHost(surl.String()))
 					return
-				} else if err != nil && !reqf.IsTimeout(err) {
+				} else if !reqf.IsTimeout(err) {
 					e = err
 					t.log.L(`E: `, `flv下载失败:`, F.ParseHost(surl.String()), err)
 				} else {
@@ -1017,12 +1014,9 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 			if !keyframe.IsEmpty() {
 				buf, unlock := keyframe.GetPureBufRLock()
 				t.bootBufPush(buf)
+				t.Stream_msg.PushLock_tag(`data`, buf)
 				unlock()
 				keyframe.Reset()
-				_ = t.bootBufRead(func(data []byte) error {
-					t.Stream_msg.PushLock_tag(`data`, data)
-					return nil
-				})
 				t.frameCount += 1
 				t.msg.Push_tag(`keyFrame`, t)
 			}
