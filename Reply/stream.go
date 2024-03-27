@@ -888,6 +888,14 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 	for download_seq := []*m4s_link_item{}; ; {
 		// 获取解析m3u8
 		{
+			// 防止过快的下载
+			dru := time.Since(startT).Seconds()
+			if wait := float64(fmp4Count) - dru - 1; wait > 2 {
+				time.Sleep(time.Duration(wait) * time.Second)
+			} else {
+				time.Sleep(time.Second * 2)
+			}
+
 			var m4s_links, err = t.fetchParseM3U8(lastM4s, fmp4ListUpdateTo)
 			if err != nil {
 				t.log.L(`E: `, `获取解析m3u8发生错误`, err)
@@ -900,14 +908,15 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 				}
 			}
 
-			// 避免过于频繁的请求
-			fmp4Count += len(m4s_links)
-			if dru := time.Since(startT).Seconds(); dru > fmp4ListUpdateTo && fmp4Count == 0 {
+			// n秒未产出切片
+			fmp4Count = len(m4s_links)
+			if dru > fmp4ListUpdateTo && fmp4Count == 0 {
 				e = fmt.Errorf("%.2f 秒未产出切片", dru)
 				t.log.L("E: ", "获取解析m3u8发生错误", e)
 				break
-			} else {
-				time.Sleep(time.Second * time.Duration(dru/float64(fmp4Count+1)+1))
+			}
+			if fmp4Count != 0 {
+				startT = time.Now()
 			}
 
 			// 设置最后的切片
@@ -927,8 +936,8 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 		}
 
 		// 下载切片
-		{
-			var downFail bool
+		for {
+			downOk := true
 			for i := 0; i < len(download_seq); i++ {
 				// 已下载但还未移除的切片
 				if download_seq[i].status == 2 {
@@ -971,7 +980,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 							`Connection`: `close`,
 						},
 					}); e != nil {
-						downFail = true
+						downOk = false
 						t.log.L(`W: `, `切片下载失败`, link.Base, e)
 					}
 				}(download_seq[i])
@@ -980,8 +989,8 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 			// 等待队列下载完成
 			downloadLimit.BlockAll()()
 
-			if downFail {
-				continue
+			if downOk {
+				break
 			}
 		}
 

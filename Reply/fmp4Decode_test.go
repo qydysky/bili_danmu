@@ -25,7 +25,7 @@ func Test_deal(t *testing.T) {
 	buf := make([]byte, humanize.MByte)
 	buff := slice.New[byte]()
 	max := 0
-	fmp4Decoder := new(Fmp4Decoder)
+	fmp4Decoder := NewFmp4Decoder()
 
 	for c := 0; true; c++ {
 		n, e := f.Read(buf)
