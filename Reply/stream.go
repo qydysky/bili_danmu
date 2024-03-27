@@ -77,6 +77,7 @@ type m4s_link_item struct {
 	Base         string           // m4s文件名
 	isHeader     bool             // m4sHeader
 	status       int              // 下载状态 0:未下载 1:正在下载 2:下载完成 3:下载失败
+	err          error            // 下载状态 3:下载失败 时的错误
 	tryDownCount int              // 下载次数 当=3时，不再下载，忽略此块
 	data         *slice.Buf[byte] // 下载的数据
 	createdTime  time.Time        // 创建时间
@@ -122,9 +123,11 @@ func (t *m4s_link_item) getNo() (int, error) {
 	return strconv.Atoi(base[:len(base)-4])
 }
 
-func (link *m4s_link_item) download(reqPool *pool.Buf[reqf.Req], reqConfig reqf.Rval) {
+func (link *m4s_link_item) download(reqPool *pool.Buf[reqf.Req], reqConfig reqf.Rval) error {
 	link.status = 1 // 设置切片状态为正在下载
+	link.err = nil
 	link.tryDownCount += 1
+	link.data.Reset()
 
 	r := reqPool.Get()
 	defer reqPool.Put(r)
@@ -141,10 +144,15 @@ func (link *m4s_link_item) download(reqPool *pool.Buf[reqf.Req], reqConfig reqf.
 		// 	link.tryDownCount = 3 // 设置切片状态为下载失败
 		// }
 		link.status = 3 // 设置切片状态为下载失败
+		link.err = e
+		return e
+	} else if e = link.data.Append(r.Respon); e != nil {
+		link.status = 3 // 设置切片状态为下载失败
+		link.err = e
+		return e
 	} else {
-		link.data.Reset()
-		_ = link.data.Append(r.Respon)
 		link.status = 2 // 设置切片状态为下载完成
+		return nil
 	}
 }
 
@@ -857,7 +865,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 		// 同时下载数限制
 		downloadLimit    = funcCtrl.NewBlockFuncN(3)
 		buf              = slice.New[byte]()
-		fmp4Decoder      = &Fmp4Decoder{}
+		fmp4Decoder      = NewFmp4Decoder()
 		keyframe         = slice.New[byte]()
 		lastM4s          *m4s_link_item
 		to               = 3
@@ -878,31 +886,66 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 
 	// 下载循环
 	for download_seq := []*m4s_link_item{}; ; {
+		// 获取解析m3u8
+		{
+			var m4s_links, err = t.fetchParseM3U8(lastM4s, fmp4ListUpdateTo)
+			if err != nil {
+				t.log.L(`E: `, `获取解析m3u8发生错误`, err)
+				// if len(download_seq) != 0 {
+				// 	continue
+				// }
+				if !reqf.IsTimeout(err) {
+					e = err
+					break
+				}
+			}
 
-		// 存在待下载切片
-		if len(download_seq) != 0 {
-			var downingCount = 0 //本轮下载数量
+			// 避免过于频繁的请求
+			fmp4Count += len(m4s_links)
+			if dru := time.Since(startT).Seconds(); dru > fmp4ListUpdateTo && fmp4Count == 0 {
+				e = fmt.Errorf("%.2f 秒未产出切片", dru)
+				t.log.L("E: ", "获取解析m3u8发生错误", e)
+				break
+			} else {
+				time.Sleep(time.Second * time.Duration(dru/float64(fmp4Count+1)+1))
+			}
 
-			// 下载切片
-			for _, v := range download_seq {
+			// 设置最后的切片
+			for i := len(m4s_links) - 1; i >= 0; i-- {
+				// fmt.Println("set last m4s", m4s_links[i].Base)
+				if !m4s_links[i].isInit() && len(m4s_links[i].Base) > 0 {
+					if lastM4s == nil {
+						lastM4s = &m4s_link_item{}
+					}
+					m4s_links[i].copyTo(lastM4s)
+					break
+				}
+			}
 
+			// 添加新切片到下载队列
+			download_seq = append(download_seq, m4s_links...)
+		}
+
+		// 下载切片
+		{
+			var downFail bool
+			for i := 0; i < len(download_seq); i++ {
 				// 已下载但还未移除的切片
-				if v.status == 2 {
+				if download_seq[i].status == 2 {
 					continue
 				}
 
 				// 每次最多只下载10个切片
-				if downingCount >= 10 {
-					t.log.L(`T: `, `延迟切片下载 数量(`, len(download_seq)-downingCount, `)`)
+				if i >= 10 {
+					t.log.L(`T: `, `延迟切片下载 数量(`, len(download_seq)-i, `)`)
 					break
 				}
-				downingCount += 1
 
 				done := downloadLimit.Block()
 
 				// 故障转移
-				if v.status == 3 {
-					if linkUrl, e := url.Parse(v.Url); e == nil {
+				if download_seq[i].status == 3 {
+					if linkUrl, e := url.Parse(download_seq[i].Url); e == nil {
 						oldHost := linkUrl.Host
 						// 将此切片服务器设置停用
 						t.common.DisableLiveAuto(oldHost)
@@ -913,47 +956,52 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 							linkUrl.Host = vl.Host()
 							t.log.L(`W: `, `切片下载失败，故障转移`, oldHost, ` -> `, linkUrl.Host)
 						}
-						v.Url = linkUrl.String()
+						download_seq[i].Url = linkUrl.String()
 					}
 				}
 
 				go func(link *m4s_link_item) {
 					defer done()
 
-					link.download(t.reqPool, reqf.Rval{
+					if e := link.download(t.reqPool, reqf.Rval{
 						Timeout:     to * 1000,
 						WriteLoopTO: (to + 2) * 1000,
 						Proxy:       t.common.Proxy,
 						Header: map[string]string{
 							`Connection`: `close`,
 						},
-					})
-				}(v)
+					}); e != nil {
+						downFail = true
+						t.log.L(`W: `, `切片下载失败`, link.Base, e)
+					}
+				}(download_seq[i])
 			}
 
 			// 等待队列下载完成
 			downloadLimit.BlockAll()()
+
+			if downFail {
+				continue
+			}
 		}
 
 		// 传递已下载切片
 		for k := 0; k < len(download_seq); k++ {
 			// v := download_seq[k]
 
-			if download_seq[k].status != 2 {
-				if download_seq[k].tryDownCount >= 3 {
-					//下载了2次，任未下载成功，忽略此块
-					t.putM4s(download_seq...)
-					//丢弃所有数据
-					buf.Reset()
-					t.log.L(`E: `, `切片下载失败`)
-					return errors.New(`切片下载失败`)
-				} else {
-					break
-				}
-			}
+			// if download_seq[k].status != 2 {
+			// 	if download_seq[k].tryDownCount >= 3 {
+			// 		//下载了2次，任未下载成功，忽略此块
+			// 		t.putM4s(download_seq...)
+			// 		//丢弃所有数据
+			// 		buf.Reset()
+			// 		t.log.L(`E: `, `切片下载失败`, download_seq[k].err)
+			// 		return errors.New(`切片下载失败` + download_seq[k].err.Error())
+			// 	} else {
+			// 		break
+			// 	}
+			// }
 
-			// no, _ := download_seq[k].getNo()
-			// fmt.Println("download_seq ", no, download_seq[k].status, download_seq[k].data.Size(), len(t.first_buf))
 			if download_seq[k].isInit() {
 				{
 					buf, unlock := download_seq[k].data.GetPureBufRLock()
@@ -984,7 +1032,9 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 				continue
 			}
 
-			_ = download_seq[k].data.AppendTo(buf)
+			if e := download_seq[k].data.AppendTo(buf); e != nil {
+				t.log.L(`E: `, e)
+			}
 			t.putM4s(download_seq[k])
 			download_seq = append(download_seq[:k], download_seq[k+1:]...)
 			k -= 1
@@ -993,18 +1043,12 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 			last_available_offset, err := fmp4Decoder.Search_stream_fmp4(buff, keyframe)
 			unlock()
 
-			if err != nil {
-				if !errors.Is(err, io.EOF) {
-					t.log.L(`E: `, err)
-					//丢弃所有数据
-					buf.Reset()
-					e = err
-					return
-					// }
-				} else {
-					keyframe.Reset()
-					last_available_offset = 0
-				}
+			if err != nil && !errors.Is(err, io.EOF) {
+				t.log.L(`E: `, err)
+				//丢弃所有数据
+				buf.Reset()
+				e = err
+				return
 			}
 
 			// no, _ := download_seq[k].getNo()
@@ -1012,9 +1056,9 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 
 			// 传递关键帧
 			if !keyframe.IsEmpty() {
-				buf, unlock := keyframe.GetPureBufRLock()
-				t.bootBufPush(buf)
-				t.Stream_msg.PushLock_tag(`data`, buf)
+				keyframeBuf, unlock := keyframe.GetPureBufRLock()
+				t.bootBufPush(keyframeBuf)
+				t.Stream_msg.PushLock_tag(`data`, keyframeBuf)
 				unlock()
 				keyframe.Reset()
 				t.frameCount += 1
@@ -1045,44 +1089,6 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 				return
 			}
 		}
-
-		// 获取解析m3u8
-		var m4s_links, err = t.fetchParseM3U8(lastM4s, fmp4ListUpdateTo)
-		if err != nil {
-			t.log.L(`E: `, `获取解析m3u8发生错误`, err)
-			// if len(download_seq) != 0 {
-			// 	continue
-			// }
-			if !reqf.IsTimeout(err) {
-				e = err
-				break
-			}
-		}
-
-		// 避免过于频繁的请求
-		fmp4Count += len(m4s_links)
-		if dru := time.Since(startT).Seconds(); dru > fmp4ListUpdateTo && fmp4Count == 0 {
-			e = fmt.Errorf("%.2f 秒未产出切片", dru)
-			t.log.L("E: ", "获取解析m3u8发生错误", e)
-			break
-		} else {
-			time.Sleep(time.Second * time.Duration(dru/float64(fmp4Count+1)+1))
-		}
-
-		// 设置最后的切片
-		for i := len(m4s_links) - 1; i >= 0; i-- {
-			// fmt.Println("set last m4s", m4s_links[i].Base)
-			if !m4s_links[i].isInit() && len(m4s_links[i].Base) > 0 {
-				if lastM4s == nil {
-					lastM4s = &m4s_link_item{}
-				}
-				m4s_links[i].copyTo(lastM4s)
-				break
-			}
-		}
-
-		// 添加新切片到下载队列
-		download_seq = append(download_seq, m4s_links...)
 	}
 
 	return

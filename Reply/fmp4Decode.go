@@ -9,6 +9,7 @@ import (
 
 	"github.com/dustin/go-humanize"
 	F "github.com/qydysky/bili_danmu/F"
+	perrors "github.com/qydysky/part/errors"
 	slice "github.com/qydysky/part/slice"
 )
 
@@ -79,6 +80,13 @@ type Fmp4Decoder struct {
 	AVTDiff float64 // 音视频时间戳容差
 }
 
+func NewFmp4Decoder() *Fmp4Decoder {
+	return &Fmp4Decoder{
+		traks: make(map[int]*trak),
+		buf:   slice.New[byte](),
+	}
+}
+
 func (t *Fmp4Decoder) Init_fmp4(buf []byte) (b []byte, err error) {
 	var ftypI, ftypE, moovI, moovE int
 
@@ -105,9 +113,6 @@ func (t *Fmp4Decoder) Init_fmp4(buf []byte) (b []byte, err error) {
 		[]string{"tkhd", "mdia", "mdhd", "hdlr"},
 		func(m []ie) (bool, error) {
 			tackId := int(F.Btoi(buf, m[0].i+20, 4))
-			if t.traks == nil {
-				t.traks = make(map[int]*trak)
-			}
 			t.traks[tackId] = &trak{
 				trackID: tackId,
 				// firstTimeStamp: -1,
@@ -132,19 +137,28 @@ func (t *Fmp4Decoder) Init_fmp4(buf []byte) (b []byte, err error) {
 	return b, nil
 }
 
+var (
+	ErrBufTooLarge = errors.New("ErrBufTooLarge")
+	ErrMisTraks    = errors.New("ErrMisTraks")
+)
+
 func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) (cu int, err error) {
 	if len(buf) > humanize.MByte*100 {
-		err = errors.New("buf too large")
-		return
+		return 0, ErrBufTooLarge
 	}
 	if len(t.traks) == 0 {
-		err = errors.New("未初始化traks")
-		return
-	}
-	if t.buf == nil {
-		t.buf = slice.New[byte]()
+		return 0, ErrMisTraks
 	}
 	t.buf.Reset()
+	keyframe.Reset()
+
+	defer func() {
+		if err != nil {
+			keyframe.Reset()
+			cu = 0
+		}
+	}()
+
 	var (
 		haveKeyframe bool
 		bufModified  = t.buf.GetModified()
@@ -253,18 +267,18 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 							t.buf.Reset()
 							haveKeyframe = false
 							cu = m[0].i
-							return false, nil
+							return false, e
 						}
 					}
-					if nil != check_set_maxT(ts, func(_ timeStamp) error {
+					if e := check_set_maxT(ts, func(_ timeStamp) error {
 						return errors.New("skip")
 					}, func(_ timeStamp) error {
 						t.buf.Reset()
 						haveKeyframe = false
 						cu = m[0].i
 						return errors.New("skip")
-					}) {
-						return false, nil
+					}); e != nil {
+						return false, e
 					}
 				}
 
@@ -273,7 +287,9 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 				//deal frame
 				if keyframeMoof {
 					if v, e := t.buf.HadModified(bufModified); e == nil && v && !t.buf.IsEmpty() {
-						_ = t.buf.AppendTo(keyframe)
+						if e := t.buf.AppendTo(keyframe); e != nil {
+							return false, e
+						}
 						cu = m[0].i
 						t.buf.Reset()
 					}
@@ -282,7 +298,9 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 					cu = m[6].e
 				}
 				if haveKeyframe {
-					_ = t.buf.Append(buf[m[0].i:m[6].e])
+					if e := t.buf.Append(buf[m[0].i:m[6].e]); e != nil {
+						return false, e
+					}
 				}
 				return false, nil
 			},
@@ -304,7 +322,7 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 							t.buf.Reset()
 							haveKeyframe = false
 							cu = m[0].i
-							return false, nil
+							return false, e
 						}
 					}
 					switch handlerType {
@@ -313,15 +331,15 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 					case 's':
 						audio = ts
 					}
-					if nil != check_set_maxT(ts, func(_ timeStamp) error {
+					if e := check_set_maxT(ts, func(_ timeStamp) error {
 						return errors.New("skip")
 					}, func(_ timeStamp) error {
 						t.buf.Reset()
 						haveKeyframe = false
 						cu = m[0].i
 						return errors.New("skip")
-					}) {
-						return false, nil
+					}); e != nil {
+						return false, e
 					}
 				}
 				{
@@ -332,7 +350,7 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 							t.buf.Reset()
 							haveKeyframe = false
 							cu = m[0].i
-							return false, nil
+							return false, e
 						}
 					}
 					switch handlerType {
@@ -341,15 +359,15 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 					case 's':
 						audio = ts
 					}
-					if nil != check_set_maxT(ts, func(_ timeStamp) error {
+					if e := check_set_maxT(ts, func(_ timeStamp) error {
 						return errors.New("skip")
 					}, func(_ timeStamp) error {
 						t.buf.Reset()
 						haveKeyframe = false
 						cu = m[0].i
 						return errors.New("skip")
-					}) {
-						return false, nil
+					}); e != nil {
+						return false, e
 					}
 				}
 
@@ -365,7 +383,9 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 				//deal frame
 				if keyframeMoof {
 					if v, e := t.buf.HadModified(bufModified); e == nil && v && !t.buf.IsEmpty() {
-						_ = t.buf.AppendTo(keyframe)
+						if e := t.buf.AppendTo(keyframe); e != nil {
+							return false, e
+						}
 						cu = m[0].i
 						t.buf.Reset()
 					}
@@ -374,7 +394,9 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 					cu = m[10].e
 				}
 				if haveKeyframe {
-					_ = t.buf.Append(buf[m[0].i:m[10].e])
+					if e := t.buf.Append(buf[m[0].i:m[10].e]); e != nil {
+						return false, e
+					}
 				}
 				return false, nil
 			}})
@@ -413,6 +435,11 @@ func deals(ies []ie, boxNames [][]string, fs []func([]ie) (breakloop bool, e err
 	return
 }
 
+var (
+	ErrMisBox     = perrors.New("decode", "ErrMisBox")
+	ErrCantResync = perrors.New("decode")
+)
+
 func decode(buf []byte, reSyncboxName string) (m []ie, err error) {
 	var cu int
 
@@ -421,7 +448,7 @@ func decode(buf []byte, reSyncboxName string) (m []ie, err error) {
 		if E != nil {
 			if errors.Is(E, io.EOF) {
 				if len(m) == 0 {
-					err = errors.New("未找到box")
+					err = ErrMisBox
 				}
 				return
 			}
@@ -431,7 +458,7 @@ func decode(buf []byte, reSyncboxName string) (m []ie, err error) {
 				m = m[:0]
 				continue
 			}
-			err = errors.New(E.Error() + " > 未能reSync")
+			err = ErrCantResync.WithReason(E.Error() + "> 未能reSync")
 			return
 		}
 
@@ -445,13 +472,17 @@ func decode(buf []byte, reSyncboxName string) (m []ie, err error) {
 	return
 }
 
+var (
+	ErrUnkownBox = perrors.New("ErrUnkownBox")
+)
+
 func searchBox(buf []byte, cu *int) (boxName string, i int, e int, err error) {
 	i = *cu
 	e = i + int(F.Btoi(buf, *cu, 4))
 	boxName = string(buf[*cu+4 : *cu+8])
 	isPureBoxOrNeedSkip, ok := boxs[boxName]
 	if !ok {
-		err = errors.New("未知包: " + boxName)
+		err = ErrUnkownBox.WithReason("未知包: " + boxName)
 	} else if e > len(buf) {
 		err = io.EOF
 	} else if isPureBoxOrNeedSkip {
