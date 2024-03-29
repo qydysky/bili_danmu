@@ -15,6 +15,7 @@ import (
 	"os"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -388,6 +389,13 @@ func (t *Common) Init() *Common {
 					gcAvgS = time.Since(t.StartT).Seconds() / float64(memStats.NumGC)
 				}
 
+				streams := make(map[int]any)
+
+				StreamO.Range(func(key, value any) bool {
+					streams[key.(int)] = value
+					return true
+				})
+
 				reqState := t.ReqPool.State()
 
 				ResStruct{0, "ok", map[string]any{
@@ -416,7 +424,7 @@ func (t *Common) Init() *Common {
 							"gcCPUFractionPpm": float64(int(memStats.GCCPUFraction*100000000)) / 100,
 							"gcAvgS":           float64(int(gcAvgS*100)) / 100,
 						},
-						"common": t,
+						"common": streams,
 					},
 				},
 				}.Write(w)
@@ -556,6 +564,11 @@ func (t *Common) loadConf(customConf string) error {
 }
 
 var C = new(Common).Init()
+
+// StreamRec
+// fmp4
+// https://datatracker.ietf.org/doc/html/draft-pantos-http-live-streaming
+var StreamO = new(sync.Map)
 
 // 消息队列
 type Danmu_Main_mq_item struct {

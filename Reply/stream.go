@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/md5"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -154,6 +155,10 @@ func (link *m4s_link_item) download(reqPool *pool.Buf[reqf.Req], reqConfig reqf.
 		link.status = 2 // 设置切片状态为下载完成
 		return nil
 	}
+}
+
+func (t *M4SStream) MarshalJSON() ([]byte, error) {
+	return json.MarshalIndent(t.common, "", "    ")
 }
 
 func (t *M4SStream) getM4s() (p *m4s_link_item) {

@@ -271,18 +271,14 @@ func dtos(t time.Duration) string {
 	return fmt.Sprintf("%d:%02d:%02d.%02d", int(math.Floor(t.Hours())), M, S, Ns)
 }
 
-// fmp4
-// https://datatracker.ietf.org/doc/html/draft-pantos-http-live-streaming
-var streamO = new(sync.Map)
-
 // 获取实例的Common
 func StreamOCommon(roomid int) (array []*c.Common) {
 	if roomid != -1 { //返回特定房间
-		if v, ok := streamO.Load(roomid); ok {
+		if v, ok := c.StreamO.Load(roomid); ok {
 			return []*c.Common{v.(*M4SStream).Common()}
 		}
 	} else { //返回所有
-		streamO.Range(func(_, v interface{}) bool {
+		c.StreamO.Range(func(_, v interface{}) bool {
 			array = append(array, v.(*M4SStream).Common())
 			return true
 		})
@@ -292,7 +288,7 @@ func StreamOCommon(roomid int) (array []*c.Common) {
 
 // 获取实例的录制状态
 func StreamOStatus(roomid int) (Islive bool) {
-	v, ok := streamO.Load(roomid)
+	v, ok := c.StreamO.Load(roomid)
 	return ok && (!pctx.Done(v.(*M4SStream).Status) || v.(*M4SStream).exitSign.Islive())
 }
 
@@ -313,13 +309,13 @@ func StreamOStart(roomid int) {
 	//实例回调，避免重复录制
 	tmp.Callback_start = func(ms *M4SStream) error {
 		//流服务添加
-		if _, ok := streamO.LoadOrStore(ms.common.Roomid, tmp); ok {
+		if _, ok := c.StreamO.LoadOrStore(ms.common.Roomid, tmp); ok {
 			return fmt.Errorf("已存在此直播间(%d)录制", ms.common.Roomid)
 		}
 		return nil
 	}
 	tmp.Callback_stop = func(ms *M4SStream) {
-		streamO.Delete(ms.common.Roomid) //流服务去除
+		c.StreamO.Delete(ms.common.Roomid) //流服务去除
 	}
 	tmp.Start()
 }
@@ -332,37 +328,37 @@ func StreamOStart(roomid int) {
 func StreamOStop(roomid int) {
 	switch roomid {
 	case -2: // 其他房间
-		streamO.Range(func(_roomid, v interface{}) bool {
+		c.StreamO.Range(func(_roomid, v interface{}) bool {
 			if c.C.Roomid == _roomid {
 				return true
 			}
 			if !pctx.Done(v.(*M4SStream).Status) {
 				v.(*M4SStream).Stop()
 			}
-			streamO.Delete(_roomid)
+			c.StreamO.Delete(_roomid)
 			return true
 		})
 	case -1: // 所有房间
-		streamO.Range(func(k, v interface{}) bool {
+		c.StreamO.Range(func(k, v interface{}) bool {
 			if !pctx.Done(v.(*M4SStream).Status) {
 				v.(*M4SStream).Stop()
 			}
-			streamO.Delete(k)
+			c.StreamO.Delete(k)
 			return true
 		})
 	default: // 针对某房间
-		if v, ok := streamO.Load(roomid); ok {
+		if v, ok := c.StreamO.Load(roomid); ok {
 			if !pctx.Done(v.(*M4SStream).Status) {
 				v.(*M4SStream).Stop()
 			}
-			streamO.Delete(roomid)
+			c.StreamO.Delete(roomid)
 		}
 	}
 }
 
 // 实例切断
 func StreamOCut(roomid int) (setTitle func(string)) {
-	if v, ok := streamO.Load(roomid); ok {
+	if v, ok := c.StreamO.Load(roomid); ok {
 		if !pctx.Done(v.(*M4SStream).Status) {
 			v.(*M4SStream).Cut()
 			flog.L(`I: `, `已切片 `+strconv.Itoa(roomid))
@@ -1254,7 +1250,7 @@ func init() {
 
 			// 获取当前房间的
 			var currentStreamO *M4SStream
-			streamO.Range(func(key, value interface{}) bool {
+			c.StreamO.Range(func(key, value interface{}) bool {
 				if key != nil && c.C.Roomid == key.(int) {
 					currentStreamO = value.(*M4SStream)
 					return false
@@ -1495,7 +1491,7 @@ func init() {
 
 			// 获取当前房间的
 			var currentStreamO *M4SStream
-			streamO.Range(func(key, value interface{}) bool {
+			c.StreamO.Range(func(key, value interface{}) bool {
 				if key != nil && c.C.Roomid == key.(int) {
 					currentStreamO = value.(*M4SStream)
 					return false
