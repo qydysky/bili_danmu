@@ -158,6 +158,8 @@ func (link *m4s_link_item) download(reqPool *pool.Buf[reqf.Req], reqConfig reqf.
 }
 
 func (t *M4SStream) MarshalJSON() ([]byte, error) {
+	t.common.Rev = c.C.Rev
+	t.common.Watched = c.C.Watched
 	return json.MarshalIndent(t.common, "", "    ")
 }
 
