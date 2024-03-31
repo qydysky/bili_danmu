@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	c "github.com/qydysky/bili_danmu/CV"
@@ -35,7 +36,8 @@ var api_limit = limit.New(2, "1s", "30s") //频率限制2次/s，最大等待时
 
 type GetFunc struct {
 	*c.Common
-	l sync.RWMutex
+	count atomic.Int32
+	l     sync.RWMutex
 }
 
 type cacheItem struct {
@@ -49,6 +51,14 @@ func Get(c *c.Common) *GetFunc {
 
 func (c *GetFunc) Get(key string) {
 	apilog := apilog.Base_add(`Get`)
+
+	current := c.count.Add(1)
+	defer c.count.Add(-1)
+
+	if current > 10 {
+		apilog.L(`E: `, `max loop`)
+		return
+	}
 
 	if api_limit.TO() {
 		return
@@ -219,7 +229,9 @@ func (c *GetFunc) Get(key string) {
 		}
 	)
 
-	if fList, ok := api_can_get[key]; ok {
+	if fList, ok := api_can_get[key]; !ok {
+		apilog.L(`E: `, `no api`, key)
+	} else {
 		for _, fItem := range fList {
 			apilog.Log_show_control(false).L(`T: `, `Get`, key)
 
@@ -254,13 +266,17 @@ func (c *GetFunc) Get(key string) {
 					continue
 				}
 			}
+
 			if checkf, ok := check[key]; ok {
 				c.l.RLock()
 				if checkf() {
 					c.l.RUnlock()
 					break
+				} else {
+					c.l.RUnlock()
+					apilog.L(`W: `, `check fail`, key)
+					c.Get(key)
 				}
-				c.l.RUnlock()
 			}
 		}
 	}
