@@ -11972,7 +11972,7 @@ __webpack_require__.r(__webpack_exports__);
      */
      function ws(player) {
         if (window["WebSocket"]) {
-            var conn = new WebSocket("ws://" + window.location.host + window.location.pathname+"ws?&ref="+new URL(window.location.href).searchParams.get("ref"));
+            var conn = new WebSocket("ws://" + window.location.host + window.location.pathname+"ws?ref="+new URL(window.location.href).searchParams.get("ref"));
             let interval_handle = undefined;
             conn.onclose = function (evt) {
                 clearInterval(interval_handle)
@@ -12008,6 +12008,12 @@ __webpack_require__.r(__webpack_exports__);
         if(player != undefined && player.destroy != undefined)player.destroy();
         player = new (artplayer__WEBPACK_IMPORTED_MODULE_0___default())(config);
         ws(player);
+        player.on('ready', () => {
+            player.autoHeight();
+        });
+        player.on('resize', () => {
+            player.autoHeight();
+        });
         player.on('video:play', (...args) => {
             if(config.conn != undefined)config.conn.send(`play`);
         });
