@@ -945,6 +945,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 		// 下载切片
 		for {
 			downOk := true
+			dCount := 0
 			for i := 0; i < len(download_seq); i++ {
 				// 已下载但还未移除的切片
 				if download_seq[i].status == 2 {
@@ -952,10 +953,11 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 				}
 
 				// 每次最多只下载10个切片
-				if i >= 10 {
+				if dCount >= 10 {
 					t.log.L(`T: `, `延迟切片下载 数量(`, len(download_seq)-i, `)`)
 					break
 				}
+				dCount += 1
 
 				done := downloadLimit.Block()
 
@@ -1002,21 +1004,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 		}
 
 		// 传递已下载切片
-		for k := 0; k < len(download_seq); k++ {
-			// v := download_seq[k]
-
-			// if download_seq[k].status != 2 {
-			// 	if download_seq[k].tryDownCount >= 3 {
-			// 		//下载了2次，任未下载成功，忽略此块
-			// 		t.putM4s(download_seq...)
-			// 		//丢弃所有数据
-			// 		buf.Reset()
-			// 		t.log.L(`E: `, `切片下载失败`, download_seq[k].err)
-			// 		return errors.New(`切片下载失败` + download_seq[k].err.Error())
-			// 	} else {
-			// 		break
-			// 	}
-			// }
+		for k := 0; k < len(download_seq) && download_seq[k].status == 2; k++ {
 
 			if download_seq[k].isInit() {
 				{
@@ -1371,7 +1359,7 @@ func (t *M4SStream) PusherToFile(contextC context.Context, filepath string, star
 	defer done()
 
 	_, _ = f.Write(t.getFirstBuf(), true)
-	cancelRec := t.Stream_msg.Pull_tag_async(map[string]func([]byte) bool{
+	cancelRec := t.Stream_msg.Pull_tag_async_order(map[string]func([]byte) bool{
 		`data`: func(b []byte) bool {
 			select {
 			case <-contextC.Done():
@@ -1458,7 +1446,7 @@ func (t *M4SStream) PusherToHttp(conn net.Conn, w http.ResponseWriter, r *http.R
 		return err
 	}
 
-	var cancelRec = t.Stream_msg.Pull_tag_async(map[string]func([]byte) bool{
+	var cancelRec = t.Stream_msg.Pull_tag_async_order(map[string]func([]byte) bool{
 		`data`: func(b []byte) bool {
 			select {
 			case <-r.Context().Done():
@@ -1469,8 +1457,6 @@ func (t *M4SStream) PusherToHttp(conn net.Conn, w http.ResponseWriter, r *http.R
 				return true
 			}
 			if n, err := w.Write(b); err != nil || n == 0 {
-				return true
-			} else if e := conn.SetWriteDeadline(time.Now().Add(time.Second * 10)); e != nil {
 				return true
 			}
 			return false
