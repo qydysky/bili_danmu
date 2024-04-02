@@ -897,7 +897,9 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 		{
 			// 防止过快的下载
 			dru := time.Since(startT).Seconds()
-			if wait := float64(fmp4Count) - dru - 1; wait > 2 {
+			if wait := float64(fmp4Count) - dru - 1; wait > 5 {
+				time.Sleep(time.Second * 5)
+			} else if wait > 2 {
 				time.Sleep(time.Duration(wait) * time.Second)
 			} else {
 				time.Sleep(time.Second * 2)
@@ -1359,7 +1361,7 @@ func (t *M4SStream) PusherToFile(contextC context.Context, filepath string, star
 	defer done()
 
 	_, _ = f.Write(t.getFirstBuf(), true)
-	cancelRec := t.Stream_msg.Pull_tag_async_order(map[string]func([]byte) bool{
+	cancelRec := t.Stream_msg.Pull_tag(map[string]func([]byte) bool{
 		`data`: func(b []byte) bool {
 			select {
 			case <-contextC.Done():
@@ -1446,7 +1448,7 @@ func (t *M4SStream) PusherToHttp(conn net.Conn, w http.ResponseWriter, r *http.R
 		return err
 	}
 
-	var cancelRec = t.Stream_msg.Pull_tag_async_order(map[string]func([]byte) bool{
+	var cancelRec = t.Stream_msg.Pull_tag(map[string]func([]byte) bool{
 		`data`: func(b []byte) bool {
 			select {
 			case <-r.Context().Done():

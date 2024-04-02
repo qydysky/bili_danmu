@@ -37,8 +37,8 @@ github.com/ncruces/go-strftime v0.1.9 h1:bY0MQC28UADQmHmaF5dgpLmImcShSi2kHU9XLdh
 github.com/ncruces/go-strftime v0.1.9/go.mod h1:Fwc5htZGVVkseilnfgOVb9mKy6w1naJmn9CehxcKcls=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/qydysky/part v0.28.20240402154002 h1:hx1PnsXysltox5xSb2asl3I9bY87ar3LF78lcFgVg8Q=
-github.com/qydysky/part v0.28.20240402154002/go.mod h1:XytV5dI1Y7+qvjhsa2TMvi55RBZQQf0LCDYQ1kUCYqM=
+github.com/qydysky/part v0.28.20240402171049 h1:gy306j9TM3pM+MOGAZWXna62IAPhfEBj754orMVvEOo=
+github.com/qydysky/part v0.28.20240402171049/go.mod h1:XytV5dI1Y7+qvjhsa2TMvi55RBZQQf0LCDYQ1kUCYqM=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec h1:W09IVJc94icq4NjY3clb7Lk8O1qJ8BdBEF8z0ibU0rE=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec/go.mod h1:qqbHyh8v60DhA7CoWK5oRCqLrMHRGoxYCSS9EjAz6Eo=
 github.com/shirou/gopsutil v3.21.11+incompatible h1:+1+c1VGhc88SSonWP6foOcLhvnKlUeu/erjjvaPEYiI=
