@@ -19,12 +19,15 @@ import (
 	"github.com/skratchdot/open-golang/open"
 	"golang.org/x/exp/slices"
 
+	_ "github.com/qydysky/biliApi"
 	p "github.com/qydysky/part"
+	cmp "github.com/qydysky/part/component2"
 	file "github.com/qydysky/part/file"
 	funcCtrl "github.com/qydysky/part/funcCtrl"
 	g "github.com/qydysky/part/get"
 	pio "github.com/qydysky/part/io"
 	limit "github.com/qydysky/part/limit"
+	pool "github.com/qydysky/part/pool"
 	reqf "github.com/qydysky/part/reqf"
 
 	"github.com/mdp/qrterminal/v3"
@@ -33,6 +36,22 @@ import (
 
 var apilog = c.C.Log.Base(`api`)
 var api_limit = limit.New(2, "1s", "30s") //频率限制2次/s，最大等待时间30s
+
+type BiliApi interface {
+	SetProxy(proxy string)
+	SetReqPool(pool *pool.Buf[reqf.Req])
+	SetCookies(cookies []*http.Cookie)
+	LoginQrCode() (err error, imgUrl string, QrcodeKey string)
+	LoginQrPoll(QrcodeKey string) (err error, cookies []*http.Cookie)
+	GetRoomBaseInfo(Roomid int) (err error, upUid int, uname string, parentAreaID int, areaID int, title string, liveStartTime time.Time, liveing bool, roomID int)
+	GetInfoByRoom(Roomid int) (err error, upUid int, uname string, parentAreaID int, areaID int, title string, liveStartTime time.Time, liveing bool, roomID int, GuardNum int, Note string, Locked bool)
+}
+
+var biliApi = cmp.Get(cmp.PkgId(), func(ba BiliApi) BiliApi {
+	ba.SetProxy(c.C.Proxy)
+	ba.SetReqPool(c.C.ReqPool)
+	return ba
+})
 
 type GetFunc struct {
 	*c.Common
@@ -232,11 +251,11 @@ func (c *GetFunc) Get(key string) {
 	if fList, ok := api_can_get[key]; !ok {
 		apilog.L(`E: `, `no api`, key)
 	} else {
-		for _, fItem := range fList {
+		for i := 0; i < len(fList); i++ {
 			apilog.Log_show_control(false).L(`T: `, `Get`, key)
 
 			c.l.Lock()
-			missKey := fItem()
+			missKey := fList[i]()
 			c.l.Unlock()
 
 			if len(missKey) > 0 {
@@ -258,7 +277,7 @@ func (c *GetFunc) Get(key string) {
 				}
 
 				c.l.Lock()
-				missKey := fItem()
+				missKey := fList[i]()
 				c.l.Unlock()
 
 				if len(missKey) > 0 {
@@ -484,61 +503,19 @@ func (c *GetFunc) getRoomBaseInfo() (missKey []string) {
 		return
 	}
 
-	Roomid := strconv.Itoa(c.Roomid)
-
-	{ //使用其他api
-		req := c.Common.ReqPool.Get()
-		defer c.Common.ReqPool.Put(req)
-		if err := req.Reqf(reqf.Rval{
-			Url: "https://api.live.bilibili.com/xlive/web-room/v1/index/getRoomBaseInfo?req_biz=link-center&room_ids=" + Roomid,
-			Header: map[string]string{
-				`Referer`: "https://link.bilibili.com/p/center/index",
-			},
-			Proxy:   c.Proxy,
-			Timeout: 10 * 1000,
-		}); err != nil {
-			apilog.L(`E: `, err)
-			return
-		}
-
-		//Roominfores
-		{
-			var j J.GetRoomBaseInfo
-
-			if e := json.Unmarshal(req.Respon, &j); e != nil {
-				apilog.L(`E: `, e)
-				return
-			} else if j.Code != 0 {
-				apilog.L(`E: `, j.Message)
-				return
-			}
-
-			for k, data := range j.Data.ByRoomIds {
-				if Roomid == k || Roomid == strconv.Itoa(data.ShortID) {
-					//主播id
-					c.UpUid = data.UID
-					//子分区
-					c.AreaID = data.AreaID
-					//分区
-					c.ParentAreaID = data.ParentAreaID
-					//直播间标题
-					c.Title = data.Title
-					//直播开始时间
-					if ti, e := time.Parse(time.DateTime, data.LiveTime); e != nil && !ti.IsZero() {
-						c.Live_Start_Time = ti
-					}
-					//是否在直播
-					c.Liveing = data.LiveStatus == 1
-					//主播名
-					c.Uname = data.Uname
-					//房间id
-					if data.RoomID != 0 {
-						c.Roomid = data.RoomID
-					}
-					break
-				}
-			}
-		}
+	//使用其他api
+	if err, upUid, uname, parentAreaID, areaID, title, liveStartTime, liveing, roomID := biliApi.GetRoomBaseInfo(c.Roomid); err != nil {
+		apilog.L(`E: `, err)
+		return
+	} else {
+		c.UpUid = upUid
+		c.Uname = uname
+		c.ParentAreaID = parentAreaID
+		c.AreaID = areaID
+		c.Title = title
+		c.Live_Start_Time = liveStartTime
+		c.Liveing = liveing
+		c.Roomid = roomID
 	}
 
 	c.Cache.Store(fkey, cacheItem{
@@ -563,71 +540,22 @@ func (c *GetFunc) getInfoByRoom() (missKey []string) {
 		return
 	}
 
-	Roomid := strconv.Itoa(c.Roomid)
-
-	{ //使用其他api
-		req := c.Common.ReqPool.Get()
-		defer c.Common.ReqPool.Put(req)
-		if err := req.Reqf(reqf.Rval{
-			Url: "https://api.live.bilibili.com/xlive/web-room/v1/index/getInfoByRoom?room_id=" + Roomid,
-			Header: map[string]string{
-				`Referer`: "https://live.bilibili.com/" + Roomid,
-			},
-			Proxy:   c.Proxy,
-			Timeout: 10 * 1000,
-			Retry:   2,
-		}); err != nil {
-			apilog.L(`E: `, err)
-			return
-		}
-
-		//Roominfores
-		{
-			var j J.Roominfores
-
-			if e := json.Unmarshal(req.Respon, &j); e != nil {
-				apilog.L(`E: `, e)
-				return
-			} else if j.Code != 0 {
-				apilog.L(`E: `, j.Message)
-				return
-			}
-
-			//直播开始时间
-			if j.Data.RoomInfo.LiveStartTime != 0 {
-				c.Live_Start_Time = time.Unix(int64(j.Data.RoomInfo.LiveStartTime), 0)
-			}
-			//是否在直播
-			c.Liveing = j.Data.RoomInfo.LiveStatus == 1
-			//直播间标题
-			c.Title = j.Data.RoomInfo.Title
-			//主播名
-			c.Uname = j.Data.AnchorInfo.BaseInfo.Uname
-			//分区
-			c.ParentAreaID = j.Data.RoomInfo.ParentAreaID
-			//子分区
-			c.AreaID = j.Data.RoomInfo.AreaID
-			//主播id
-			c.UpUid = j.Data.RoomInfo.UID
-			//房间id
-			if j.Data.RoomInfo.RoomID != 0 {
-				c.Roomid = j.Data.RoomInfo.RoomID
-			}
-			//舰长数
-			c.GuardNum = j.Data.GuardInfo.Count
-			//分区排行
-			c.Note = j.Data.PopularRankInfo.RankName + " "
-			if rank := j.Data.PopularRankInfo.Rank; rank > 50 || rank == 0 {
-				c.Note += "100+"
-			} else {
-				c.Note += strconv.Itoa(rank)
-			}
-			//直播间是否被封禁
-			c.Locked = j.Data.RoomInfo.LockStatus == 1
-			if c.Locked {
-				apilog.L(`W: `, "直播间封禁中")
-			}
-		}
+	//使用其他api
+	if err, upUid, uname, parentAreaID, areaID, title, liveStartTime, liveing, roomID, GuardNum, Note, Locked := biliApi.GetInfoByRoom(c.Roomid); err != nil {
+		apilog.L(`E: `, err)
+		return
+	} else {
+		c.UpUid = upUid
+		c.Uname = uname
+		c.ParentAreaID = parentAreaID
+		c.AreaID = areaID
+		c.Title = title
+		c.Live_Start_Time = liveStartTime
+		c.Liveing = liveing
+		c.Roomid = roomID
+		c.GuardNum = GuardNum
+		c.Note = Note
+		c.Locked = Locked
 	}
 
 	c.Cache.Store(fkey, cacheItem{
@@ -1336,6 +1264,7 @@ func (t *GetFunc) Get_cookie() (missKey []string) {
 			for k, v := range reqf.Cookies_String_2_Map(cookieString) { //cookie存入全局变量syncmap
 				t.Cookie.Store(k, v)
 			}
+
 			if miss := CookieCheck([]string{
 				`bili_jct`,
 				`DedeUserID`,
@@ -1343,6 +1272,7 @@ func (t *GetFunc) Get_cookie() (missKey []string) {
 				if v, e := t.GetNav(); e != nil {
 					apilog.L(`E: `, e)
 				} else if v.Data.IsLogin {
+					biliApi.SetCookies(reqf.Cookies_String_2_List(cookieString))
 					apilog.L(`I: `, `已登录`)
 					return
 				}
@@ -1361,40 +1291,13 @@ func (t *GetFunc) Get_cookie() (missKey []string) {
 
 	var img_url string
 	var oauth string
-	{ //获取二维码
-		r := t.ReqPool.Get()
-		defer t.ReqPool.Put(r)
-		if e := r.Reqf(reqf.Rval{
-			Url:     `https://passport.bilibili.com/x/passport-login/web/qrcode/generate?source=main-fe-header`,
-			Proxy:   t.Proxy,
-			Timeout: 10 * 1000,
-			Retry:   2,
-		}); e != nil {
-			apilog.L(`E: `, e)
-			return
-		}
-		var res J.QrcodeLogin
-		if e := json.Unmarshal(r.Respon, &res); e != nil {
-			apilog.L(`E: `, e)
-			return
-		}
-		if res.Code != 0 {
-			apilog.L(`E: `, `code != 0`)
-			return
-		}
-
-		if res.Data.URL == `` {
-			apilog.L(`E: `, `Data.URL == ""`)
-			return
-		} else {
-			img_url = res.Data.URL
-		}
-		if res.Data.QrcodeKey == `` {
-			apilog.L(`E: `, `Data.QrcodeKey == ""`)
-			return
-		} else {
-			oauth = res.Data.QrcodeKey
-		}
+	//获取二维码
+	if err, imgUrl, QrcodeKey := biliApi.LoginQrCode(); err != nil {
+		apilog.L(`E: `, err)
+		return
+	} else {
+		img_url = imgUrl
+		oauth = QrcodeKey
 	}
 
 	//有新实例，退出
@@ -1422,13 +1325,20 @@ func (t *GetFunc) Get_cookie() (missKey []string) {
 			apilog.L(`W: `, `或打开链接扫码登录：`+t.Stream_url.String()+scanPath)
 		}
 
-		//show qr code in cmd
-		qrterminal.GenerateWithConfig(img_url, qrterminal.Config{
+		c := qrterminal.Config{
 			Level:     qrterminal.L,
 			Writer:    os.Stdout,
 			BlackChar: `  `,
 			WhiteChar: `OO`,
-		})
+		}
+		if white, ok := t.K_v.LoadV(`登陆二维码-白`).(string); ok && len(white) != 0 {
+			c.WhiteChar = white
+		}
+		if black, ok := t.K_v.LoadV(`登陆二维码-黑`).(string); ok && len(black) != 0 {
+			c.BlackChar = black
+		}
+		//show qr code in cmd
+		qrterminal.GenerateWithConfig(img_url, c)
 		apilog.L(`I: `, `手机扫命令行二维码登录。如不登录，修改配置文件"扫码登录"为false`)
 		time.Sleep(time.Second)
 	}
@@ -1456,33 +1366,15 @@ func (t *GetFunc) Get_cookie() (missKey []string) {
 				return
 			}
 
-			if e := r.Reqf(reqf.Rval{
-				Url: `https://passport.bilibili.com/x/passport-login/web/qrcode/poll?qrcode_key=` + oauth + `&source=main-fe-header`,
-				Header: map[string]string{
-					`Cookie`: reqf.Map_2_Cookies_String(Cookie),
-				},
-				Proxy:   t.Proxy,
-				Timeout: 10 * 1000,
-				Retry:   2,
-			}); e != nil {
-				apilog.L(`E: `, e)
+			if err, cookies := biliApi.LoginQrPoll(oauth); err != nil {
+				apilog.L(`E: `, err)
 				return
-			}
-
-			var res J.QrcodeLoginPoll
-
-			if e := json.Unmarshal(r.Respon, &res); e != nil {
-				apilog.L(`E: `, e.Error(), string(r.Respon))
-			}
-
-			if res.Code != 0 {
-				apilog.L(`W: `, res.Message)
-				return
-			} else if res.Data.Code == 0 {
-				apilog.L(`I: `, `登录，并保存了cookie`)
-				if e := save_cookie(r.Response.Cookies()); e != nil {
-					apilog.L(`E: `, e)
+			} else if len(cookies) != 0 {
+				if err := save_cookie(cookies); err != nil {
+					apilog.L(`E: `, err)
+					return
 				}
+				apilog.L(`I: `, `登录,并保存了cookie`)
 				return
 			}
 		}
@@ -2251,6 +2143,7 @@ func save_cookie(Cookies []*http.Cookie) error {
 		return true
 	})
 	CookieSet([]byte(reqf.Map_2_Cookies_String(Cookie)))
+	biliApi.SetCookies(Cookies)
 	return nil
 }
 
