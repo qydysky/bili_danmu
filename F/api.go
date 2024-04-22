@@ -27,7 +27,6 @@ import (
 	g "github.com/qydysky/part/get"
 	pio "github.com/qydysky/part/io"
 	limit "github.com/qydysky/part/limit"
-	pool "github.com/qydysky/part/pool"
 	reqf "github.com/qydysky/part/reqf"
 
 	"github.com/mdp/qrterminal/v3"
@@ -37,17 +36,7 @@ import (
 var apilog = c.C.Log.Base(`api`)
 var api_limit = limit.New(2, "1s", "30s") //频率限制2次/s，最大等待时间30s
 
-type BiliApi interface {
-	SetProxy(proxy string)
-	SetReqPool(pool *pool.Buf[reqf.Req])
-	SetCookies(cookies []*http.Cookie)
-	LoginQrCode() (err error, imgUrl string, QrcodeKey string)
-	LoginQrPoll(QrcodeKey string) (err error, cookies []*http.Cookie)
-	GetRoomBaseInfo(Roomid int) (err error, upUid int, uname string, parentAreaID int, areaID int, title string, liveStartTime time.Time, liveing bool, roomID int)
-	GetInfoByRoom(Roomid int) (err error, upUid int, uname string, parentAreaID int, areaID int, title string, liveStartTime time.Time, liveing bool, roomID int, GuardNum int, Note string, Locked bool)
-}
-
-var biliApi = cmp.Get(cmp.PkgId(), func(ba BiliApi) BiliApi {
+var biliApi = cmp.Get(cmp.PkgId("biliApi"), func(ba biliApiInter) biliApiInter {
 	ba.SetProxy(c.C.Proxy)
 	ba.SetReqPool(c.C.ReqPool)
 	return ba
@@ -504,18 +493,18 @@ func (c *GetFunc) getRoomBaseInfo() (missKey []string) {
 	}
 
 	//使用其他api
-	if err, upUid, uname, parentAreaID, areaID, title, liveStartTime, liveing, roomID := biliApi.GetRoomBaseInfo(c.Roomid); err != nil {
+	if err, res := biliApi.GetRoomBaseInfo(c.Roomid); err != nil {
 		apilog.L(`E: `, err)
 		return
 	} else {
-		c.UpUid = upUid
-		c.Uname = uname
-		c.ParentAreaID = parentAreaID
-		c.AreaID = areaID
-		c.Title = title
-		c.Live_Start_Time = liveStartTime
-		c.Liveing = liveing
-		c.Roomid = roomID
+		c.UpUid = res.UpUid
+		c.Uname = res.Uname
+		c.ParentAreaID = res.ParentAreaID
+		c.AreaID = res.AreaID
+		c.Title = res.Title
+		c.Live_Start_Time = res.LiveStartTime
+		c.Liveing = res.Liveing
+		c.Roomid = res.RoomID
 	}
 
 	c.Cache.Store(fkey, cacheItem{
@@ -541,21 +530,21 @@ func (c *GetFunc) getInfoByRoom() (missKey []string) {
 	}
 
 	//使用其他api
-	if err, upUid, uname, parentAreaID, areaID, title, liveStartTime, liveing, roomID, GuardNum, Note, Locked := biliApi.GetInfoByRoom(c.Roomid); err != nil {
+	if err, res := biliApi.GetInfoByRoom(c.Roomid); err != nil {
 		apilog.L(`E: `, err)
 		return
 	} else {
-		c.UpUid = upUid
-		c.Uname = uname
-		c.ParentAreaID = parentAreaID
-		c.AreaID = areaID
-		c.Title = title
-		c.Live_Start_Time = liveStartTime
-		c.Liveing = liveing
-		c.Roomid = roomID
-		c.GuardNum = GuardNum
-		c.Note = Note
-		c.Locked = Locked
+		c.UpUid = res.UpUid
+		c.Uname = res.Uname
+		c.ParentAreaID = res.ParentAreaID
+		c.AreaID = res.AreaID
+		c.Title = res.Title
+		c.Live_Start_Time = res.LiveStartTime
+		c.Liveing = res.Liveing
+		c.Roomid = res.RoomID
+		c.GuardNum = res.GuardNum
+		c.Note = res.Note
+		c.Locked = res.Locked
 	}
 
 	c.Cache.Store(fkey, cacheItem{
@@ -578,65 +567,36 @@ func (t *GetFunc) getRoomPlayInfo() (missKey []string) {
 		return
 	}
 
-	Roomid := strconv.Itoa(t.Roomid)
-
 	//Roominitres
 	{
-		Cookie := make(map[string]string)
-		t.Cookie.Range(func(k, v interface{}) bool {
-			Cookie[k.(string)] = v.(string)
-			return true
-		})
-
-		req := t.Common.ReqPool.Get()
-		defer t.Common.ReqPool.Put(req)
-		if err := req.Reqf(reqf.Rval{
-			Url: "https://api.live.bilibili.com/xlive/web-room/v2/index/getRoomPlayInfo?protocol=0,1&format=0,1,2&codec=0,1,2&qn=0&platform=web&ptype=8&dolby=5&panorama=1&room_id=" + Roomid,
-			Header: map[string]string{
-				`Referer`: "https://live.bilibili.com/" + Roomid,
-				`Cookie`:  reqf.Map_2_Cookies_String(Cookie),
-			},
-			Proxy:   t.Proxy,
-			Timeout: 10 * 1000,
-			Retry:   2,
-		}); err != nil {
+		if err, res := biliApi.GetRoomPlayInfo(t.Roomid); err != nil {
 			apilog.L(`E: `, err)
 			return
-		}
+		} else {
+			//主播uid
+			t.UpUid = res.UpUid
+			//房间号（完整）
+			t.Roomid = res.RoomID
+			//直播开始时间
+			t.Live_Start_Time = res.LiveStartTime
+			//是否在直播
+			t.Liveing = res.Liveing
 
-		var j J.GetRoomPlayInfo
+			//未在直播，不获取直播流
+			if !t.Liveing {
+				t.Live_qn = 0
+				t.AcceptQn = t.Qn
+				t.Live = t.Live[:0]
+				return
+			}
 
-		if e := json.Unmarshal([]byte(req.Respon), &j); e != nil {
-			apilog.L(`E: `, e)
-			return
-		} else if j.Code != 0 {
-			apilog.L(`E: `, j.Message)
-			return
+			//当前直播流
+			var s = make([]J.StreamType, len(res.Streams))
+			for i := 0; i < len(res.Streams); i++ {
+				s[i] = J.StreamType(res.Streams[i])
+			}
+			t.configStreamType(s)
 		}
-
-		//主播uid
-		t.UpUid = j.Data.UID
-		//房间号（完整）
-		if j.Data.RoomID != 0 {
-			t.Roomid = j.Data.RoomID
-		}
-		//直播开始时间
-		if j.Data.LiveTime != 0 {
-			t.Live_Start_Time = time.Unix(int64(j.Data.LiveTime), 0)
-		}
-		//是否在直播
-		t.Liveing = j.Data.LiveStatus == 1
-
-		//未在直播，不获取直播流
-		if !t.Liveing {
-			t.Live_qn = 0
-			t.AcceptQn = t.Qn
-			t.Live = t.Live[:0]
-			return
-		}
-
-		//当前直播流
-		t.configStreamType(j.Data.PlayurlInfo.Playurl.Stream)
 	}
 	return
 }
