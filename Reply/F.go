@@ -1782,7 +1782,7 @@ func (t *SaveDanmuToDB) init(c *c.Common) {
 				db.SetMaxIdleConns(10)
 				t.db = db
 				if createok {
-					tx := psql.BeginTx[any](db, context.Background())
+					tx := psql.BeginTx[any](db, pctx.GenTOCtx(time.Second*5))
 					tx.Do(psql.SqlFunc[any]{Query: create, SkipSqlErr: true})
 					if _, e := tx.Fin(); e != nil {
 						c.Log.Base_add("保存弹幕至db").L(`E: `, e)
@@ -1817,7 +1817,7 @@ func (t *SaveDanmuToDB) danmu(item Danmu_item) {
 			})
 		}
 
-		tx := psql.BeginTx[any](t.db, context.Background())
+		tx := psql.BeginTx[any](t.db, pctx.GenTOCtx(time.Second*5))
 		tx.DoPlaceHolder(psql.SqlFunc[any]{Query: t.insert}, &DanmuI{
 			Date:   time.Now().Format(time.DateTime),
 			Unix:   time.Now().Unix(),

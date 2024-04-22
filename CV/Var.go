@@ -1,7 +1,6 @@
 package cv
 
 import (
-	"context"
 	"database/sql"
 	_ "embed"
 	"encoding/json"
@@ -21,7 +20,8 @@ import (
 
 	"github.com/dustin/go-humanize"
 	_ "github.com/go-sql-driver/mysql"
-	_ "github.com/lib/pq"
+	_ "github.com/jackc/pgx/v5/stdlib"
+	pctx "github.com/qydysky/part/ctx"
 	file "github.com/qydysky/part/file"
 	log "github.com/qydysky/part/log"
 	mq "github.com/qydysky/part/msgq"
@@ -467,17 +467,20 @@ func (t *Common) Init() *Common {
 			if dbnameok && urlok && insertok && dbname != "" && url != "" && insert != "" {
 				db, e := sql.Open(dbname, url)
 				if e != nil {
-					panic("保存日志至db打开连接错误" + e.Error())
+					panic("保存日志至db打开连接错误 " + e.Error())
 				}
 				if createok {
-					tx := psql.BeginTx[any](db, context.Background())
+					fmt.Println(11)
+					tx := psql.BeginTx[any](db, pctx.GenTOCtx(time.Second*5))
 					tx.Do(psql.SqlFunc[any]{
 						Query:      create,
 						SkipSqlErr: true,
 					})
-					_, _ = tx.Fin()
+					if _, e := tx.Fin(); e != nil {
+						panic("保存日志至db打开连接错误 " + e.Error())
+					}
 				}
-				t.Log = t.Log.LDB(db, insert)
+				t.Log = t.Log.LDB(db, insert, time.Second*5)
 			}
 		}
 

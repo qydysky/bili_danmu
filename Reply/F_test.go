@@ -5,9 +5,11 @@ import (
 	"database/sql"
 	"errors"
 	"testing"
+	"time"
 
 	c "github.com/qydysky/bili_danmu/CV"
 	videoInfo "github.com/qydysky/bili_danmu/Reply/F/videoInfo"
+	pctx "github.com/qydysky/part/ctx"
 	psql "github.com/qydysky/part/sql"
 )
 
@@ -31,7 +33,7 @@ func TestSaveDanmuToDB(t *testing.T) {
 	if db, e := sql.Open("sqlite", "danmu.sqlite3"); e != nil {
 		t.Fatal(e)
 	} else {
-		tx := psql.BeginTx[any](db, context.Background())
+		tx := psql.BeginTx[any](db, pctx.GenTOCtx(time.Second*5))
 		tx.Do(psql.SqlFunc[any]{Query: "select msg as Msg from danmu"})
 		tx.AfterQF(func(_ *any, rows *sql.Rows, e *error) {
 			type row struct {
