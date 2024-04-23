@@ -38,7 +38,7 @@ type biliApiInter interface {
 		Note          string
 		Locked        bool
 	})
-	GetRoomPlayInfo(Roomid int) (err error, res struct {
+	GetRoomPlayInfo(Roomid int, Qn int) (err error, res struct {
 		UpUid         int
 		RoomID        int
 		LiveStartTime time.Time
@@ -63,5 +63,9 @@ type biliApiInter interface {
 				}
 			}
 		}
+	})
+	GetDanmuInfo(Roomid int) (err error, res struct {
+		Token string
+		WSURL []string
 	})
 }

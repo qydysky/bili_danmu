@@ -569,7 +569,7 @@ func (t *GetFunc) getRoomPlayInfo() (missKey []string) {
 
 	//Roominitres
 	{
-		if err, res := biliApi.GetRoomPlayInfo(t.Roomid); err != nil {
+		if err, res := biliApi.GetRoomPlayInfo(t.Roomid, 0); err != nil {
 			apilog.L(`E: `, err)
 			return
 		} else {
@@ -614,91 +614,58 @@ func (t *GetFunc) getRoomPlayInfoByQn() (missKey []string) {
 		return
 	}
 
-	{
-		AcceptQn := []int{}
-		for k := range t.AcceptQn {
-			if k <= t.Live_want_qn {
-				AcceptQn = append(AcceptQn, k)
-			}
+	AcceptQn := []int{}
+	for k := range t.AcceptQn {
+		if k <= t.Live_want_qn {
+			AcceptQn = append(AcceptQn, k)
 		}
-		MaxQn := 0
-		for i := 0; len(AcceptQn) > i; i += 1 {
-			if AcceptQn[i] > MaxQn {
-				MaxQn = AcceptQn[i]
-			}
-		}
-		if MaxQn == 0 {
-			apilog.L(`W: `, "使用默认")
-		}
-		t.Live_qn = MaxQn
 	}
-
-	Roomid := strconv.Itoa(t.Roomid)
+	MaxQn := 0
+	for i := 0; len(AcceptQn) > i; i += 1 {
+		if AcceptQn[i] > MaxQn {
+			MaxQn = AcceptQn[i]
+		}
+	}
+	if MaxQn == 0 {
+		apilog.L(`W: `, "使用默认")
+	}
+	t.Live_qn = MaxQn
 
 	//Roominitres
 	{
-		Cookie := make(map[string]string)
-		t.Cookie.Range(func(k, v interface{}) bool {
-			Cookie[k.(string)] = v.(string)
-			return true
-		})
-
-		req := t.Common.ReqPool.Get()
-		defer t.Common.ReqPool.Put(req)
-		if err := req.Reqf(reqf.Rval{
-			Url: fmt.Sprintf("https://api.live.bilibili.com/xlive/web-room/v2/index/getRoomPlayInfo?room_id=%s&protocol=0,1&format=0,1,2&codec=0,1,2&qn=%d&platform=web&ptype=8&dolby=5&panorama=1", Roomid, t.Live_qn),
-			Header: map[string]string{
-				`Referer`: "https://live.bilibili.com/" + Roomid,
-				`Cookie`:  reqf.Map_2_Cookies_String(Cookie),
-			},
-			Proxy:   t.Proxy,
-			Timeout: 10 * 1000,
-			Retry:   2,
-		}); err != nil {
+		if err, res := biliApi.GetRoomPlayInfo(t.Roomid, MaxQn); err != nil {
 			apilog.L(`E: `, err)
 			return
-		}
+		} else {
+			//主播uid
+			t.UpUid = res.UpUid
+			//房间号（完整）
+			t.Roomid = res.RoomID
+			//直播开始时间
+			t.Live_Start_Time = res.LiveStartTime
+			//是否在直播
+			t.Liveing = res.Liveing
 
-		var j J.GetRoomPlayInfo
+			//未在直播，不获取直播流
+			if !t.Liveing {
+				t.Live_qn = 0
+				t.AcceptQn = t.Qn
+				t.Live = t.Live[:0]
+				return
+			}
 
-		if e := json.Unmarshal([]byte(req.Respon), &j); e != nil {
-			apilog.L(`E: `, e)
-			return
-		} else if j.Code != 0 {
-			apilog.L(`E: `, j.Message)
-			return
+			//当前直播流
+			var s = make([]J.StreamType, len(res.Streams))
+			for i := 0; i < len(res.Streams); i++ {
+				s[i] = J.StreamType(res.Streams[i])
+			}
+			t.configStreamType(s)
 		}
-
-		//主播uid
-		t.UpUid = j.Data.UID
-		//房间号（完整）
-		if j.Data.RoomID != 0 {
-			t.Roomid = j.Data.RoomID
-		}
-		//直播开始时间
-		if j.Data.LiveTime != 0 {
-			t.Live_Start_Time = time.Unix(int64(j.Data.LiveTime), 0)
-		}
-		//是否在直播
-		t.Liveing = j.Data.LiveStatus == 1
-
-		//未在直播，不获取直播流
-		if !t.Liveing {
-			t.Live_qn = 0
-			t.AcceptQn = t.Qn
-			t.Live = t.Live[:0]
-			return
-		}
-
-		//当前直播流
-		t.configStreamType(j.Data.PlayurlInfo.Playurl.Stream)
 	}
 	return
 }
 
 func (c *GetFunc) getDanmuInfo() (missKey []string) {
-	apilog := apilog.Base_add(`getDanmuInfo`)
-
 	if c.Roomid == 0 {
 		missKey = append(missKey, `Roomid`)
 	}
@@ -709,53 +676,13 @@ func (c *GetFunc) getDanmuInfo() (missKey []string) {
 		return
 	}
 
-	Roomid := strconv.Itoa(c.Roomid)
-
 	//GetDanmuInfo
-	{
-		Cookie := make(map[string]string)
-		c.Cookie.Range(func(k, v interface{}) bool {
-			Cookie[k.(string)] = v.(string)
-			return true
-		})
-
-		req := c.Common.ReqPool.Get()
-		defer c.Common.ReqPool.Put(req)
-		if err := req.Reqf(reqf.Rval{
-			Url: "https://api.live.bilibili.com/xlive/web-room/v1/index/getDanmuInfo?type=0&id=" + Roomid,
-			Header: map[string]string{
-				`Referer`: "https://live.bilibili.com/" + Roomid,
-				`Cookie`:  reqf.Map_2_Cookies_String(Cookie),
-			},
-			Proxy:   c.Proxy,
-			Timeout: 10 * 1000,
-		}); err != nil {
-			apilog.L(`E: `, err)
-			return
-		}
-
-		var j J.GetDanmuInfo
-
-		if e := json.Unmarshal([]byte(req.Respon), &j); e != nil {
-			apilog.L(`E: `, e)
-			return
-		} else if j.Code != 0 {
-			apilog.L(`E: `, j.Message)
-			return
-		}
-
-		//弹幕钥
-		c.Token = j.Data.Token
-		//弹幕链接
-		var tmp []string
-		for _, v := range j.Data.HostList {
-			if v.WssPort != 443 {
-				tmp = append(tmp, "wss://"+v.Host+":"+strconv.Itoa(v.WssPort)+"/sub")
-			} else {
-				tmp = append(tmp, "wss://"+v.Host+"/sub")
-			}
-		}
-		c.WSURL = tmp
+	if err, res := biliApi.GetDanmuInfo(c.Roomid); err != nil {
+		apilog.L(`E: `, err)
+		return
+	} else {
+		c.Token = res.Token
+		c.WSURL = res.WSURL
 	}
 	return
 }
