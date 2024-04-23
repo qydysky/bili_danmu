@@ -65,24 +65,3 @@ type biliApiInter interface {
 		}
 	})
 }
-
-type Streams []struct {
-	ProtocolName string
-	Format       []struct {
-		FormatName string
-		Codec      []struct {
-			CodecName string
-			CurrentQn int
-			AcceptQn  []int
-			BaseURL   string
-			URLInfo   []struct {
-				Host      string
-				Extra     string
-				StreamTTL int
-			}
-			HdrQn     any
-			DolbyType int
-			AttrName  string
-		}
-	}
-}
