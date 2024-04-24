@@ -696,44 +696,15 @@ func Get_face_src(uid string) string {
 	} //超额请求阻塞，超时将取消
 	apilog := apilog.Base_add(`获取头像`)
 
-	Cookie := make(map[string]string)
-	c.C.Cookie.Range(func(k, v interface{}) bool {
-		Cookie[k.(string)] = v.(string)
-		return true
-	})
-
-	req := c.C.ReqPool.Get()
-	defer c.C.ReqPool.Put(req)
-	if err := req.Reqf(reqf.Rval{
-		Url: "https://api.live.bilibili.com/xlive/web-room/v1/index/getDanmuMedalAnchorInfo?ruid=" + uid,
-		Header: map[string]string{
-			`Referer`: "https://live.bilibili.com/" + strconv.Itoa(c.C.Roomid),
-			`Cookie`:  reqf.Map_2_Cookies_String(Cookie),
-		},
-		Proxy:   c.C.Proxy,
-		Timeout: 10 * 1000,
-		Retry:   2,
-	}); err != nil {
-		apilog.L(`E: `, err)
+	if e, rface := biliApi.GetDanmuMedalAnchorInfo(uid, c.C.Roomid); e != nil {
+		apilog.L(`E: `, e)
 		return ""
+	} else {
+		return rface
 	}
-	res := string(req.Respon)
-	if msg := p.Json().GetValFromS(res, "message"); msg == nil || msg != "0" {
-		apilog.L(`E: `, "message", msg)
-		return ""
-	}
-
-	rface := p.Json().GetValFromS(res, "data.rface")
-	if rface == nil {
-		apilog.L(`E: `, "data.rface", rface)
-		return ""
-	}
-	return rface.(string) + `@58w_58h`
 }
 
 func (t *GetFunc) getPopularAnchorRank() (missKey []string) {
-	apilog := apilog.Base_add(`Get_HotRank`)
-
 	if t.Uid == 0 {
 		missKey = append(missKey, `Uid`)
 	}
@@ -747,137 +718,14 @@ func (t *GetFunc) getPopularAnchorRank() (missKey []string) {
 		return
 	}
 
-	Roomid := strconv.Itoa(t.Roomid)
+	apilog := apilog.Base_add(`Get_HotRank`)
 
 	//getHotRank
-	{
-		Cookie := make(map[string]string)
-		t.Cookie.Range(func(k, v interface{}) bool {
-			Cookie[k.(string)] = v.(string)
-			return true
-		})
-
-		req := t.ReqPool.Get()
-		defer t.ReqPool.Put(req)
-		if err := req.Reqf(reqf.Rval{
-			Url: `https://api.live.bilibili.com/xlive/general-interface/v1/rank/getPopularAnchorRank?uid=` + strconv.Itoa(t.Uid) + `&ruid=` + strconv.Itoa(t.UpUid) + `&clientType=2`,
-			Header: map[string]string{
-				`Host`:            `api.live.bilibili.com`,
-				`User-Agent`:      c.UA,
-				`Accept`:          `application/json, text/plain, */*`,
-				`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
-				`Accept-Encoding`: `gzip, deflate, br`,
-				`Origin`:          `https://live.bilibili.com`,
-				`Connection`:      `keep-alive`,
-				`Pragma`:          `no-cache`,
-				`Cache-Control`:   `no-cache`,
-				`Referer`:         "https://live.bilibili.com/" + Roomid,
-				`Cookie`:          reqf.Map_2_Cookies_String(Cookie),
-			},
-			Proxy:   t.Proxy,
-			Timeout: 3 * 1000,
-			Retry:   2,
-		}); err != nil {
-			apilog.L(`E: `, err)
-			return
-		}
-
-		var j J.GetPopularAnchorRank
-
-		if e := json.Unmarshal(req.Respon, &j); e != nil {
-			apilog.L(`E: `, e)
-			return
-		} else if j.Code != 0 {
-			apilog.L(`E: `, j.Message)
-			return
-		}
-
-		//获取排名
-		t.Note = "人气榜 "
-		if j.Data.Anchor.Rank == 0 {
-			t.Note += "100+"
-		} else {
-			t.Note += strconv.Itoa(j.Data.Anchor.Rank)
-		}
+	if err, note := biliApi.GetPopularAnchorRank(t.Uid, t.UpUid, t.Roomid); err != nil {
+		apilog.L(`E: `, err)
+	} else {
+		t.Note = note
 	}
-
-	return
-}
-
-// Deprecated: 2023-01-15
-func (c *GetFunc) Get_HotRank() (missKey []string) {
-	// apilog := apilog.Base_add(`Get_HotRank`)
-
-	// if c.UpUid == 0 {
-	// 	missKey = append(missKey, `UpUid`)
-	// }
-	// if c.Roomid == 0 {
-	// 	missKey = append(missKey, `Roomid`)
-	// }
-	// if c.ParentAreaID == 0 {
-	// 	missKey = append(missKey, `ParentAreaID`)
-	// }
-	// if !c.LIVE_BUVID {
-	// 	missKey = append(missKey, `LIVE_BUVID`)
-	// }
-	// if len(missKey) > 0 {
-	// 	return
-	// }
-
-	// Roomid := strconv.Itoa(c.Roomid)
-
-	// //getHotRank
-	// {
-	// 	Cookie := make(map[string]string)
-	// 	c.Cookie.Range(func(k, v interface{}) bool {
-	// 		Cookie[k.(string)] = v.(string)
-	// 		return true
-	// 	})
-
-	// 	reqi := c.ReqPool.Get()
-	// 	defer c.ReqPool.Put(reqi)
-	// 	req := reqi.Item.(*reqf.Req)
-	// 	if err := req.Reqf(reqf.Rval{
-	// 		Url: `https://api.live.bilibili.com/xlive/general-interface/v1/rank/getHotRank?ruid=` + strconv.Itoa(c.UpUid) + `&room_id=` + Roomid + `&is_pre=0&page_size=50&source=2&area_id=` + strconv.Itoa(c.ParentAreaID),
-	// 		Header: map[string]string{
-	// 			`Host`:            `api.live.bilibili.com`,
-	// 			`User-Agent`:      c.UA,
-	// 			`Accept`:          `application/json, text/plain, */*`,
-	// 			`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
-	// 			`Accept-Encoding`: `gzip, deflate, br`,
-	// 			`Origin`:          `https://live.bilibili.com`,
-	// 			`Connection`:      `keep-alive`,
-	// 			`Pragma`:          `no-cache`,
-	// 			`Cache-Control`:   `no-cache`,
-	// 			`Referer`:         "https://live.bilibili.com/" + Roomid,
-	// 			`Cookie`:          reqf.Map_2_Cookies_String(Cookie),
-	// 		},
-	// 		Proxy:   c.Proxy,
-	// 		Timeout: 3 * 1000,
-	// 		Retry:   2,
-	// 	}); err != nil {
-	// 		apilog.L(`E: `, err)
-	// 		return
-	// 	}
-
-	// 	var j J.GetHotRank
-
-	// 	if e := json.Unmarshal([]byte(req.Respon), &j); e != nil {
-	// 		apilog.L(`E: `, e)
-	// 		return
-	// 	} else if j.Code != 0 {
-	// 		apilog.L(`E: `, j.Message)
-	// 		return
-	// 	}
-
-	// 	//获取排名
-	// 	c.Note = j.Data.Own.AreaName + " "
-	// 	if j.Data.Own.Rank == 0 {
-	// 		c.Note += "50+"
-	// 	} else {
-	// 		c.Note += strconv.Itoa(j.Data.Own.Rank)
-	// 	}
-	// }
 
 	return
 }
@@ -898,120 +746,15 @@ func (t *GetFunc) Get_guardNum() (missKey []string) {
 		return
 	}
 
-	Roomid := strconv.Itoa(t.Roomid)
-
 	//Get_guardNum
-	{
-		Cookie := make(map[string]string)
-		t.Cookie.Range(func(k, v interface{}) bool {
-			Cookie[k.(string)] = v.(string)
-			return true
-		})
-
-		req := t.ReqPool.Get()
-		defer t.ReqPool.Put(req)
-		if err := req.Reqf(reqf.Rval{
-			Url: `https://api.live.bilibili.com/xlive/app-room/v2/guardTab/topList?roomid=` + Roomid + `&page=1&ruid=` + strconv.Itoa(t.UpUid) + `&page_size=29`,
-			Header: map[string]string{
-				`Host`:            `api.live.bilibili.com`,
-				`User-Agent`:      c.UA,
-				`Accept`:          `application/json, text/plain, */*`,
-				`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
-				`Accept-Encoding`: `gzip, deflate, br`,
-				`Origin`:          `https://live.bilibili.com`,
-				`Connection`:      `keep-alive`,
-				`Pragma`:          `no-cache`,
-				`Cache-Control`:   `no-cache`,
-				`Referer`:         "https://live.bilibili.com/" + Roomid,
-				`Cookie`:          reqf.Map_2_Cookies_String(Cookie),
-			},
-			Proxy:   t.Proxy,
-			Timeout: 3 * 1000,
-			Retry:   2,
-		}); err != nil {
-			apilog.L(`E: `, err)
-			return
-		}
-
-		var j J.GetGuardNum
-
-		if e := json.Unmarshal([]byte(req.Respon), &j); e != nil {
-			apilog.L(`E: `, e)
-			return
-		} else if j.Code != 0 {
-			apilog.L(`E: `, j.Message)
-			return
-		}
-
-		//获取舰长数
-		t.GuardNum = j.Data.Info.Num
+	if err, GuardNum := biliApi.GetGuardNum(t.UpUid, t.Roomid); err != nil {
+		apilog.L(`E: `, err)
+	} else {
+		t.GuardNum = GuardNum
 	}
 
 	return
 }
-
-// func Get_Version() (missKey []string) {  不再需要
-// 	if c.Roomid == 0 {
-// 		missKey = append(missKey, `Roomid`)
-// 	}
-// 	if len(missKey) != 0 {return}
-
-// 	Roomid := strconv.Itoa(c.Roomid)
-
-// 	apilog := apilog.Base_add(`获取客户版本`)
-
-// 	var player_js_url string
-// 	{//获取player_js_url
-// 		r := g.Get(reqf.Rval{
-// 			Url:"https://live.bilibili.com/blanc/" + Roomid,
-// 		})
-
-// 		if r.Err != nil {
-// 			apilog.L(`E: `,r.Err)
-// 			return
-// 		}
-
-// 		r.S2(`<script src=`,`.js`)
-// 		if r.Err != nil {
-// 			apilog.L(`E: `,r.Err)
-// 			return
-// 		}
-
-// 		for _,v := range r.RS {
-// 			tmp := string(v) + `.js`
-// 			if strings.Contains(tmp,`http`) {continue}
-// 			tmp = `https:` + tmp
-// 			if strings.Contains(tmp,`player`) {
-// 				player_js_url = tmp
-// 				break
-// 			}
-// 		}
-// 		if player_js_url == `` {
-// 			apilog.L(`E: `,`no found player js`)
-// 			return
-// 		}
-// 	}
-
-// 	{//获取VERSION
-// 		r := g.Get(reqf.Rval{
-// 			Url:player_js_url,
-// 		})
-
-// 		if r.Err != nil {
-// 			apilog.L(`E: `,r.Err)
-// 			return
-// 		}
-
-// 		r.S(`Bilibili HTML5 Live Player v`,` `,0,0)
-// 		if r.Err != nil {
-// 			apilog.L(`E: `,r.Err)
-// 			return
-// 		}
-// 		c.VERSION = r.RS[0]
-// 		apilog.L(`T: `,"api version", c.VERSION)
-// 	}
-// 	return
-// }
 
 func (t *GetFunc) Info(UpUid int) (J.Info, error) {
 	fkey := `Info`

@@ -68,4 +68,7 @@ type biliApiInter interface {
 		Token string
 		WSURL []string
 	})
+	GetDanmuMedalAnchorInfo(uid string, Roomid int) (err error, rface string)
+	GetPopularAnchorRank(uid, upUid, roomid int) (err error, note string)
+	GetGuardNum(upUid, roomid int) (err error, GuardNum int)
 }
