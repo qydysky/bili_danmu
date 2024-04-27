@@ -71,4 +71,6 @@ type biliApiInter interface {
 	GetDanmuMedalAnchorInfo(uid string, Roomid int) (err error, rface string)
 	GetPopularAnchorRank(uid, upUid, roomid int) (err error, note string)
 	GetGuardNum(upUid, roomid int) (err error, GuardNum int)
+	GetNav() (err error)
+	Wbi(query string) (err error, queryEnc string)
 }

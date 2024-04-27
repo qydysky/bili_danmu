@@ -771,13 +771,10 @@ func (t *GetFunc) Info(UpUid int) (J.Info, error) {
 
 	query := fmt.Sprintf("mid=%d&token=&platform=web&web_location=1550101", UpUid)
 	// wbi
-	{
-		v, e := t.GetNav()
-		if e != nil {
-			return J.Info{}, e
-		}
-		wrid, wts := t.getWridWts(query, v.Data.WbiImg.ImgURL, v.Data.WbiImg.SubURL)
-		query += "&w_rid=" + wrid + "&wts=" + wts
+	if e, queryE := biliApi.Wbi(query); e != nil {
+		return J.Info{}, e
+	} else {
+		query += queryE
 	}
 
 	// html
@@ -823,66 +820,6 @@ func (t *GetFunc) Info(UpUid int) (J.Info, error) {
 // 调用记录
 var boot_Get_cookie funcCtrl.FlashFunc //新的替代旧的
 
-// 是否登录
-func (t *GetFunc) GetNav() (J.Nav, error) {
-	fkey := `GetNav`
-
-	if v, ok := t.Cache.LoadV(fkey).(cacheItem); ok && v.exceeded.After(time.Now()) {
-		return (v.data).(J.Nav), nil
-	}
-
-	apilog := apilog.Base_add(`是否登录`)
-	if api_limit.TO() {
-		apilog.L(`E: `, `超时！`)
-		return J.Nav{}, os.ErrDeadlineExceeded
-	} //超额请求阻塞，超时将取消
-
-	Cookie := make(map[string]string)
-	t.Cookie.Range(func(k, v interface{}) bool {
-		Cookie[k.(string)] = v.(string)
-		return true
-	})
-
-	req := t.ReqPool.Get()
-	defer t.ReqPool.Put(req)
-	if err := req.Reqf(reqf.Rval{
-		Url: `https://api.bilibili.com/x/web-interface/nav`,
-		Header: map[string]string{
-			`Host`:            `api.bilibili.com`,
-			`User-Agent`:      c.UA,
-			`Accept`:          `application/json, text/plain, */*`,
-			`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
-			`Accept-Encoding`: `gzip, deflate, br`,
-			`Origin`:          `https://t.bilibili.com`,
-			`Connection`:      `keep-alive`,
-			`Pragma`:          `no-cache`,
-			`Cache-Control`:   `no-cache`,
-			`Referer`:         `https://t.bilibili.com/pages/nav/index_new`,
-			`Cookie`:          reqf.Map_2_Cookies_String(Cookie),
-		},
-		Proxy:   t.Proxy,
-		Timeout: 3 * 1000,
-		Retry:   2,
-	}); err != nil {
-		apilog.L(`E: `, err)
-		return J.Nav{}, err
-	}
-
-	var res J.Nav
-
-	if e := json.Unmarshal(req.Respon, &res); e != nil {
-		apilog.L(`E: `, e)
-		return J.Nav{}, e
-	}
-
-	t.Cache.Store(fkey, cacheItem{
-		data:     res,
-		exceeded: time.Now().Add(time.Hour),
-	})
-
-	return res, nil
-}
-
 // 扫码登录
 func (t *GetFunc) Get_cookie() (missKey []string) {
 	apilog := apilog.Base_add(`获取Cookie`)
@@ -899,10 +836,10 @@ func (t *GetFunc) Get_cookie() (missKey []string) {
 				`bili_jct`,
 				`DedeUserID`,
 			}); len(miss) == 0 {
-				if v, e := t.GetNav(); e != nil {
+				biliApi.SetCookies(reqf.Cookies_String_2_List(cookieString))
+				if e := biliApi.GetNav(); e != nil {
 					apilog.L(`E: `, e)
-				} else if v.Data.IsLogin {
-					biliApi.SetCookies(reqf.Cookies_String_2_List(cookieString))
+				} else {
 					apilog.L(`I: `, `已登录`)
 					return
 				}
@@ -2123,14 +2060,11 @@ func (c *GetFunc) SearchUP(s string) (list []searchresult) {
 
 		query := "page=1&page_size=10&order=online&platform=pc&search_type=live_user&keyword=" + url.PathEscape(s)
 		// wbi
-		{
-			v, e := c.GetNav()
-			if e != nil {
-				apilog.L(`E: `, e)
-				return
-			}
-			wrid, wts := c.getWridWts(query, v.Data.WbiImg.ImgURL, v.Data.WbiImg.SubURL)
-			query += "&w_rid=" + wrid + "&wts=" + wts
+		if e, queryE := biliApi.Wbi(query); e != nil {
+			apilog.L(`E: `, e)
+			return
+		} else {
+			query += queryE
 		}
 
 		if err := req.Reqf(reqf.Rval{
