@@ -774,7 +774,7 @@ func (t *GetFunc) Info(UpUid int) (J.Info, error) {
 	if e, queryE := biliApi.Wbi(query); e != nil {
 		return J.Info{}, e
 	} else {
-		query += queryE
+		query = queryE
 	}
 
 	// html
@@ -2064,7 +2064,7 @@ func (c *GetFunc) SearchUP(s string) (list []searchresult) {
 			apilog.L(`E: `, e)
 			return
 		} else {
-			query += queryE
+			query = queryE
 		}
 
 		if err := req.Reqf(reqf.Rval{
