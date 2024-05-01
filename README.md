@@ -197,7 +197,7 @@ postgreSql:
 ```json
 {
   "保存弹幕至db": {
-      "dbname": "pgx",
+      "dbname": "postgres",
       "url":"postgres://postgres:qydysky@192.168.31.103:5432/postgres?sslmode=disable",
       "字段help":"time.Now().Format(time.DateTime), time.Now().Unix(), item.msg, item.color, item.auth, item.uid, item.roomid",
       "create":"create table danmu (created varchar(20), createdunix varchar(20), msg varchar(100), color varchar(20), auth varchar(50), uid varchar(30), roomid varchar(30))",
@@ -464,14 +464,14 @@ ass编码GB18030支持中文
     "生成pgo":"default.pgo",
     "扫码登录":true,
     "保存弹幕至db": {
-        "dbname": "pgx",
+        "dbname": "postgres",
         "url":"postgres://postgres:qydysky@192.168.31.103:5432/postgres?sslmode=disable",
         "字段help":"time.Now().Format(time.DateTime), time.Now().Unix(), item.msg, item.color, item.auth, item.uid, item.roomid",
         "create":"create table danmu (created varchar(20), createdunix varchar(20), msg varchar(100), color varchar(20), auth varchar(50), uid varchar(30), roomid varchar(30))",
         "insert":"insert into danmu (created, createdunix, msg, color, auth, uid, roomid) values ({Date},{Unix},{Msg},{Color},{Auth},{Uid},{Roomid})"
     },
     "保存日志至db":{
-        "dbname": "pgx",
+        "dbname": "postgres",
         "url":"postgres://postgres:qydysky@192.168.31.103:5432/postgres?sslmode=disable",
         "字段help":"$1:Prefix $2:Base $3:Msgs, use ? or $%d not placeholder",
         "create":"create table log (created timestamp, Prefix varchar(10), Base varchar(30), Msgs varchar(500))",
