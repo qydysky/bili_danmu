@@ -50,10 +50,10 @@ type GetFunc struct {
 	l     sync.RWMutex
 }
 
-type cacheItem struct {
-	data     any
-	exceeded time.Time
-}
+// type cacheItem struct {
+// 	data     any
+// 	exceeded time.Time
+// }
 
 func Get(c *c.Common) *GetFunc {
 	return &GetFunc{Common: c}
