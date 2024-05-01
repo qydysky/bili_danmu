@@ -5,7 +5,7 @@ go 1.22.2
 require (
 	github.com/gotk3/gotk3 v0.6.3
 	github.com/mdp/qrterminal/v3 v3.2.0
-	github.com/qydysky/part v0.28.20240422183953
+	github.com/qydysky/part v0.28.20240501130702
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966
 	golang.org/x/text v0.14.0
@@ -13,7 +13,7 @@ require (
 
 require (
 	github.com/google/uuid v1.6.0
-	github.com/qydysky/biliApi v0.0.0-20240427073909-0071239f2cde
+	github.com/qydysky/biliApi v0.0.0-20240501142006-df911ba3ac1f
 	golang.org/x/exp v0.0.0-20240416160154-fe59bbe5cc7f
 )
 

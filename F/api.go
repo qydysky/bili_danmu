@@ -33,6 +33,8 @@ import (
 	qr "github.com/skip2/go-qrcode"
 )
 
+const webImg = "webImg"
+
 var apilog = c.C.Log.Base(`api`)
 var api_limit = limit.New(2, "1s", "30s") //频率限制2次/s，最大等待时间30s
 
@@ -481,7 +483,7 @@ func (c *GetFunc) missRoomId() (missKey []string) {
 func (c *GetFunc) getRoomBaseInfo() (missKey []string) {
 	fkey := `getRoomBaseInfo`
 
-	if v, ok := c.Cache.LoadV(fkey).(cacheItem); ok && v.exceeded.After(time.Now()) {
+	if _, ok := c.Cache.Load(fkey); ok {
 		return
 	}
 
@@ -507,10 +509,7 @@ func (c *GetFunc) getRoomBaseInfo() (missKey []string) {
 		c.Roomid = res.RoomID
 	}
 
-	c.Cache.Store(fkey, cacheItem{
-		data:     nil,
-		exceeded: time.Now().Add(time.Second * 2),
-	})
+	c.Cache.Store(fkey, nil, time.Second*2)
 	return
 }
 
@@ -518,7 +517,7 @@ func (c *GetFunc) getInfoByRoom() (missKey []string) {
 
 	fkey := `getInfoByRoom`
 
-	if v, ok := c.Cache.LoadV(fkey).(cacheItem); ok && v.exceeded.After(time.Now()) {
+	if _, ok := c.Cache.Load(fkey); ok {
 		return
 	}
 
@@ -547,10 +546,8 @@ func (c *GetFunc) getInfoByRoom() (missKey []string) {
 		c.Locked = res.Locked
 	}
 
-	c.Cache.Store(fkey, cacheItem{
-		data:     nil,
-		exceeded: time.Now().Add(time.Second * 2),
-	})
+	c.Cache.Store(fkey, nil, time.Second*2)
+
 	return
 }
 
@@ -756,66 +753,66 @@ func (t *GetFunc) Get_guardNum() (missKey []string) {
 	return
 }
 
-func (t *GetFunc) Info(UpUid int) (J.Info, error) {
-	fkey := `Info`
+// func (t *GetFunc) Info(UpUid int) (J.Info, error) {
+// 	fkey := `Info`
 
-	if v, ok := t.Cache.LoadV(fkey).(cacheItem); ok && v.exceeded.After(time.Now()) {
-		return (v.data).(J.Info), nil
-	}
+// 	if v, ok := t.Cache.LoadV(fkey).(cacheItem); ok && v.exceeded.After(time.Now()) {
+// 		return (v.data).(J.Info), nil
+// 	}
 
-	// 超额请求阻塞，超时将取消
-	apilog := apilog.Base_add(`Info`)
-	if api_limit.TO() {
-		return J.Info{}, os.ErrDeadlineExceeded
-	}
+// 	// 超额请求阻塞，超时将取消
+// 	apilog := apilog.Base_add(`Info`)
+// 	if api_limit.TO() {
+// 		return J.Info{}, os.ErrDeadlineExceeded
+// 	}
 
-	query := fmt.Sprintf("mid=%d&token=&platform=web&web_location=1550101", UpUid)
-	// wbi
-	if e, queryE := biliApi.Wbi(query); e != nil {
-		return J.Info{}, e
-	} else {
-		query = queryE
-	}
+// 	query := fmt.Sprintf("mid=%d&token=&platform=web&web_location=1550101", UpUid)
+// 	// wbi
+// 	if e, queryE := biliApi.Wbi(query); e != nil {
+// 		return J.Info{}, e
+// 	} else {
+// 		query = queryE
+// 	}
 
-	// html
-	{
-		Cookie := make(map[string]string)
-		t.Cookie.Range(func(k, v interface{}) bool {
-			Cookie[k.(string)] = v.(string)
-			return true
-		})
-		req := t.ReqPool.Get()
-		defer t.ReqPool.Put(req)
+// 	// html
+// 	{
+// 		Cookie := make(map[string]string)
+// 		t.Cookie.Range(func(k, v interface{}) bool {
+// 			Cookie[k.(string)] = v.(string)
+// 			return true
+// 		})
+// 		req := t.ReqPool.Get()
+// 		defer t.ReqPool.Put(req)
 
-		if err := req.Reqf(reqf.Rval{
-			Url:     `https://api.bilibili.com/x/space/wbi/acc/info?` + query,
-			Proxy:   t.Proxy,
-			Timeout: 10 * 1000,
-			Retry:   2,
-			Header: map[string]string{
-				`Accept`: "application/json, text/plain, */*",
-				`Cookie`: reqf.Map_2_Cookies_String(Cookie),
-			},
-		}); err != nil {
-			apilog.L(`E: `, err)
-			return J.Info{}, err
-		}
+// 		if err := req.Reqf(reqf.Rval{
+// 			Url:     `https://api.bilibili.com/x/space/wbi/acc/info?` + query,
+// 			Proxy:   t.Proxy,
+// 			Timeout: 10 * 1000,
+// 			Retry:   2,
+// 			Header: map[string]string{
+// 				`Accept`: "application/json, text/plain, */*",
+// 				`Cookie`: reqf.Map_2_Cookies_String(Cookie),
+// 			},
+// 		}); err != nil {
+// 			apilog.L(`E: `, err)
+// 			return J.Info{}, err
+// 		}
 
-		var info J.Info
+// 		var info J.Info
 
-		//Info
-		if e := json.Unmarshal(req.Respon, &info); e != nil {
-			apilog.L(`E: `, e)
-			return J.Info{}, e
-		}
+// 		//Info
+// 		if e := json.Unmarshal(req.Respon, &info); e != nil {
+// 			apilog.L(`E: `, e)
+// 			return J.Info{}, e
+// 		}
 
-		t.Cache.Store(fkey, cacheItem{
-			data:     info,
-			exceeded: time.Now().Add(time.Hour),
-		})
-		return info, nil
-	}
-}
+// 		t.Cache.Store(fkey, cacheItem{
+// 			data:     info,
+// 			exceeded: time.Now().Add(time.Hour),
+// 		})
+// 		return info, nil
+// 	}
+// }
 
 // 调用记录
 var boot_Get_cookie funcCtrl.FlashFunc //新的替代旧的
@@ -837,9 +834,10 @@ func (t *GetFunc) Get_cookie() (missKey []string) {
 				`DedeUserID`,
 			}); len(miss) == 0 {
 				biliApi.SetCookies(reqf.Cookies_String_2_List(cookieString))
-				if e := biliApi.GetNav(); e != nil {
+				if e, res := biliApi.GetNav(); e != nil {
 					apilog.L(`E: `, e)
 				} else {
+					t.Cache.Store(webImg, &res, time.Hour)
 					apilog.L(`I: `, `已登录`)
 					return
 				}
@@ -987,16 +985,13 @@ func Get_cookie_by_msg() {
 }
 
 // 牌子字段
-type FansMedalI struct {
+// 获取牌子信息
+func Get_list_in_room() (array []struct {
 	TargetID  int
 	IsLighted int
 	MedalID   int
 	RoomID    int
-}
-
-// 获取牌子信息
-func Get_list_in_room() (array []FansMedalI) {
-
+}) {
 	apilog := apilog.Base_add(`获取牌子`)
 	//验证cookie
 	if missKey := CookieCheck([]string{
@@ -1007,60 +1002,15 @@ func Get_list_in_room() (array []FansMedalI) {
 		apilog.L(`T: `, `Cookie无Key:`, missKey)
 		return
 	}
-	Cookie := make(map[string]string)
-	c.C.Cookie.Range(func(k, v interface{}) bool {
-		Cookie[k.(string)] = v.(string)
-		return true
-	})
 
-	{ //获取牌子列表
-		var medalList []FansMedalI
-		r := c.C.ReqPool.Get()
-		defer c.C.ReqPool.Put(r)
-		for pageNum := 1; true; pageNum += 1 {
-			if e := r.Reqf(reqf.Rval{
-				Url: `https://api.live.bilibili.com/xlive/app-ucenter/v1/fansMedal/panel?page=` + strconv.Itoa(pageNum) + `&page_size=10`,
-				Header: map[string]string{
-					`Cookie`: reqf.Map_2_Cookies_String(Cookie),
-				},
-				Proxy:   c.C.Proxy,
-				Timeout: 10 * 1000,
-				Retry:   2,
-			}); e != nil {
-				apilog.L(`E: `, e)
-				return
-			}
-
-			var res J.FansMedal
-
-			if e := json.Unmarshal(r.Respon, &res); e != nil {
-				apilog.L(`E: `, e)
-			}
-
-			if res.Code != 0 {
-				apilog.L(`E: `, `返回code`, res.Code, res.Message)
-				return
-			}
-
-			for i := 0; i < len(res.Data.List); i++ {
-				li := res.Data.List[i]
-				medalList = append(medalList, FansMedalI{
-					TargetID:  li.Medal.TargetID,
-					IsLighted: li.Medal.IsLighted,
-					MedalID:   li.Medal.MedalID,
-					RoomID:    li.RoomInfo.RoomID,
-				})
-			}
-
-			if res.Data.PageInfo.CurrentPage == res.Data.PageInfo.TotalPage {
-				break
-			}
-
-			time.Sleep(time.Second)
-		}
-
-		return medalList
+	//getHotRank
+	if err, res := biliApi.GetFansMedal(); err != nil {
+		apilog.L(`E: `, err)
+	} else {
+		return res
 	}
+
+	return
 }
 
 // 获取当前佩戴的牌子
@@ -1076,50 +1026,15 @@ func Get_weared_medal() (item J.GetWearedMedal_Data) {
 		apilog.L(`T: `, `Cookie无Key:`, missKey)
 		return
 	}
-	Cookie := make(map[string]string)
-	c.C.Cookie.Range(func(k, v interface{}) bool {
-		Cookie[k.(string)] = v.(string)
-		return true
-	})
 
-	{ //获取
-		r := c.C.ReqPool.Get()
-		defer c.C.ReqPool.Put(r)
-		if e := r.Reqf(reqf.Rval{
-			Url: `https://api.live.bilibili.com/live_user/v1/UserInfo/get_weared_medal`,
-			Header: map[string]string{
-				`Cookie`: reqf.Map_2_Cookies_String(Cookie),
-			},
-			Proxy:   c.C.Proxy,
-			Timeout: 10 * 1000,
-			Retry:   2,
-		}); e != nil {
-			apilog.L(`E: `, e)
-			return
-		}
-
-		var res J.GetWearedMedal
-		if e := json.Unmarshal(r.Respon, &res); e != nil {
-			apilog.L(`W: `, e)
-			return
-		}
-
-		if res.Code != 0 {
-			apilog.L(`E: `, `返回code`, res.Code, res.Msg)
-			return
-		}
-
-		switch res.Data.(type) {
-		case []interface{}:
-		default:
-			if data, err := json.Marshal(res.Data); err == nil {
-				_ = json.Unmarshal(data, &item)
-			}
-		}
-
-		return
+	if err, res := biliApi.GetWearedMedal(); err != nil {
+		apilog.L(`E: `, err)
+	} else {
+		item.Roominfo.RoomID = res.RoomID
+		item.TargetID = res.TargetID
+		item.TodayIntimacy = res.TodayIntimacy
 	}
-
+	return
 }
 
 func (c *GetFunc) CheckSwitch_FansMedal() (missKey []string) {
@@ -2059,8 +1974,31 @@ func (c *GetFunc) SearchUP(s string) (list []searchresult) {
 		})
 
 		query := "page=1&page_size=10&order=online&platform=pc&search_type=live_user&keyword=" + url.PathEscape(s)
-		// wbi
-		if e, queryE := biliApi.Wbi(query); e != nil {
+
+		// get nav
+		vr, loaded, f := c.Cache.LoadOrStore(webImg)
+		if !loaded {
+			if e, res := biliApi.GetNav(); e != nil {
+				apilog.L(`E: `, e)
+				return
+			} else {
+				f(&res, time.Hour)
+				vr = &res
+				apilog.L(`I: `, `已登录`)
+			}
+		}
+
+		if v, ok := vr.(*struct {
+			IsLogin bool
+			WbiImg  struct {
+				ImgURL string
+				SubURL string
+			}
+		}); !ok {
+			apilog.L(`E: `, `类型错误`)
+			return
+		} else if e, queryE := biliApi.Wbi(query, v.WbiImg); e != nil {
+			// wbi
 			apilog.L(`E: `, e)
 			return
 		} else {

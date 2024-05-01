@@ -71,6 +71,26 @@ type biliApiInter interface {
 	GetDanmuMedalAnchorInfo(uid string, Roomid int) (err error, rface string)
 	GetPopularAnchorRank(uid, upUid, roomid int) (err error, note string)
 	GetGuardNum(upUid, roomid int) (err error, GuardNum int)
-	GetNav() (err error)
-	Wbi(query string) (err error, queryEnc string)
+	GetNav() (err error, res struct {
+		IsLogin bool
+		WbiImg  struct {
+			ImgURL string
+			SubURL string
+		}
+	})
+	Wbi(query string, WbiImg struct {
+		ImgURL string
+		SubURL string
+	}) (err error, queryEnc string)
+	GetWearedMedal() (err error, res struct {
+		TodayIntimacy int
+		RoomID        int
+		TargetID      int
+	})
+	GetFansMedal() (err error, res []struct {
+		TargetID  int
+		IsLighted int
+		MedalID   int
+		RoomID    int
+	})
 }
