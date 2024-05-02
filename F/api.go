@@ -986,7 +986,7 @@ func Get_cookie_by_msg() {
 
 // 牌子字段
 // 获取牌子信息
-func Get_list_in_room() (array []struct {
+func Get_list_in_room(RoomID, TargetID int) (array []struct {
 	TargetID  int
 	IsLighted int
 	MedalID   int
@@ -1004,7 +1004,7 @@ func Get_list_in_room() (array []struct {
 	}
 
 	//getHotRank
-	if err, res := biliApi.GetFansMedal(); err != nil {
+	if err, res := biliApi.GetFansMedal(RoomID, TargetID); err != nil {
 		apilog.L(`E: `, err)
 	} else {
 		return res
@@ -1077,7 +1077,7 @@ func (c *GetFunc) CheckSwitch_FansMedal() (missKey []string) {
 	var medal_id int //将要使用的牌子id
 	//检查是否有此直播间的牌子
 	{
-		medal_list := Get_list_in_room()
+		medal_list := Get_list_in_room(c.Roomid, c.UpUid)
 		for _, v := range medal_list {
 			if v.TargetID != c.UpUid {
 				continue
@@ -1091,57 +1091,10 @@ func (c *GetFunc) CheckSwitch_FansMedal() (missKey []string) {
 			}
 		}
 	}
-
-	var (
-		post_url string
-		post_str string
-	)
-	{ //生成佩戴信息
-		csrf, _ := c.Cookie.LoadV(`bili_jct`).(string)
-		if csrf == `` {
-			apilog.L(`E: `, "Cookie错误,无bili_jct=")
-			return
-		}
-
-		post_str = `csrf_token=` + csrf + `&csrf=` + csrf
-
-		if medal_id == 0 { //无牌，不佩戴牌子
-			post_url = `https://api.live.bilibili.com/xlive/web-room/v1/fansMedal/take_off`
-		} else {
-			post_url = `https://api.live.bilibili.com/xlive/web-room/v1/fansMedal/wear`
-			post_str = `medal_id=` + strconv.Itoa(medal_id) + `&` + post_str
-		}
-	}
 	{ //切换牌子
-		r := c.ReqPool.Get()
-		defer c.ReqPool.Put(r)
-		if e := r.Reqf(reqf.Rval{
-			Url:     post_url,
-			PostStr: post_str,
-			Header: map[string]string{
-				`Cookie`:       reqf.Map_2_Cookies_String(Cookie),
-				`Content-Type`: `application/x-www-form-urlencoded; charset=UTF-8`,
-				`Referer`:      `https://passport.bilibili.com/login`,
-			},
-			Proxy:   c.Proxy,
-			Timeout: 10 * 1000,
-			Retry:   2,
-		}); e != nil {
-			apilog.L(`E: `, e)
-			return
-		}
+		err := biliApi.SetFansMedal(medal_id)
 
-		var res J.FansMedal
-
-		if e := json.Unmarshal(r.Respon, &res); e != nil {
-			apilog.L(`E: `, e)
-			return
-		} else if res.Code != 0 {
-			apilog.L(`E: `, res.Message)
-			return
-		}
-
-		if res.Message == "佩戴成功" {
+		if err == nil {
 			if medal_id == 0 {
 				apilog.L(`I: `, `已取下粉丝牌`)
 			} else {

@@ -1009,7 +1009,7 @@ func Keep_medal_light() {
 	flog.L(`T: `, `开始`)
 	defer flog.L(`I: `, `完成`)
 
-	medals := F.Get_list_in_room()
+	medals := F.Get_list_in_room(0, 0)
 	if len(medals) == 0 {
 		return
 	}
@@ -1025,7 +1025,7 @@ func Keep_medal_light() {
 	}
 
 	//重试，使用点赞
-	medals = F.Get_list_in_room()
+	medals = F.Get_list_in_room(0, 0)
 	if len(medals) == 0 {
 		return
 	}
@@ -1044,7 +1044,7 @@ func Keep_medal_light() {
 	}
 
 	//重试，使用历史弹幕
-	medals = F.Get_list_in_room()
+	medals = F.Get_list_in_room(0, 0)
 	if len(medals) == 0 {
 		return
 	}
