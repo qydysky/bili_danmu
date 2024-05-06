@@ -1125,56 +1125,13 @@ func Dosign() {
 		return
 	} //超额请求阻塞，超时将取消
 
-	{ //检查是否签到
-		Cookie := make(map[string]string)
-		c.C.Cookie.Range(func(k, v interface{}) bool {
-			Cookie[k.(string)] = v.(string)
-			return true
-		})
-
-		req := c.C.ReqPool.Get()
-		defer c.C.ReqPool.Put(req)
-		if err := req.Reqf(reqf.Rval{
-			Url: `https://api.live.bilibili.com/xlive/web-ucenter/v1/sign/WebGetSignInfo`,
-			Header: map[string]string{
-				`Host`:            `api.live.bilibili.com`,
-				`User-Agent`:      c.UA,
-				`Accept`:          `application/json, text/plain, */*`,
-				`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
-				`Accept-Encoding`: `gzip, deflate, br`,
-				`Origin`:          `https://live.bilibili.com`,
-				`Connection`:      `keep-alive`,
-				`Pragma`:          `no-cache`,
-				`Cache-Control`:   `no-cache`,
-				`Referer`:         "https://live.bilibili.com/all",
-				`Cookie`:          reqf.Map_2_Cookies_String(Cookie),
-			},
-			Proxy:   c.C.Proxy,
-			Timeout: 3 * 1000,
-			Retry:   2,
-		}); err != nil {
-			apilog.L(`E: `, err)
-			return
-		}
-
-		var msg struct {
-			Code    int    `json:"code"`
-			Message string `json:"message"`
-			Data    struct {
-				Status int `json:"status"`
-			} `json:"data"`
-		}
-		if e := json.Unmarshal(req.Respon, &msg); e != nil {
-			apilog.L(`E: `, e)
-		}
-		if msg.Code != 0 {
-			apilog.L(`E: `, msg.Message)
-			return
-		}
-		if msg.Data.Status == 1 { //今日已签到
-			apilog.L(`T: `, `今日已签到`)
-			return
-		}
+	//检查是否签到
+	if err, status := biliApi.GetWebGetSignInfo(); err != nil {
+		apilog.L(`E: `, err)
+		return
+	} else if status == 1 { //今日已签到
+		apilog.L(`T: `, `今日已签到`)
+		return
 	}
 
 	if api_limit.TO() {
@@ -1183,52 +1140,12 @@ func Dosign() {
 	} //超额请求阻塞，超时将取消
 
 	{ //签到
-		Cookie := make(map[string]string)
-		c.C.Cookie.Range(func(k, v interface{}) bool {
-			Cookie[k.(string)] = v.(string)
-			return true
-		})
-
-		req := c.C.ReqPool.Get()
-		defer c.C.ReqPool.Put(req)
-		if err := req.Reqf(reqf.Rval{
-			Url: `https://api.live.bilibili.com/xlive/web-ucenter/v1/sign/DoSign`,
-			Header: map[string]string{
-				`Host`:            `api.live.bilibili.com`,
-				`User-Agent`:      c.UA,
-				`Accept`:          `application/json, text/plain, */*`,
-				`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
-				`Accept-Encoding`: `gzip, deflate, br`,
-				`Origin`:          `https://live.bilibili.com`,
-				`Connection`:      `keep-alive`,
-				`Pragma`:          `no-cache`,
-				`Cache-Control`:   `no-cache`,
-				`Referer`:         "https://live.bilibili.com/all",
-				`Cookie`:          reqf.Map_2_Cookies_String(Cookie),
-			},
-			Proxy:   c.C.Proxy,
-			Timeout: 3 * 1000,
-			Retry:   2,
-		}); err != nil {
+		if err, HadSignDays := biliApi.DoSign(); err != nil {
 			apilog.L(`E: `, err)
-			return
+		} else {
+			apilog.L(`I: `, `签到成功!本月已签到`, HadSignDays, `天`)
 		}
-
-		var msg struct {
-			Code    int    `json:"code"`
-			Message string `json:"message"`
-			Data    struct {
-				HadSignDays int `json:"hadSignDays"`
-			} `json:"data"`
-		}
-		if e := json.Unmarshal(req.Respon, &msg); e != nil {
-			apilog.L(`E: `, e)
-		}
-		if msg.Code == 0 {
-			apilog.L(`I: `, `签到成功!本月已签到`, msg.Data.HadSignDays, `天`)
-			return
-		}
-		apilog.L(`E: `, msg.Message)
+		return
 	}
 }
 

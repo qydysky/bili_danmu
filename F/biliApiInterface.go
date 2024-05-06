@@ -95,4 +95,6 @@ type biliApiInter interface {
 		RoomID    int
 	})
 	SetFansMedal(medalId int) (err error)
+	GetWebGetSignInfo() (err error, Status int)
+	DoSign() (err error, HadSignDays int)
 }
