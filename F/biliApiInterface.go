@@ -12,10 +12,13 @@ type biliApiInter interface {
 	SetReqPool(pool *pool.Buf[reqf.Req])
 	SetProxy(proxy string)
 	SetCookies(cookies []*http.Cookie)
+	GetCookies() (cookies []*http.Cookie)
 	GetCookie(name string) (error, string)
 
 	LoginQrCode() (err error, imgUrl string, QrcodeKey string)
-	LoginQrPoll(QrcodeKey string) (err error, cookies []*http.Cookie)
+	LoginQrPoll(QrcodeKey string) (err error)
+	GetOtherCookies() (err error)
+	GetLiveBuvid(Roomid int) (err error)
 	GetRoomBaseInfo(Roomid int) (err error, res struct {
 		UpUid         int
 		Uname         string
@@ -97,4 +100,17 @@ type biliApiInter interface {
 	SetFansMedal(medalId int) (err error)
 	GetWebGetSignInfo() (err error, Status int)
 	DoSign() (err error, HadSignDays int)
+	GetBagList(Roomid int) (err error, res []struct {
+		Bag_id    int
+		Gift_id   int
+		Gift_name string
+		Gift_num  int
+		Expire_at int
+	})
+	GetWalletStatus() (err error, res struct {
+		Silver          int
+		Silver2CoinLeft int
+	})
+	GetWalletRule() (err error, Silver2CoinPrice int)
+	Silver2coin() (err error, Message string)
 }

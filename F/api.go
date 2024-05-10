@@ -34,11 +34,12 @@ import (
 )
 
 const webImg = "webImg"
+const id = "github.com/qydysky/bili_danmu/F.biliApi"
 
 var apilog = c.C.Log.Base(`api`)
 var api_limit = limit.New(2, "1s", "30s") //频率限制2次/s，最大等待时间30s
 
-var biliApi = cmp.Get(cmp.PkgId("biliApi"), func(ba biliApiInter) biliApiInter {
+var biliApi = cmp.Get(id, func(ba biliApiInter) biliApiInter {
 	ba.SetProxy(c.C.Proxy)
 	ba.SetReqPool(c.C.ReqPool)
 	return ba
@@ -821,7 +822,15 @@ var boot_Get_cookie funcCtrl.FlashFunc //新的替代旧的
 func (t *GetFunc) Get_cookie() (missKey []string) {
 	apilog := apilog.Base_add(`获取Cookie`)
 	//获取其他Cookie
-	defer t.Get_other_cookie()
+	defer func() {
+		if err := biliApi.GetOtherCookies(); err != nil {
+			apilog.L(`E: `, err)
+		} else if cookies := biliApi.GetCookies(); len(cookies) != 0 {
+			if err := save_cookie(cookies); err != nil && !errors.Is(err, ErrNoCookiesSave) {
+				apilog.L(`E: `, err)
+			}
+		}
+	}()
 
 	if p.Checkfile().IsExist("cookie.txt") { //读取cookie文件
 		if cookieString := string(CookieGet()); cookieString != `` {
@@ -931,10 +940,10 @@ func (t *GetFunc) Get_cookie() (missKey []string) {
 				return
 			}
 
-			if err, cookies := biliApi.LoginQrPoll(oauth); err != nil {
+			if err := biliApi.LoginQrPoll(oauth); err != nil {
 				apilog.L(`E: `, err)
 				return
-			} else if len(cookies) != 0 {
+			} else if cookies := biliApi.GetCookies(); len(cookies) != 0 {
 				if err := save_cookie(cookies); err != nil {
 					apilog.L(`E: `, err)
 					return
@@ -949,35 +958,35 @@ func (t *GetFunc) Get_cookie() (missKey []string) {
 }
 
 // 获取其他Cookie
-func (c *GetFunc) Get_other_cookie() {
-	apilog := apilog.Base_add(`获取其他Cookie`)
+// func (c *GetFunc) Get_other_cookie() {
+// 	apilog := apilog.Base_add(`获取其他Cookie`)
 
-	r := c.ReqPool.Get()
-	defer c.ReqPool.Put(r)
+// 	r := c.ReqPool.Get()
+// 	defer c.ReqPool.Put(r)
 
-	Cookie := make(map[string]string)
-	c.Cookie.Range(func(k, v interface{}) bool {
-		Cookie[k.(string)] = v.(string)
-		return true
-	})
+// 	Cookie := make(map[string]string)
+// 	c.Cookie.Range(func(k, v interface{}) bool {
+// 		Cookie[k.(string)] = v.(string)
+// 		return true
+// 	})
 
-	if e := r.Reqf(reqf.Rval{
-		Url: `https://www.bilibili.com/`,
-		Header: map[string]string{
-			`Cookie`: reqf.Map_2_Cookies_String(Cookie),
-		},
-		Proxy:   c.Proxy,
-		Timeout: 10 * 1000,
-		Retry:   2,
-	}); e != nil {
-		apilog.L(`E: `, e)
-		return
-	}
+// 	if e := r.Reqf(reqf.Rval{
+// 		Url: `https://www.bilibili.com/`,
+// 		Header: map[string]string{
+// 			`Cookie`: reqf.Map_2_Cookies_String(Cookie),
+// 		},
+// 		Proxy:   c.Proxy,
+// 		Timeout: 10 * 1000,
+// 		Retry:   2,
+// 	}); e != nil {
+// 		apilog.L(`E: `, e)
+// 		return
+// 	}
 
-	if e := save_cookie(r.Response.Cookies()); e != nil && !errors.Is(e, ErrNoCookiesSave) {
-		apilog.L(`E: `, e)
-	}
-}
+// 	if e := save_cookie(r.Response.Cookies()); e != nil && !errors.Is(e, ErrNoCookiesSave) {
+// 		apilog.L(`E: `, e)
+// 	}
+// }
 
 // 短信登录
 func Get_cookie_by_msg() {
@@ -1154,41 +1163,26 @@ func (t *GetFunc) Get_LIVE_BUVID() (missKey []string) {
 	apilog := apilog.Base_add(`LIVE_BUVID`)
 
 	//当房间处于特殊活动状态时，将会获取不到，此处使用了若干著名up主房间进行尝试
-	roomIdList := []string{
-		"3", //哔哩哔哩音悦台
-		"2", //直播姬
-		"1", //哔哩哔哩直播
+	roomIdList := []int{
+		3, //哔哩哔哩音悦台
+		2, //直播姬
+		1, //哔哩哔哩直播
 	}
 
 	req := t.ReqPool.Get()
 	defer t.ReqPool.Put(req)
 	for _, roomid := range roomIdList { //获取
-		if err := req.Reqf(reqf.Rval{
-			Url: `https://api.live.bilibili.com/live/getRoomKanBanModel?roomid=` + roomid,
-			Header: map[string]string{
-				`Host`:                      `live.bilibili.com`,
-				`User-Agent`:                c.UA,
-				`Accept`:                    `text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8`,
-				`Accept-Language`:           `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
-				`Accept-Encoding`:           `gzip, deflate, br`,
-				`Connection`:                `keep-alive`,
-				`Cache-Control`:             `no-cache`,
-				`Referer`:                   "https://live.bilibili.com",
-				`DNT`:                       `1`,
-				`Upgrade-Insecure-Requests`: `1`,
-			},
-			Proxy:   t.Proxy,
-			Timeout: 3 * 1000,
-			Retry:   2,
-		}); err != nil {
+		err := biliApi.GetLiveBuvid(roomid)
+		if err != nil {
 			apilog.L(`E: `, err)
 			return
 		}
+		cookies := biliApi.GetCookies()
 
 		//cookie
-		_ = save_cookie(req.Response.Cookies())
+		_ = save_cookie(cookies)
 		var has bool
-		for k := range reqf.Cookies_List_2_Map(req.Response.Cookies()) {
+		for k := range reqf.Cookies_List_2_Map(cookies) {
 			if k == `LIVE_BUVID` {
 				has = true
 			}
@@ -1208,25 +1202,13 @@ func (t *GetFunc) Get_LIVE_BUVID() (missKey []string) {
 }
 
 // 礼物列表
-type Gift_list_type struct {
-	Code    int                 `json:"code"`
-	Message string              `json:"message"`
-	Data    Gift_list_type_Data `json:"data"`
-}
-
-type Gift_list_type_Data struct {
-	List []Gift_list_type_Data_List `json:"list"`
-}
-
-type Gift_list_type_Data_List struct {
-	Bag_id    int    `json:"bag_id"`
-	Gift_id   int    `json:"gift_id"`
-	Gift_name string `json:"gift_name"`
-	Gift_num  int    `json:"gift_num"`
-	Expire_at int    `json:"expire_at"`
-}
-
-func Gift_list() (list []Gift_list_type_Data_List) {
+func Gift_list() (list []struct {
+	Bag_id    int
+	Gift_id   int
+	Gift_name string
+	Gift_num  int
+	Expire_at int
+}) {
 	apilog := apilog.Base_add(`礼物列表`)
 	//验证cookie
 	if missKey := CookieCheck([]string{
@@ -1246,51 +1228,13 @@ func Gift_list() (list []Gift_list_type_Data_List) {
 		return
 	} //超额请求阻塞，超时将取消
 
-	Cookie := make(map[string]string)
-	c.C.Cookie.Range(func(k, v interface{}) bool {
-		Cookie[k.(string)] = v.(string)
-		return true
-	})
-
-	req := c.C.ReqPool.Get()
-	defer c.C.ReqPool.Put(req)
-	if err := req.Reqf(reqf.Rval{
-		Url: `https://api.live.bilibili.com/xlive/web-room/v1/gift/bag_list?t=` + strconv.Itoa(int(time.Now().UnixNano()/int64(time.Millisecond))) + `&room_id=` + strconv.Itoa(c.C.Roomid),
-		Header: map[string]string{
-			`Host`:            `api.live.bilibili.com`,
-			`User-Agent`:      c.UA,
-			`Accept`:          `application/json, text/plain, */*`,
-			`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
-			`Accept-Encoding`: `gzip, deflate, br`,
-			`Origin`:          `https://live.bilibili.com`,
-			`Connection`:      `keep-alive`,
-			`Pragma`:          `no-cache`,
-			`Cache-Control`:   `no-cache`,
-			`Referer`:         "https://live.bilibili.com/" + strconv.Itoa(c.C.Roomid),
-			`Cookie`:          reqf.Map_2_Cookies_String(Cookie),
-		},
-		Proxy:   c.C.Proxy,
-		Timeout: 3 * 1000,
-		Retry:   2,
-	}); err != nil {
+	if err, res := biliApi.GetBagList(c.C.Roomid); err != nil {
 		apilog.L(`E: `, err)
 		return
+	} else {
+		apilog.L(`T: `, `成功`)
+		return res
 	}
-
-	var res Gift_list_type
-
-	if e := json.Unmarshal(req.Respon, &res); e != nil {
-		apilog.L(`E: `, e)
-		return
-	}
-
-	if res.Code != 0 {
-		apilog.L(`E: `, res.Message)
-		return
-	}
-
-	apilog.L(`T: `, `成功`)
-	return res.Data.List
 }
 
 // 银瓜子2硬币
@@ -1315,165 +1259,37 @@ func (t *GetFunc) Silver_2_coin() (missKey []string) {
 	}
 
 	var Silver int
-	{ //验证是否还有机会
-		Cookie := make(map[string]string)
-		t.Cookie.Range(func(k, v interface{}) bool {
-			Cookie[k.(string)] = v.(string)
-			return true
-		})
-
-		req := t.ReqPool.Get()
-		defer t.ReqPool.Put(req)
-		if err := req.Reqf(reqf.Rval{
-			Url: `https://api.live.bilibili.com/xlive/revenue/v1/wallet/getStatus`,
-			Header: map[string]string{
-				`Host`:            `api.live.bilibili.com`,
-				`User-Agent`:      c.UA,
-				`Accept`:          `application/json, text/plain, */*`,
-				`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
-				`Accept-Encoding`: `gzip, deflate, br`,
-				`Origin`:          `https://link.bilibili.com`,
-				`Connection`:      `keep-alive`,
-				`Pragma`:          `no-cache`,
-				`Cache-Control`:   `no-cache`,
-				`Referer`:         `https://link.bilibili.com/p/center/index`,
-				`Cookie`:          reqf.Map_2_Cookies_String(Cookie),
-			},
-			Proxy:   t.Proxy,
-			Timeout: 3 * 1000,
-			Retry:   2,
-		}); err != nil {
-			apilog.L(`E: `, err)
-			return
-		}
-
-		var j J.ApiXliveRevenueV1WalletGetStatus
-
-		if e := json.Unmarshal([]byte(req.Respon), &j); e != nil {
-			apilog.L(`E: `, e)
-			return
-		} else if j.Code != 0 {
-			apilog.L(`E: `, j.Message)
-			return
-		}
-
-		if j.Data.Silver2CoinLeft == 0 {
+	//验证是否还有机会
+	if e, res := biliApi.GetWalletStatus(); e != nil {
+		apilog.L(`E: `, e)
+		return
+	} else {
+		if res.Silver2CoinLeft == 0 {
 			apilog.L(`I: `, `今天次数已用完`)
 			return
 		}
-
-		apilog.L(`T: `, `现在有银瓜子`, j.Data.Silver, `个`)
-		Silver = j.Data.Silver
+		apilog.L(`T: `, `现在有银瓜子`, res.Silver, `个`)
+		Silver = res.Silver
 	}
 
-	{ //获取交换规则，验证数量足够
-		Cookie := make(map[string]string)
-		t.Cookie.Range(func(k, v interface{}) bool {
-			Cookie[k.(string)] = v.(string)
-			return true
-		})
-
-		req := t.ReqPool.Get()
-		defer t.ReqPool.Put(req)
-		if err := req.Reqf(reqf.Rval{
-			Url: `https://api.live.bilibili.com/xlive/revenue/v1/wallet/getRule`,
-			Header: map[string]string{
-				`Host`:            `api.live.bilibili.com`,
-				`User-Agent`:      c.UA,
-				`Accept`:          `application/json, text/plain, */*`,
-				`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
-				`Accept-Encoding`: `gzip, deflate, br`,
-				`Origin`:          `https://link.bilibili.com`,
-				`Connection`:      `keep-alive`,
-				`Pragma`:          `no-cache`,
-				`Cache-Control`:   `no-cache`,
-				`Referer`:         `https://link.bilibili.com/p/center/index`,
-				`Cookie`:          reqf.Map_2_Cookies_String(Cookie),
-			},
-			Proxy:   t.Proxy,
-			Timeout: 3 * 1000,
-			Retry:   2,
-		}); err != nil {
-			apilog.L(`E: `, err)
-			return
-		}
-
-		var j J.ApixliveRevenueV1WalletGetRule
-
-		if e := json.Unmarshal([]byte(req.Respon), &j); e != nil {
-			apilog.L(`E: `, e)
-			return
-		} else if j.Code != 0 {
-			apilog.L(`E: `, j.Message)
-			return
-		}
-
-		if Silver < j.Data.Silver2CoinPrice {
-			apilog.L(`I: `, `当前银瓜子数量不足`)
-			return
-		}
+	//获取交换规则，验证数量足够
+	if e, Silver2CoinPrice := biliApi.GetWalletRule(); e != nil {
+		apilog.L(`E: `, e)
+		return
+	} else if Silver < Silver2CoinPrice {
+		apilog.L(`I: `, `当前银瓜子数量不足`)
+		return
 	}
 
-	{ //交换
-		csrf, _ := t.Cookie.LoadV(`bili_jct`).(string)
-		if csrf == `` {
-			apilog.L(`E: `, "Cookie错误,无bili_jct=")
-			return
+	//交换
+	if e, msg := biliApi.Silver2coin(); e != nil {
+		apilog.L(`E: `, e)
+		return
+	} else {
+		apilog.L(`I: `, msg)
+		if cookies := biliApi.GetCookies(); len(cookies) != 0 {
+			_ = save_cookie(cookies)
 		}
-
-		post_str := `csrf_token=` + csrf + `&csrf=` + csrf
-
-		Cookie := make(map[string]string)
-		t.Cookie.Range(func(k, v interface{}) bool {
-			Cookie[k.(string)] = v.(string)
-			return true
-		})
-
-		req := t.ReqPool.Get()
-		defer t.ReqPool.Put(req)
-		if err := req.Reqf(reqf.Rval{
-			Url:     `https://api.live.bilibili.com/xlive/revenue/v1/wallet/silver2coin`,
-			PostStr: url.PathEscape(post_str),
-			Header: map[string]string{
-				`Host`:            `api.live.bilibili.com`,
-				`User-Agent`:      c.UA,
-				`Accept`:          `application/json, text/plain, */*`,
-				`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
-				`Accept-Encoding`: `gzip, deflate, br`,
-				`Origin`:          `https://link.bilibili.com`,
-				`Connection`:      `keep-alive`,
-				`Pragma`:          `no-cache`,
-				`Cache-Control`:   `no-cache`,
-				`Content-Type`:    `application/x-www-form-urlencoded`,
-				`Referer`:         `https://link.bilibili.com/p/center/index`,
-				`Cookie`:          reqf.Map_2_Cookies_String(Cookie),
-			},
-			Proxy:   t.Proxy,
-			Timeout: 3 * 1000,
-			Retry:   2,
-		}); err != nil {
-			apilog.L(`E: `, err)
-			return
-		}
-
-		_ = save_cookie(req.Response.Cookies())
-
-		var res struct {
-			Code    int    `json:"code"`
-			Msg     string `json:"msg"`
-			Message string `json:"message"`
-		}
-
-		if e := json.Unmarshal(req.Respon, &res); e != nil {
-			apilog.L(`E: `, e)
-			return
-		}
-
-		if res.Code != 0 {
-			apilog.L(`E: `, res.Message)
-			return
-		}
-		apilog.L(`I: `, res.Message)
 	}
 	return
 }
