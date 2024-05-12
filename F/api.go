@@ -1324,7 +1324,12 @@ type UpItem struct {
 }
 
 // 获取历史观看 直播
-func GetHisStream() (Uplist []UpItem) {
+func GetHisStream() (Uplist []struct {
+	Uname      string
+	Title      string
+	Roomid     int
+	LiveStatus int
+}) {
 	apilog := apilog.Base_add(`历史直播主播`).L(`T: `, `获取中`)
 	defer apilog.L(`T: `, `完成`)
 	//验证cookie
@@ -1341,57 +1346,11 @@ func GetHisStream() (Uplist []UpItem) {
 		return
 	} //超额请求阻塞，超时将取消
 
-	Cookie := make(map[string]string)
-	c.C.Cookie.Range(func(k, v interface{}) bool {
-		Cookie[k.(string)] = v.(string)
-		return true
-	})
-
-	req := c.C.ReqPool.Get()
-	defer c.C.ReqPool.Put(req)
-	if err := req.Reqf(reqf.Rval{
-		Url: `https://api.bilibili.com/x/web-interface/history/cursor?type=live&ps=10`,
-		Header: map[string]string{
-			`Host`:            `api.live.bilibili.com`,
-			`User-Agent`:      c.UA,
-			`Accept`:          `application/json, text/plain, */*`,
-			`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
-			`Accept-Encoding`: `gzip, deflate, br`,
-			`Origin`:          `https://t.bilibili.com`,
-			`Connection`:      `keep-alive`,
-			`Pragma`:          `no-cache`,
-			`Cache-Control`:   `no-cache`,
-			`Referer`:         `https://t.bilibili.com/pages/nav/index_new`,
-			`Cookie`:          reqf.Map_2_Cookies_String(Cookie),
-		},
-		Proxy:   c.C.Proxy,
-		Timeout: 3 * 1000,
-		Retry:   2,
-	}); err != nil {
-		apilog.L(`E: `, err)
-		return
-	}
-
-	var res J.History
-
-	if e := json.Unmarshal(req.Respon, &res); e != nil {
+	if e, res := biliApi.GetHisStream(); e != nil {
 		apilog.L(`E: `, e)
 		return
-	}
-
-	if res.Code != 0 {
-		apilog.L(`E: `, res.Message)
-		return
-	}
-
-	// 提前结束获取，仅获取当前正在直播的主播
-	for _, item := range res.Data.List {
-		Uplist = append(Uplist, UpItem{
-			Uname:      item.AuthorName,
-			Title:      item.Title,
-			Roomid:     item.Kid,
-			LiveStatus: item.LiveStatus,
-		})
+	} else {
+		Uplist = res
 	}
 	return
 }
@@ -1413,53 +1372,8 @@ func RoomEntryAction(roomId int) {
 		return
 	} //超额请求阻塞，超时将取消
 
-	Cookie := make(map[string]string)
-	c.C.Cookie.Range(func(k, v interface{}) bool {
-		Cookie[k.(string)] = v.(string)
-		return true
-	})
-
-	csrf := Cookie[`bili_jct`]
-	if csrf == `` {
-		apilog.L(`E: `, "Cookie错误,无bili_jct=")
-		return
-	}
-
-	req := c.C.ReqPool.Get()
-	defer c.C.ReqPool.Put(req)
-	if err := req.Reqf(reqf.Rval{
-		Url:     `https://api.live.bilibili.com/xlive/web-room/v1/index/roomEntryAction`,
-		PostStr: fmt.Sprintf("room_id=%d&platform=pc&csrf_token=%s&csrf=%s&visit_id=", roomId, csrf, csrf),
-		Header: map[string]string{
-			`Host`:            `api.live.bilibili.com`,
-			`User-Agent`:      c.UA,
-			`Accept`:          `application/json, text/plain, */*`,
-			`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
-			`Accept-Encoding`: `gzip, deflate, br`,
-			`Origin`:          `https://live.bilibili.com`,
-			`Connection`:      `keep-alive`,
-			`Pragma`:          `no-cache`,
-			`Cache-Control`:   `no-cache`,
-			`Referer`:         fmt.Sprintf("https://live.bilibili.com/%d", roomId),
-			`Cookie`:          reqf.Map_2_Cookies_String(Cookie),
-		},
-		Proxy:   c.C.Proxy,
-		Timeout: 3 * 1000,
-		Retry:   2,
-	}); err != nil {
-		apilog.L(`E: `, err)
-		return
-	}
-
-	var res J.RoomEntryAction
-
-	if e := json.Unmarshal(req.Respon, &res); e != nil {
+	if e := biliApi.RoomEntryAction(roomId); e != nil {
 		apilog.L(`E: `, e)
-		return
-	}
-
-	if res.Code != 0 {
-		apilog.L(`E: `, res.Message)
 		return
 	}
 }
@@ -1481,48 +1395,23 @@ func (t *GetFunc) getOnlineGoldRank() (misskey []string) {
 		return
 	} //超额请求阻塞，超时将取消
 
-	req := t.ReqPool.Get()
-	defer t.ReqPool.Put(req)
-
-	if err := req.Reqf(reqf.Rval{
-		Url: fmt.Sprintf("https://api.live.bilibili.com/xlive/general-interface/v1/rank/getOnlineGoldRank?ruid=%d&roomId=%d&page=1&pageSize=10", t.UpUid, t.Roomid),
-		Header: map[string]string{
-			`Host`:            `api.live.bilibili.com`,
-			`User-Agent`:      c.UA,
-			`Accept`:          `application/json, text/plain, */*`,
-			`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
-			`Accept-Encoding`: `gzip, deflate, br`,
-			`Origin`:          `https://live.bilibili.com`,
-			`Connection`:      `keep-alive`,
-			`Pragma`:          `no-cache`,
-			`Cache-Control`:   `no-cache`,
-			`Referer`:         fmt.Sprintf("https://live.bilibili.com/%d", t.Roomid),
-		},
-		Proxy:   t.Proxy,
-		Timeout: 3 * 1000,
-	}); err != nil {
-		apilog.L(`E: `, err)
-		return
-	}
-
-	var res J.GetOnlineGoldRank
-
-	if e := json.Unmarshal(req.Respon, &res); e != nil {
+	if e, OnlineNum := biliApi.GetOnlineGoldRank(t.UpUid, t.Roomid); e != nil {
 		apilog.L(`E: `, e)
 		return
+	} else {
+		t.OnlineNum = OnlineNum
+		apilog.Log_show_control(false).L(`I: `, `在线人数:`, t.OnlineNum)
 	}
 
-	if res.Code != 0 {
-		apilog.L(`E: `, res.Message)
-		return
-	}
-
-	t.OnlineNum = res.Data.OnlineNum
-	apilog.Log_show_control(false).L(`I: `, `在线人数:`, t.OnlineNum)
 	return
 }
 
-func Feed_list() (Uplist []J.FollowingDataList) {
+func Feed_list() (Uplist []struct {
+	Roomid     int
+	Uname      string
+	Title      string
+	LiveStatus int
+}) {
 	apilog := apilog.Base_add(`正在直播主播`).L(`T: `, `获取中`)
 	defer apilog.L(`T: `, `完成`)
 	//验证cookie
@@ -1539,101 +1428,25 @@ func Feed_list() (Uplist []J.FollowingDataList) {
 		return
 	} //超额请求阻塞，超时将取消
 
-	Cookie := make(map[string]string)
-	c.C.Cookie.Range(func(k, v interface{}) bool {
-		Cookie[k.(string)] = v.(string)
-		return true
-	})
-
-	req := c.C.ReqPool.Get()
-	defer c.C.ReqPool.Put(req)
-	for pageNum := 1; true; pageNum += 1 {
-		if err := req.Reqf(reqf.Rval{
-			Url: `https://api.live.bilibili.com/xlive/web-ucenter/user/following?page=` + strconv.Itoa(pageNum) + `&page_size=10`,
-			Header: map[string]string{
-				`Host`:            `api.live.bilibili.com`,
-				`User-Agent`:      c.UA,
-				`Accept`:          `application/json, text/plain, */*`,
-				`Accept-Language`: `zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2`,
-				`Accept-Encoding`: `gzip, deflate, br`,
-				`Origin`:          `https://t.bilibili.com`,
-				`Connection`:      `keep-alive`,
-				`Pragma`:          `no-cache`,
-				`Cache-Control`:   `no-cache`,
-				`Referer`:         `https://t.bilibili.com/pages/nav/index_new`,
-				`Cookie`:          reqf.Map_2_Cookies_String(Cookie),
-			},
-			Proxy:   c.C.Proxy,
-			Timeout: 3 * 1000,
-			Retry:   2,
-		}); err != nil {
-			apilog.L(`E: `, err)
-			return
-		}
-
-		var res J.Following
-
-		if e := json.Unmarshal(req.Respon, &res); e != nil {
-			apilog.L(`E: `, e)
-			return
-		}
-
-		if res.Code != 0 {
-			apilog.L(`E: `, res.Message)
-			return
-		}
-
-		// 提前结束获取，仅获取当前正在直播的主播
-		for _, item := range res.Data.List {
-			if item.LiveStatus == 0 {
-				break
-			} else {
-				Uplist = append(Uplist, item)
-			}
-		}
-
-		if pageNum*10 > res.Data.TotalPage {
-			break
-		}
-		time.Sleep(time.Second)
+	if e, res := biliApi.GetFollowing(); e != nil {
+		apilog.L(`E: `, e)
+		return
+	} else {
+		Uplist = res
 	}
 
 	return
 }
 
-func GetHistory(Roomid_int int) (j J.GetHistory) {
+func GetHistory(Roomid_int int) (j []string) {
 	apilog := apilog.Base_add(`GetHistory`)
 
-	Roomid := strconv.Itoa(Roomid_int)
-
-	{ //使用其他api
-		req := c.C.ReqPool.Get()
-		defer c.C.ReqPool.Put(req)
-		if err := req.Reqf(reqf.Rval{
-			Url: "https://api.live.bilibili.com/xlive/web-room/v1/dM/gethistory?roomid=" + Roomid,
-			Header: map[string]string{
-				`Referer`: "https://live.bilibili.com/" + Roomid,
-			},
-			Proxy:   c.C.Proxy,
-			Timeout: 10 * 1000,
-			Retry:   2,
-		}); err != nil {
-			apilog.L(`E: `, err)
-			return
-		}
-
-		//GetHistory
-		{
-			if e := json.Unmarshal(req.Respon, &j); e != nil {
-				apilog.L(`E: `, e)
-				return
-			} else if j.Code != 0 {
-				apilog.L(`E: `, j.Message)
-				return
-			}
-		}
+	if e, res := biliApi.GetHisDanmu(Roomid_int); e != nil {
+		apilog.L(`E: `, e)
+		return
+	} else {
+		return res
 	}
-	return
 }
 
 type searchresult struct {
@@ -1642,99 +1455,23 @@ type searchresult struct {
 	Is_live bool
 }
 
-func (c *GetFunc) SearchUP(s string) (list []searchresult) {
+func (c *GetFunc) SearchUP(s string) (list []struct {
+	Roomid  int
+	Uname   string
+	Is_live bool
+}) {
 	apilog := apilog.Base_add(`搜索主播`)
 	if api_limit.TO() {
 		apilog.L(`E: `, `超时！`)
 		return
 	} //超额请求阻塞，超时将取消
 
-	{ //使用其他api
-		req := c.ReqPool.Get()
-		defer c.ReqPool.Put(req)
-
-		Cookie := make(map[string]string)
-		c.Cookie.Range(func(k, v interface{}) bool {
-			Cookie[k.(string)] = v.(string)
-			return true
-		})
-
-		query := "page=1&page_size=10&order=online&platform=pc&search_type=live_user&keyword=" + url.PathEscape(s)
-
-		// get nav
-		vr, loaded, f := c.Cache.LoadOrStore(webImg)
-		if !loaded {
-			if e, res := biliApi.GetNav(); e != nil {
-				apilog.L(`E: `, e)
-				return
-			} else {
-				f(&res, time.Hour)
-				vr = &res
-				apilog.L(`I: `, `已登录`)
-			}
-		}
-
-		if v, ok := vr.(*struct {
-			IsLogin bool
-			WbiImg  struct {
-				ImgURL string
-				SubURL string
-			}
-		}); !ok {
-			apilog.L(`E: `, `类型错误`)
-			return
-		} else if e, queryE := biliApi.Wbi(query, v.WbiImg); e != nil {
-			// wbi
-			apilog.L(`E: `, e)
-			return
-		} else {
-			query = queryE
-		}
-
-		if err := req.Reqf(reqf.Rval{
-			Url:   "https://api.bilibili.com/x/web-interface/wbi/search/type?" + query,
-			Proxy: c.Proxy,
-			Header: map[string]string{
-				`Cookie`: reqf.Map_2_Cookies_String(Cookie),
-			},
-			Timeout: 10 * 1000,
-			Retry:   2,
-		}); err != nil {
-			apilog.L(`E: `, err)
-			return
-		}
-
-		var j J.Search
-
-		//Search
-		{
-			if e := json.Unmarshal(req.Respon, &j); e != nil {
-				apilog.L(`E: `, e)
-				return
-			} else if j.Code != 0 {
-				apilog.L(`E: `, j.Message)
-				return
-			}
-		}
-
-		if j.Data.NumResults == 0 {
-			apilog.L(`I: `, `没有匹配`)
-			return
-		}
-
-		for i := 0; i < len(j.Data.Result); i += 1 {
-			uname := strings.ReplaceAll(j.Data.Result[i].Uname, `<em class="keyword">`, ``)
-			uname = strings.ReplaceAll(uname, `</em>`, ``)
-			list = append(list, searchresult{
-				Roomid:  j.Data.Result[i].Roomid,
-				Uname:   uname,
-				Is_live: j.Data.Result[i].IsLive,
-			})
-		}
-
+	if e, res := biliApi.SearchUP(s); e != nil {
+		apilog.L(`E: `, e)
+		return
+	} else {
+		return res
 	}
-
-	return
 }
 
 func KeepConnect() {
@@ -1751,14 +1488,7 @@ func IsConnected() bool {
 		return true
 	}
 
-	req := c.C.ReqPool.Get()
-	defer c.C.ReqPool.Put(req)
-	if err := req.Reqf(reqf.Rval{
-		Url:              "https://www.bilibili.com",
-		Proxy:            c.C.Proxy,
-		Timeout:          10 * 1000,
-		JustResponseCode: true,
-	}); err != nil {
+	if err := biliApi.IsConnected(); err != nil {
 		apilog.L(`W: `, `网络中断`, err)
 		return false
 	}

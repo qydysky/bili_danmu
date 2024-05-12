@@ -113,4 +113,25 @@ type biliApiInter interface {
 	})
 	GetWalletRule() (err error, Silver2CoinPrice int)
 	Silver2coin() (err error, Message string)
+	GetHisStream() (err error, res []struct {
+		Uname      string
+		Title      string
+		Roomid     int
+		LiveStatus int
+	})
+	RoomEntryAction(Roomid int) (err error)
+	GetOnlineGoldRank(upUid, roomid int) (err error, OnlineNum int)
+	GetFollowing() (err error, res []struct {
+		Roomid     int
+		Uname      string
+		Title      string
+		LiveStatus int
+	})
+	IsConnected() (err error)
+	GetHisDanmu(Roomid int) (err error, res []string)
+	SearchUP(s string) (err error, res []struct {
+		Roomid  int
+		Uname   string
+		Is_live bool
+	})
 }

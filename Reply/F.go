@@ -1055,11 +1055,9 @@ func Keep_medal_light() {
 
 		//两天内到期，发弹幕续期
 		var Str string
-		for _, v := range F.GetHistory(v.RoomID).Data.Room {
-			if v.Text != "" {
-				Str = v.Text
-				break
-			}
+		for _, Text := range F.GetHistory(v.RoomID) {
+			Str = Text
+			break
 		}
 		if Str == "" {
 			rand := p.Rand().MixRandom(0, int64(len(array)-1))
