@@ -33,7 +33,6 @@ import (
 	qr "github.com/skip2/go-qrcode"
 )
 
-const webImg = "webImg"
 const id = "github.com/qydysky/bili_danmu/F.biliApi"
 
 var apilog = c.C.Log.Base(`api`)
@@ -843,10 +842,9 @@ func (t *GetFunc) Get_cookie() (missKey []string) {
 				`DedeUserID`,
 			}); len(miss) == 0 {
 				biliApi.SetCookies(reqf.Cookies_String_2_List(cookieString))
-				if e, res := biliApi.GetNav(); e != nil {
+				if e, _ := biliApi.GetNav(); e != nil {
 					apilog.L(`E: `, e)
 				} else {
-					t.Cache.Store(webImg, &res, time.Hour)
 					apilog.L(`I: `, `已登录`)
 					return
 				}
@@ -1447,12 +1445,6 @@ func GetHistory(Roomid_int int) (j []string) {
 	} else {
 		return res
 	}
-}
-
-type searchresult struct {
-	Roomid  int
-	Uname   string
-	Is_live bool
 }
 
 func (c *GetFunc) SearchUP(s string) (list []struct {
