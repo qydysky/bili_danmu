@@ -11936,7 +11936,10 @@ __webpack_require__.r(__webpack_exports__);
                 indicator: '<img width="16" heigth="16" src=' + _img_indicator_svg__WEBPACK_IMPORTED_MODULE_5__["default"] + '>',
             },
             customType: {
-                mp4: (video, url) => new MSC({video: video, url: url}),
+                mp4: (video, url) => {
+                    //new MSC({video: video, url: url});
+                    video.src = url;
+                },
                 flv: function (video, url) {
                     var needUnload = true;
                     if(flvPlayer){
