@@ -134,4 +134,67 @@ type biliApiInter interface {
 		Uname   string
 		Is_live bool
 	})
+	LiveHtml(Roomid int) (err error, res struct {
+		RoomInitRes struct {
+			Code    int
+			Message string
+			TTL     int
+			Data    struct {
+				RoomID      int
+				UID         int
+				LiveStatus  int
+				LiveTime    int
+				PlayurlInfo struct {
+					ConfJSON string
+					Playurl  struct {
+						Stream []struct {
+							ProtocolName string
+							Format       []struct {
+								FormatName string
+								Codec      []struct {
+									CodecName string
+									CurrentQn int
+									AcceptQn  []int
+									BaseURL   string
+									URLInfo   []struct {
+										Host      string
+										Extra     string
+										StreamTTL int
+									}
+									HdrQn     any
+									DolbyType int
+									AttrName  string
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		RoomInfoRes struct {
+			Code    int
+			Message string
+			TTL     int
+			Data    struct {
+				RoomInfo struct {
+					Title        string
+					LockStatus   int
+					AreaID       int
+					ParentAreaID int
+				}
+				AnchorInfo struct {
+					BaseInfo struct {
+						Uname string
+					}
+				}
+				PopularRankInfo struct {
+					Rank     int
+					RankName string
+				}
+				GuardInfo struct {
+					Count int
+				}
+			}
+		}
+	})
 }

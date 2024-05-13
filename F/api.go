@@ -2,7 +2,6 @@ package F
 
 import (
 	"crypto/md5"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -24,7 +23,6 @@ import (
 	cmp "github.com/qydysky/part/component2"
 	file "github.com/qydysky/part/file"
 	funcCtrl "github.com/qydysky/part/funcCtrl"
-	g "github.com/qydysky/part/get"
 	pio "github.com/qydysky/part/io"
 	limit "github.com/qydysky/part/limit"
 	reqf "github.com/qydysky/part/reqf"
@@ -311,28 +309,13 @@ func (t *GetFunc) Html() (missKey []string) {
 		return
 	}
 
-	Roomid := strconv.Itoa(t.Roomid)
-
 	//html
 	{
-		r := g.Get(reqf.Rval{
-			Url:   "https://live.bilibili.com/" + Roomid,
-			Proxy: t.Proxy,
-		})
 
-		if tmp := r.S(`<script>window.__NEPTUNE_IS_MY_WAIFU__=`, `</script>`, 0, 0); tmp.Err != nil {
-			apilog.L(`E: `, `不存在<script>window.__NEPTUNE_IS_MY_WAIFU__= </script>`)
+		if err, j := biliApi.LiveHtml(t.Roomid); err != nil {
+			apilog.L(`E: `, err)
+			return
 		} else {
-			s := tmp.RS[0]
-
-			var j J.NEPTUNE_IS_MY_WAIFU
-			if e := json.Unmarshal([]byte(s), &j); e != nil {
-				apilog.L(`E: `, e)
-				return
-			} else if j.RoomInitRes.Code != 0 {
-				apilog.L(`E: `, j.RoomInitRes.Message)
-				return
-			}
 			//Roominitres
 			{
 				//主播uid
@@ -391,7 +374,26 @@ func (t *GetFunc) Html() (missKey []string) {
 }
 
 // 配置直播流
-func (t *GetFunc) configStreamType(sts []J.StreamType) {
+func (t *GetFunc) configStreamType(sts []struct {
+	ProtocolName string
+	Format       []struct {
+		FormatName string
+		Codec      []struct {
+			CodecName string
+			CurrentQn int
+			AcceptQn  []int
+			BaseURL   string
+			URLInfo   []struct {
+				Host      string
+				Extra     string
+				StreamTTL int
+			}
+			HdrQn     any
+			DolbyType int
+			AttrName  string
+		}
+	}
+}) {
 	var (
 		wantTypes []c.StreamType
 		chosen    int = -1
@@ -588,9 +590,47 @@ func (t *GetFunc) getRoomPlayInfo() (missKey []string) {
 			}
 
 			//当前直播流
-			var s = make([]J.StreamType, len(res.Streams))
+			var s = make([]struct {
+				ProtocolName string
+				Format       []struct {
+					FormatName string
+					Codec      []struct {
+						CodecName string
+						CurrentQn int
+						AcceptQn  []int
+						BaseURL   string
+						URLInfo   []struct {
+							Host      string
+							Extra     string
+							StreamTTL int
+						}
+						HdrQn     any
+						DolbyType int
+						AttrName  string
+					}
+				}
+			}, len(res.Streams))
 			for i := 0; i < len(res.Streams); i++ {
-				s[i] = J.StreamType(res.Streams[i])
+				s[i] = struct {
+					ProtocolName string
+					Format       []struct {
+						FormatName string
+						Codec      []struct {
+							CodecName string
+							CurrentQn int
+							AcceptQn  []int
+							BaseURL   string
+							URLInfo   []struct {
+								Host      string
+								Extra     string
+								StreamTTL int
+							}
+							HdrQn     any
+							DolbyType int
+							AttrName  string
+						}
+					}
+				}(res.Streams[i])
 			}
 			t.configStreamType(s)
 		}
@@ -652,9 +692,47 @@ func (t *GetFunc) getRoomPlayInfoByQn() (missKey []string) {
 			}
 
 			//当前直播流
-			var s = make([]J.StreamType, len(res.Streams))
+			var s = make([]struct {
+				ProtocolName string
+				Format       []struct {
+					FormatName string
+					Codec      []struct {
+						CodecName string
+						CurrentQn int
+						AcceptQn  []int
+						BaseURL   string
+						URLInfo   []struct {
+							Host      string
+							Extra     string
+							StreamTTL int
+						}
+						HdrQn     any
+						DolbyType int
+						AttrName  string
+					}
+				}
+			}, len(res.Streams))
 			for i := 0; i < len(res.Streams); i++ {
-				s[i] = J.StreamType(res.Streams[i])
+				s[i] = struct {
+					ProtocolName string
+					Format       []struct {
+						FormatName string
+						Codec      []struct {
+							CodecName string
+							CurrentQn int
+							AcceptQn  []int
+							BaseURL   string
+							URLInfo   []struct {
+								Host      string
+								Extra     string
+								StreamTTL int
+							}
+							HdrQn     any
+							DolbyType int
+							AttrName  string
+						}
+					}
+				}(res.Streams[i])
 			}
 			t.configStreamType(s)
 		}
