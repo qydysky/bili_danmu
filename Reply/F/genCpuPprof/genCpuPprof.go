@@ -15,10 +15,7 @@ import (
 
 var Start = comp.NewComp(start)
 
-var (
-	timer = time.NewTicker(time.Minute)
-	once  sync.Once
-)
+var once sync.Once
 
 func start(ctx context.Context, file string) (any, error) {
 	if file == "" {
@@ -46,7 +43,7 @@ func start(ctx context.Context, file string) (any, error) {
 					return
 				}
 				select {
-				case <-timer.C:
+				case <-time.After(time.Minute):
 					pprof.StopCPUProfile()
 				case <-ctx1.Done():
 					pprof.StopCPUProfile()
