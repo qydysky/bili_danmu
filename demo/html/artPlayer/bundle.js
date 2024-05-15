@@ -11937,8 +11937,8 @@ __webpack_require__.r(__webpack_exports__);
             },
             customType: {
                 mp4: (video, url) => {
-                    //new MSC({video: video, url: url});
-                    video.src = url;
+                    if(url.indexOf("now")!=-1)new MSC({video: video, url: url});
+                    else video.src = url;
                 },
                 flv: function (video, url) {
                     var needUnload = true;
