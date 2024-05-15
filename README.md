@@ -310,11 +310,13 @@ config_K_v.json
 }
 ```
 
-另外，当配置文件中的`debug模式`为`true`时
+另外，当配置文件中的`debug路径`不为空时, 访问此路径可以获取调试信息，为空时关闭，需要/结尾，默认为空
 
-- 标准包[net/http/pprof](https://pkg.go.dev/net/http/pprof)将在`/debug/pprof/`路径可用，从而可以使用`go tool pprof`工具进行性能调试。
+- 标准包[net/http/pprof](https://pkg.go.dev/net/http/pprof)将在`debug路径`路径可用，从而可以使用`go tool pprof`工具进行性能调试。
+
+另外，当配置文件中的`debug模式`为`true`时，默认为`false`, 启用额外调试信息
+
 - 当录制fmp4时，每1分钟打印m4s池状态
-
 
 #### 自定义config_K_v.json
 当启动时使用`-ckv 路径`，将从此路径(或http地址)加载config_K_v.json并覆盖默认config_K_v.json中的配置项。

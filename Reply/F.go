@@ -1140,36 +1140,25 @@ func init() {
 		}
 
 		// debug模式
-		if de, ok := c.C.K_v.LoadV(`debug模式`).(bool); ok && de {
-			c.C.SerF.Store("/debug/pprof/", func(w http.ResponseWriter, r *http.Request) {
+		if debugP, ok := c.C.K_v.LoadV(`debug路径`).(string); ok && debugP != "" {
+			c.C.SerF.Store(debugP, func(w http.ResponseWriter, r *http.Request) {
 				if c.DefaultHttpCheck(c.C, w, r, http.MethodGet, http.MethodPost) {
+					return
+				}
+				if name, found := strings.CutPrefix(r.URL.Path, debugP); found && name != "" {
+					switch name {
+					case "cmdline":
+						pprof.Cmdline(w, r)
+					case "profile":
+						pprof.Profile(w, r)
+					case "trace":
+						pprof.Trace(w, r)
+					default:
+						pprof.Handler(name).ServeHTTP(w, r)
+					}
 					return
 				}
 				pprof.Index(w, r)
-			})
-			c.C.SerF.Store("/debug/pprof/cmdline", func(w http.ResponseWriter, r *http.Request) {
-				if c.DefaultHttpCheck(c.C, w, r, http.MethodGet, http.MethodPost) {
-					return
-				}
-				pprof.Cmdline(w, r)
-			})
-			c.C.SerF.Store("/debug/pprof/profile", func(w http.ResponseWriter, r *http.Request) {
-				if c.DefaultHttpCheck(c.C, w, r, http.MethodGet, http.MethodPost) {
-					return
-				}
-				pprof.Profile(w, r)
-			})
-			c.C.SerF.Store("/debug/pprof/symbol", func(w http.ResponseWriter, r *http.Request) {
-				if c.DefaultHttpCheck(c.C, w, r, http.MethodGet, http.MethodPost) {
-					return
-				}
-				pprof.Symbol(w, r)
-			})
-			c.C.SerF.Store("/debug/pprof/trace", func(w http.ResponseWriter, r *http.Request) {
-				if c.DefaultHttpCheck(c.C, w, r, http.MethodGet, http.MethodPost) {
-					return
-				}
-				pprof.Trace(w, r)
 			})
 		}
 
