@@ -1458,6 +1458,7 @@ func (t *M4SStream) PusherToHttp(conn net.Conn, w http.ResponseWriter, r *http.R
 			if len(b) == 0 {
 				return true
 			}
+			_ = conn.SetWriteDeadline(time.Now().Add(time.Second * 30))
 			if n, err := w.Write(b); err != nil || n == 0 {
 				return true
 			}
