@@ -247,7 +247,9 @@ func (t *M4SStream) fetchCheckStream() bool {
 
 	r := t.reqPool.Get()
 	defer t.reqPool.Put(r)
-	for _, v := range t.common.Live {
+	for i := 0; i < len(t.common.Live); i++ {
+		v := &(t.common.Live[i])
+
 		if nomcdn && strings.Contains(v.Url, ".mcdn.") {
 			v.Disable(time.Now().Add(time.Hour * 100))
 			continue
