@@ -408,7 +408,7 @@ func (t *GetFunc) configStreamType(sts []struct {
 		if _, ok := t.Qn[t.Live_qn]; !ok {
 			apilog.L(`W: `, `未知的清晰度`, t.Live_qn)
 		}
-		apilog.L(`T: `, fmt.Sprintf("使用 %d 条直播流 %s %s %s", len(t.Live), t.Qn[t.Live_qn], wantTypes[chosen].Format_name, wantTypes[chosen].Codec_name))
+		apilog.L(`T: `, fmt.Sprintf("获取到 %d 条直播流 %s %s %s", len(t.Live), t.Qn[t.Live_qn], wantTypes[chosen].Format_name, wantTypes[chosen].Codec_name))
 	}()
 
 	// 期望类型
@@ -466,7 +466,7 @@ func (t *GetFunc) configStreamType(sts []struct {
 							}
 						}
 
-						t.Live = append(t.Live, item)
+						t.Live = append(t.Live, &item)
 					}
 
 					// 已选定并设置好参数 退出
