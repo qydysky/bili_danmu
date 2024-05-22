@@ -247,11 +247,11 @@ func (t *M4SStream) fetchCheckStream() bool {
 
 	r := t.reqPool.Get()
 	defer t.reqPool.Put(r)
-	for i := 0; i < len(t.common.Live); i++ {
-		v := &(t.common.Live[i])
 
+	for _, v := range t.common.Live {
 		if nomcdn && strings.Contains(v.Url, ".mcdn.") {
 			v.Disable(time.Now().Add(time.Hour * 100))
+			t.log.L(`I: `, `停用流服务器`, F.ParseHost(v.Url))
 			continue
 		}
 
@@ -306,9 +306,7 @@ func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo floa
 	defer t.reqPool.Put(r)
 
 	// 请求解析m3u8内容
-	for k := 0; k < len(t.common.Live); k++ {
-		v := &(t.common.Live[k])
-
+	for _, v := range t.common.Live {
 		// 跳过尚未启用的live地址
 		if !v.Valid() {
 			continue
@@ -338,7 +336,7 @@ func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo floa
 
 		if err := r.Reqf(rval); err != nil {
 			// 1min后重新启用
-			t.common.Live[k].DisableAuto()
+			v.DisableAuto()
 			t.log.L("W: ", fmt.Sprintf("服务器 %s 发生故障 %s", F.ParseHost(v.Url), pe.ErrorFormat(err, pe.ErrSimplifyFunc)))
 			if t.common.ValidLive() == nil {
 				e = errors.New("全部流服务器发生故障")
@@ -435,7 +433,7 @@ func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo floa
 				!lastM4s.createdTime.IsZero() &&
 				time.Since(lastM4s.createdTime).Seconds() > fmp4ListUpdateTo {
 				// 1min后重新启用
-				t.common.Live[k].DisableAuto()
+				v.DisableAuto()
 				t.log.L("W: ", fmt.Sprintf("服务器 %s 发生故障 %.2f 秒未产出切片", F.ParseHost(v.Url), time.Since(lastM4s.createdTime).Seconds()))
 				if t.common.ValidLive() == nil {
 					e = errors.New("全部切片服务器发生故障")
@@ -454,7 +452,7 @@ func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo floa
 			noe := lastNo
 			if (timed > 5 && nos-noe == 0) || (nos-noe > 50) {
 				// 1min后重新启用
-				t.common.Live[k].DisableAuto()
+				v.DisableAuto()
 				t.log.L("W: ", fmt.Sprintf("服务器 %s 发生故障 %d 秒产出了 %d 切片", F.ParseHost(v.Url), int(timed), nos-noe))
 				if t.common.ValidLive() == nil {
 					e = errors.New("全部切片服务器发生故障")

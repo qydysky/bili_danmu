@@ -46,7 +46,7 @@ type Common struct {
 	PID               int            `json:"pid"`           //进程id
 	Version           string         `json:"version"`       //版本
 	Uid               int            `json:"-"`             //client uid
-	Live              []LiveQn       `json:"-"`             //直播流链接
+	Live              []*LiveQn      `json:"-"`             //直播流链接
 	Live_qn           int            `json:"liveQn"`        //当前直播流质量
 	Live_want_qn      int            `json:"-"`             //期望直播流质量
 	Roomid            int            `json:"roomid"`        //房间ID
@@ -201,7 +201,7 @@ func (t *Common) ValidLive() *LiveQn {
 		if time.Now().Before(t.Live[i].ReUpTime) {
 			continue
 		}
-		return &t.Live[i]
+		return t.Live[i]
 	}
 	return nil
 }
