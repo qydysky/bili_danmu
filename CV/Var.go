@@ -89,7 +89,7 @@ type LiveQn struct {
 	Url          string
 	ReUpTime     time.Time
 	disableCount int
-	Expires      int //流到期时间
+	Expires      time.Time //流到期时间
 }
 
 func (t *LiveQn) SetUrl(url string) {
@@ -109,12 +109,16 @@ func (t *LiveQn) Valid() bool {
 }
 
 // 自动停用机制
-func (t *LiveQn) DisableAuto() {
+func (t *LiveQn) DisableAuto() (hadDisable bool) {
+	if !t.Valid() {
+		return true
+	}
 	if time.Now().After(t.ReUpTime.Add(time.Minute).Add(time.Second * time.Duration(10*t.disableCount))) {
 		t.disableCount = 0
 	}
 	t.disableCount += 1
 	t.ReUpTime = time.Now().Add(time.Minute).Add(time.Second * time.Duration(10*t.disableCount))
+	return
 }
 
 func (t *LiveQn) Disable(reUpTime time.Time) {
@@ -174,15 +178,15 @@ func (t *Common) Copy() *Common {
 }
 
 // 自动停用机制
-func (t *Common) DisableLiveAuto(host string) {
+func (t *Common) DisableLiveAuto(host string) (hadDisable bool) {
 	for i := 0; i < len(t.Live); i++ {
 		if liveUrl, e := url.Parse(t.Live[i].Url); e == nil {
 			if host == liveUrl.Host {
-				t.Live[i].DisableAuto()
-				break
+				return t.Live[i].DisableAuto()
 			}
 		}
 	}
+	return
 }
 
 func (t *Common) DisableLive(host string, reUpTime time.Time) {
@@ -194,6 +198,15 @@ func (t *Common) DisableLive(host string, reUpTime time.Time) {
 			}
 		}
 	}
+}
+
+func (t *Common) ValidNum() (num int) {
+	for i := 0; i < len(t.Live); i++ {
+		if time.Now().After(t.Live[i].ReUpTime) {
+			num += 1
+		}
+	}
+	return
 }
 
 func (t *Common) ValidLive() *LiveQn {

@@ -296,9 +296,18 @@ func (t *M4SStream) fetchCheckStream() bool {
 }
 
 func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo float64) (m4s_links []*m4s_link_item, e error) {
-	if t.common.ValidLive() == nil {
-		e = errors.New("全部流服务器发生故障")
-		return
+	{
+		n := t.common.ValidNum()
+		if d, ok := t.common.K_v.LoadV("fmp4获取更多服务器").(bool); ok && d && n <= 1 {
+			t.log.L("I: ", "获取更多服务器...")
+			if !t.fetchCheckStream() {
+				e = errors.New("全部流服务器发生故障")
+				return
+			}
+		} else if n == 0 {
+			e = errors.New("全部流服务器发生故障")
+			return
+		}
 	}
 
 	// 开始请求
@@ -961,25 +970,26 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 				}
 				dCount += 1
 
-				done := downloadLimit.Block()
-
 				// 故障转移
 				if download_seq[i].status == 3 {
 					if linkUrl, e := url.Parse(download_seq[i].Url); e == nil {
 						oldHost := linkUrl.Host
 						// 将此切片服务器设置停用
-						t.common.DisableLiveAuto(oldHost)
+						hadDisable := t.common.DisableLiveAuto(oldHost)
 						// 从其他服务器获取此切片
 						if vl := t.common.ValidLive(); vl == nil {
 							return errors.New(`全部流服务器故障`)
 						} else {
 							linkUrl.Host = vl.Host()
-							t.log.L(`W: `, `切片下载失败，故障转移`, oldHost, ` -> `, linkUrl.Host)
+							if !hadDisable {
+								t.log.L(`W: `, `切片下载失败，故障转移`, oldHost, ` -> `, linkUrl.Host)
+							}
 						}
 						download_seq[i].Url = linkUrl.String()
 					}
 				}
 
+				done := downloadLimit.Block()
 				go func(link *m4s_link_item) {
 					defer done()
 

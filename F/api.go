@@ -420,7 +420,12 @@ func (t *GetFunc) configStreamType(sts []struct {
 	// 默认类型
 	wantTypes = append(wantTypes, t.AllStreamType[`fmp4`], t.AllStreamType[`flv`])
 
-	t.Live = t.Live[:0]
+	// t.Live = t.Live[:0]
+	for i := 0; i < len(t.Live); i++ {
+		if time.Now().Add(time.Minute).Before(t.Live[i].ReUpTime) {
+			t.Live = append(t.Live[:i], t.Live[i+1:]...)
+		}
+	}
 
 	for k, streamType := range wantTypes {
 		for _, v := range sts {
@@ -462,7 +467,7 @@ func (t *GetFunc) configStreamType(sts []struct {
 
 						if query, e := url.ParseQuery(v1.Extra); e == nil {
 							if expires, e := strconv.Atoi(query.Get("expires")); e == nil {
-								item.Expires = expires
+								item.Expires = time.Now().Add(time.Duration(expires * int(time.Second)))
 							}
 						}
 
