@@ -298,7 +298,7 @@ func (t *M4SStream) fetchCheckStream() bool {
 func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo float64) (m4s_links []*m4s_link_item, e error) {
 	{
 		n := t.common.ValidNum()
-		if d, ok := t.common.K_v.LoadV("fmp4获取更多服务器").(bool); ok && d && n <= 1 {
+		if d, ok := t.common.K_v.LoadV("fmp4获取更多服务器").(bool); ok && d && n <= 1 && len(t.common.Live) <= 5 {
 			t.log.L("I: ", "获取更多服务器...")
 			if !t.fetchCheckStream() {
 				e = errors.New("全部流服务器发生故障")
@@ -1320,6 +1320,9 @@ func (t *M4SStream) Start() bool {
 				t.log.L(`I: `, `未直播`)
 				break
 			}
+
+			// 新循环，取消所有流
+			t.common.Live = t.common.Live[:0]
 
 			// 获取 and 检查流地址状态
 			if !t.fetchCheckStream() {
