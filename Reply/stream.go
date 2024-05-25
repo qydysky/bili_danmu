@@ -888,6 +888,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 		fmp4ListUpdateTo = 5.0
 		fmp4Count        = 0
 		startT           = time.Now()
+		skipErrFrame     = false
 	)
 
 	if v, ok := t.common.K_v.LoadV(`fmp4音视频时间戳容差s`).(float64); ok && v > 0.1 {
@@ -898,6 +899,9 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 	}
 	if v, ok := t.common.K_v.LoadV(`fmp4列表更新超时s`).(float64); ok && fmp4ListUpdateTo < v {
 		fmp4ListUpdateTo = v
+	}
+	if v, ok := t.common.K_v.LoadV(`fmp4跳过解码出错的帧`).(bool); ok {
+		skipErrFrame = v
 	}
 
 	// 下载循环
@@ -1018,14 +1022,16 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 		// 传递已下载切片
 		for k := 0; k < len(download_seq) && download_seq[k].status == 2; k++ {
 
-			if download_seq[k].isInit() {
+			cu := download_seq[k]
+
+			if cu.isInit() {
 				{
-					buf, unlock := download_seq[k].data.GetPureBufRLock()
+					buf, unlock := cu.data.GetPureBufRLock()
 					front_buf, e := fmp4Decoder.Init_fmp4(buf)
 					unlock()
 					if e != nil {
 						t.log.L(`E: `, e, `重试!`)
-						download_seq[k].status = 3
+						cu.status = 3
 						break
 					} else {
 						for _, trak := range fmp4Decoder.traks {
@@ -1037,21 +1043,21 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 						t.msg.Push_tag(`load`, t)
 					}
 				}
-				t.putM4s(download_seq[k])
+				t.putM4s(cu)
 				download_seq = append(download_seq[:k], download_seq[k+1:]...)
 				k -= 1
 				continue
 			} else if t.first_buf == nil {
-				t.putM4s(download_seq[k])
+				t.putM4s(cu)
 				download_seq = append(download_seq[:k], download_seq[k+1:]...)
 				k -= 1
 				continue
 			}
 
-			if e := download_seq[k].data.AppendTo(buf); e != nil {
+			if e := cu.data.AppendTo(buf); e != nil {
 				t.log.L(`E: `, e)
 			}
-			t.putM4s(download_seq[k])
+			t.putM4s(cu)
 			download_seq = append(download_seq[:k], download_seq[k+1:]...)
 			k -= 1
 
@@ -1064,10 +1070,17 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 				//丢弃所有数据
 				buf.Reset()
 				e = err
-				return
+				if skipErrFrame {
+					// 将此切片服务器设置停用
+					if u, e := url.Parse(cu.Url); e == nil {
+						t.common.DisableLiveAuto(u.Host)
+					}
+				} else {
+					return
+				}
 			}
 
-			// no, _ := download_seq[k].getNo()
+			// no, _ := cu.getNo()
 			// fmt.Println(no, "fmp4KeyFrames", keyframe.Size(), last_available_offset, err)
 
 			// 传递关键帧
