@@ -785,6 +785,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 						}
 						if len(front_buf) != 0 && len(t.first_buf) == 0 {
 							t.first_buf = make([]byte, len(front_buf))
+							copy(t.first_buf, front_buf)
 							// fmt.Println("write front_buf")
 							// t.Stream_msg.PushLock_tag(`data`, t.first_buf)
 							t.msg.Push_tag(`load`, t)
