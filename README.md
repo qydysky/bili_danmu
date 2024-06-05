@@ -269,17 +269,17 @@ sqlite3:
         {
             "roomid":0,
             "durationS":60,
-            "after":["cmd","/c","ffmpeg","-i","0.{type}","-y","-c","copy","1.{type}","1>1.log","2>&1"]
+            "after":["cmd","/c","ffmpeg","-i","0.{type}","-y","-c","copy","-movflags","+faststart","1.{type}","1>1.log","2>&1"]
         },
         {
             "roomid":0,
             "durationS":60,
-            "after":["ffmpeg","-i","0.{type}","-y","-c","copy","1.{type}"]
+            "after":["ffmpeg","-i","0.{type}","-y","-c","copy","-movflags","+faststart","1.{type}"]
         }
     ]
 }
 ```
-上述例子中演示了windows下使用[ffmpeg](https://ffmpeg.org/) ~~，这将使得保存的流文件`0.mp4 or 0.flv`转为正常的视频`1.mp4 or 1.flv`~~。
+上述例子中演示了windows下使用[ffmpeg](https://ffmpeg.org/) ，这将使得保存的流文件`0.mp4 or 0.flv`转为正常的视频`1.mp4 or 1.flv`。
 
 注意：命令运行是异步的，如同步执行多个命令，应使用脚本。
 
@@ -423,7 +423,7 @@ ass编码GB18030支持中文
 
   使用`?ref={目录}`参数来获取流，当为`?ref=now`时，为当前直播流
 
-- 火狐不原生支持Hevc格式，因此当模式为`flvH,fmp4H`时，只能播放声音
+- Hevc格式，可能需要硬件解码支持
 - 预览[92613少年Pi的直播回放](https://r.qydysky.org/bili)，此预览地址已应用如下配置
   <details>
     
