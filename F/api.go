@@ -283,7 +283,7 @@ func (c *GetFunc) Get(key string) {
 				} else {
 					c.l.RUnlock()
 					apilog.L(`W: `, `check fail`, key)
-					c.Get(key)
+					// c.Get(key)
 				}
 			}
 		}
@@ -462,7 +462,8 @@ func (t *GetFunc) configStreamType(sts []struct {
 					//直播流链接
 					for _, v1 := range v.URLInfo {
 						item := c.LiveQn{
-							Url: v1.Host + v.BaseURL + v1.Extra,
+							Codec: v.CodecName,
+							Url:   v1.Host + v.BaseURL + v1.Extra,
 						}
 
 						if query, e := url.ParseQuery(v1.Extra); e == nil {
