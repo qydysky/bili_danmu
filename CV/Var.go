@@ -87,6 +87,7 @@ type Common struct {
 
 type LiveQn struct {
 	Url          string
+	Codec        string
 	ReUpTime     time.Time
 	disableCount int
 	Expires      time.Time //流到期时间

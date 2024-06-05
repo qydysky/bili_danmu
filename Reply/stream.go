@@ -42,8 +42,11 @@ import (
 	pweb "github.com/qydysky/part/web"
 )
 
-//go:embed flvHeader
+//go:embed flvHeaders/flvHeader
 var flvHeader []byte
+
+//go:embed flvHeaders/flvHeaderHevc
+var flvHeaderHevc []byte
 
 type M4SStream struct {
 	Status               context.Context       //IsLive()是否运行中
@@ -792,13 +795,22 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 						}
 						if keyframe.Size() != 0 {
 							if len(t.first_buf) == 0 {
-								// 	t.log.L(`W: `, `flv未接收到起始段`)
-								// 	pctx.PutVal(cancelC, &errCtx, errors.New(`flv未接收到起始段`))
-								// 	break
-								// } else {
-								t.log.L(`W: `, `flv未接收到起始段,使用内置头`)
-								t.first_buf = flvHeader
-								t.msg.Push_tag(`load`, t)
+								switch v.Codec {
+								case "hevc":
+									t.log.L(`W: `, `flv未接收到起始段,使用内置头`)
+									t.first_buf = flvHeaderHevc
+									t.msg.Push_tag(`load`, t)
+								case "avc":
+									t.log.L(`W: `, `flv未接收到起始段,使用内置头`)
+									t.first_buf = flvHeader
+									t.msg.Push_tag(`load`, t)
+								default:
+								}
+								if len(t.first_buf) == 0 {
+									t.log.L(`W: `, `flv未接收到起始段`)
+									pctx.PutVal(cancelC, &errCtx, errors.New(`flv未接收到起始段`))
+									break
+								}
 							}
 							buf, unlock := keyframe.GetPureBufRLock()
 							t.bootBufPush(buf)
