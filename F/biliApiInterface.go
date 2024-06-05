@@ -86,7 +86,7 @@ type biliApiInter interface {
 		ImgURL string
 		SubURL string
 	}) (err error, queryEnc string)
-	GetWearedMedal() (err error, res struct {
+	GetWearedMedal(uid, upUid int) (err error, res struct {
 		TodayIntimacy int
 		RoomID        int
 		TargetID      int

@@ -1104,9 +1104,9 @@ func Get_list_in_room(RoomID, TargetID int) (array []struct {
 }
 
 // 获取当前佩戴的牌子
-func Get_weared_medal() (item J.GetWearedMedal_Data) {
+func Get_weared_medal(uid, upUid int) (item J.GetWearedMedal_Data) {
 
-	apilog := apilog.Base_add(`获取牌子`)
+	apilog := apilog.Base_add(`获取佩戴牌子`)
 	//验证cookie
 	if missKey := CookieCheck([]string{
 		`bili_jct`,
@@ -1117,7 +1117,7 @@ func Get_weared_medal() (item J.GetWearedMedal_Data) {
 		return
 	}
 
-	if err, res := biliApi.GetWearedMedal(); err != nil {
+	if err, res := biliApi.GetWearedMedal(uid, upUid); err != nil {
 		apilog.L(`E: `, err)
 	} else {
 		item.Roominfo.RoomID = res.RoomID
@@ -1156,7 +1156,7 @@ func (c *GetFunc) CheckSwitch_FansMedal() (missKey []string) {
 		return true
 	})
 	{ //获取当前牌子，验证是否本直播间牌子
-		res := Get_weared_medal()
+		res := Get_weared_medal(c.Uid, c.UpUid)
 
 		c.Wearing_FansMedal = res.Roominfo.RoomID //更新佩戴信息
 		if res.TargetID == c.UpUid {

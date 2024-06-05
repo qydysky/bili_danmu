@@ -981,7 +981,7 @@ func Entry_danmu() {
 		return
 	}
 	if v, _ := c.C.K_v.LoadV(`进房弹幕_仅发首日弹幕`).(bool); v {
-		res := F.Get_weared_medal()
+		res := F.Get_weared_medal(c.C.Uid, c.C.UpUid)
 		if res.TodayIntimacy > 0 {
 			flog.L(`T: `, `今日已发弹幕`)
 			return
