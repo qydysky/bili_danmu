@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/md5"
+	_ "embed"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -40,6 +41,9 @@ import (
 	pstring "github.com/qydysky/part/strings"
 	pweb "github.com/qydysky/part/web"
 )
+
+//go:embed flvHeader
+var flvHeader []byte
 
 type M4SStream struct {
 	Status               context.Context       //IsLive()是否运行中
@@ -781,16 +785,19 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 						}
 						if len(front_buf) != 0 && len(t.first_buf) == 0 {
 							t.first_buf = make([]byte, len(front_buf))
-							copy(t.first_buf, front_buf)
 							// fmt.Println("write front_buf")
 							// t.Stream_msg.PushLock_tag(`data`, t.first_buf)
 							t.msg.Push_tag(`load`, t)
 						}
 						if keyframe.Size() != 0 {
 							if len(t.first_buf) == 0 {
-								t.log.L(`W: `, `flv未接收到起始段`)
-								pctx.PutVal(cancelC, &errCtx, errors.New(`flv未接收到起始段`))
-								break
+								// 	t.log.L(`W: `, `flv未接收到起始段`)
+								// 	pctx.PutVal(cancelC, &errCtx, errors.New(`flv未接收到起始段`))
+								// 	break
+								// } else {
+								t.log.L(`W: `, `flv未接收到起始段,使用内置头`)
+								t.first_buf = flvHeader
+								t.msg.Push_tag(`load`, t)
 							}
 							buf, unlock := keyframe.GetPureBufRLock()
 							t.bootBufPush(buf)
