@@ -44,8 +44,8 @@ github.com/ncruces/go-strftime v0.1.9 h1:bY0MQC28UADQmHmaF5dgpLmImcShSi2kHU9XLdh
 github.com/ncruces/go-strftime v0.1.9/go.mod h1:Fwc5htZGVVkseilnfgOVb9mKy6w1naJmn9CehxcKcls=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/qydysky/biliApi v0.0.0-20240605123327-461cdf520458 h1:dZ3W6FNonYAvduyjaaBW/1cYyZSblunkbRUv+oO5nJU=
-github.com/qydysky/biliApi v0.0.0-20240605123327-461cdf520458/go.mod h1:om024vfxALQ5vxsbaGoMm8IS0esLYBnEOpJI8FsGoDg=
+github.com/qydysky/biliApi v0.0.0-20240606223920-b89663690249 h1:23brRdaCzZbh4aH3TWevi/B3MVWbQY3qKcqjEiSmRiA=
+github.com/qydysky/biliApi v0.0.0-20240606223920-b89663690249/go.mod h1:om024vfxALQ5vxsbaGoMm8IS0esLYBnEOpJI8FsGoDg=
 github.com/qydysky/part v0.28.20240522125924 h1:l1FuWfh8tQpfOIfnI2LJsoBDfMdrseh27wquWj1nq+Y=
 github.com/qydysky/part v0.28.20240522125924/go.mod h1:nZgAUD7e70EN+Zxe1pie3J4j0/d8dr0/y4AiZJwcsbo=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec h1:W09IVJc94icq4NjY3clb7Lk8O1qJ8BdBEF8z0ibU0rE=

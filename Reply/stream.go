@@ -263,8 +263,9 @@ func (t *M4SStream) fetchCheckStream() bool {
 		}
 
 		if e := r.Reqf(reqf.Rval{
-			Url:   v.Url,
-			Proxy: t.common.Proxy,
+			Method: http.MethodGet,
+			Url:    v.Url,
+			Proxy:  t.common.Proxy,
 			Header: map[string]string{
 				`User-Agent`:      c.UA,
 				`Accept`:          `*/*`,
