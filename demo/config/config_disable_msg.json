@@ -5,7 +5,7 @@
   "RANK_REM":false,
   "PLAY_TAG":false,
   "PANEL_INTERACTIVE_NOTIFY_CHANGE": true,
-  "INTERACTIVE_USER": true,
+  "INTERACTIVE_USER": false,
   "VOICE_CHAT_UPDATE": false,
   "LIVE_PANEL_CHANGE": false,
   "PK_BATTLE_PRE": false,
