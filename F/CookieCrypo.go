@@ -40,22 +40,39 @@ func CookieGet() []byte {
 				pri = d
 			}
 		} else {
-			if d, e := crypto.FileLoad(`cookie.txt`); e != nil || string(d[:6]) != `t=nol;` {
+			if d, e := crypto.FileLoad(`cookie.txt`); e != nil {
+				clog.L(`E: `, e, `cookie保存格式`)
+				return []byte{}
+			} else if string(d[:6]) == `t=nol;` {
+				return d[6:]
+			} else if string(d[:3]) == `nol` {
+				return d[3:]
+			} else {
 				clog.L(`E: `, e, `cookie保存格式:`, string(d[:6]))
 				return []byte{}
-			} else {
-				return d[6:]
 			}
 		}
 	}
-	if source, e := crypto.FileLoad(`cookie.txt`); e != nil || string(source[:6]) != `t=pem;` {
-		clog.L(`E: `, e, `cookie保存格式:`, string(source[:6]))
+	if d, e := crypto.FileLoad(`cookie.txt`); e != nil {
+		clog.L(`E: `, e, `cookie保存格式`)
 		return []byte{}
-	} else if s, e := crypto.Decrypt(source[6:], pri); e != nil {
-		clog.L(`E: `, e)
-		return []byte{}
+	} else if string(d[:6]) == `t=pem;` {
+		if s, e := crypto.Decrypt(d[6:], pri); e != nil {
+			clog.L(`E: `, e)
+			return []byte{}
+		} else {
+			return s
+		}
+	} else if string(d[:3]) == `pem` {
+		if s, e := crypto.Decrypt(d[3:], pri); e != nil {
+			clog.L(`E: `, e)
+			return []byte{}
+		} else {
+			return s
+		}
 	} else {
-		return s
+		clog.L(`E: `, e, `cookie保存格式:`, string(d[:6]))
+		return []byte{}
 	}
 }
 
