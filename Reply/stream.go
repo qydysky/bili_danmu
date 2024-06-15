@@ -731,12 +731,16 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 		{
 			pipe := pio.NewPipe()
 			var (
-				leastReadUnix atomic.Int64
-				readTO        int64 = 3
+				leastReadUnix     atomic.Int64
+				readTO            int64 = 3
+				useInterFlvHeader bool  = false
 			)
 			leastReadUnix.Store(time.Now().Unix())
 			if v, ok := t.common.K_v.LoadV(`flv断流超时s`).(float64); ok && int64(v) > readTO {
 				readTO = int64(v)
+			}
+			if v, ok := t.common.K_v.LoadV(`flv使用内置头`).(bool); ok && v {
+				useInterFlvHeader = v
 			}
 
 			// read timeout
@@ -820,18 +824,20 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 						}
 						if keyframe.Size() != 0 {
 							if len(t.first_buf) == 0 {
-								switch v.Codec {
-								case "hevc":
-									t.log.L(`W: `, `flv未接收到起始段,使用内置头`)
-									t.first_buf = t.first_buf[:0]
-									t.first_buf = append(t.first_buf, flvHeaderHevc...)
-									t.msg.Push_tag(`load`, t)
-								case "avc":
-									t.log.L(`W: `, `flv未接收到起始段,使用内置头`)
-									t.first_buf = t.first_buf[:0]
-									t.first_buf = append(t.first_buf, flvHeader...)
-									t.msg.Push_tag(`load`, t)
-								default:
+								if useInterFlvHeader {
+									switch v.Codec {
+									case "hevc":
+										t.log.L(`W: `, `flv未接收到起始段,使用内置头`)
+										t.first_buf = t.first_buf[:0]
+										t.first_buf = append(t.first_buf, flvHeaderHevc...)
+										t.msg.Push_tag(`load`, t)
+									case "avc":
+										t.log.L(`W: `, `flv未接收到起始段,使用内置头`)
+										t.first_buf = t.first_buf[:0]
+										t.first_buf = append(t.first_buf, flvHeader...)
+										t.msg.Push_tag(`load`, t)
+									default:
+									}
 								}
 								if len(t.first_buf) == 0 {
 									t.log.L(`W: `, `flv未接收到起始段`)
