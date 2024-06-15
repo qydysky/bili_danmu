@@ -17,6 +17,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -247,16 +248,39 @@ func (t *M4SStream) fetchCheckStream() bool {
 		return true
 	})
 
-	var nomcdn bool
+	var (
+		noSer  []*regexp.Regexp
+		noSerF = func(url string) (ban bool) {
+			for i := 0; i < len(noSer) && !ban; i++ {
+				ban = noSer[i].MatchString(url)
+			}
+			return
+		}
+	)
 	if v, ok := t.common.K_v.LoadV("直播流不使用mcdn").(bool); ok && v {
-		nomcdn = true
+		if reg, err := regexp.Compile(`\.mcdn\.`); err != nil {
+			t.log.L(`W: `, `停用流服务器`, `正则错误`, err)
+		} else {
+			noSer = append(noSer, reg)
+		}
+	}
+	if v, ok := t.common.K_v.LoadV("直播流停用服务器").([]any); ok {
+		for i := 0; i < len(v); i++ {
+			if s, ok := v[i].(string); ok {
+				if reg, err := regexp.Compile(s); err != nil {
+					t.log.L(`W: `, `停用流服务器`, `正则错误`, err)
+				} else {
+					noSer = append(noSer, reg)
+				}
+			}
+		}
 	}
 
 	r := t.reqPool.Get()
 	defer t.reqPool.Put(r)
 
 	for _, v := range t.common.Live {
-		if nomcdn && strings.Contains(v.Url, ".mcdn.") {
+		if noSerF(v.Url) {
 			v.Disable(time.Now().Add(time.Hour * 100))
 			t.log.L(`I: `, `停用流服务器`, F.ParseHost(v.Url))
 			continue
@@ -788,8 +812,8 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 							leastReadUnix.Store(time.Now().Unix())
 						}
 						if len(front_buf) != 0 && len(t.first_buf) == 0 {
-							t.first_buf = make([]byte, len(front_buf))
-							copy(t.first_buf, front_buf)
+							t.first_buf = t.first_buf[:0]
+							t.first_buf = append(t.first_buf, front_buf...)
 							// fmt.Println("write front_buf")
 							// t.Stream_msg.PushLock_tag(`data`, t.first_buf)
 							t.msg.Push_tag(`load`, t)
@@ -799,11 +823,13 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 								switch v.Codec {
 								case "hevc":
 									t.log.L(`W: `, `flv未接收到起始段,使用内置头`)
-									t.first_buf = flvHeaderHevc
+									t.first_buf = t.first_buf[:0]
+									t.first_buf = append(t.first_buf, flvHeaderHevc...)
 									t.msg.Push_tag(`load`, t)
 								case "avc":
 									t.log.L(`W: `, `flv未接收到起始段,使用内置头`)
-									t.first_buf = flvHeader
+									t.first_buf = t.first_buf[:0]
+									t.first_buf = append(t.first_buf, flvHeader...)
 									t.msg.Push_tag(`load`, t)
 								default:
 								}
