@@ -303,12 +303,12 @@ config_K_v.json
 {
   ...
   "Web服务地址":"0.0.0.0:10000",
-  "性能路径":"/state"
+  "性能路径":"/state/"
   ...
 }
 ```
 
-此时GET http://127.0.0.1:10000/state
+此时GET http://127.0.0.1:10000/state/
 ```json
 {
   "code": 0,
@@ -316,13 +316,76 @@ config_K_v.json
   "data": {
     "currentTime": "2023-03-11 15:49:06", //当前时间
     "startTime": "2023-03-11 15:48:26",   //启动时间
+    "version": "c797128",                 //版本
     "state": {
       "base": {
         "goVersion": "go1.20.1",          //编译使用的golang版本
         "numGoroutine": 53,               //goroutine数量
-        "reqPoolInUse": 0,                //全局请求池-正在使用数量
-        "reqPoolSum": 2                   //全局请求池-总数量
+        "reqPoolState": {
+            "inuse": 0,                   //全局请求池-正在使用数量
+            "nopooled": 0,
+            "nouse": 4,
+            "pooled": 4,
+            "qts": 1.8,                   //全局请求池-每秒请求数
+            "sum": 4                      //全局请求池-总数量
+        }
       },
+      "common": {
+        "92613": {                        //正在录制的房间
+            "pid": 9,
+            "version": "c797128",
+            "live": [                     //流服务器状态>v0.14.5
+                {
+                    "Host": "xy111x59x162x229xy.mcdn.bilivideo.cn:486", //流服务器HOST
+                    "Up": true,                                         //是否启用
+                    "Codec": "avc",                                     //编码格式
+                    "ReUpTime": "0001-01-01 00:00:00",                  //重新启用时间
+                    "Expires": "2078-12-03 11:53:58",
+                    "DisableCount": 0                                   //被禁用次数
+                },
+                {
+                    "Host": "d1--cn-gotcha204-4.bilivideo.com",
+                    "Up": true,
+                    "Codec": "avc",
+                    "ReUpTime": "0001-01-01 00:00:00",
+                    "Expires": "2078-12-03 11:53:58",
+                    "DisableCount": 0
+                },
+                {
+                    "Host": "d1--cn-gotcha209.bilivideo.com",
+                    "Up": true,
+                    "Codec": "avc",
+                    "ReUpTime": "0001-01-01 00:00:00",
+                    "Expires": "2078-12-03 11:53:58",
+                    "DisableCount": 0
+                },
+                {
+                    "Host": "d1--cn-gotcha208.bilivideo.com",
+                    "Up": true,
+                    "Codec": "avc",
+                    "ReUpTime": "0001-01-01 00:00:00",
+                    "Expires": "2078-12-03 11:53:58",
+                    "DisableCount": 0
+                }
+            ],
+            "liveQn": 10000,                                //画质
+            "roomid": 92613,                                //房间号
+            "title": "补作业，没得D了",                     //标题
+            "uname": "少年Pi",
+            "upUid": 13046,
+            "rev": 0,
+            "renqi": 1,
+            "watched": 36272,
+            "onlineNum": 4615,
+            "guardNum": 720,
+            "parentAreaID": 6,
+            "areaID": 235,
+            "locked": false,
+            "note": "人气榜 100+",
+            "liveStartTime": "2024-06-17T15:55:05+08:00",
+            "liveing": true
+        }
+    },
       "gc": {
         "gcAvgS": 6.73,                   //平均gc间隔 单位秒
         "gcCPUFractionPpm": 4.74,         //gc的STC耗时占总CPU时间比值 单位百万分之
