@@ -917,7 +917,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 // 移除失效源
 func (t *M4SStream) removeSer() {
 	slice.Del(&t.common.Live, func(v **c.LiveQn) (del bool) {
-		isDel := time.Now().Add(time.Minute).Before((*v).ReUpTime)
+		isDel := time.Now().Add(time.Minute * 2).Before((*v).ReUpTime)
 		if isDel {
 			t.log.L(`I: `, `移除流服务器`, (*v).Host())
 		}
