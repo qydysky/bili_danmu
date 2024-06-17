@@ -421,11 +421,11 @@ func (t *GetFunc) configStreamType(sts []struct {
 	wantTypes = append(wantTypes, t.AllStreamType[`fmp4`], t.AllStreamType[`flv`])
 
 	// t.Live = t.Live[:0]
-	for i := 0; i < len(t.Live); i++ {
-		if time.Now().Add(time.Minute).Before(t.Live[i].ReUpTime) {
-			t.Live = append(t.Live[:i], t.Live[i+1:]...)
-		}
-	}
+	// for i := 0; i < len(t.Live); i++ {
+	// 	if time.Now().Add(time.Minute).Before(t.Live[i].ReUpTime) {
+	// 		t.Live = append(t.Live[:i], t.Live[i+1:]...)
+	// 	}
+	// }
 
 	for k, streamType := range wantTypes {
 		for _, v := range sts {

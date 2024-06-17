@@ -676,6 +676,9 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 
 	// 找到可用流服务器
 	for {
+		// 移除失效源
+		t.removeSer()
+
 		v := t.common.ValidLive()
 		if v == nil {
 			return errors.New("未能找到可用流服务器")
@@ -911,6 +914,17 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 	return
 }
 
+// 移除失效源
+func (t *M4SStream) removeSer() {
+	slice.Del(&t.common.Live, func(v **c.LiveQn) (del bool) {
+		isDel := time.Now().Add(time.Minute).Before((*v).ReUpTime)
+		if isDel {
+			t.log.L(`I: `, `移除流服务器`, (*v).Host())
+		}
+		return isDel
+	})
+}
+
 func (t *M4SStream) saveStreamM4s() (e error) {
 
 	if v, ok := t.common.K_v.LoadV(`debug模式`).(bool); ok && v {
@@ -959,6 +973,9 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 
 	// 下载循环
 	for download_seq := []*m4s_link_item{}; ; {
+		// 移除失效源
+		t.removeSer()
+
 		// 获取解析m3u8
 		{
 			// 防止过快的下载

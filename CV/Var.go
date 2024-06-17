@@ -46,7 +46,7 @@ type Common struct {
 	PID               int            `json:"pid"`           //进程id
 	Version           string         `json:"version"`       //版本
 	Uid               int            `json:"-"`             //client uid
-	Live              []*LiveQn      `json:"-"`             //直播流链接
+	Live              []*LiveQn      `json:"live"`          //直播流链接
 	Live_qn           int            `json:"liveQn"`        //当前直播流质量
 	Live_want_qn      int            `json:"-"`             //期望直播流质量
 	Roomid            int            `json:"roomid"`        //房间ID
@@ -86,11 +86,29 @@ type Common struct {
 }
 
 type LiveQn struct {
-	Url          string
+	Url          string `json:"-"`
 	Codec        string
 	ReUpTime     time.Time
-	disableCount int
+	DisableCount int
 	Expires      time.Time //流到期时间
+}
+
+func (t LiveQn) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		Host         string
+		Up           bool
+		Codec        string
+		ReUpTime     string
+		Expires      string
+		DisableCount int
+	}{
+		Host:         t.Host(),
+		Up:           time.Now().After(t.ReUpTime),
+		Codec:        t.Codec,
+		ReUpTime:     t.ReUpTime.Format(time.DateTime),
+		Expires:      t.Expires.Format(time.DateTime),
+		DisableCount: t.DisableCount,
+	})
 }
 
 func (t *LiveQn) SetUrl(url string) {
@@ -114,11 +132,11 @@ func (t *LiveQn) DisableAuto() (hadDisable bool) {
 	if !t.Valid() {
 		return true
 	}
-	if time.Now().After(t.ReUpTime.Add(time.Minute).Add(time.Second * time.Duration(10*t.disableCount))) {
-		t.disableCount = 0
+	if time.Now().After(t.ReUpTime.Add(time.Minute).Add(time.Second * time.Duration(20*t.DisableCount))) {
+		t.DisableCount = 0
 	}
-	t.disableCount += 1
-	t.ReUpTime = time.Now().Add(time.Minute).Add(time.Second * time.Duration(10*t.disableCount))
+	t.DisableCount += 1
+	t.ReUpTime = time.Now().Add(time.Minute).Add(time.Second * time.Duration(20*t.DisableCount))
 	return
 }
 
