@@ -462,8 +462,9 @@ func (t *GetFunc) configStreamType(sts []struct {
 					//直播流链接
 					for _, v1 := range v.URLInfo {
 						item := c.LiveQn{
-							Codec: v.CodecName,
-							Url:   v1.Host + v.BaseURL + v1.Extra,
+							Codec:      v.CodecName,
+							Url:        v1.Host + v.BaseURL + v1.Extra,
+							CreateTime: time.Now(),
 						}
 
 						if query, e := url.ParseQuery(v1.Extra); e == nil {

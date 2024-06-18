@@ -89,6 +89,7 @@ type LiveQn struct {
 	Url          string `json:"-"`
 	Codec        string
 	ReUpTime     time.Time
+	CreateTime   time.Time
 	DisableCount int
 	Expires      time.Time //流到期时间
 }
@@ -98,6 +99,7 @@ func (t LiveQn) MarshalJSON() ([]byte, error) {
 		Host         string
 		Up           bool
 		Codec        string
+		CreateTime   string
 		ReUpTime     string
 		Expires      string
 		DisableCount int
@@ -105,6 +107,7 @@ func (t LiveQn) MarshalJSON() ([]byte, error) {
 		Host:         t.Host(),
 		Up:           time.Now().After(t.ReUpTime),
 		Codec:        t.Codec,
+		CreateTime:   t.CreateTime.Format(time.DateTime),
 		ReUpTime:     t.ReUpTime.Format(time.DateTime),
 		Expires:      t.Expires.Format(time.DateTime),
 		DisableCount: t.DisableCount,
