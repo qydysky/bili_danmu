@@ -13,6 +13,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/google/uuid"
 	c "github.com/qydysky/bili_danmu/CV"
 	J "github.com/qydysky/bili_danmu/Json"
 	"github.com/skratchdot/open-golang/open"
@@ -462,6 +463,7 @@ func (t *GetFunc) configStreamType(sts []struct {
 					//直播流链接
 					for _, v1 := range v.URLInfo {
 						item := c.LiveQn{
+							Uuid:       uuid.NewString(),
 							Codec:      v.CodecName,
 							Url:        v1.Host + v.BaseURL + v1.Extra,
 							CreateTime: time.Now(),

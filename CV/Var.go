@@ -87,6 +87,7 @@ type Common struct {
 
 type LiveQn struct {
 	Url          string `json:"-"`
+	Uuid         string `json:"-"`
 	Codec        string
 	ReUpTime     time.Time
 	CreateTime   time.Time
@@ -200,6 +201,16 @@ func (t *Common) Copy() *Common {
 }
 
 // 自动停用机制
+func (t *Common) DisableLiveAutoByUuid(uuid string) (hadDisable bool) {
+	for i := 0; i < len(t.Live); i++ {
+		if t.Live[i].Uuid == uuid {
+			return t.Live[i].DisableAuto()
+		}
+	}
+	return
+}
+
+// Deprecated: 存在缺陷
 func (t *Common) DisableLiveAuto(host string) (hadDisable bool) {
 	for i := 0; i < len(t.Live); i++ {
 		if liveUrl, e := url.Parse(t.Live[i].Url); e == nil {
@@ -211,6 +222,7 @@ func (t *Common) DisableLiveAuto(host string) (hadDisable bool) {
 	return
 }
 
+// Deprecated: 存在缺陷
 func (t *Common) DisableLive(host string, reUpTime time.Time) {
 	for i := 0; i < len(t.Live); i++ {
 		if liveUrl, e := url.Parse(t.Live[i].Url); e == nil {
