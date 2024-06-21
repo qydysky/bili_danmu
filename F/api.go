@@ -912,7 +912,7 @@ func (t *GetFunc) Get_cookie() (missKey []string) {
 		if err := biliApi.GetOtherCookies(); err != nil {
 			apilog.L(`E: `, err)
 		} else if cookies := biliApi.GetCookies(); len(cookies) != 0 {
-			if err := save_cookie(cookies); err != nil && !errors.Is(err, ErrNoCookiesSave) {
+			if err := save_cookie(cookies, t.Common); err != nil && !errors.Is(err, ErrNoCookiesSave) {
 				apilog.L(`E: `, err)
 			}
 		}
@@ -1029,7 +1029,7 @@ func (t *GetFunc) Get_cookie() (missKey []string) {
 				apilog.L(`E: `, err)
 				return
 			} else if cookies := biliApi.GetCookies(); len(cookies) != 0 {
-				if err := save_cookie(cookies); err != nil {
+				if err := save_cookie(cookies, t.Common); err != nil {
 					apilog.L(`E: `, err)
 					return
 				}
@@ -1265,7 +1265,7 @@ func (t *GetFunc) Get_LIVE_BUVID() (missKey []string) {
 		cookies := biliApi.GetCookies()
 
 		//cookie
-		_ = save_cookie(cookies)
+		_ = save_cookie(cookies, t.Common)
 		var has bool
 		for k := range reqf.Cookies_List_2_Map(cookies) {
 			if k == `LIVE_BUVID` {
@@ -1373,7 +1373,7 @@ func (t *GetFunc) Silver_2_coin() (missKey []string) {
 	} else {
 		apilog.L(`I: `, msg)
 		if cookies := biliApi.GetCookies(); len(cookies) != 0 {
-			_ = save_cookie(cookies)
+			_ = save_cookie(cookies, t.Common)
 		}
 	}
 	return
@@ -1381,13 +1381,16 @@ func (t *GetFunc) Silver_2_coin() (missKey []string) {
 
 var ErrNoCookiesSave = errors.New("ErrNoCookiesSave")
 
-func save_cookie(Cookies []*http.Cookie) error {
+func save_cookie(Cookies []*http.Cookie, cs ...*c.Common) error {
 	if len(Cookies) == 0 {
 		return ErrNoCookiesSave
 	}
 
 	for k, v := range reqf.Cookies_List_2_Map(Cookies) {
 		c.C.Cookie.Store(k, v)
+		for i := 0; i < len(cs); i++ {
+			cs[i].Cookie.Store(k, v)
+		}
 	}
 
 	Cookie := make(map[string]string)
