@@ -929,9 +929,9 @@ func (t *GetFunc) Get_cookie() (missKey []string) {
 				`DedeUserID`,
 			}); len(miss) == 0 {
 				biliApi.SetCookies(reqf.Cookies_String_2_List(cookieString))
-				if e, _ := biliApi.GetNav(); e != nil {
+				if e, res := biliApi.GetNav(); e != nil {
 					apilog.L(`E: `, e)
-				} else {
+				} else if res.IsLogin {
 					apilog.L(`I: `, `已登录`)
 					return
 				}
@@ -1025,16 +1025,18 @@ func (t *GetFunc) Get_cookie() (missKey []string) {
 				return
 			}
 
-			if err := biliApi.LoginQrPoll(oauth); err != nil {
+			if err, code := biliApi.LoginQrPoll(oauth); err != nil {
 				apilog.L(`E: `, err)
 				return
-			} else if cookies := biliApi.GetCookies(); len(cookies) != 0 {
-				if err := save_cookie(cookies, t.Common); err != nil {
-					apilog.L(`E: `, err)
+			} else if code == 0 {
+				if cookies := biliApi.GetCookies(); len(cookies) != 0 {
+					if err := save_cookie(cookies, t.Common); err != nil {
+						apilog.L(`E: `, err)
+						return
+					}
+					apilog.L(`I: `, `登录,并保存了cookie`)
 					return
 				}
-				apilog.L(`I: `, `登录,并保存了cookie`)
-				return
 			}
 		}
 		apilog.L(`W: `, `扫码超时`)

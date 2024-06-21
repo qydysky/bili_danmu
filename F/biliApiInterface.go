@@ -16,7 +16,7 @@ type biliApiInter interface {
 	GetCookie(name string) (error, string)
 
 	LoginQrCode() (err error, imgUrl string, QrcodeKey string)
-	LoginQrPoll(QrcodeKey string) (err error)
+	LoginQrPoll(QrcodeKey string) (err error, code int)
 	GetOtherCookies() (err error)
 	GetLiveBuvid(Roomid int) (err error)
 	GetRoomBaseInfo(Roomid int) (err error, res struct {
