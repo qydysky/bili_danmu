@@ -1,6 +1,7 @@
 package reply
 
 import (
+	c "github.com/qydysky/bili_danmu/CV"
 	F "github.com/qydysky/bili_danmu/F"
 )
 
@@ -13,10 +14,10 @@ var Heart_map = map[string]func(replyF, int){
 }
 
 // HeartBeat类型，将人气4位byte转为字符串，并送到上述map指定的方法
-func Heart(b []byte) {
+func Heart(common *c.Common, b []byte) {
+	var replyFS = replyF{common}
 	s := int(F.Btoi32(b, 0))
 	if F, ok := Heart_map["heartbeat"]; ok {
-		var f replyF
-		F(f, s)
+		F(replyFS, s)
 	}
 }

@@ -106,7 +106,7 @@ func recStartCheck(ctx context.Context, ptr *c.Common) (any, error) {
 type StreamCtl struct {
 	C     *c.Common
 	State func(int) bool
-	Start func(int)
+	Start func(*c.Common, int)
 	End   func(int)
 	Cut   func(int)
 }
@@ -151,7 +151,7 @@ func setNextFunc() {
 							streamCtl.Cut(streamCtl.C.Roomid)
 						} else {
 							logg.L(`T: `, "开始", streamCtl.C.Roomid)
-							streamCtl.Start(streamCtl.C.Roomid)
+							streamCtl.Start(streamCtl.C.Copy(), streamCtl.C.Roomid)
 						}
 						time.Sleep(time.Second * 5)
 						break

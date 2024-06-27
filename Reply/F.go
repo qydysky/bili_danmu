@@ -293,31 +293,29 @@ func StreamOStatus(roomid int) (Islive bool) {
 }
 
 // 开始实例
-func StreamOStart(roomid int) {
+func StreamOStart(common *c.Common, roomid int) {
 	if StreamOStatus(roomid) {
 		flog.L(`W: `, `已录制 `+strconv.Itoa(roomid)+` 不能重复录制`)
 		return
 	}
 
-	var tmp = new(M4SStream)
-
-	if e := tmp.LoadConfig(c.C.Copy()); e != nil {
+	if tmp, e := NewM4SStream(common); e != nil {
 		flog.L(`E: `, e)
-		return
-	}
-	tmp.common.Roomid = roomid
-	//实例回调，避免重复录制
-	tmp.Callback_start = func(ms *M4SStream) error {
-		//流服务添加
-		if _, ok := c.StreamO.LoadOrStore(ms.common.Roomid, tmp); ok {
-			return fmt.Errorf("已存在此直播间(%d)录制", ms.common.Roomid)
+	} else {
+		tmp.common.Roomid = roomid
+		//实例回调，避免重复录制
+		tmp.Callback_start = func(ms *M4SStream) error {
+			//流服务添加
+			if _, ok := c.StreamO.LoadOrStore(ms.common.Roomid, tmp); ok {
+				return fmt.Errorf("已存在此直播间(%d)录制", ms.common.Roomid)
+			}
+			return nil
 		}
-		return nil
+		tmp.Callback_stop = func(ms *M4SStream) {
+			c.StreamO.Delete(ms.common.Roomid) //流服务去除
+		}
+		tmp.Start()
 	}
-	tmp.Callback_stop = func(ms *M4SStream) {
-		c.StreamO.Delete(ms.common.Roomid) //流服务去除
-	}
-	tmp.Start()
 }
 
 // 停止实例

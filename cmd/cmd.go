@@ -76,7 +76,7 @@ func Cmd() {
 						if reply.StreamOStatus(room) {
 							reply.StreamOStop(room)
 						} else {
-							reply.StreamOStart(room)
+							reply.StreamOStart(c.C.Copy(), room)
 						}
 						continue
 					}
@@ -87,7 +87,7 @@ func Cmd() {
 					if reply.StreamOStatus(c.C.Roomid) {
 						reply.StreamOStop(c.C.Roomid)
 					} else {
-						reply.StreamOStart(c.C.Roomid)
+						reply.StreamOStart(c.C.Copy(), c.C.Roomid)
 					}
 				}
 				continue

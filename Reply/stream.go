@@ -49,6 +49,10 @@ var flvHeader []byte
 //go:embed flvHeaders/flvHeaderHevc
 var flvHeaderHevc []byte
 
+const (
+	defaultStartCount uint = 3 //直播流接收n帧才保存,默认值
+)
+
 type M4SStream struct {
 	Status               context.Context       //IsLive()是否运行中
 	exitSign             *signal.Signal        //IsLive()是否等待退出中
@@ -191,6 +195,46 @@ func (t *M4SStream) Common() *c.Common {
 	return t.common
 }
 
+func NewM4SStream(c *c.Common) (*M4SStream, error) {
+	var t = &M4SStream{
+		common: c,
+		log:    c.Log.Base(`直播流保存`),
+	}
+
+	//读取配置
+	if path, ok := c.K_v.LoadV("直播流保存位置").(string); ok {
+		if path, err := filepath.Abs(path); err == nil {
+			if fs, err := os.Stat(path); err != nil {
+				if errors.Is(err, os.ErrNotExist) {
+					if err := os.Mkdir(path, os.ModePerm); err != nil {
+						return nil, errors.New(`直播流保存位置错误` + err.Error())
+					}
+				} else {
+					return nil, errors.New(`直播流保存位置错误` + err.Error())
+				}
+			} else if !fs.IsDir() {
+				return nil, errors.New(`直播流保存位置不是目录`)
+			}
+			t.config.save_path = path
+		} else {
+			return nil, errors.New(`直播流保存位置错误` + err.Error())
+		}
+	} else {
+		return nil, errors.New(`未配置直播流保存位置`)
+	}
+	if v, ok := c.K_v.LoadV(`直播流保存到文件`).(bool); ok {
+		t.config.save_to_file = v
+	}
+	if v, ok := c.K_v.LoadV(`直播流清晰度`).(float64); ok {
+		t.config.want_qn = int(v)
+	}
+	if v, ok := c.K_v.LoadV(`直播流类型`).(string); ok {
+		t.config.want_type = v
+	}
+	return t, nil
+}
+
+// Deprecated: use NewM4SStream
 func (t *M4SStream) LoadConfig(common *c.Common) (e error) {
 	t.common = common
 	t.log = common.Log.Base(`直播流保存`)
@@ -639,7 +683,7 @@ func (t *M4SStream) saveStream() (e error) {
 
 	// 保存到文件
 	if t.config.save_to_file {
-		var startCount uint = 3
+		var startCount uint = defaultStartCount
 		if s, ok := t.common.K_v.LoadV("直播流接收n帧才保存").(float64); ok && s > 0 && uint(s) > startCount {
 			startCount = uint(s)
 		}
@@ -1316,6 +1360,13 @@ func (t *M4SStream) Start() bool {
 			var fc funcCtrl.FlashFunc
 			cancel := t.msg.Pull_tag_async(map[string]func(*M4SStream) (disable bool){
 				`cut`: func(ms *M4SStream) (disable bool) {
+					// 有时尚未初始化接收到新的cut信号，导致保存失败。可能在开播信号重复发出出现
+					if ms.frameCount < defaultStartCount {
+						ml := ms.log.Base_add(`分段`)
+						ml.L(`I: `, "尚未接收到帧、跳过")
+						return false
+					}
+
 					// 当cut时，取消上次录制
 					contextC, cancel := context.WithCancel(mainCtx)
 					fc.FlashWithCallback(cancel)

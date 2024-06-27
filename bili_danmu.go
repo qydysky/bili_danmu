@@ -288,7 +288,7 @@ func Start() {
 				// 处理ws消息
 				var cancelDeal = wsmsg.Pull_tag(map[string]func(*ws.WsMsg) (disable bool){
 					`rec`: func(wm *ws.WsMsg) (disable bool) {
-						go reply.Reply(wm.Msg)
+						go reply.Reply(c.C, wm.Msg)
 						return false
 					},
 					`close`: func(_ *ws.WsMsg) (disable bool) {
@@ -325,7 +325,7 @@ func Start() {
 					go F.Dosign()
 					go reply.Entry_danmu()
 					if _, e := recStartEnd.RecStartCheck.Run(mainCtx, c.C); e == nil {
-						go reply.StreamOStart(c.C.Roomid)
+						go reply.StreamOStart(c.C.Copy(), c.C.Roomid)
 					} else {
 						danmulog.Base("功能", "指定房间录制区间").L(`I: `, c.C.Roomid, e)
 					}
