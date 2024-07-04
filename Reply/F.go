@@ -319,38 +319,37 @@ func StreamOStart(common *c.Common, roomid int) {
 }
 
 // 停止实例
-//
-// -2 其他房间
-// -1 所有房间
-// 针对某房间
-func StreamOStop(roomid int) {
-	switch roomid {
-	case -2: // 其他房间
-		c.StreamO.Range(func(_roomid, v interface{}) bool {
-			if c.C.Roomid == _roomid {
-				return true
-			}
-			if !pctx.Done(v.(*M4SStream).Status) {
-				v.(*M4SStream).Stop()
-			}
-			c.StreamO.Delete(_roomid)
-			return true
-		})
-	case -1: // 所有房间
-		c.StreamO.Range(func(k, v interface{}) bool {
-			if !pctx.Done(v.(*M4SStream).Status) {
-				v.(*M4SStream).Stop()
-			}
-			c.StreamO.Delete(k)
-			return true
-		})
-	default: // 针对某房间
-		if v, ok := c.StreamO.Load(roomid); ok {
-			if !pctx.Done(v.(*M4SStream).Status) {
-				v.(*M4SStream).Stop()
-			}
-			c.StreamO.Delete(roomid)
+func StreamOStopAll() {
+	c.StreamO.Range(func(k, v interface{}) bool {
+		if !pctx.Done(v.(*M4SStream).Status) {
+			v.(*M4SStream).Stop()
 		}
+		c.StreamO.Delete(k)
+		return true
+	})
+}
+
+// 停止实例
+func StreamOStopOther(roomid int) {
+	c.StreamO.Range(func(_roomid, v interface{}) bool {
+		if roomid == _roomid {
+			return true
+		}
+		if !pctx.Done(v.(*M4SStream).Status) {
+			v.(*M4SStream).Stop()
+		}
+		c.StreamO.Delete(_roomid)
+		return true
+	})
+}
+
+// 停止实例
+func StreamOStop(roomid int) {
+	if v, ok := c.StreamO.Load(roomid); ok {
+		if !pctx.Done(v.(*M4SStream).Status) {
+			v.(*M4SStream).Stop()
+		}
+		c.StreamO.Delete(roomid)
 	}
 }
 

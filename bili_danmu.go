@@ -341,7 +341,7 @@ func Start() {
 							exitSign = true
 							ws_c.Close()
 							danmulog.L(`I: `, "停止，等待服务器断开连接")
-							reply.StreamOStop(-1) //停止录制
+							reply.StreamOStopAll() //停止录制
 							return true
 						},
 						`exit_room`: func(_ any) bool { //退出当前房间
@@ -356,7 +356,7 @@ func Start() {
 							exitloop = true
 							ws_c.Close()
 							if v, ok := c.C.K_v.LoadV(`仅保存当前直播间流`).(bool); ok && v {
-								reply.StreamOStop(-2) //停止其他房间录制
+								reply.StreamOStopOther(c.C.Roomid) //停止其他房间录制
 							}
 							return true
 						},
@@ -414,7 +414,7 @@ func Start() {
 
 		{ //附加功能 直播流停止 ws信息保存
 			reply.SaveToJson.Close()
-			reply.StreamOStop(-1)
+			reply.StreamOStopAll()
 		}
 	}
 }

@@ -855,12 +855,10 @@ func (t replyF) live(s string) {
 		//开始录制
 		go func() {
 			if v, ok := t.common.K_v.LoadV(`仅保存当前直播间流`).(bool); ok && v {
-				StreamOStop(-2) //停止其他房间录制
+				StreamOStopOther(t.common.Roomid) //停止其他房间录制
 			}
 			if _, e := recStartEnd.RecStartCheck.Run(context.Background(), t.common); e == nil {
-				if StreamOStatus(t.common.Roomid) {
-					StreamOCut(t.common.Roomid)
-				} else {
+				if !StreamOStatus(t.common.Roomid) {
 					StreamOStart(t.common.Copy(), t.common.Roomid)
 				}
 			} else {
