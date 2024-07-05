@@ -162,11 +162,10 @@ func init() {
 
 // Msg类型数据处理方法挑选
 // 识别cmd字段类型，查找上述map中设置的方法，并将json转为字符串型传入
-func Msg(common *c.Common, b []byte) {
+func Msg(replyFS replyF, b []byte) {
 	var tmp struct {
 		Cmd string `json:"cmd"`
 	}
-	var replyFS = replyF{common}
 
 	if e := json.Unmarshal(b, &tmp); e != nil {
 		msglog.Base_add(`select func`).L(`E: `, e)
