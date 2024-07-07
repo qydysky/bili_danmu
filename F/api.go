@@ -38,6 +38,7 @@ var apilog = c.C.Log.Base(`api`)
 var api_limit = limit.New(2, "1s", "30s") //频率限制2次/s，最大等待时间30s
 
 var biliApi = cmp.Get(id, func(ba biliApiInter) biliApiInter {
+	ba.SetLocation(c.C.SerLocation)
 	ba.SetProxy(c.C.Proxy)
 	ba.SetReqPool(c.C.ReqPool)
 	return ba
@@ -58,11 +59,11 @@ func Get(c *c.Common) *GetFunc {
 	return &GetFunc{Common: c}
 }
 
-func (c *GetFunc) Get(key string) {
+func (t *GetFunc) Get(key string) {
 	apilog := apilog.Base_add(`Get`)
 
-	current := c.count.Add(1)
-	defer c.count.Add(-1)
+	current := t.count.Add(1)
+	defer t.count.Add(-1)
 
 	if current > 10 {
 		apilog.L(`E: `, `max loop`)
@@ -76,158 +77,158 @@ func (c *GetFunc) Get(key string) {
 	var (
 		api_can_get = map[string][]func() (missKey []string){
 			`Cookie`: { //Cookie
-				c.Get_cookie,
+				t.Get_cookie,
 			},
 			`Uid`: { //用戶uid
-				c.GetUid,
+				t.GetUid,
 			},
 			`UpUid`: { //主播uid
-				c.getRoomBaseInfo,
-				c.getInfoByRoom,
-				c.getRoomPlayInfo,
-				c.Html,
+				t.getRoomBaseInfo,
+				t.getInfoByRoom,
+				t.getRoomPlayInfo,
+				t.Html,
 			},
 			`Live_Start_Time`: { //直播开始时间
-				c.getRoomBaseInfo,
-				c.getInfoByRoom,
-				c.getRoomPlayInfo,
-				c.Html,
+				t.getRoomBaseInfo,
+				t.getInfoByRoom,
+				t.getRoomPlayInfo,
+				t.Html,
 			},
 			`Liveing`: { //是否在直播
-				c.getRoomBaseInfo,
-				c.getInfoByRoom,
-				c.getRoomPlayInfo,
-				c.Html,
+				t.getRoomBaseInfo,
+				t.getInfoByRoom,
+				t.getRoomPlayInfo,
+				t.Html,
 			},
 			`Title`: { //直播间标题
-				c.getRoomBaseInfo,
-				c.getInfoByRoom,
-				c.Html,
+				t.getRoomBaseInfo,
+				t.getInfoByRoom,
+				t.Html,
 			},
 			`Uname`: { //主播名
-				c.getRoomBaseInfo,
-				c.getInfoByRoom,
-				c.Html,
+				t.getRoomBaseInfo,
+				t.getInfoByRoom,
+				t.Html,
 			},
 			`ParentAreaID`: { //分区
-				c.getRoomBaseInfo,
-				c.getInfoByRoom,
-				c.Html,
+				t.getRoomBaseInfo,
+				t.getInfoByRoom,
+				t.Html,
 			},
 			`AreaID`: { //子分区
-				c.getRoomBaseInfo,
-				c.getInfoByRoom,
-				c.Html,
+				t.getRoomBaseInfo,
+				t.getInfoByRoom,
+				t.Html,
 			},
 			`Roomid`: { //房间id
-				c.missRoomId,
+				t.missRoomId,
 			},
 			`GuardNum`: { //舰长数
-				c.Get_guardNum,
-				c.getInfoByRoom,
-				c.getRoomPlayInfo,
-				c.Html,
+				t.Get_guardNum,
+				t.getInfoByRoom,
+				t.getRoomPlayInfo,
+				t.Html,
 			},
 			`Note`: { //分区排行
-				c.getPopularAnchorRank,
-				// c.Get_HotRank,
-				c.getInfoByRoom,
-				c.Html,
+				t.getPopularAnchorRank,
+				// t.Get_HotRank,
+				t.getInfoByRoom,
+				t.Html,
 			},
 			`Locked`: { //直播间是否被封禁
-				c.getInfoByRoom,
-				c.Html,
+				t.getInfoByRoom,
+				t.Html,
 			},
 			`Live_qn`: { //当前直播流质量
-				c.getRoomPlayInfo,
-				c.Html,
+				t.getRoomPlayInfo,
+				t.Html,
 			},
 			`AcceptQn`: { //允许的清晰度
-				c.getRoomPlayInfo,
-				c.Html,
+				t.getRoomPlayInfo,
+				t.Html,
 			},
 			`Live`: { //直播流链接
-				c.getRoomPlayInfoByQn,
-				c.getRoomPlayInfo,
-				c.Html,
+				t.getRoomPlayInfoByQn,
+				t.getRoomPlayInfo,
+				t.Html,
 			},
 			`Token`: { //弹幕钥
-				c.getDanmuInfo,
+				t.getDanmuInfo,
 			},
 			`WSURL`: { //弹幕链接
-				c.getDanmuInfo,
+				t.getDanmuInfo,
 			},
 			// `VERSION`:[]func()([]string){//客户版本  不再需要
 			// 	Get_Version,
 			// },
 			`LIVE_BUVID`: { //LIVE_BUVID
-				c.Get_LIVE_BUVID,
+				t.Get_LIVE_BUVID,
 			},
 			`CheckSwitch_FansMedal`: { //切换粉丝牌
-				c.CheckSwitch_FansMedal,
+				t.CheckSwitch_FansMedal,
 			},
 			`getOnlineGoldRank`: { //切换粉丝牌
-				c.getOnlineGoldRank,
+				t.getOnlineGoldRank,
 			},
 		}
 		// 验证是否有效
 		check = map[string]func() (valid bool){
 			`Uid`: func() bool { //用戶uid
-				return c.Uid != 0
+				return t.Uid != 0
 			},
 			`UpUid`: func() bool { //主播uid
-				return c.UpUid != 0
+				return t.UpUid != 0
 			},
 			`Live_Start_Time`: func() bool { //直播开始时间
-				return c.Live_Start_Time != time.Time{}
+				return t.Live_Start_Time != time.Time{}
 			},
 			`Liveing`: func() bool { //是否在直播
 				return true
 			},
 			`Title`: func() bool { //直播间标题
-				return c.Title != ``
+				return t.Title != ``
 			},
 			`Uname`: func() bool { //主播名
-				return c.Uname != ``
+				return t.Uname != ``
 			},
 			`ParentAreaID`: func() bool { //分区
-				return c.ParentAreaID != 0
+				return t.ParentAreaID != 0
 			},
 			`AreaID`: func() bool { //子分区
-				return c.AreaID != 0
+				return t.AreaID != 0
 			},
 			`Roomid`: func() bool { //房间id
-				return c.Roomid != 0
+				return t.Roomid != 0
 			},
 			`GuardNum`: func() bool { //舰长数
-				return c.GuardNum != 0
+				return t.GuardNum != 0
 			},
 			`Note`: func() bool { //分区排行
-				return c.Note != ``
+				return t.Note != ``
 			},
 			`Locked`: func() bool { //直播间是否被封禁
 				return true
 			},
 			`Live_qn`: func() bool { //当前直播流质量
-				return c.Live_qn != 0
+				return t.Live_qn != 0
 			},
 			`AcceptQn`: func() bool { //允许的清晰度
-				return len(c.AcceptQn) != 0
+				return len(t.AcceptQn) != 0
 			},
 			`Live`: func() bool { //直播流链接
-				return len(c.Live) != 0
+				return len(t.Live) != 0
 			},
 			`Token`: func() bool { //弹幕钥
-				return c.Token != ``
+				return t.Token != ``
 			},
 			`WSURL`: func() bool { //弹幕链接
-				return len(c.WSURL) != 0
+				return len(t.WSURL) != 0
 			},
 			// `VERSION`:func()(bool){//客户版本  不再需要
-			// 	return c.VERSION != `2.0.11`
+			// 	return t.VERSION != `2.0.11`
 			// },
 			`LIVE_BUVID`: func() bool { //LIVE_BUVID
-				return c.LiveBuvidUpdated.After(time.Now().Add(-time.Hour))
+				return t.LiveBuvidUpdated.After(time.Now().Add(-time.Hour))
 			},
 			`CheckSwitch_FansMedal`: func() bool { //切换粉丝牌
 				return true
@@ -244,31 +245,31 @@ func (c *GetFunc) Get(key string) {
 		for i := 0; i < len(fList); i++ {
 			apilog.Log_show_control(false).L(`T: `, `Get`, key)
 
-			c.l.Lock()
+			t.l.Lock()
 			missKey := fList[i]()
-			c.l.Unlock()
+			t.l.Unlock()
 
 			if len(missKey) > 0 {
 				apilog.L(`T: `, `missKey when get`, key, missKey)
 				for _, misskeyitem := range missKey {
 					if checkf, ok := check[misskeyitem]; ok {
-						c.l.RLock()
+						t.l.RLock()
 						if checkf() {
-							c.l.RUnlock()
+							t.l.RUnlock()
 							continue
 						}
-						c.l.RUnlock()
+						t.l.RUnlock()
 					}
 					if misskeyitem == key {
 						apilog.L(`W: `, `missKey equrt key`, key, missKey)
 						continue
 					}
-					c.Get(misskeyitem)
+					t.Get(misskeyitem)
 				}
 
-				c.l.Lock()
+				t.l.Lock()
 				missKey := fList[i]()
-				c.l.Unlock()
+				t.l.Unlock()
 
 				if len(missKey) > 0 {
 					apilog.L(`W: `, `missKey when get`, key, missKey)
@@ -277,27 +278,27 @@ func (c *GetFunc) Get(key string) {
 			}
 
 			if checkf, ok := check[key]; ok {
-				c.l.RLock()
+				t.l.RLock()
 				if checkf() {
-					c.l.RUnlock()
+					t.l.RUnlock()
 					break
 				} else {
-					c.l.RUnlock()
+					t.l.RUnlock()
 					apilog.L(`W: `, `check fail`, key)
-					// c.Get(key)
+					// t.Get(key)
 				}
 			}
 		}
 	}
 }
 
-func (c *GetFunc) GetUid() (missKey []string) {
-	if uid, ok := c.Cookie.LoadV(`DedeUserID`).(string); !ok { //cookie中无DedeUserID
+func (t *GetFunc) GetUid() (missKey []string) {
+	if uid, ok := t.Cookie.LoadV(`DedeUserID`).(string); !ok { //cookie中无DedeUserID
 		missKey = append(missKey, `Cookie`)
 	} else if uid, e := strconv.Atoi(uid); e != nil {
 		missKey = append(missKey, `Cookie`)
 	} else {
-		c.Uid = uid
+		t.Uid = uid
 	}
 	return
 }
@@ -486,78 +487,78 @@ func (t *GetFunc) configStreamType(sts []struct {
 	}
 }
 
-func (c *GetFunc) missRoomId() (missKey []string) {
+func (t *GetFunc) missRoomId() (missKey []string) {
 	apilog.Base_add(`missRoomId`).L(`E: `, `missRoomId`)
 	return
 }
 
-func (c *GetFunc) getRoomBaseInfo() (missKey []string) {
+func (t *GetFunc) getRoomBaseInfo() (missKey []string) {
 	fkey := `getRoomBaseInfo`
 
-	if _, ok := c.Cache.Load(fkey); ok {
+	if _, ok := t.Cache.Load(fkey); ok {
 		return
 	}
 
 	apilog := apilog.Base_add(`getRoomBaseInfo`)
 
-	if c.Roomid == 0 {
+	if t.Roomid == 0 {
 		missKey = append(missKey, `Roomid`)
 		return
 	}
 
 	//使用其他api
-	if err, res := biliApi.GetRoomBaseInfo(c.Roomid); err != nil {
+	if err, res := biliApi.GetRoomBaseInfo(t.Roomid); err != nil {
 		apilog.L(`E: `, err)
 		return
 	} else {
-		c.UpUid = res.UpUid
-		c.Uname = res.Uname
-		c.ParentAreaID = res.ParentAreaID
-		c.AreaID = res.AreaID
-		c.Title = res.Title
-		c.Live_Start_Time = res.LiveStartTime
-		c.Liveing = res.Liveing
-		c.Roomid = res.RoomID
+		t.UpUid = res.UpUid
+		t.Uname = res.Uname
+		t.ParentAreaID = res.ParentAreaID
+		t.AreaID = res.AreaID
+		t.Title = res.Title
+		t.Live_Start_Time = res.LiveStartTime
+		t.Liveing = res.Liveing
+		t.Roomid = res.RoomID
 	}
 
-	c.Cache.Store(fkey, nil, time.Second*2)
+	t.Cache.Store(fkey, nil, time.Second*2)
 	return
 }
 
-func (c *GetFunc) getInfoByRoom() (missKey []string) {
+func (t *GetFunc) getInfoByRoom() (missKey []string) {
 
 	fkey := `getInfoByRoom`
 
-	if _, ok := c.Cache.Load(fkey); ok {
+	if _, ok := t.Cache.Load(fkey); ok {
 		return
 	}
 
 	apilog := apilog.Base_add(`getInfoByRoom`)
 
-	if c.Roomid == 0 {
+	if t.Roomid == 0 {
 		missKey = append(missKey, `Roomid`)
 		return
 	}
 
 	//使用其他api
-	if err, res := biliApi.GetInfoByRoom(c.Roomid); err != nil {
+	if err, res := biliApi.GetInfoByRoom(t.Roomid); err != nil {
 		apilog.L(`E: `, err)
 		return
 	} else {
-		c.UpUid = res.UpUid
-		c.Uname = res.Uname
-		c.ParentAreaID = res.ParentAreaID
-		c.AreaID = res.AreaID
-		c.Title = res.Title
-		c.Live_Start_Time = res.LiveStartTime
-		c.Liveing = res.Liveing
-		c.Roomid = res.RoomID
-		c.GuardNum = res.GuardNum
-		c.Note = res.Note
-		c.Locked = res.Locked
+		t.UpUid = res.UpUid
+		t.Uname = res.Uname
+		t.ParentAreaID = res.ParentAreaID
+		t.AreaID = res.AreaID
+		t.Title = res.Title
+		t.Live_Start_Time = res.LiveStartTime
+		t.Liveing = res.Liveing
+		t.Roomid = res.RoomID
+		t.GuardNum = res.GuardNum
+		t.Note = res.Note
+		t.Locked = res.Locked
 	}
 
-	c.Cache.Store(fkey, nil, time.Second*2)
+	t.Cache.Store(fkey, nil, time.Second*2)
 
 	return
 }
@@ -749,11 +750,11 @@ func (t *GetFunc) getRoomPlayInfoByQn() (missKey []string) {
 	return
 }
 
-func (c *GetFunc) getDanmuInfo() (missKey []string) {
-	if c.Roomid == 0 {
+func (t *GetFunc) getDanmuInfo() (missKey []string) {
+	if t.Roomid == 0 {
 		missKey = append(missKey, `Roomid`)
 	}
-	if c.LiveBuvidUpdated.Before(time.Now().Add(-time.Hour)) {
+	if t.LiveBuvidUpdated.Before(time.Now().Add(-time.Hour)) {
 		missKey = append(missKey, `LIVE_BUVID`)
 	}
 	if len(missKey) > 0 {
@@ -761,12 +762,12 @@ func (c *GetFunc) getDanmuInfo() (missKey []string) {
 	}
 
 	//GetDanmuInfo
-	if err, res := biliApi.GetDanmuInfo(c.Roomid); err != nil {
+	if err, res := biliApi.GetDanmuInfo(t.Roomid); err != nil {
 		apilog.L(`E: `, err)
 		return
 	} else {
-		c.Token = res.Token
-		c.WSURL = res.WSURL
+		t.Token = res.Token
+		t.WSURL = res.WSURL
 	}
 	return
 }
@@ -1045,7 +1046,7 @@ func (t *GetFunc) Get_cookie() (missKey []string) {
 }
 
 // 获取其他Cookie
-// func (c *GetFunc) Get_other_cookie() {
+// func (t *GetFunc) Get_other_cookie() {
 // 	apilog := apilog.Base_add(`获取其他Cookie`)
 
 // 	r := c.ReqPool.Get()
@@ -1133,12 +1134,12 @@ func Get_weared_medal(uid, upUid int) (item J.GetWearedMedal_Data) {
 	return
 }
 
-func (c *GetFunc) CheckSwitch_FansMedal() (missKey []string) {
+func (t *GetFunc) CheckSwitch_FansMedal() (missKey []string) {
 
-	if c.LiveBuvidUpdated.Before(time.Now().Add(-time.Hour)) {
+	if t.LiveBuvidUpdated.Before(time.Now().Add(-time.Hour)) {
 		missKey = append(missKey, `LIVE_BUVID`)
 	}
-	if c.UpUid == 0 {
+	if t.UpUid == 0 {
 		missKey = append(missKey, `UpUid`)
 	}
 	if len(missKey) > 0 {
@@ -1157,15 +1158,15 @@ func (c *GetFunc) CheckSwitch_FansMedal() (missKey []string) {
 	}
 
 	Cookie := make(map[string]string)
-	c.Cookie.Range(func(k, v interface{}) bool {
+	t.Cookie.Range(func(k, v interface{}) bool {
 		Cookie[k.(string)] = v.(string)
 		return true
 	})
 	{ //获取当前牌子，验证是否本直播间牌子
-		res := Get_weared_medal(c.Uid, c.UpUid)
+		res := Get_weared_medal(t.Uid, t.UpUid)
 
-		c.Wearing_FansMedal = res.Roominfo.RoomID //更新佩戴信息
-		if res.TargetID == c.UpUid {
+		t.Wearing_FansMedal = res.Roominfo.RoomID //更新佩戴信息
+		if res.TargetID == t.UpUid {
 			return
 		}
 	}
@@ -1173,16 +1174,16 @@ func (c *GetFunc) CheckSwitch_FansMedal() (missKey []string) {
 	var medal_id int //将要使用的牌子id
 	//检查是否有此直播间的牌子
 	{
-		medal_list := Get_list_in_room(c.Roomid, c.UpUid)
+		medal_list := Get_list_in_room(t.Roomid, t.UpUid)
 		for _, v := range medal_list {
-			if v.TargetID != c.UpUid {
+			if v.TargetID != t.UpUid {
 				continue
 			}
 			medal_id = v.MedalID
 		}
 		if medal_id == 0 { //无牌
 			apilog.L(`I: `, `无主播粉丝牌`)
-			if c.Wearing_FansMedal == 0 { //当前没牌
+			if t.Wearing_FansMedal == 0 { //当前没牌
 				return
 			}
 		}
@@ -1196,7 +1197,7 @@ func (c *GetFunc) CheckSwitch_FansMedal() (missKey []string) {
 			} else {
 				apilog.L(`I: `, `自动切换粉丝牌 id:`, medal_id)
 			}
-			c.Wearing_FansMedal = medal_id //更新佩戴信息
+			t.Wearing_FansMedal = medal_id //更新佩戴信息
 			return
 		}
 	}
@@ -1539,7 +1540,7 @@ func GetHistory(Roomid_int int) (j []string) {
 	}
 }
 
-func (c *GetFunc) SearchUP(s string) (list []struct {
+func (t *GetFunc) SearchUP(s string) (list []struct {
 	Roomid  int
 	Uname   string
 	Is_live bool
@@ -1582,7 +1583,7 @@ func IsConnected() bool {
 }
 
 // bilibili wrid wts 计算
-func (c *GetFunc) getWridWts(query string, imgURL, subURL string, customWts ...string) (w_rid, wts string) {
+func (t *GetFunc) getWridWts(query string, imgURL, subURL string, customWts ...string) (w_rid, wts string) {
 	wbi := imgURL[strings.LastIndex(imgURL, "/")+1:strings.LastIndex(imgURL, ".")] +
 		subURL[strings.LastIndex(subURL, "/")+1:strings.LastIndex(subURL, ".")]
 

@@ -71,6 +71,7 @@ type Common struct {
 	LiveBuvidUpdated  time.Time      `json:"-"`             //LIVE_BUVID更新时间
 	Stream_url        *url.URL       `json:"-"`             //直播Web服务
 	Proxy             string         `json:"-"`             //全局代理
+	SerLocation       int            `json:"-"`             //服务器时区
 	AcceptQn          map[int]string `json:"-"`             //允许的直播流质量
 	Qn                map[int]string `json:"-"`             //全部直播流质量
 	// StreamType        StreamType            `json:"streamType"`    //当前直播流类型
@@ -183,6 +184,7 @@ func (t *Common) Copy() *Common {
 		LiveBuvidUpdated:  t.LiveBuvidUpdated,
 		Stream_url:        t.Stream_url,
 		Proxy:             t.Proxy,
+		SerLocation:       t.SerLocation,
 		AcceptQn:          syncmap.Copy(t.AcceptQn),
 		Qn:                syncmap.Copy(t.Qn),
 		// StreamType:        t.StreamType,
@@ -483,6 +485,10 @@ func (t *Common) Init() *Common {
 
 	if val, exist := t.K_v.Load("代理地址"); exist {
 		t.Proxy = val.(string)
+	}
+
+	if val, exist := t.K_v.LoadV("服务器时区").(float64); exist && val != 0 {
+		t.SerLocation = int(val)
 	}
 
 	// 配置直播流类型

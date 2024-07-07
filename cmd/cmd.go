@@ -102,7 +102,7 @@ func Cmd() {
 				fmt.Print("\n")
 				if room, ok := liveList[inputs]; ok {
 					c.C.Roomid = room
-					c.C.Danmu_Main_mq.Push_tag(`change_room`, nil)
+					c.C.Danmu_Main_mq.Push_tag(`change_room`, room)
 					continue
 				} else {
 					cmdlog.L(`W: `, "输入错误", inputs)
@@ -191,16 +191,8 @@ func Cmd() {
 					}
 					fmt.Println(c.C.Uname, c.C.Title, living)
 				}
-				{
-					if c.C.Liveing {
-						d := time.Since(c.C.Live_Start_Time).Round(time.Second)
-						h := d / time.Hour
-						d -= h * time.Hour
-						m := d / time.Minute
-						d -= m * time.Minute
-						s := d / time.Second
-						fmt.Println(`已直播时长:`, fmt.Sprintf("%02d:%02d:%02d", h, m, s))
-					}
+				if c.C.Liveing {
+					fmt.Println(`已直播时长:`, (time.Time{}).Add(time.Since(c.C.Live_Start_Time)).Format(time.TimeOnly))
 				}
 				{
 					fmt.Println(`营收:`, fmt.Sprintf("￥%.2f", c.C.Rev))
@@ -227,7 +219,7 @@ func Cmd() {
 			if room, err := strconv.Atoi(inputs[1:]); err == nil {
 				c.C.Roomid = room
 				cmdlog.L(`I: `, "进入房间", room)
-				c.C.Danmu_Main_mq.Push_tag(`change_room`, nil)
+				c.C.Danmu_Main_mq.Push_tag(`change_room`, room)
 				continue
 			}
 			cmdlog.L(`W: `, "无效指令("+inputs+")")

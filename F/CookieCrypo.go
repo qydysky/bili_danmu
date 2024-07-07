@@ -2,6 +2,7 @@ package F
 
 import (
 	"fmt"
+	"sync"
 
 	c "github.com/qydysky/bili_danmu/CV"
 	crypto "github.com/qydysky/part/crypto"
@@ -10,13 +11,18 @@ import (
 
 // 公私钥加密
 var (
-	clog = c.C.Log.Base(`cookie加密`)
-	pub  []byte
-	pri  []byte
+	clog       = c.C.Log.Base(`cookie加密`)
+	pub        []byte
+	pri        []byte
+	cookieLock sync.RWMutex
 )
 
 func CookieGet() []byte {
 	clog := clog.Base_add(`获取`)
+
+	cookieLock.RLock()
+	defer cookieLock.RUnlock()
+
 	if len(pri) == 0 {
 		if priS, ok := c.C.K_v.LoadV(`cookie解密私钥`).(string); ok && priS != `` {
 			if d, e := crypto.FileLoad(priS); e != nil {
@@ -78,6 +84,10 @@ func CookieGet() []byte {
 
 func CookieSet(source []byte) {
 	clog := clog.Base_add(`设置`)
+
+	cookieLock.Lock()
+	defer cookieLock.Unlock()
+
 	if len(pub) == 0 {
 		if pubS, ok := c.C.K_v.LoadV(`cookie加密公钥`).(string); ok && pubS != `` {
 			if d, e := crypto.FileLoad(pubS); e != nil {

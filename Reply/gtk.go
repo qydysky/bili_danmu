@@ -344,7 +344,7 @@ func Gtk_danmu() {
 							show(`输入错误`, load_face("0room"))
 						} else {
 							c.C.Roomid = i
-							c.C.Danmu_Main_mq.Push_tag(`change_room`, nil)
+							c.C.Danmu_Main_mq.Push_tag(`change_room`, i)
 						}
 					} else {
 						show(`房间号输入为空`, load_face("0room"))
