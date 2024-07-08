@@ -76,7 +76,8 @@ func Cmd() {
 						if reply.StreamOStatus(room) {
 							reply.StreamOStop(room)
 						} else {
-							reply.StreamOStart(c.C.Copy(), room)
+							common, _ := c.CommonsLoadOrStore.LoadOrStoreP(c.Commons, room)
+							reply.StreamOStart(common, room)
 						}
 						continue
 					}
@@ -87,7 +88,8 @@ func Cmd() {
 					if reply.StreamOStatus(c.C.Roomid) {
 						reply.StreamOStop(c.C.Roomid)
 					} else {
-						reply.StreamOStart(c.C.Copy(), c.C.Roomid)
+						common, _ := c.Commons.LoadV(c.C.Roomid).(*c.Common)
+						reply.StreamOStart(common, c.C.Roomid)
 					}
 				}
 				continue
@@ -184,22 +186,23 @@ func Cmd() {
 			if strings.Contains(inputs, ` room`) && c.C.Roomid != 0 {
 				fmt.Print("\n")
 				fmt.Println("当前直播间(" + strconv.Itoa(c.C.Roomid) + ")信息")
+				common, _ := c.Commons.LoadV(c.C.Roomid).(*c.Common)
 				{
 					living := `未在直播`
-					if c.C.Liveing {
+					if common.Liveing {
 						living = `直播中`
 					}
-					fmt.Println(c.C.Uname, c.C.Title, living)
+					fmt.Println(common.Uname, common.Title, living)
 				}
-				if c.C.Liveing {
-					fmt.Println(`已直播时长:`, (time.Time{}).Add(time.Since(c.C.Live_Start_Time)).Format(time.TimeOnly))
+				if common.Liveing {
+					fmt.Println(`已直播时长:`, (time.Time{}).Add(time.Since(common.Live_Start_Time)).Format(time.TimeOnly))
 				}
 				{
-					fmt.Println(`营收:`, fmt.Sprintf("￥%.2f", c.C.Rev))
+					fmt.Println(`营收:`, fmt.Sprintf("￥%.2f", common.Rev))
 				}
-				fmt.Println(`舰长数:`, c.C.GuardNum)
-				fmt.Println(`分区排行:`, c.C.Note, `人气：`, c.C.Renqi, `观看人数：`, c.C.Watched, `在线人数：`, c.C.OnlineNum)
-				fmt.Println(`Web服务地址:`, c.C.Stream_url.String())
+				fmt.Println(`舰长数:`, common.GuardNum)
+				fmt.Println(`分区排行:`, common.Note, `观看人数：`, common.Watched, `在线人数：`, common.OnlineNum)
+				fmt.Println(`Web服务地址:`, common.Stream_url.String())
 				var array = reply.StreamOCommon(-1)
 				fmt.Println(`正在录制的房间：`)
 				for i := 0; i < len(array); i++ {

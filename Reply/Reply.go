@@ -360,7 +360,13 @@ func (t replyF) user_toast_msg(s string) {
 	}
 	if price != 0 {
 		sh_log = append(sh, "￥", price/1000) //不在界面显示价格
-		t.Common.Danmu_Main_mq.Push_tag(`c.Rev_add`, float64(price)/1000)
+		t.Common.Danmu_Main_mq.Push_tag(`c.Rev_add`, struct {
+			Roomid int
+			Rev    float64
+		}{
+			Roomid: t.Roomid,
+			Rev:    float64(price) / 1000,
+		})
 	}
 	{ //语言tts
 		t.Common.Danmu_Main_mq.Push_tag(`tts`, Danmu_mq_t{ //传入消息队列
@@ -417,7 +423,13 @@ func (t replyF) heartbeat(s int) {
 	if v, ok := t.Common.K_v.LoadV("下播后不记录人气观看人数").(bool); ok && v && !t.Common.Liveing {
 		return
 	}
-	t.Common.Danmu_Main_mq.Push_tag(`c.Renqi`, s) //使用连续付费的新舰长无法区分，刷新舰长数
+	t.Common.Danmu_Main_mq.Push_tag(`c.Renqi`, struct {
+		Roomid int
+		Renqi  int
+	}{
+		Roomid: t.Roomid,
+		Renqi:  s,
+	}) //使用连续付费的新舰长无法区分，刷新舰长数
 	if s == 1 {
 		return
 	} //人气为1,不输出
@@ -505,6 +517,7 @@ func (t replyF) watched_change(s string) {
 	if data.Data.Num == t.Common.Watched {
 		return
 	}
+	// fmt.Printf("\t观看人数:%d\n", data.Data.Num)
 	t.Common.Watched = data.Data.Num
 	var pperm = float64(t.Common.Watched) / float64(time.Since(t.Common.Live_Start_Time)/time.Minute)
 	msglog.Base_add("房").Log_show_control(false).L(`I: `, "观看人数", data.Data.Num, fmt.Sprintf(" avg:%.1f人/分", pperm))
@@ -756,7 +769,13 @@ func (t replyF) send_gift(s string) {
 	if total_coin != 0 {
 		allprice = float64(total_coin) / 1000
 		sh_log = append(sh, fmt.Sprintf("￥%.1f", allprice)) //不在界面显示价格
-		t.Common.Danmu_Main_mq.Push_tag(`c.Rev_add`, allprice)
+		t.Common.Danmu_Main_mq.Push_tag(`c.Rev_add`, struct {
+			Roomid int
+			Rev    float64
+		}{
+			Roomid: t.Roomid,
+			Rev:    allprice,
+		})
 	}
 
 	if len(sh) == 0 {
@@ -916,7 +935,13 @@ func (t replyF) super_chat_message(s string) {
 	if price != 0 {
 		sh = append(sh, "\n") //界面不显示价格
 		logg = append(logg, "￥", price)
-		t.Common.Danmu_Main_mq.Push_tag(`c.Rev_add`, float64(price))
+		t.Common.Danmu_Main_mq.Push_tag(`c.Rev_add`, struct {
+			Roomid int
+			Rev    float64
+		}{
+			Roomid: t.Roomid,
+			Rev:    float64(price),
+		})
 	}
 	fmt.Println("====")
 	fmt.Println(sh...)

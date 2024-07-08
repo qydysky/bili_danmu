@@ -292,6 +292,18 @@ func (t *GetFunc) Get(key string) {
 	}
 }
 
+// 房间实际id
+func GetRoomRealId(roomid int) int {
+	if err, res := biliApi.GetRoomBaseInfo(roomid); err == nil {
+		return res.RoomID
+	} else if err, res := biliApi.GetInfoByRoom(roomid); err == nil {
+		return res.RoomID
+	} else {
+		apilog.Base_add(`房间实际id`).L(`E: `, err)
+		return roomid
+	}
+}
+
 func (t *GetFunc) GetUid() (missKey []string) {
 	if uid, ok := t.Cookie.LoadV(`DedeUserID`).(string); !ok { //cookie中无DedeUserID
 		missKey = append(missKey, `Cookie`)

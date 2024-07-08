@@ -37,6 +37,7 @@ import (
 	p "github.com/qydysky/part"
 	pctx "github.com/qydysky/part/ctx"
 	file "github.com/qydysky/part/file"
+	fctrl "github.com/qydysky/part/funcCtrl"
 	pio "github.com/qydysky/part/io"
 	limit "github.com/qydysky/part/limit"
 	msgq "github.com/qydysky/part/msgq"
@@ -354,19 +355,19 @@ func StreamOStop(roomid int) {
 }
 
 // 实例切断
-func StreamOCut(roomid int) (setTitle func(string)) {
+func StreamOCut(roomid int) (setTitle func(title ...string)) {
 	if v, ok := c.StreamO.Load(roomid); ok {
 		if !pctx.Done(v.(*M4SStream).Status) {
 			v.(*M4SStream).Cut()
 			flog.L(`I: `, `已切片 `+strconv.Itoa(roomid))
-			return func(title string) {
-				if title != "" {
-					v.(*M4SStream).Common().Title = title
+			return func(title ...string) {
+				if len(title) > 0 {
+					v.(*M4SStream).Common().Title = title[0]
 				}
 			}
 		}
 	}
-	return func(s string) {}
+	return func(s ...string) {}
 }
 
 // type Obs struct {
@@ -967,37 +968,45 @@ func (t *saveToJson) Close() {
 var SaveToJson saveToJson
 
 // 进入房间发送弹幕
-func Entry_danmu() {
+func Entry_danmu(common *c.Common) {
 	flog := flog.Base_add(`进房弹幕`)
 
 	//检查与切换粉丝牌，只在cookie存在时启用
-	F.Get(c.C).Get(`CheckSwitch_FansMedal`)
+	F.Get(common).Get(`CheckSwitch_FansMedal`)
 
-	if v, _ := c.C.K_v.LoadV(`进房弹幕_有粉丝牌时才发`).(bool); v && c.C.Wearing_FansMedal == 0 {
+	if v, _ := common.K_v.LoadV(`进房弹幕_有粉丝牌时才发`).(bool); v && common.Wearing_FansMedal == 0 {
 		flog.L(`T: `, `无粉丝牌`)
 		return
 	}
-	if v, _ := c.C.K_v.LoadV(`进房弹幕_仅发首日弹幕`).(bool); v {
-		res := F.Get_weared_medal(c.C.Uid, c.C.UpUid)
+	if v, _ := common.K_v.LoadV(`进房弹幕_仅发首日弹幕`).(bool); v {
+		res := F.Get_weared_medal(common.Uid, common.UpUid)
 		if res.TodayIntimacy > 0 {
 			flog.L(`T: `, `今日已发弹幕`)
 			return
 		}
 	}
-	if array, ok := c.C.K_v.LoadV(`进房弹幕_内容`).([]interface{}); ok && len(array) != 0 {
+	if array, ok := common.K_v.LoadV(`进房弹幕_内容`).([]interface{}); ok && len(array) != 0 {
 		rand := p.Rand().MixRandom(0, int64(len(array)-1))
-		send.Danmu_s(array[rand].(string), c.C.Roomid)
+		send.Danmu_s(array[rand].(string), common.Roomid)
 	}
 }
 
+var fc_Keep_medal_light fctrl.SkipFunc
+
 // 保持所有牌子点亮
-func Keep_medal_light() {
-	if v, _ := c.C.K_v.LoadV(`保持牌子亮着`).(bool); !v {
+func Keep_medal_light(common *c.Common) {
+	if fc_Keep_medal_light.NeedSkip() {
+		return
+	} else {
+		defer fc_Keep_medal_light.UnSet()
+	}
+
+	if v, _ := common.K_v.LoadV(`保持牌子亮着`).(bool); !v {
 		return
 	}
 	flog := flog.Base_add(`保持亮牌`)
 
-	array, ok := c.C.K_v.LoadV(`进房弹幕_内容`).([]interface{})
+	array, ok := common.K_v.LoadV(`进房弹幕_内容`).([]interface{})
 	if !ok || len(array) == 0 {
 		flog.L(`I: `, `进房弹幕_内容 为 空，退出`)
 		return
@@ -1065,20 +1074,28 @@ func Keep_medal_light() {
 	}
 }
 
+var fc_AutoSend_silver_gift fctrl.SkipFunc
+
 // 自动发送即将过期的银瓜子礼物
-func AutoSend_silver_gift() {
-	day, _ := c.C.K_v.LoadV(`发送还有几天过期的礼物`).(float64)
+func AutoSend_silver_gift(common *c.Common) {
+	if fc_AutoSend_silver_gift.NeedSkip() {
+		return
+	} else {
+		defer fc_AutoSend_silver_gift.UnSet()
+	}
+
+	day, _ := common.K_v.LoadV(`发送还有几天过期的礼物`).(float64)
 	if day <= 0 {
 		return
 	}
 
-	if c.C.UpUid == 0 {
-		F.Get(c.C).Get(`UpUid`)
+	if common.UpUid == 0 {
+		F.Get(common).Get(`UpUid`)
 	}
 
 	for _, v := range F.Gift_list() {
 		if time.Now().Add(time.Hour*time.Duration(24*int(day))).Unix() > int64(v.Expire_at) {
-			send.Send_gift(v.Gift_id, v.Bag_id, v.Gift_num)
+			send.Send_gift(common, v.Gift_id, v.Bag_id, v.Gift_num)
 		}
 	}
 

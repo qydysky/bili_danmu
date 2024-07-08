@@ -43,37 +43,38 @@ type StreamType struct {
 }
 
 type Common struct {
-	PID               int            `json:"pid"`           //进程id
-	Version           string         `json:"version"`       //版本
-	Uid               int            `json:"-"`             //client uid
-	Live              []*LiveQn      `json:"live"`          //直播流链接
-	Live_qn           int            `json:"liveQn"`        //当前直播流质量
-	Live_want_qn      int            `json:"-"`             //期望直播流质量
-	Roomid            int            `json:"roomid"`        //房间ID
-	Cookie            syncmap.Map    `json:"-"`             //Cookie
-	Title             string         `json:"title"`         //直播标题
-	Uname             string         `json:"uname"`         //主播名
-	UpUid             int            `json:"upUid"`         //主播uid
-	Rev               float64        `json:"rev"`           //营收
-	Renqi             int            `json:"renqi"`         //人气
-	Watched           int            `json:"watched"`       //观看人数
-	OnlineNum         int            `json:"onlineNum"`     //在线人数
-	GuardNum          int            `json:"guardNum"`      //舰长数
-	ParentAreaID      int            `json:"parentAreaID"`  //父分区
-	AreaID            int            `json:"areaID"`        //子分区
-	Locked            bool           `json:"locked"`        //直播间封禁
-	Note              string         `json:"note"`          //分区排行
-	Live_Start_Time   time.Time      `json:"liveStartTime"` //直播开始时间
-	Liveing           bool           `json:"liveing"`       //是否在直播
-	Wearing_FansMedal int            `json:"-"`             //当前佩戴的粉丝牌
-	Token             string         `json:"-"`             //弹幕钥
-	WSURL             []string       `json:"-"`             //弹幕链接
-	LiveBuvidUpdated  time.Time      `json:"-"`             //LIVE_BUVID更新时间
-	Stream_url        *url.URL       `json:"-"`             //直播Web服务
-	Proxy             string         `json:"-"`             //全局代理
-	SerLocation       int            `json:"-"`             //服务器时区
-	AcceptQn          map[int]string `json:"-"`             //允许的直播流质量
-	Qn                map[int]string `json:"-"`             //全部直播流质量
+	InIdle            bool           `json:"-"`                //闲置中？
+	PID               int            `json:"-"`                //进程id
+	Version           string         `json:"-"`                //版本
+	Uid               int            `json:"-"`                //client uid
+	Live              []*LiveQn      `json:"live"`             //直播流链接
+	Live_qn           int            `json:"liveQn"`           //当前直播流质量
+	Live_want_qn      int            `json:"-"`                //期望直播流质量
+	Roomid            int            `json:"-"`                //房间ID
+	Cookie            syncmap.Map    `json:"-"`                //Cookie
+	Title             string         `json:"title"`            //直播标题
+	Uname             string         `json:"uname"`            //主播名
+	UpUid             int            `json:"upUid"`            //主播uid
+	Rev               float64        `json:"rev"`              //营收
+	Renqi             int            `json:"renqi"`            //人气
+	Watched           int            `json:"watched"`          //观看人数
+	OnlineNum         int            `json:"onlineNum"`        //在线人数
+	GuardNum          int            `json:"guardNum"`         //舰长数
+	ParentAreaID      int            `json:"parentAreaID"`     //父分区
+	AreaID            int            `json:"areaID"`           //子分区
+	Locked            bool           `json:"locked"`           //直播间封禁
+	Note              string         `json:"note"`             //分区排行
+	Live_Start_Time   time.Time      `json:"-"`                //直播开始时间
+	Liveing           bool           `json:"liveing"`          //是否在直播
+	Wearing_FansMedal int            `json:"WearingFansMedal"` //当前佩戴的粉丝牌
+	Token             string         `json:"-"`                //弹幕钥
+	WSURL             []string       `json:"-"`                //弹幕链接
+	LiveBuvidUpdated  time.Time      `json:"-"`                //LIVE_BUVID更新时间
+	Stream_url        *url.URL       `json:"-"`                //直播Web服务
+	Proxy             string         `json:"-"`                //全局代理
+	SerLocation       int            `json:"-"`                //服务器时区
+	AcceptQn          map[int]string `json:"-"`                //允许的直播流质量
+	Qn                map[int]string `json:"-"`                //全部直播流质量
 	// StreamType        StreamType            `json:"streamType"`    //当前直播流类型
 	AllStreamType map[string]StreamType            `json:"-"` //直播流类型
 	K_v           syncmap.Map                      `json:"-"` //配置文件
@@ -84,6 +85,40 @@ type Common struct {
 	SerLimit      *web.Limits                      `json:"-"` //Web服务连接限制
 	StartT        time.Time                        `json:"-"` //启动时间
 	Cache         syncmap.MapExceeded[string, any] `json:"-"` //缓存
+}
+
+func (t *Common) MarshalJSON() ([]byte, error) {
+	return json.Marshal(struct {
+		Live          []*LiveQn
+		LiveQn        int
+		Title         string
+		Uname         string
+		UpUid         int
+		Rev           float64
+		Watched       int
+		OnlineNum     int
+		GuardNum      int
+		ParentAreaID  int
+		AreaID        int
+		Locked        bool
+		Note          string
+		LiveStartTime string
+	}{
+		Live:          append([]*LiveQn{}, t.Live...),
+		LiveQn:        t.Live_qn,
+		Title:         t.Title,
+		Uname:         t.Uname,
+		UpUid:         t.UpUid,
+		Rev:           t.Rev,
+		Watched:       t.Watched,
+		OnlineNum:     t.OnlineNum,
+		GuardNum:      t.GuardNum,
+		ParentAreaID:  t.ParentAreaID,
+		AreaID:        t.AreaID,
+		Locked:        t.Locked,
+		Note:          t.Note,
+		LiveStartTime: t.Live_Start_Time.Format(time.DateTime),
+	})
 }
 
 type LiveQn struct {
@@ -156,6 +191,7 @@ func (t *Common) IsOn(key string) bool {
 
 func (t *Common) Copy() *Common {
 	var c = Common{
+		InIdle:            t.InIdle,
 		PID:               t.PID,
 		Version:           t.Version,
 		Uid:               t.Uid,
@@ -440,7 +476,10 @@ func (t *Common) Init() *Common {
 
 				streams := make(map[int]any)
 
-				StreamO.Range(func(key, value any) bool {
+				Commons.Range(func(key, value any) bool {
+					if common, ok := value.(*Common); ok && common.InIdle {
+						return true
+					}
 					streams[key.(int)] = value
 					return true
 				})
@@ -624,6 +663,12 @@ var C = new(Common).Init()
 // fmp4
 // https://datatracker.ietf.org/doc/html/draft-pantos-http-live-streaming
 var StreamO = new(sync.Map)
+var Commons = new(syncmap.Map)
+var CommonsLoadOrStore = syncmap.LoadOrStoreFunc[Common]{
+	Init: func() *Common {
+		return C.Copy()
+	},
+}
 
 // 消息队列
 type Danmu_Main_mq_item struct {

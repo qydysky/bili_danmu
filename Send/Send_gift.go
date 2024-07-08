@@ -16,40 +16,40 @@ import (
 // 每2s一个令牌，最多等10秒
 var gift_limit = limit.New(1, "2s", "10s")
 
-func Send_gift(gift_id, bag_id, gift_num int) {
-	log := c.C.Log.Base_add(`发送礼物`)
+func Send_gift(common *c.Common, gift_id, bag_id, gift_num int) {
+	log := common.Log.Base_add(`发送礼物`)
 
 	if gift_limit.TO() {
 		log.L(`W: `, "超时")
 		return
 	}
 
-	if c.C.UpUid == 0 {
+	if common.UpUid == 0 {
 		log.L(`W: `, "还未获取到Up主uid")
 		return
 	}
 
-	if c.C.Locked {
+	if common.Locked {
 		log.L(`W: `, "房间被封禁")
 		return
 	}
 
 	{ //发送请求（银瓜子礼物）
-		csrf, _ := c.C.Cookie.LoadV(`bili_jct`).(string)
+		csrf, _ := common.Cookie.LoadV(`bili_jct`).(string)
 		if csrf == `` {
 			log.L(`E: `, "Cookie错误,无bili_jct=")
 			return
 		}
 
-		var sendStr = `uid=` + strconv.Itoa(c.C.Uid) + `&` +
+		var sendStr = `uid=` + strconv.Itoa(common.Uid) + `&` +
 			`gift_id=` + strconv.Itoa(gift_id) + `&` +
-			`ruid=` + strconv.Itoa(c.C.UpUid) + `&` +
+			`ruid=` + strconv.Itoa(common.UpUid) + `&` +
 			`send_ruid=0&` +
 			`gift_num=` + strconv.Itoa(gift_num) + `&` +
 			`bag_id=` + strconv.Itoa(bag_id) + `&` +
 			`platform=pc&` +
 			`biz_code=live&` +
-			`biz_id=` + strconv.Itoa(c.C.Roomid) + `&` +
+			`biz_id=` + strconv.Itoa(common.Roomid) + `&` +
 			`rnd=` + strconv.Itoa(int(time.Now().Unix())) + `&` +
 			`storm_beat_id=0&` +
 			`metadata=&` +
@@ -59,18 +59,18 @@ func Send_gift(gift_id, bag_id, gift_num int) {
 			`visit_id=`
 
 		Cookie := make(map[string]string)
-		c.C.Cookie.Range(func(k, v interface{}) bool {
+		common.Cookie.Range(func(k, v interface{}) bool {
 			Cookie[k.(string)] = v.(string)
 			return true
 		})
 
-		req := c.C.ReqPool.Get()
-		defer c.C.ReqPool.Put(req)
+		req := common.ReqPool.Get()
+		defer common.ReqPool.Put(req)
 		if e := req.Reqf(reqf.Rval{
 			Url:     `https://api.live.bilibili.com/xlive/revenue/v2/gift/sendBag`,
 			PostStr: url.PathEscape(sendStr),
 			Timeout: 10 * 1000,
-			Proxy:   c.C.Proxy,
+			Proxy:   common.Proxy,
 			Header: map[string]string{
 				`Host`:            `api.vc.bilibili.com`,
 				`User-Agent`:      c.UA,
@@ -102,7 +102,7 @@ func Send_gift(gift_id, bag_id, gift_num int) {
 			return
 		}
 		for i := 0; i < len(res.Data.GiftList); i++ {
-			log.L(`I: `, `给`, c.C.Roomid, `赠送了`, res.Data.GiftList[i].GiftNum, `个`, res.Data.GiftList[i].GiftName)
+			log.L(`I: `, `给`, common.Roomid, `赠送了`, res.Data.GiftList[i].GiftNum, `个`, res.Data.GiftList[i].GiftName)
 		}
 	}
 }
