@@ -103,6 +103,7 @@ func (t *Common) MarshalJSON() ([]byte, error) {
 		Locked        bool
 		Note          string
 		LiveStartTime string
+		Liveing       bool
 	}{
 		Live:          append([]*LiveQn{}, t.Live...),
 		LiveQn:        t.Live_qn,
@@ -118,6 +119,7 @@ func (t *Common) MarshalJSON() ([]byte, error) {
 		Locked:        t.Locked,
 		Note:          t.Note,
 		LiveStartTime: t.Live_Start_Time.Format(time.DateTime),
+		Liveing:       t.Liveing,
 	})
 }
 
