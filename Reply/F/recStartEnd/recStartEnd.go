@@ -10,6 +10,7 @@ import (
 	c "github.com/qydysky/bili_danmu/CV"
 	comp "github.com/qydysky/part/component"
 	log "github.com/qydysky/part/log"
+	psync "github.com/qydysky/part/sync"
 	"golang.org/x/exp/slices"
 )
 
@@ -104,11 +105,12 @@ func recStartCheck(ctx context.Context, ptr *c.Common) (any, error) {
 }
 
 type StreamCtl struct {
-	C     *c.Common
-	State func(int) bool
-	Start func(*c.Common, int)
-	End   func(int)
-	Cut   func(int)
+	C       *c.Common
+	Commons *psync.Map
+	State   func(int) bool
+	Start   func(*c.Common, int)
+	End     func(int)
+	Cut     func(int)
 }
 
 var streamCtl StreamCtl
@@ -137,29 +139,31 @@ func setNextFunc() {
 	}
 	slices.Sort(tmp)
 
-	// logg.L(`T: `, "下个时间点", time.Now().Add(time.Second*time.Duration(tmp[0])).Format(time.DateTime))
+	// logg.L(`T: `, "下个时间点", time.Second*time.Duration(tmp[0]))
 
 	time.AfterFunc(time.Second*time.Duration(tmp[0]), func() {
-		if streamCtl.C.Liveing {
-			if setting, ok := roomSetting[streamCtl.C.Roomid]; ok {
+		roomId := streamCtl.C.Roomid
+		common := streamCtl.Commons.LoadV(roomId).(*c.Common)
+		if common.Liveing {
+			if setting, ok := roomSetting[roomId]; ok {
 				now := time.Now()
 				t := now.Hour()*3600 + now.Minute()*60 + now.Second() + 1
 				for _, v := range setting {
 					if v.start != 0 && math.Abs(float64(t-v.start)) < 5 {
-						if streamCtl.State(streamCtl.C.Roomid) {
-							logg.L(`T: `, "切片", streamCtl.C.Roomid)
-							streamCtl.Cut(streamCtl.C.Roomid)
+						if streamCtl.State(roomId) {
+							logg.L(`T: `, "切片", roomId)
+							streamCtl.Cut(roomId)
 						} else {
-							logg.L(`T: `, "开始", streamCtl.C.Roomid)
-							streamCtl.Start(streamCtl.C.Copy(), streamCtl.C.Roomid)
+							logg.L(`T: `, "开始", roomId)
+							streamCtl.Start(common, roomId)
 						}
 						time.Sleep(time.Second * 5)
 						break
 					}
 					if v.end != 0 && math.Abs(float64(t-v.end)) < 5 {
-						if streamCtl.State(streamCtl.C.Roomid) {
-							logg.L(`T: `, "结束", streamCtl.C.Roomid)
-							streamCtl.End(streamCtl.C.Roomid)
+						if streamCtl.State(roomId) {
+							logg.L(`T: `, "结束", roomId)
+							streamCtl.End(roomId)
 						}
 						time.Sleep(time.Second * 5)
 						break

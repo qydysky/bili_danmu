@@ -103,11 +103,12 @@ func Start() {
 			danmulog.Base("功能", "指定房间录制区间").L(`E: `, err)
 		} else {
 			_, _ = recStartEnd.LoopCheck.Run(mainCtx, recStartEnd.StreamCtl{
-				C:     c.C,
-				State: reply.StreamOStatus,
-				Start: reply.StreamOStart,
-				End:   reply.StreamOStop,
-				Cut:   func(i int) { reply.StreamOCut(i) },
+				C:       c.C,
+				Commons: c.Commons,
+				State:   reply.StreamOStatus,
+				Start:   reply.StreamOStart,
+				End:     reply.StreamOStop,
+				Cut:     func(i int) { reply.StreamOCut(i) },
 			})
 		}
 		// 指定弹幕重启录制

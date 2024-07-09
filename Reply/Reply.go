@@ -879,7 +879,7 @@ func (t replyF) live(s string) {
 			}
 			if _, e := recStartEnd.RecStartCheck.Run(context.Background(), t.Common); e == nil {
 				if !StreamOStatus(t.Common.Roomid) {
-					StreamOStart(t.Common.Copy(), t.Common.Roomid)
+					StreamOStart(t.Common, t.Common.Roomid)
 				}
 			} else {
 				msglog.L(`W: `, "房间", type_item.Roomid, e)
