@@ -5,9 +5,11 @@ import (
 	"compress/zlib"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	brotli "github.com/andybalholm/brotli"
@@ -21,10 +23,51 @@ import (
 	p "github.com/qydysky/part"
 	funcCtrl "github.com/qydysky/part/funcCtrl"
 	mq "github.com/qydysky/part/msgq"
+	pool "github.com/qydysky/part/pool"
 	pstrings "github.com/qydysky/part/strings"
 )
 
 var reply_log = c.C.Log.Base(`Reply`)
+var ErrDecode = errors.New(`ErrDecode`)
+
+// brotliDecoder
+type brotliDecoder struct {
+	inuse atomic.Bool
+	i     *bytes.Reader
+	d     *brotli.Reader
+	o     *bytes.Buffer
+}
+
+func (t *brotliDecoder) Decode(b *[]byte, offset int) error {
+	t.inuse.Store(true)
+	defer t.inuse.Store(false)
+
+	t.i.Reset((*b)[offset:])
+	if err := t.d.Reset(t.i); err != nil {
+		return err
+	}
+	t.o.Reset()
+	if _, err := t.o.ReadFrom(t.d); err != nil {
+		return err
+	}
+	*b = append((*b)[:0], t.o.Bytes()...)
+	return nil
+}
+
+var brotliDecoders = pool.New(pool.PoolFunc[brotliDecoder]{
+	New: func() *brotliDecoder {
+		t := &brotliDecoder{}
+		t.i = bytes.NewReader(nil)
+		t.d = brotli.NewReader(t.i)
+		t.o = bytes.NewBuffer(nil)
+		return t
+	},
+	InUse: func(bd *brotliDecoder) bool {
+		return bd.inuse.Load()
+	},
+	Reuse: func(bd *brotliDecoder) *brotliDecoder { return bd },
+	Pool:  func(bd *brotliDecoder) *brotliDecoder { return bd },
+}, 10)
 
 // 返回数据分派
 // 传入接受到的ws数据
@@ -61,14 +104,13 @@ func Reply(common *c.Common, b []byte) {
 		}
 		b = buf.Bytes()
 	case c.WS_BODY_PROTOCOL_VERSION_BROTLI: // BROTLI
-		readc := brotli.NewReader(bytes.NewReader(b[16:]))
-
-		buf := bytes.NewBuffer(nil)
-		if _, err := buf.ReadFrom(readc); err != nil {
-			reply_log.L(`E: `, "解压错误")
+		decoder := brotliDecoders.Get()
+		e := decoder.Decode(&b, 16)
+		brotliDecoders.Put(decoder)
+		if e != nil {
+			reply_log.L(`E: `, "解压错误", e)
 			return
 		}
-		b = buf.Bytes()
 	default:
 		reply_log.L(`E: `, "未知的编码方式", head.BodyV)
 	}
