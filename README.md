@@ -841,10 +841,10 @@ go build .
 
 4. github编译
 
-前往[releases](https://github.com/qydysky/bili_danmu/releases)页下载对应系统版本。解压后进入`demo`目录(文件夹)，运行`demo.run`(`demo.exe`)。
+前往[releases](https://github.com/qydysky/bili_danmu/releases)页下载对应系统版本。解压后进入`demo`目录(文件夹)，运行`main`(`main.exe`)。
 ```
-./demo.run [-r 房间ID] [-ckv 自定义config_K_v.json]
-./demo.exe [-r 房间ID] [-ckv 自定义config_K_v.json]
+./main [-r 房间ID] [-ckv 自定义config_K_v.json]
+./main.exe [-r 房间ID] [-ckv 自定义config_K_v.json]
 ```
 
 #### 注意事项
@@ -859,7 +859,7 @@ go build .
 #### 关于更新版本v0.{y}.{z}
 * 当bilibili停止服务时，将会发布v1版本。
 * 当发生**不兼容**的改动(删减原来有效、修改有效项的含义)时，将会发布v0.{y+1}.0版。更新前，你需要关注更新说明，以确认变动的配置项的影响。
-* 当发生**向下兼容**的改动(修复、新增功能)时，将会发布v0.{y}.{z+1}版。通常只需要覆盖主体`demo.run`（`demo.exe`）即可更新。
+* 当发生**向下兼容**的改动(修复、新增功能)时，将会发布v0.{y}.{z+1}版。通常只需要覆盖主体`main`（`main.exe`）即可更新。
 * 另外`releases`页面中，`Pre-release`表示此版本为尚未经过验证的版本，或存在重大bug，`Latest`表示此版本经过验证，不存在明显的重大bug。
 
 ### 效果展示
