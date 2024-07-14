@@ -502,6 +502,7 @@ func (t *Common) Init() *Common {
 								"sum":      reqState.Sum,
 								"qts":      math.Round(reqState.GetPerSec*100) / 100,
 							},
+							"pid":          t.PID,
 							"numGoroutine": runtime.NumGoroutine(),
 							"goVersion":    runtime.Version(),
 						},

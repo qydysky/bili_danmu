@@ -44,6 +44,164 @@ var biliApi = cmp.Get(id, func(ba biliApiInter) biliApiInter {
 	return ba
 })
 
+var (
+	apiCanGet = map[string][]func(*GetFunc) (missKey []string){
+		`Cookie`: { //Cookie
+			(*GetFunc).Get_cookie,
+		},
+		`Uid`: { //用戶uid
+			(*GetFunc).GetUid,
+		},
+		`UpUid`: { //主播uid
+			(*GetFunc).getRoomBaseInfo,
+			(*GetFunc).getInfoByRoom,
+			(*GetFunc).getRoomPlayInfo,
+			(*GetFunc).Html,
+		},
+		`Live_Start_Time`: { //直播开始时间
+			(*GetFunc).getRoomBaseInfo,
+			(*GetFunc).getInfoByRoom,
+			(*GetFunc).getRoomPlayInfo,
+			(*GetFunc).Html,
+		},
+		`Liveing`: { //是否在直播
+			(*GetFunc).getRoomBaseInfo,
+			(*GetFunc).getInfoByRoom,
+			(*GetFunc).getRoomPlayInfo,
+			(*GetFunc).Html,
+		},
+		`Title`: { //直播间标题
+			(*GetFunc).getRoomBaseInfo,
+			(*GetFunc).getInfoByRoom,
+			(*GetFunc).Html,
+		},
+		`Uname`: { //主播名
+			(*GetFunc).getRoomBaseInfo,
+			(*GetFunc).getInfoByRoom,
+			(*GetFunc).Html,
+		},
+		`ParentAreaID`: { //分区
+			(*GetFunc).getRoomBaseInfo,
+			(*GetFunc).getInfoByRoom,
+			(*GetFunc).Html,
+		},
+		`AreaID`: { //子分区
+			(*GetFunc).getRoomBaseInfo,
+			(*GetFunc).getInfoByRoom,
+			(*GetFunc).Html,
+		},
+		`Roomid`: { //房间id
+			(*GetFunc).missRoomId,
+		},
+		`GuardNum`: { //舰长数
+			(*GetFunc).Get_guardNum,
+			(*GetFunc).getInfoByRoom,
+			(*GetFunc).getRoomPlayInfo,
+			(*GetFunc).Html,
+		},
+		`Note`: { //分区排行
+			(*GetFunc).getPopularAnchorRank,
+			(*GetFunc).getInfoByRoom,
+			(*GetFunc).Html,
+		},
+		`Locked`: { //直播间是否被封禁
+			(*GetFunc).getInfoByRoom,
+			(*GetFunc).Html,
+		},
+		`Live_qn`: { //当前直播流质量
+			(*GetFunc).getRoomPlayInfo,
+			(*GetFunc).Html,
+		},
+		`AcceptQn`: { //允许的清晰度
+			(*GetFunc).getRoomPlayInfo,
+			(*GetFunc).Html,
+		},
+		`Live`: { //直播流链接
+			(*GetFunc).getRoomPlayInfoByQn,
+			(*GetFunc).getRoomPlayInfo,
+			(*GetFunc).Html,
+		},
+		`Token`: { //弹幕钥
+			(*GetFunc).getDanmuInfo,
+		},
+		`WSURL`: { //弹幕链接
+			(*GetFunc).getDanmuInfo,
+		},
+		`LIVE_BUVID`: { //LIVE_BUVID
+			(*GetFunc).Get_LIVE_BUVID,
+		},
+		`CheckSwitch_FansMedal`: { //切换粉丝牌
+			(*GetFunc).CheckSwitch_FansMedal,
+		},
+		`getOnlineGoldRank`: { //切换粉丝牌
+			(*GetFunc).getOnlineGoldRank,
+		},
+	}
+
+	checkValid = map[string]func(*GetFunc) (valid bool){
+		`Uid`: func(t *GetFunc) bool { //用戶uid
+			return t.Uid != 0
+		},
+		`UpUid`: func(t *GetFunc) bool { //主播uid
+			return t.UpUid != 0
+		},
+		`Live_Start_Time`: func(t *GetFunc) bool { //直播开始时间
+			return t.Live_Start_Time != time.Time{}
+		},
+		`Liveing`: func(t *GetFunc) bool { //是否在直播
+			return true
+		},
+		`Title`: func(t *GetFunc) bool { //直播间标题
+			return t.Title != ``
+		},
+		`Uname`: func(t *GetFunc) bool { //主播名
+			return t.Uname != ``
+		},
+		`ParentAreaID`: func(t *GetFunc) bool { //分区
+			return t.ParentAreaID != 0
+		},
+		`AreaID`: func(t *GetFunc) bool { //子分区
+			return t.AreaID != 0
+		},
+		`Roomid`: func(t *GetFunc) bool { //房间id
+			return t.Roomid != 0
+		},
+		`GuardNum`: func(t *GetFunc) bool { //舰长数
+			return t.GuardNum != 0
+		},
+		`Note`: func(t *GetFunc) bool { //分区排行
+			return t.Note != ``
+		},
+		`Locked`: func(t *GetFunc) bool { //直播间是否被封禁
+			return true
+		},
+		`Live_qn`: func(t *GetFunc) bool { //当前直播流质量
+			return t.Live_qn != 0
+		},
+		`AcceptQn`: func(t *GetFunc) bool { //允许的清晰度
+			return len(t.AcceptQn) != 0
+		},
+		`Live`: func(t *GetFunc) bool { //直播流链接
+			return len(t.Live) != 0
+		},
+		`Token`: func(t *GetFunc) bool { //弹幕钥
+			return t.Token != ``
+		},
+		`WSURL`: func(t *GetFunc) bool { //弹幕链接
+			return len(t.WSURL) != 0
+		},
+		`LIVE_BUVID`: func(t *GetFunc) bool { //LIVE_BUVID
+			return t.LiveBuvidUpdated.After(time.Now().Add(-time.Hour))
+		},
+		`CheckSwitch_FansMedal`: func(t *GetFunc) bool { //切换粉丝牌
+			return true
+		},
+		`Cookie`: func(t *GetFunc) bool { //Cookie
+			return true
+		},
+	}
+)
+
 type GetFunc struct {
 	*c.Common
 	count atomic.Int32
@@ -60,6 +218,13 @@ func Get(c *c.Common) *GetFunc {
 }
 
 func (t *GetFunc) Get(key string) {
+	t.l.Lock()
+	defer t.l.Unlock()
+
+	t.get(key)
+}
+
+func (t *GetFunc) get(key string) {
 	apilog := apilog.Base_add(`Get`)
 
 	current := t.count.Add(1)
@@ -74,220 +239,45 @@ func (t *GetFunc) Get(key string) {
 		return
 	} //超额请求阻塞，超时将取消
 
-	var (
-		api_can_get = map[string][]func() (missKey []string){
-			`Cookie`: { //Cookie
-				t.Get_cookie,
-			},
-			`Uid`: { //用戶uid
-				t.GetUid,
-			},
-			`UpUid`: { //主播uid
-				t.getRoomBaseInfo,
-				t.getInfoByRoom,
-				t.getRoomPlayInfo,
-				t.Html,
-			},
-			`Live_Start_Time`: { //直播开始时间
-				t.getRoomBaseInfo,
-				t.getInfoByRoom,
-				t.getRoomPlayInfo,
-				t.Html,
-			},
-			`Liveing`: { //是否在直播
-				t.getRoomBaseInfo,
-				t.getInfoByRoom,
-				t.getRoomPlayInfo,
-				t.Html,
-			},
-			`Title`: { //直播间标题
-				t.getRoomBaseInfo,
-				t.getInfoByRoom,
-				t.Html,
-			},
-			`Uname`: { //主播名
-				t.getRoomBaseInfo,
-				t.getInfoByRoom,
-				t.Html,
-			},
-			`ParentAreaID`: { //分区
-				t.getRoomBaseInfo,
-				t.getInfoByRoom,
-				t.Html,
-			},
-			`AreaID`: { //子分区
-				t.getRoomBaseInfo,
-				t.getInfoByRoom,
-				t.Html,
-			},
-			`Roomid`: { //房间id
-				t.missRoomId,
-			},
-			`GuardNum`: { //舰长数
-				t.Get_guardNum,
-				t.getInfoByRoom,
-				t.getRoomPlayInfo,
-				t.Html,
-			},
-			`Note`: { //分区排行
-				t.getPopularAnchorRank,
-				// t.Get_HotRank,
-				t.getInfoByRoom,
-				t.Html,
-			},
-			`Locked`: { //直播间是否被封禁
-				t.getInfoByRoom,
-				t.Html,
-			},
-			`Live_qn`: { //当前直播流质量
-				t.getRoomPlayInfo,
-				t.Html,
-			},
-			`AcceptQn`: { //允许的清晰度
-				t.getRoomPlayInfo,
-				t.Html,
-			},
-			`Live`: { //直播流链接
-				t.getRoomPlayInfoByQn,
-				t.getRoomPlayInfo,
-				t.Html,
-			},
-			`Token`: { //弹幕钥
-				t.getDanmuInfo,
-			},
-			`WSURL`: { //弹幕链接
-				t.getDanmuInfo,
-			},
-			// `VERSION`:[]func()([]string){//客户版本  不再需要
-			// 	Get_Version,
-			// },
-			`LIVE_BUVID`: { //LIVE_BUVID
-				t.Get_LIVE_BUVID,
-			},
-			`CheckSwitch_FansMedal`: { //切换粉丝牌
-				t.CheckSwitch_FansMedal,
-			},
-			`getOnlineGoldRank`: { //切换粉丝牌
-				t.getOnlineGoldRank,
-			},
-		}
-		// 验证是否有效
-		check = map[string]func() (valid bool){
-			`Uid`: func() bool { //用戶uid
-				return t.Uid != 0
-			},
-			`UpUid`: func() bool { //主播uid
-				return t.UpUid != 0
-			},
-			`Live_Start_Time`: func() bool { //直播开始时间
-				return t.Live_Start_Time != time.Time{}
-			},
-			`Liveing`: func() bool { //是否在直播
-				return true
-			},
-			`Title`: func() bool { //直播间标题
-				return t.Title != ``
-			},
-			`Uname`: func() bool { //主播名
-				return t.Uname != ``
-			},
-			`ParentAreaID`: func() bool { //分区
-				return t.ParentAreaID != 0
-			},
-			`AreaID`: func() bool { //子分区
-				return t.AreaID != 0
-			},
-			`Roomid`: func() bool { //房间id
-				return t.Roomid != 0
-			},
-			`GuardNum`: func() bool { //舰长数
-				return t.GuardNum != 0
-			},
-			`Note`: func() bool { //分区排行
-				return t.Note != ``
-			},
-			`Locked`: func() bool { //直播间是否被封禁
-				return true
-			},
-			`Live_qn`: func() bool { //当前直播流质量
-				return t.Live_qn != 0
-			},
-			`AcceptQn`: func() bool { //允许的清晰度
-				return len(t.AcceptQn) != 0
-			},
-			`Live`: func() bool { //直播流链接
-				return len(t.Live) != 0
-			},
-			`Token`: func() bool { //弹幕钥
-				return t.Token != ``
-			},
-			`WSURL`: func() bool { //弹幕链接
-				return len(t.WSURL) != 0
-			},
-			// `VERSION`:func()(bool){//客户版本  不再需要
-			// 	return t.VERSION != `2.0.11`
-			// },
-			`LIVE_BUVID`: func() bool { //LIVE_BUVID
-				return t.LiveBuvidUpdated.After(time.Now().Add(-time.Hour))
-			},
-			`CheckSwitch_FansMedal`: func() bool { //切换粉丝牌
-				return true
-			},
-			`Cookie`: func() bool { //Cookie
-				return true
-			},
-		}
-	)
+	fList, ok := apiCanGet[key]
 
-	if fList, ok := api_can_get[key]; !ok {
+	if !ok {
 		apilog.L(`E: `, `no api`, key)
-	} else {
-		for i := 0; i < len(fList); i++ {
-			apilog.Log_show_control(false).L(`T: `, `Get`, key)
+		return
+	}
 
-			t.l.Lock()
-			missKey := fList[i]()
-			t.l.Unlock()
+	for i := 0; i < len(fList); i++ {
+		apilog.Log_show_control(false).L(`T: `, `Get`, key)
 
-			if len(missKey) > 0 {
-				apilog.L(`T: `, `missKey when get`, key, missKey)
-				for _, misskeyitem := range missKey {
-					if checkf, ok := check[misskeyitem]; ok {
-						t.l.RLock()
-						if checkf() {
-							t.l.RUnlock()
-							continue
-						}
-						t.l.RUnlock()
-					}
-					if misskeyitem == key {
-						apilog.L(`W: `, `missKey equrt key`, key, missKey)
-						continue
-					}
-					t.Get(misskeyitem)
-				}
+		missKey := fList[i](t)
 
-				t.l.Lock()
-				missKey := fList[i]()
-				t.l.Unlock()
+		if len(missKey) == 0 {
+			break
+		}
 
-				if len(missKey) > 0 {
-					apilog.L(`W: `, `missKey when get`, key, missKey)
-					continue
-				}
+		apilog.L(`T: `, `missKey when get`, key, missKey)
+
+		for p := 0; p < len(missKey); p++ {
+			if missKey[p] == key {
+				apilog.L(`W: `, `missKey equrt key, skip `, key, missKey[p])
+				continue
 			}
 
-			if checkf, ok := check[key]; ok {
-				t.l.RLock()
-				if checkf() {
-					t.l.RUnlock()
-					break
-				} else {
-					t.l.RUnlock()
-					apilog.L(`W: `, `check fail`, key)
-					// t.Get(key)
-				}
-			}
+			t.get(missKey[p])
+		}
+
+		missKey = fList[i](t)
+
+		if len(missKey) == 0 {
+			break
+		}
+
+		apilog.L(`W: `, `missKey when get`, key, missKey)
+	}
+
+	if checkf, ok := checkValid[key]; ok {
+		if !checkf(t) {
+			apilog.L(`W: `, `check fail`, key)
 		}
 	}
 }
