@@ -254,6 +254,7 @@ func entryRoom(mainCtx context.Context, danmulog *part.Log_interface, common *c.
 	// 对每个弹幕服务器尝试
 	F.Get(common).Get(`WSURL`)
 	aliveT := time.Now().Add(3 * time.Hour)
+	heartbeatmsg, heartinterval := F.Heartbeat()
 	for i, exitloop := 0, false; !exitloop && i < len(common.WSURL) && time.Now().Before(aliveT); {
 		v := common.WSURL[i]
 		//ws启动
@@ -261,7 +262,7 @@ func entryRoom(mainCtx context.Context, danmulog *part.Log_interface, common *c.
 		u, _ := url.Parse(v)
 		ws_c, err := ws.New_client(&ws.Client{
 			Url:               v,
-			TO:                35 * 1000,
+			TO:                (heartinterval + 5) * 1000,
 			Proxy:             common.Proxy,
 			Func_abort_close:  func() { danmulog.L(`I: `, `服务器连接中断`) },
 			Func_normal_close: func() { danmulog.L(`I: `, `服务器连接关闭`) },
@@ -288,7 +289,9 @@ func entryRoom(mainCtx context.Context, danmulog *part.Log_interface, common *c.
 			continue
 		}
 		if ws_c.Isclose() {
-			danmulog.L(`E: `, "连接错误", ws_c.Error())
+			if err := ws_c.Error(); err != nil {
+				danmulog.L(`E: `, "连接错误", err)
+			}
 			i += 1
 			continue
 		}
@@ -342,7 +345,6 @@ func entryRoom(mainCtx context.Context, danmulog *part.Log_interface, common *c.
 		//30s获取一次人气
 		go func() {
 			danmulog.L(`T: `, "获取人气")
-			heartbeatmsg, heartinterval := F.Heartbeat()
 			for !ws_c.Isclose() {
 				wsmsg.Push_tag(`send`, &ws.WsMsg{
 					Msg: heartbeatmsg,
@@ -446,6 +448,10 @@ func entryRoom(mainCtx context.Context, danmulog *part.Log_interface, common *c.
 				cancel, c := wsmsg.Pull_tag_chan(`exit`, 1, mainCtx)
 				<-c
 				cancel()
+			}
+
+			if err := ws_c.Error(); err != nil {
+				danmulog.L(`E: `, "连接错误", err)
 			}
 
 			cancelfunc()
