@@ -11927,6 +11927,7 @@ __webpack_require__.r(__webpack_exports__);
                     danmuku: [],
                     speed: 10,
                     fontSize: "4%",
+                    emitter: document.body.clientWidth>800,
                     opacity: 0.7,
                 }),
             ],
@@ -12029,6 +12030,7 @@ __webpack_require__.r(__webpack_exports__);
             player.plugins.artplayerPluginDanmuku.config({
                 danmuku: [],
                 speed: 10,
+                emitter: document.body.clientWidth>800,
                 fontSize: "4%",
                 opacity: 0.7,
             });
