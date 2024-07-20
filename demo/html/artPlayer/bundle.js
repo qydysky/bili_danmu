@@ -11929,6 +11929,7 @@ __webpack_require__.r(__webpack_exports__);
                     fontSize: "4%",
                     emitter: document.body.clientWidth>800,
                     opacity: 0.7,
+                    ...JSON.parse(localStorage.getItem('danmuku') || '{}'),
                 }),
             ],
             icons: {
@@ -12033,6 +12034,7 @@ __webpack_require__.r(__webpack_exports__);
                 emitter: document.body.clientWidth>800,
                 fontSize: "4%",
                 opacity: 0.7,
+                ...JSON.parse(localStorage.getItem('danmuku') || '{}'),
             });
             player.plugins.artplayerPluginDanmuku.load();
             if(config.conn != undefined){
@@ -12047,6 +12049,12 @@ __webpack_require__.r(__webpack_exports__);
                 config.conn = undefined;
             }
             if(flvPlayer)flvPlayer.unload();
+        });
+        player.on('artplayerPluginDanmuku:config', (option) => {
+            // 排除不必要的选项，如mount
+            const { mount, ...rest } = option;
+            // 保存到localStorage
+            localStorage.setItem('danmuku', JSON.stringify(rest));
         });
         player.on('artplayerPluginDanmuku:visible', (danmu) => {
             danmu.$ref.innerHTML = danmu.$ref.innerText.replace(/(\[.*?\])/g,"<img src=\"emots/$1.png\" alt=\"$1\" style=\"object-fit: scale-down;height: 1.125em;\"></img>");
