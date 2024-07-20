@@ -11925,7 +11925,8 @@ __webpack_require__.r(__webpack_exports__);
             plugins: [
                 artplayer_plugin_danmuku__WEBPACK_IMPORTED_MODULE_2___default()({
                     danmuku: [],
-                    speed: 7,
+                    speed: 10,
+                    fontSize: "4%",
                     opacity: 0.7,
                 }),
             ],
@@ -12027,7 +12028,8 @@ __webpack_require__.r(__webpack_exports__);
             console.log("clear danmu");
             player.plugins.artplayerPluginDanmuku.config({
                 danmuku: [],
-                speed: 7,
+                speed: 10,
+                fontSize: "4%",
                 opacity: 0.7,
             });
             player.plugins.artplayerPluginDanmuku.load();
@@ -12045,7 +12047,7 @@ __webpack_require__.r(__webpack_exports__);
             if(flvPlayer)flvPlayer.unload();
         });
         player.on('artplayerPluginDanmuku:visible', (danmu) => {
-            danmu.$ref.innerHTML = danmu.$ref.innerText.replace(/(\[.*\])/,"<img src=\"emots/$1.png\" alt=\"$1\" style=\"height: 1.125em;\"></img>");
+            danmu.$ref.innerHTML = danmu.$ref.innerText.replace(/(\[.*\])/,"<img src=\"emots/$1.png\" alt=\"$1\" style=\"object-fit: scale-down;height: 1.125em;\"></img>");
         });
         player.on('artplayerPluginDanmuku:emit', (danmu) => {
             if(config.conn != undefined)config.conn.send("%S"+danmu.text);
