@@ -23,6 +23,10 @@ type Danmu struct {
 	Msg  *string
 }
 
+func init() {
+	_, _ = file.New("emots/README.md", 0, true).Write([]byte(""), false)
+}
+
 func saveEmote(ctx context.Context, ptr Danmu) (ret any, err error) {
 	if m, ok := ptr.Info[13].(map[string]any); ok {
 		if url, ok := m[`url`].(string); ok {

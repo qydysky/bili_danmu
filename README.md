@@ -74,6 +74,11 @@
 ### 说明
 本项目使用github action自动构建，构建过程详见[yml](https://github.com/qydysky/bili_danmu/blob/master/.github/workflows/go.yml)
 
+#### 直播回放显示表情
+配置文件中添加配置项`弹幕表情`(>v0.14.9)。默认为true，当为true时，将会保存弹幕中的表情png到emots目录下，并在回放时显示表情。
+
+注意：需要配套更新`demo/html/artPlayer`下的资源
+
 #### 直播流停用服务器
 配置文件中添加配置项`直播流停用服务器`(>v0.14.3)。默认为空，编写正则字符串，当获取到的服务器链接与字符串匹配时，将会停用。
 
