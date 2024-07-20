@@ -30,3 +30,4 @@ coverage.txt
 demo/danmu.sqlite3
 plugin/*.go
 bili_danmu.go
+demo/emots/*.png
