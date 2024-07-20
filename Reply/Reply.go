@@ -15,6 +15,7 @@ import (
 	brotli "github.com/andybalholm/brotli"
 	c "github.com/qydysky/bili_danmu/CV"
 	F "github.com/qydysky/bili_danmu/F"
+	danmuemotes "github.com/qydysky/bili_danmu/Reply/F/danmuEmotes"
 	"github.com/qydysky/bili_danmu/Reply/F/danmuReLiveTriger"
 	"github.com/qydysky/bili_danmu/Reply/F/liveOver"
 	"github.com/qydysky/bili_danmu/Reply/F/recStartEnd"
@@ -1207,15 +1208,15 @@ type Danmu_item struct {
 	color  string
 	border bool
 	mode   int
-	auth   interface{}
+	auth   any
 	uid    string
 	roomid int //to avoid danmu show when room has changed
 }
 
 func (t replyF) danmu(s string) {
 	var j struct {
-		Cmd  string        `json:"cmd"`
-		Info []interface{} `json:"info"`
+		Cmd  string `json:"cmd"`
+		Info []any  `json:"info"`
 	}
 
 	if e := json.Unmarshal([]byte(s), &j); e != nil {
@@ -1226,15 +1227,21 @@ func (t replyF) danmu(s string) {
 	item := Danmu_item{}
 	{
 		//解析
-		if i, ok := infob[0].([]interface{}); ok {
-			item.color = "#" + fmt.Sprintf("%x", F.Itob32(int32(i[3].(float64)))[1:])
-		}
 		if len(infob) > 0 {
 			item.msg, _ = infob[1].(string)
 			item.msg = strings.TrimSpace(item.msg)
 		}
+		if i, ok := infob[0].([]any); ok {
+			item.color = "#" + fmt.Sprintf("%x", F.Itob32(int32(i[3].(float64)))[1:])
+
+			if v, ok := t.Common.K_v.LoadV(`弹幕表情`).(bool); ok && v {
+				if _, e := danmuemotes.SaveEmote.Run(context.Background(), danmuemotes.Danmu{Logg: msglog, Info: i, Msg: &item.msg}); e != nil {
+					msglog.L(`E: `, e)
+				}
+			}
+		}
 		if len(infob) > 1 {
-			i, _ := infob[2].([]interface{})
+			i, _ := infob[2].([]any)
 			if len(i) > 0 {
 				item.uid = strconv.Itoa(int(i[0].(float64)))
 			}

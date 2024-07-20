@@ -1147,8 +1147,8 @@ func SendStreamWs(item Danmu_item) {
 
 func init() {
 	flog := flog.Base_add(`直播Web服务`)
-	if path, ok := c.C.K_v.LoadV(`直播Web服务路径`).(string); ok {
-		if path[0] != '/' {
+	if spath, ok := c.C.K_v.LoadV(`直播Web服务路径`).(string); ok {
+		if spath[0] != '/' {
 			flog.L(`E: `, `直播Web服务路径错误`)
 			return
 		}
@@ -1196,12 +1196,12 @@ func init() {
 		var cache pweb.Cache
 
 		// 直播流主页
-		c.C.SerF.Store(path, func(w http.ResponseWriter, r *http.Request) {
+		c.C.SerF.Store(spath, func(w http.ResponseWriter, r *http.Request) {
 			if c.DefaultHttpCheck(c.C, w, r, http.MethodGet, http.MethodHead) {
 				return
 			}
 
-			p := strings.TrimPrefix(r.URL.Path, path)
+			p := strings.TrimPrefix(r.URL.Path, spath)
 
 			if len(p) == 0 || p[len(p)-1] == '/' {
 				p += "index.html"
@@ -1233,19 +1233,19 @@ func init() {
 		})
 
 		// 直播流文件列表api
-		c.C.SerF.Store(path+"filePath", func(w http.ResponseWriter, r *http.Request) {
+		c.C.SerF.Store(spath+"filePath", func(w http.ResponseWriter, r *http.Request) {
 			if c.DefaultHttpCheck(c.C, w, r, http.MethodGet) {
 				return
 			}
 
 			//cache
-			if bp, ok := cache.IsCache(path + "filePath"); ok {
+			if bp, ok := cache.IsCache(spath + "filePath"); ok {
 				w.Header().Set("Content-Type", "application/json")
 				w.Header().Set("Cache-Control", "max-age=5")
 				_, _ = w.Write(*bp)
 				return
 			}
-			w = cache.Cache(path+"filePath", time.Second*5, w)
+			w = cache.Cache(spath+"filePath", time.Second*5, w)
 
 			var filePaths []*videoInfo.Paf
 
@@ -1310,15 +1310,38 @@ func init() {
 			c.ResStruct{Code: 0, Message: "ok", Data: filePaths}.Write(w)
 		})
 
-		// 直播流播放器
-		c.C.SerF.Store(path+"player/", func(w http.ResponseWriter, r *http.Request) {
+		// 表情
+		c.C.SerF.Store(spath+"emots/", func(w http.ResponseWriter, r *http.Request) {
 			if c.DefaultHttpCheck(c.C, w, r, http.MethodGet) {
 				return
 			}
 
-			p := strings.TrimPrefix(r.URL.Path, path+"player/")
-			if len(p) == 0 || p[len(p)-1] == '/' {
-				p += "index.html"
+			f := file.New("emots/"+strings.TrimPrefix(r.URL.Path, spath+"emots/"), 0, true)
+			if !f.IsExist() {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+
+			b, _ := f.ReadAll(humanize.KByte, humanize.MByte)
+			_, _ = w.Write(b)
+		})
+
+		// 直播流播放器
+		c.C.SerF.Store(spath+"player/", func(w http.ResponseWriter, r *http.Request) {
+			if c.DefaultHttpCheck(c.C, w, r, http.MethodGet) {
+				return
+			}
+
+			p := strings.TrimPrefix(r.URL.Path, spath+"player/")
+
+			if len(p) == 0 {
+				p = "index.html"
+			}
+
+			if strings.HasPrefix(p, "emots/") {
+				//
+			} else {
+				p = "html/artPlayer/" + p
 			}
 
 			if strings.HasSuffix(p, ".js") {
@@ -1329,15 +1352,7 @@ func init() {
 				w.Header().Set("content-type", "text/html")
 			}
 
-			//cache
-			if bp, ok := cache.IsCache("html/artPlayer/" + p); ok {
-				w.Header().Set("Cache-Control", "max-age=60")
-				_, _ = w.Write(*bp)
-				return
-			}
-			w = cache.Cache("html/artPlayer/"+p, time.Minute, w)
-
-			f := file.New("html/artPlayer/"+p, 0, true)
+			f := file.New(p, 0, true)
 			if !f.IsExist() {
 				w.WriteHeader(http.StatusNotFound)
 				return
@@ -1353,7 +1368,7 @@ func init() {
 			expirer.SetMax(int(v))
 		}
 
-		c.C.SerF.Store(path+"keepAlive", func(w http.ResponseWriter, r *http.Request) {
+		c.C.SerF.Store(spath+"keepAlive", func(w http.ResponseWriter, r *http.Request) {
 			if c.DefaultHttpCheck(c.C, w, r, http.MethodGet) {
 				return
 			}
@@ -1365,7 +1380,7 @@ func init() {
 		})
 
 		// 流地址
-		c.C.SerF.Store(path+"stream", func(w http.ResponseWriter, r *http.Request) {
+		c.C.SerF.Store(spath+"stream", func(w http.ResponseWriter, r *http.Request) {
 			if c.DefaultHttpCheck(c.C, w, r, http.MethodGet) {
 				return
 			}
@@ -1536,7 +1551,7 @@ func init() {
 		})
 
 		// 弹幕回放
-		c.C.SerF.Store(path+"player/ws", func(w http.ResponseWriter, r *http.Request) {
+		c.C.SerF.Store(spath+"player/ws", func(w http.ResponseWriter, r *http.Request) {
 			if c.DefaultHttpCheck(c.C, w, r, http.MethodGet) {
 				return
 			}
@@ -1624,7 +1639,7 @@ func init() {
 		})
 
 		// 弹幕回放xml
-		c.C.SerF.Store(path+"player/xml", func(w http.ResponseWriter, r *http.Request) {
+		c.C.SerF.Store(spath+"player/xml", func(w http.ResponseWriter, r *http.Request) {
 			if c.DefaultHttpCheck(c.C, w, r, http.MethodGet) {
 				return
 			}
