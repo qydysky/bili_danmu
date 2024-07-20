@@ -11844,7 +11844,6 @@ __webpack_require__.r(__webpack_exports__);
     console.log("init 31");
         let player,
         flvPlayer,
-        danmuEmit = document.createElement("div"),
         config = {
             conn: undefined,
             container: '.artplayer-app',
@@ -11928,7 +11927,6 @@ __webpack_require__.r(__webpack_exports__);
                     danmuku: [],
                     speed: 7,
                     opacity: 0.7,
-                    mount: danmuEmit,
                 }),
             ],
             icons: {
@@ -12031,7 +12029,6 @@ __webpack_require__.r(__webpack_exports__);
                 danmuku: [],
                 speed: 7,
                 opacity: 0.7,
-                mount: danmuEmit,
             });
             player.plugins.artplayerPluginDanmuku.load();
             if(config.conn != undefined){
