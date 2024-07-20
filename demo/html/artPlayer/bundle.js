@@ -12049,7 +12049,7 @@ __webpack_require__.r(__webpack_exports__);
             if(flvPlayer)flvPlayer.unload();
         });
         player.on('artplayerPluginDanmuku:visible', (danmu) => {
-            danmu.$ref.innerHTML = danmu.$ref.innerText.replace(/(\[.*\])/,"<img src=\"emots/$1.png\" alt=\"$1\" style=\"object-fit: scale-down;height: 1.125em;\"></img>");
+            danmu.$ref.innerHTML = danmu.$ref.innerText.replace(/(\[.*?\])/g,"<img src=\"emots/$1.png\" alt=\"$1\" style=\"object-fit: scale-down;height: 1.125em;\"></img>");
         });
         player.on('artplayerPluginDanmuku:emit', (danmu) => {
             if(config.conn != undefined)config.conn.send("%S"+danmu.text);
