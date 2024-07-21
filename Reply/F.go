@@ -1214,17 +1214,14 @@ func init() {
 				w.Header().Set("content-type", "text/html")
 			}
 
-			//cache
-			if bp, ok := cache.IsCache("html/streamList/" + p); ok {
-				w.Header().Set("Cache-Control", "max-age=60")
-				_, _ = w.Write(*bp)
-				return
-			}
-			w = cache.Cache("html/streamList/"+p, time.Minute, w)
-
 			f := file.New("html/streamList/"+p, 0, true)
 			if !f.IsExist() || f.IsDir() {
 				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+
+			// mod
+			if info, e := f.Stat(); e == nil && pweb.NotModified(r, w, info.ModTime()) {
 				return
 			}
 
@@ -1322,6 +1319,11 @@ func init() {
 				return
 			}
 
+			// mod
+			if info, e := f.Stat(); e == nil && pweb.NotModified(r, w, info.ModTime()) {
+				return
+			}
+
 			b, _ := f.ReadAll(humanize.KByte, humanize.MByte)
 			_, _ = w.Write(b)
 		})
@@ -1355,6 +1357,11 @@ func init() {
 			f := file.New(p, 0, true)
 			if !f.IsExist() {
 				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+
+			// mod
+			if info, e := f.Stat(); e == nil && pweb.NotModified(r, w, info.ModTime()) {
 				return
 			}
 

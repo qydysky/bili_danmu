@@ -26,22 +26,6 @@
     </head>
     <body>
         <div class="artplayer-app"></div>
-        <script>
-            /**
-             * @function addDOM 添加节点
-             * @version 0.0
-             * @param {*} El 添加到哪个元素
-             * @param {*} ElN 添加的元素名
-             * @param {*} text 元素内的值
-             * @param {*} cla 该元素属性，数组，[[属性名,属性值],[..,..],]
-             */
-            function addDOM(El,ElN,text,cla){
-                var d=document.createElement(ElN);
-                if(text)d.innerHTML=text;
-                for(var i=0;i<cla.length;i++)d.setAttribute(cla[i][0],cla[i][1]);
-                El.appendChild(d);
-            }
-            addDOM(document.body, "script", "", [["src", "bundle.js?_="+new Date().getTime()]])
-        </script>
+        <script src="bundle.js"></script>
     </body>
 </html>
