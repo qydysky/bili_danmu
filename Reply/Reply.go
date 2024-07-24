@@ -1335,7 +1335,7 @@ func Msg_senddanmu(msg string) {
 		msglog.L(`E: `, `c.Roomid == 0 || Cookie无Key:`, missKey)
 		return
 	}
-	send.Danmu_s(msg, c.C.Roomid)
+	_ = send.Danmu_s(msg, c.C.Roomid)
 }
 
 // 弹幕显示

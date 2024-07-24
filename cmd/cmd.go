@@ -230,7 +230,7 @@ func Cmd() {
 			if c.C.Roomid == 0 {
 				continue
 			}
-			send.Danmu_s(inputs, c.C.Roomid)
+			_ = send.Danmu_s(inputs, c.C.Roomid)
 		}
 	}
 }

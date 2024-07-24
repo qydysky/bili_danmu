@@ -988,7 +988,7 @@ func Entry_danmu(common *c.Common) {
 	}
 	if array, ok := common.K_v.LoadV(`进房弹幕_内容`).([]interface{}); ok && len(array) != 0 {
 		rand := p.Rand().MixRandom(0, int64(len(array)-1))
-		send.Danmu_s(array[rand].(string), common.Roomid)
+		_ = send.Danmu_s(array[rand].(string), common.Roomid)
 	}
 }
 
