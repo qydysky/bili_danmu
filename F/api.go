@@ -1085,7 +1085,7 @@ func Get_cookie_by_msg() {
 
 // 牌子字段
 // 获取牌子信息
-func Get_list_in_room(RoomID, TargetID int) (array []struct {
+func GetListInRoom(RoomID, TargetID int) (array []struct {
 	TargetID  int
 	IsLighted int
 	MedalID   int
@@ -1176,7 +1176,7 @@ func (t *GetFunc) CheckSwitch_FansMedal() (missKey []string) {
 	var medal_id int //将要使用的牌子id
 	//检查是否有此直播间的牌子
 	{
-		medal_list := Get_list_in_room(t.Roomid, t.UpUid)
+		medal_list := GetListInRoom(t.Roomid, t.UpUid)
 		for _, v := range medal_list {
 			if v.TargetID != t.UpUid {
 				continue

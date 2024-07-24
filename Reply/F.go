@@ -31,6 +31,7 @@ import (
 	F "github.com/qydysky/bili_danmu/F"
 	_ "github.com/qydysky/bili_danmu/Reply/F"
 	"github.com/qydysky/bili_danmu/Reply/F/danmuXml"
+	"github.com/qydysky/bili_danmu/Reply/F/keepMedalLight"
 	videoInfo "github.com/qydysky/bili_danmu/Reply/F/videoInfo"
 	send "github.com/qydysky/bili_danmu/Send"
 
@@ -991,86 +992,31 @@ func Entry_danmu(common *c.Common) {
 	}
 }
 
-var fc_Keep_medal_light fctrl.SkipFunc
-
 // 保持所有牌子点亮
-func Keep_medal_light(common *c.Common) {
-	if fc_Keep_medal_light.NeedSkip() {
-		return
-	} else {
-		defer fc_Keep_medal_light.UnSet()
-	}
-
+func KeepMedalLight(common *c.Common) {
 	if v, _ := common.K_v.LoadV(`保持牌子亮着`).(bool); !v {
 		return
 	}
 	flog := flog.Base_add(`保持亮牌`)
 
-	array, ok := common.K_v.LoadV(`进房弹幕_内容`).([]interface{})
-	if !ok || len(array) == 0 {
-		flog.L(`I: `, `进房弹幕_内容 为 空，退出`)
-		return
-	}
+	array, _ := common.K_v.LoadV(`进房弹幕_内容`).([]any)
 
 	flog.L(`T: `, `开始`)
 	defer flog.L(`I: `, `完成`)
 
-	medals := F.Get_list_in_room(0, 0)
-	if len(medals) == 0 {
-		return
-	}
-	for _, v := range medals {
-		if v.IsLighted == 1 || v.RoomID == 0 {
-			continue
-		} //点亮状态
-
-		//两天内到期，发弹幕续期
-		rand := p.Rand().MixRandom(0, int64(len(array)-1))
-		send.Danmu_s(array[rand].(string), v.RoomID)
-		time.Sleep(time.Second * 5)
-	}
-
-	//重试，使用点赞
-	medals = F.Get_list_in_room(0, 0)
-	if len(medals) == 0 {
-		return
-	}
-	for _, v := range medals {
-		if v.IsLighted == 1 || v.RoomID == 0 {
-			continue
+	var lightedRoom []int
+	for _, v := range F.GetListInRoom(0, 0) {
+		if v.IsLighted == 1 {
+			lightedRoom = append(lightedRoom, v.RoomID)
 		}
-
-		//两天内到期，发弹幕续期
-		send.Danmu_s2(map[string]string{
-			`msg`:     `official_147`,
-			`dm_type`: `1`,
-			`roomid`:  strconv.Itoa(v.RoomID),
-		})
-		time.Sleep(time.Second * 5)
 	}
-
-	//重试，使用历史弹幕
-	medals = F.Get_list_in_room(0, 0)
-	if len(medals) == 0 {
-		return
-	}
-	for _, v := range medals {
-		if v.IsLighted == 1 || v.RoomID == 0 {
-			continue
-		}
-
-		//两天内到期，发弹幕续期
-		var Str string
-		for _, Text := range F.GetHistory(v.RoomID) {
-			Str = Text
-			break
-		}
-		if Str == "" {
-			rand := p.Rand().MixRandom(0, int64(len(array)-1))
-			Str = array[rand].(string)
-		}
-		send.Danmu_s(Str, v.RoomID)
-		time.Sleep(time.Second * 5)
+	if _, e := keepMedalLight.KeepMedalLight.Run(context.Background(), keepMedalLight.Func{
+		LightedRoomID:   lightedRoom,
+		SendDanmu:       send.Danmu_s,
+		GetHistoryDanmu: F.GetHistory,
+		PreferDanmu:     array,
+	}); e != nil {
+		flog.L(`E: `, e)
 	}
 }
 

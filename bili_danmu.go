@@ -178,6 +178,21 @@ func Start() {
 					}
 					return false
 				},
+				`new day`: func(_ any) bool { //日期更换
+					go func() {
+						//每日签到
+						F.Dosign()
+						//每日兑换硬币
+						F.Get(c.C).Silver_2_coin()
+						//附加功能 每日发送弹幕
+						reply.Entry_danmu(c.C)
+						//附加功能 保持牌子点亮
+						reply.KeepMedalLight(c.C)
+						//附加功能 自动发送即将过期礼物
+						reply.AutoSend_silver_gift(c.C)
+					}()
+					return false
+				},
 			})
 			defer cancelfunc()
 		}
@@ -234,7 +249,7 @@ func Start() {
 
 func entryRoom(mainCtx context.Context, danmulog *part.Log_interface, common *c.Common) (exitSign bool) {
 	//附加功能 保持牌子点亮
-	go reply.Keep_medal_light(common)
+	// go reply.KeepMedalLight(common)
 	//附加功能 自动发送即将过期礼物
 	go reply.AutoSend_silver_gift(common)
 	//获取热门榜
@@ -425,21 +440,6 @@ func entryRoom(mainCtx context.Context, danmulog *part.Log_interface, common *c.
 					}
 					// 在线人数
 					go F.Get(common).Get(`getOnlineGoldRank`)
-					return false
-				},
-				`new day`: func(_ any) bool { //日期更换
-					go func() {
-						//每日签到
-						F.Dosign()
-						//每日兑换硬币
-						F.Get(common).Silver_2_coin()
-						//附加功能 每日发送弹幕
-						reply.Entry_danmu(common)
-						//附加功能 保持牌子点亮
-						reply.Keep_medal_light(common)
-						//附加功能 自动发送即将过期礼物
-						reply.AutoSend_silver_gift(common)
-					}()
 					return false
 				},
 			})

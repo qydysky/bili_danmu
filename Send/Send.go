@@ -39,7 +39,7 @@ func init() {
 }
 
 // 弹幕发送
-func Danmu_s(msg string, roomid int) {
+func Danmu_s(msg string, roomid int) error {
 	data := map[string]string{
 		`msg`:    msg,
 		`roomid`: strconv.Itoa(roomid),
@@ -52,32 +52,40 @@ func Danmu_s(msg string, roomid int) {
 		}
 	}
 
-	Danmu_s2(data)
+	return Danmu_s2(data)
 }
 
+var (
+	ErrLimit     = errors.New("ErrLimit")
+	ErrMsgEmpty  = errors.New("ErrMsgEmpty")
+	ErrRoomEmpty = errors.New("ErrRoomEmpty")
+	ErrNoLogin   = errors.New("ErrNoLogin")
+	ErrRes       = errors.New("ErrRes")
+)
+
 // 通用发送
-func Danmu_s2(data map[string]string) {
+func Danmu_s2(data map[string]string) error {
 	//等待令牌时阻塞，超时返回true
 	if danmu_s_limit.TO() {
-		return
+		return ErrLimit
 	}
 
 	l := c.C.Log.Base("弹幕发送")
 
 	if _, ok := data[`msg`]; !ok {
 		l.L(`E: `, "必须输入参数msg")
-		return
+		return ErrMsgEmpty
 	}
 
 	if _, ok := data[`roomid`]; !ok {
 		l.L(`E: `, "必须输入参数roomid")
-		return
+		return ErrRoomEmpty
 	}
 
 	csrf, _ := c.C.Cookie.LoadV(`bili_jct`).(string)
 	if csrf == `` {
 		l.L(`E: `, "Cookie错误,无bili_jct=")
-		return
+		return ErrNoLogin
 	}
 
 	if _, ok := data[`bubble`]; !ok {
@@ -130,7 +138,7 @@ func Danmu_s2(data map[string]string) {
 	})
 	if err != nil {
 		l.L(`E: `, err)
-		return
+		return err
 	}
 
 	var res struct {
@@ -140,9 +148,13 @@ func Danmu_s2(data map[string]string) {
 
 	if e := json.Unmarshal(r.Respon, &res); e != nil {
 		l.L(`E: `, e)
+		return e
 	}
 
 	if res.Code != 0 {
 		l.L(`E: `, `产生错误：`, res.Code, res.Message)
+		return errors.Join(ErrRes, errors.New(res.Message))
 	}
+
+	return nil
 }
