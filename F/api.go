@@ -37,7 +37,7 @@ const id = "github.com/qydysky/bili_danmu/F.biliApi"
 var apilog = c.C.Log.Base(`api`)
 var api_limit = limit.New(2, "1s", "30s") //频率限制2次/s，最大等待时间30s
 
-var biliApi = cmp.Get(id, func(ba biliApiInter) biliApiInter {
+var biliApi = cmp.Get(id, func(ba BiliApiInter) BiliApiInter {
 	ba.SetLocation(c.C.SerLocation)
 	ba.SetProxy(c.C.Proxy)
 	ba.SetReqPool(c.C.ReqPool)
@@ -1085,31 +1085,37 @@ func Get_cookie_by_msg() {
 
 // 牌子字段
 // 获取牌子信息
-func GetListInRoom(RoomID, TargetID int) (array []struct {
-	TargetID  int
-	IsLighted int
-	MedalID   int
-	RoomID    int
-}) {
-	apilog := apilog.Base_add(`获取牌子`)
-	//验证cookie
-	if missKey := CookieCheck([]string{
-		`bili_jct`,
-		`DedeUserID`,
-		`LIVE_BUVID`,
-	}); len(missKey) != 0 {
-		apilog.L(`T: `, `Cookie无Key:`, missKey)
-		return
-	}
+// func GetListInRoom(RoomID, TargetID int) (array []struct {
+// 	Uid       int
+// 	TodayFeed int
+// 	TargetID  int
+// 	IsLighted int
+// 	MedalID   int
+// 	RoomID    int
+// }) {
+// 	apilog := apilog.Base_add(`获取牌子`)
+// 	//验证cookie
+// 	if missKey := CookieCheck([]string{
+// 		`bili_jct`,
+// 		`DedeUserID`,
+// 		`LIVE_BUVID`,
+// 	}); len(missKey) != 0 {
+// 		apilog.L(`T: `, `Cookie无Key:`, missKey)
+// 		return
+// 	}
 
-	//getHotRank
-	if err, res := biliApi.GetFansMedal(RoomID, TargetID); err != nil {
-		apilog.L(`E: `, err)
-	} else {
-		return res
-	}
+// 	//getHotRank
+// 	if err, res := biliApi.GetFansMedal(RoomID, TargetID); err != nil {
+// 		apilog.L(`E: `, err)
+// 	} else {
+// 		return res
+// 	}
 
-	return
+// 	return
+// }
+
+func GetBiliApi() BiliApiInter {
+	return biliApi
 }
 
 // 获取当前佩戴的牌子
@@ -1176,17 +1182,20 @@ func (t *GetFunc) CheckSwitch_FansMedal() (missKey []string) {
 	var medal_id int //将要使用的牌子id
 	//检查是否有此直播间的牌子
 	{
-		medal_list := GetListInRoom(t.Roomid, t.UpUid)
-		for _, v := range medal_list {
-			if v.TargetID != t.UpUid {
-				continue
+		if err, medal_list := biliApi.GetFansMedal(t.Roomid, t.UpUid); err != nil {
+			apilog.L(`E: `, err)
+		} else {
+			for _, v := range medal_list {
+				if v.TargetID != t.UpUid {
+					continue
+				}
+				medal_id = v.MedalID
 			}
-			medal_id = v.MedalID
-		}
-		if medal_id == 0 { //无牌
-			apilog.L(`I: `, `无主播粉丝牌`)
-			if t.Wearing_FansMedal == 0 { //当前没牌
-				return
+			if medal_id == 0 { //无牌
+				apilog.L(`I: `, `无主播粉丝牌`)
+				if t.Wearing_FansMedal == 0 { //当前没牌
+					return
+				}
 			}
 		}
 	}
@@ -1531,16 +1540,16 @@ func Feed_list() (Uplist []struct {
 	return
 }
 
-func GetHistory(Roomid_int int) (j []string) {
-	apilog := apilog.Base_add(`GetHistory`)
+// func GetHistory(Roomid_int int) (j []string) {
+// 	apilog := apilog.Base_add(`GetHistory`)
 
-	if e, res := biliApi.GetHisDanmu(Roomid_int); e != nil {
-		apilog.L(`E: `, e)
-		return
-	} else {
-		return res
-	}
-}
+// 	if e, res := biliApi.GetHisDanmu(Roomid_int); e != nil {
+// 		apilog.L(`E: `, e)
+// 		return
+// 	} else {
+// 		return res
+// 	}
+// }
 
 func (t *GetFunc) SearchUP(s string) (list []struct {
 	Roomid  int

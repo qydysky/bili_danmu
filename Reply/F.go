@@ -993,30 +993,61 @@ func Entry_danmu(common *c.Common) {
 }
 
 // 保持所有牌子点亮
-func KeepMedalLight(common *c.Common) {
+func KeepMedalLight(ctx context.Context, common *c.Common) {
 	if v, _ := common.K_v.LoadV(`保持牌子亮着`).(bool); !v {
 		return
 	}
-	flog := flog.Base_add(`保持亮牌`)
 
-	array, _ := common.K_v.LoadV(`进房弹幕_内容`).([]any)
-
-	flog.L(`T: `, `开始`)
-	defer flog.L(`I: `, `完成`)
-
-	var lightedRoom []int
-	for _, v := range F.GetListInRoom(0, 0) {
-		if v.IsLighted == 1 {
-			lightedRoom = append(lightedRoom, v.RoomID)
-		}
+	v, _ := common.K_v.LoadV(`保持牌子亮着_指定时间`).(string)
+	if v == "" {
+		v = "00:00:00"
 	}
-	if _, e := keepMedalLight.KeepMedalLight.Run(context.Background(), keepMedalLight.Func{
-		LightedRoomID:   lightedRoom,
-		SendDanmu:       send.Danmu_s,
-		GetHistoryDanmu: F.GetHistory,
-		PreferDanmu:     array,
-	}); e != nil {
+
+	flog := flog.Base_add(`保持亮牌`)
+	if tt, e := time.Parse(time.TimeOnly, v); e != nil {
 		flog.L(`E: `, e)
+	} else {
+		flog.L(`I: `, "将在", v, "启动")
+		sec := tt.Hour()*3600 + tt.Minute()*60 + tt.Second()
+		go func() {
+			ctx, done := pctx.WaitCtx(ctx)
+			defer done()
+
+			h, m, s := time.Now().Clock()
+			now := h*3600 + m*60 + s
+
+			if sec > now {
+				select {
+				case <-time.After(time.Second * time.Duration(sec-now)):
+				case <-ctx.Done():
+					return
+				}
+			} else {
+				select {
+				case <-time.After(time.Hour*24 + time.Second*time.Duration(sec-now)):
+				case <-ctx.Done():
+					return
+				}
+			}
+
+			for {
+				if _, e := keepMedalLight.Main.Run(ctx, keepMedalLight.Func{
+					Uid:         common.Uid,
+					Logg:        flog,
+					BiliApi:     F.GetBiliApi(),
+					SendDanmu:   send.Danmu_s,
+					PreferDanmu: common.K_v.LoadV(`进房弹幕_内容`).([]any),
+				}); e != nil {
+					flog.L(`E: `, e)
+					return
+				}
+				select {
+				case <-time.After(time.Hour * 24):
+				case <-ctx.Done():
+					return
+				}
+			}
+		}()
 	}
 }
 

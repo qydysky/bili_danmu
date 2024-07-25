@@ -98,6 +98,8 @@ func Start() {
 		F.Dosign()
 		// 附加功能 savetojson
 		reply.SaveToJson.Init()
+		// 附加功能 保持牌子点亮
+		reply.KeepMedalLight(mainCtx, c.C)
 		// 指定房间录制区间
 		if _, err := recStartEnd.InitF.Run(mainCtx, c.C); err != nil {
 			danmulog.Base("功能", "指定房间录制区间").L(`E: `, err)
@@ -186,8 +188,6 @@ func Start() {
 						F.Get(c.C).Silver_2_coin()
 						//附加功能 每日发送弹幕
 						reply.Entry_danmu(c.C)
-						//附加功能 保持牌子点亮
-						reply.KeepMedalLight(c.C)
 						//附加功能 自动发送即将过期礼物
 						reply.AutoSend_silver_gift(c.C)
 					}()
@@ -248,8 +248,6 @@ func Start() {
 }
 
 func entryRoom(mainCtx context.Context, danmulog *part.Log_interface, common *c.Common) (exitSign bool) {
-	//附加功能 保持牌子点亮
-	// go reply.KeepMedalLight(common)
 	//附加功能 自动发送即将过期礼物
 	go reply.AutoSend_silver_gift(common)
 	//获取热门榜

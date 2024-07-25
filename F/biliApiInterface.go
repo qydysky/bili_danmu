@@ -8,7 +8,7 @@ import (
 	reqf "github.com/qydysky/part/reqf"
 )
 
-type biliApiInter interface {
+type BiliApiInter interface {
 	SetReqPool(pool *pool.Buf[reqf.Req])
 	SetProxy(proxy string)
 	SetLocation(secOfTimeZone int) // east positive
@@ -16,6 +16,7 @@ type biliApiInter interface {
 	GetCookies() (cookies []*http.Cookie)
 	GetCookie(name string) (error, string)
 
+	LikeReport(hitCount, uid, roomid, upUid int) (err error)
 	LoginQrCode() (err error, imgUrl string, QrcodeKey string)
 	LoginQrPoll(QrcodeKey string) (err error, code int)
 	GetOtherCookies() (err error)
@@ -93,10 +94,12 @@ type biliApiInter interface {
 		TargetID      int
 	})
 	GetFansMedal(RoomID, TargetID int) (err error, res []struct {
-		TargetID  int
-		IsLighted int
-		MedalID   int
-		RoomID    int
+		TodayFeed    int
+		TargetID     int
+		IsLighted    int
+		MedalID      int
+		RoomID       int
+		LivingStatus int
 	})
 	SetFansMedal(medalId int) (err error)
 	GetWebGetSignInfo() (err error, Status int)
