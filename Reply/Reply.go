@@ -152,6 +152,32 @@ func (t replyF) defaultMsg(s string) {
 }
 
 // 房间封禁提示
+func (t replyF) rank_changed(s string) {
+	msglog := msglog.Base_add("房")
+	var j ws_msg.RANK_CHANGED
+	if e := json.Unmarshal([]byte(s), &j); e != nil {
+		msglog.L(`E: `, e)
+		return
+	}
+
+	var tmp = `获得:` + j.Data.RankNameByType + " 第"
+	if j.Data.Rank != 0 {
+		tmp += strconv.Itoa(j.Data.Rank)
+	} else {
+		return
+	}
+	Gui_show(tmp, "0rank")
+	t.Common.Danmu_Main_mq.Push_tag(`tts`, Danmu_mq_t{ //传入消息队列
+		uid: "0rank",
+		m: map[string]string{
+			`{Area_name}`: j.Data.RankNameByType,
+			`{Rank}`:      strconv.Itoa(j.Data.Rank),
+		},
+	})
+	msglog.L(`I: `, "热门榜", tmp)
+}
+
+// 房间封禁提示
 func (t replyF) room_lock(s string) {
 	msglog := msglog.Base_add("房")
 	var j ws_msg.ROOM_LOCK
