@@ -151,7 +151,7 @@ func (t replyF) defaultMsg(s string) {
 	msglog.Base_add("Unknow").L(`W: `, s)
 }
 
-// 房间封禁提示
+// 排名变动
 func (t replyF) rank_changed(s string) {
 	msglog := msglog.Base_add("房")
 	var j ws_msg.RANK_CHANGED
@@ -160,12 +160,13 @@ func (t replyF) rank_changed(s string) {
 		return
 	}
 
-	var tmp = `获得:` + j.Data.RankNameByType + " 第"
-	if j.Data.Rank != 0 {
-		tmp += strconv.Itoa(j.Data.Rank)
-	} else {
+	var tmp = j.Data.RankNameByType + " 第"
+	if j.Data.Rank == 0 {
 		return
 	}
+
+	tmp += strconv.Itoa(j.Data.Rank)
+	t.Common.Note = tmp
 	Gui_show(tmp, "0rank")
 	t.Common.Danmu_Main_mq.Push_tag(`tts`, Danmu_mq_t{ //传入消息队列
 		uid: "0rank",
