@@ -160,12 +160,11 @@ func (t replyF) rank_changed(s string) {
 		return
 	}
 
-	var tmp = j.Data.RankNameByType + " 第"
 	if j.Data.Rank == 0 {
 		return
 	}
 
-	tmp += strconv.Itoa(j.Data.Rank)
+	var tmp = fmt.Sprintf("%s %d", j.Data.RankNameByType, j.Data.Rank)
 	t.Common.Note = tmp
 	Gui_show(tmp, "0rank")
 	t.Common.Danmu_Main_mq.Push_tag(`tts`, Danmu_mq_t{ //传入消息队列
@@ -175,7 +174,7 @@ func (t replyF) rank_changed(s string) {
 			`{Rank}`:      strconv.Itoa(j.Data.Rank),
 		},
 	})
-	msglog.L(`I: `, "热门榜", tmp)
+	msglog.L(`I: `, tmp)
 }
 
 // 房间封禁提示
