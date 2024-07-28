@@ -15,6 +15,7 @@ import (
 // path
 var (
 	SaveEmote = comp.NewComp(saveEmote)
+	replace   = strings.NewReplacer(`| `, `\ `, `/ `, `: `, `* `, `? `, `" `, `< `, `> `, `| `)
 )
 
 type Danmu struct {
@@ -35,7 +36,7 @@ func saveEmote(ctx context.Context, ptr Danmu) (ret any, err error) {
 					*ptr.Msg = "[" + *ptr.Msg + emoticon_unique + "]"
 				}
 			}
-			savePath := "emots/" + *ptr.Msg + ".png"
+			savePath := "emots/" + replace.Replace(*ptr.Msg) + ".png"
 			if !file.New(savePath, 0, true).IsExist() {
 				go func() {
 					req := c.C.ReqPool.Get()
@@ -81,7 +82,7 @@ func saveEmote(ctx context.Context, ptr Danmu) (ret any, err error) {
 							continue
 						}
 
-						savePath := "emots/" + k + ".png"
+						savePath := "emots/" + replace.Replace(k) + ".png"
 						if file.New(savePath, 0, true).IsExist() {
 							continue
 						}
