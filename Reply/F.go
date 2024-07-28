@@ -30,6 +30,7 @@ import (
 	c "github.com/qydysky/bili_danmu/CV"
 	F "github.com/qydysky/bili_danmu/F"
 	_ "github.com/qydysky/bili_danmu/Reply/F"
+	danmuemotes "github.com/qydysky/bili_danmu/Reply/F/danmuEmotes"
 	"github.com/qydysky/bili_danmu/Reply/F/danmuXml"
 	"github.com/qydysky/bili_danmu/Reply/F/keepMedalLight"
 	videoInfo "github.com/qydysky/bili_danmu/Reply/F/videoInfo"
@@ -1318,7 +1319,7 @@ func init() {
 			}
 
 			if strings.HasPrefix(p, "emots/") {
-				//
+				p, _ = danmuemotes.Hashr.Run(context.Background(), p)
 			} else {
 				p = "html/artPlayer/" + p
 			}

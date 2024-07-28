@@ -9,13 +9,32 @@ import (
 	comp "github.com/qydysky/part/component"
 	file "github.com/qydysky/part/file"
 	log "github.com/qydysky/part/log"
+	ppool "github.com/qydysky/part/pool"
 	reqf "github.com/qydysky/part/reqf"
+	pslice "github.com/qydysky/part/slice"
 )
 
 // path
 var (
 	SaveEmote = comp.NewComp(saveEmote)
-	replace   = strings.NewReplacer(`| `, `\ `, `/ `, `: `, `* `, `? `, `" `, `< `, `> `, `| `)
+	Hashr     = comp.NewComp(func(ctx context.Context, s string) (r string, e error) {
+		return hashr(s), nil
+	})
+	danmuPool = ppool.New(ppool.PoolFunc[pslice.Buf[byte]]{
+		New: func() *pslice.Buf[byte] {
+			return pslice.New[byte]()
+		},
+		InUse: func(b *pslice.Buf[byte]) bool {
+			return !b.IsEmpty()
+		},
+		Reuse: func(b *pslice.Buf[byte]) *pslice.Buf[byte] {
+			return b
+		},
+		Pool: func(b *pslice.Buf[byte]) *pslice.Buf[byte] {
+			b.Reset()
+			return b
+		},
+	}, 100)
 )
 
 type Danmu struct {
@@ -33,10 +52,11 @@ func saveEmote(ctx context.Context, ptr Danmu) (ret any, err error) {
 		if url, ok := m[`url`].(string); ok {
 			if !strings.Contains(*ptr.Msg, "[") {
 				if emoticon_unique, ok := m[`emoticon_unique`].(string); ok {
-					*ptr.Msg = "[" + *ptr.Msg + emoticon_unique + "]"
+					*ptr.Msg = "[" + hashr(*ptr.Msg+emoticon_unique) + "]"
 				}
 			}
-			savePath := "emots/" + replace.Replace(*ptr.Msg) + ".png"
+
+			savePath := "emots/" + *ptr.Msg + ".png"
 			if !file.New(savePath, 0, true).IsExist() {
 				go func() {
 					req := c.C.ReqPool.Get()
@@ -71,6 +91,7 @@ func saveEmote(ctx context.Context, ptr Danmu) (ret any, err error) {
 				if e := json.Unmarshal([]byte(extrab), &E); e != nil {
 					return nil, e
 				} else {
+					*ptr.Msg = hashr(*ptr.Msg)
 					for k, v := range E.Emots {
 						m, ok := v.(map[string]any)
 						if !ok {
@@ -82,11 +103,10 @@ func saveEmote(ctx context.Context, ptr Danmu) (ret any, err error) {
 							continue
 						}
 
-						savePath := "emots/" + replace.Replace(k) + ".png"
+						savePath := hashr("emots/" + k + ".png")
 						if file.New(savePath, 0, true).IsExist() {
 							continue
 						}
-
 						go func() {
 							req := c.C.ReqPool.Get()
 							defer c.C.ReqPool.Put(req)
@@ -115,4 +135,45 @@ func saveEmote(ctx context.Context, ptr Danmu) (ret any, err error) {
 		}
 	}
 	return
+}
+
+func hashr(s string) (r string) {
+	buf := danmuPool.Get()
+	defer danmuPool.Put(buf)
+
+	emoteB := false
+	for i := 0; i < len(s); i++ {
+		if !emoteB {
+			_ = buf.Append([]byte{s[i]})
+			emoteB = s[i] == '['
+			continue
+		} else if s[i] == ']' {
+			_ = buf.Append([]byte{s[i]})
+			emoteB = false
+			continue
+		}
+		switch s[i] {
+		case '\\':
+			_ = buf.Append([]byte("_1"))
+		case '/':
+			_ = buf.Append([]byte("_2"))
+		case '*':
+			_ = buf.Append([]byte("_3"))
+		case '<':
+			_ = buf.Append([]byte("_4"))
+		case '>':
+			_ = buf.Append([]byte("_5"))
+		case '|':
+			_ = buf.Append([]byte("_6"))
+		case ':':
+			_ = buf.Append([]byte("："))
+		case '?':
+			_ = buf.Append([]byte("？"))
+		case '"':
+			_ = buf.Append([]byte("“"))
+		default:
+			_ = buf.Append([]byte{s[i]})
+		}
+	}
+	return string(buf.GetCopyBuf())
 }
