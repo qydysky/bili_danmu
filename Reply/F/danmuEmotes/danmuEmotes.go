@@ -52,10 +52,10 @@ func saveEmote(ctx context.Context, ptr Danmu) (ret any, err error) {
 		if url, ok := m[`url`].(string); ok {
 			if !strings.Contains(*ptr.Msg, "[") {
 				if emoticon_unique, ok := m[`emoticon_unique`].(string); ok {
-					*ptr.Msg = "[" + hashr(*ptr.Msg+emoticon_unique) + "]"
+					*ptr.Msg = "[" + *ptr.Msg + emoticon_unique + "]"
 				}
 			}
-
+			*ptr.Msg = hashr(*ptr.Msg)
 			savePath := "emots/" + *ptr.Msg + ".png"
 			if !file.New(savePath, 0, true).IsExist() {
 				go func() {
@@ -103,7 +103,7 @@ func saveEmote(ctx context.Context, ptr Danmu) (ret any, err error) {
 							continue
 						}
 
-						savePath := hashr("emots/" + k + ".png")
+						savePath := "emots/" + hashr(k) + ".png"
 						if file.New(savePath, 0, true).IsExist() {
 							continue
 						}
