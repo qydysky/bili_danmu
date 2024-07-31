@@ -1017,21 +1017,21 @@ func KeepMedalLight(ctx context.Context, common *c.Common) {
 			h, m, s := time.Now().Clock()
 			now := h*3600 + m*60 + s
 
-			if sec > now {
-				select {
-				case <-time.After(time.Second * time.Duration(sec-now)):
-				case <-ctx.Done():
-					return
-				}
-			} else {
-				select {
-				case <-time.After(time.Hour*24 + time.Second*time.Duration(sec-now)):
-				case <-ctx.Done():
-					return
-				}
-			}
-
 			for {
+				if sec >= now {
+					select {
+					case <-time.After(time.Second * time.Duration(sec-now)):
+					case <-ctx.Done():
+						return
+					}
+				} else {
+					select {
+					case <-time.After(time.Hour*24 + time.Second*time.Duration(sec-now)):
+					case <-ctx.Done():
+						return
+					}
+				}
+
 				if _, e := keepMedalLight.Main.Run(ctx, keepMedalLight.Func{
 					Uid:         common.Uid,
 					Logg:        flog,
@@ -1040,11 +1040,6 @@ func KeepMedalLight(ctx context.Context, common *c.Common) {
 					PreferDanmu: common.K_v.LoadV(`进房弹幕_内容`).([]any),
 				}); e != nil {
 					flog.L(`E: `, e)
-					return
-				}
-				select {
-				case <-time.After(time.Hour * 24):
-				case <-ctx.Done():
 					return
 				}
 			}

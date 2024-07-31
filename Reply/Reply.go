@@ -39,20 +39,17 @@ type brotliDecoder struct {
 	o     *bytes.Buffer
 }
 
-func (t *brotliDecoder) Decode(b *[]byte, offset int) error {
+func (t *brotliDecoder) Decode(b []byte, offset int) (buf []byte, err error) {
 	t.inuse.Store(true)
-	defer t.inuse.Store(false)
-
-	t.i.Reset((*b)[offset:])
+	t.i.Reset(b[offset:])
 	if err := t.d.Reset(t.i); err != nil {
-		return err
+		return nil, err
 	}
 	t.o.Reset()
 	if _, err := t.o.ReadFrom(t.d); err != nil {
-		return err
+		return nil, err
 	}
-	*b = append((*b)[:0], t.o.Bytes()...)
-	return nil
+	return t.o.Bytes(), nil
 }
 
 var brotliDecoders = pool.New(pool.PoolFunc[brotliDecoder]{
@@ -67,7 +64,10 @@ var brotliDecoders = pool.New(pool.PoolFunc[brotliDecoder]{
 		return bd.inuse.Load()
 	},
 	Reuse: func(bd *brotliDecoder) *brotliDecoder { return bd },
-	Pool:  func(bd *brotliDecoder) *brotliDecoder { return bd },
+	Pool: func(bd *brotliDecoder) *brotliDecoder {
+		bd.inuse.Store(false)
+		return bd
+	},
 }, 10)
 
 // 返回数据分派
@@ -106,8 +106,9 @@ func Reply(common *c.Common, b []byte) {
 		b = buf.Bytes()
 	case c.WS_BODY_PROTOCOL_VERSION_BROTLI: // BROTLI
 		decoder := brotliDecoders.Get()
-		e := decoder.Decode(&b, 16)
-		brotliDecoders.Put(decoder)
+		defer brotliDecoders.Put(decoder)
+		var e error
+		b, e = decoder.Decode(b, 16)
 		if e != nil {
 			reply_log.L(`E: `, "解压错误", e)
 			return
