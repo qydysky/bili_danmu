@@ -1014,10 +1014,9 @@ func KeepMedalLight(ctx context.Context, common *c.Common) {
 			ctx, done := pctx.WaitCtx(ctx)
 			defer done()
 
-			h, m, s := time.Now().Clock()
-			now := h*3600 + m*60 + s
-
 			for {
+				h, m, s := time.Now().Clock()
+				now := h*3600 + m*60 + s
 				if sec >= now {
 					select {
 					case <-time.After(time.Second * time.Duration(sec-now)):
