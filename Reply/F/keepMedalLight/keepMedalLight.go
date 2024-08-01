@@ -116,10 +116,20 @@ func main(ctx context.Context, ptr Func) (ret any, err error) {
 				// 发送弹幕：每日首次发送弹幕达10条可获得70亲密度
 				// 给主播点赞：每日首次点满50个赞可获得50亲密度
 				continue
-			} else if v.danmu > 20 || v.like > 70 {
+			} else if v.danmu > 25 || v.like > 70 {
 				delete(roomI, roomid)
 				ptr.Logg.L(`I: `, roomid, "未获得亲密度")
 				break
+			} else {
+				// 发送了足量弹幕/点赞仍不能获得，尝试发送历史弹幕
+				if e, his := ptr.BiliApi.GetHisDanmu(roomid); e != nil {
+					err = e
+				} else if len(his) > 0 {
+					v.danmu += 1
+					if e := ptr.SendDanmu(his[0], roomid); e != nil {
+						err = e
+					}
+				}
 			}
 		}
 	}
