@@ -2,7 +2,6 @@ package keepMedalLight
 
 import (
 	"context"
-	"errors"
 	"sync/atomic"
 	"time"
 
@@ -10,18 +9,14 @@ import (
 	p "github.com/qydysky/part"
 
 	comp "github.com/qydysky/part/component"
-	reqf "github.com/qydysky/part/reqf"
 
 	log "github.com/qydysky/part/log"
 )
 
 var (
-	Main            = comp.NewComp(main)
-	rand            = p.Rand()
-	roomI           = make(map[int]*room)
-	skip            atomic.Bool
-	ErrNotFoundRoom = errors.New(`ErrNotFoundRoom`)
-	ErrNotLight     = errors.New(`ErrNotLight`)
+	Main = comp.NewComp(main)
+	rand = p.Rand()
+	skip atomic.Bool
 )
 
 type Func struct {
@@ -30,13 +25,6 @@ type Func struct {
 	BiliApi     F.BiliApiInter
 	SendDanmu   func(danmu string, RoomID int) error
 	PreferDanmu []any
-}
-
-type room struct {
-	medalID  int
-	targetID int
-	danmu    int
-	like     int
 }
 
 func main(ctx context.Context, ptr Func) (ret any, err error) {
@@ -54,27 +42,9 @@ func main(ctx context.Context, ptr Func) (ret any, err error) {
 	}()
 
 	if e, list := ptr.BiliApi.GetFansMedal(0, 0); e != nil {
-		return nil, e
+		ptr.Logg.L(`E: `, e)
 	} else {
-		for _, v := range list {
-			// 熄灭的徽章只能通过送礼物点亮
-			if v.TodayFeed > 0 {
-				delete(roomI, v.RoomID)
-				continue
-			} else if v.IsLighted == 1 {
-				roomI[v.RoomID] = &room{
-					targetID: v.TargetID,
-					medalID:  v.MedalID,
-				}
-			}
-		}
-	}
-
-	ptr.Logg.L(`I: `, "等待保持点亮数量", len(roomI))
-
-	for len(roomI) != 0 && err == nil {
-		// deal roomI
-		for roomid, v := range roomI {
+		for _, i := range list {
 
 			select {
 			case <-ctx.Done():
@@ -82,52 +52,35 @@ func main(ctx context.Context, ptr Func) (ret any, err error) {
 			case <-t.C:
 			}
 
-			if e, tmp := ptr.BiliApi.GetFansMedal(roomid, v.targetID); e != nil && !reqf.IsTimeout(e) {
-				err = e
-			} else if len(tmp) == 0 {
-				err = ErrNotFoundRoom
-			} else if tmp[0].TodayFeed > 0 {
-				delete(roomI, roomid)
-				ptr.Logg.L(`I: `, roomid, "已获得亲密度", tmp[0].TodayFeed, "剩余", len(roomI))
-				continue
-			} else if tmp[0].LivingStatus == 1 {
-				if e := ptr.BiliApi.LikeReport(15, ptr.Uid, roomid, v.targetID); e == nil {
-					v.like += 15
-				} else if !reqf.IsTimeout(e) {
-					err = e
-				}
-			} else {
-				if len(ptr.PreferDanmu) > 0 {
-					if s, ok := ptr.PreferDanmu[rand.MixRandom(0, int64(len(ptr.PreferDanmu)-1))].(string); ok {
-						if e := ptr.SendDanmu(s, roomid); e == nil {
-							v.danmu += 1
-						} else if !reqf.IsTimeout(e) {
-							err = e
-						}
+			if len(ptr.PreferDanmu) > 0 {
+				if s, ok := ptr.PreferDanmu[rand.MixRandom(0, int64(len(ptr.PreferDanmu)-1))].(string); ok {
+					if e := ptr.SendDanmu(s, i.RoomID); e != nil {
+						ptr.Logg.L(`E: `, e)
 					}
-				} else if e := ptr.SendDanmu(`点赞`, roomid); e == nil {
-					v.danmu += 1
-				} else if !reqf.IsTimeout(e) {
-					err = e
 				}
+			} else if e := ptr.SendDanmu(`点赞`, i.RoomID); e != nil {
+				ptr.Logg.L(`E: `, e)
+			}
+		}
+	}
+
+	if e, list := ptr.BiliApi.GetFansMedal(0, 0); e != nil {
+		ptr.Logg.L(`E: `, e)
+	} else {
+		for _, i := range list {
+
+			select {
+			case <-ctx.Done():
+				return
+			case <-t.C:
 			}
 
-			if v.danmu < 10 && v.like < 50 {
-				// 发送弹幕：每日首次发送弹幕达10条可获得70亲密度
-				// 给主播点赞：每日首次点满50个赞可获得50亲密度
-				continue
-			} else if v.danmu > 25 || v.like > 70 {
-				delete(roomI, roomid)
-				ptr.Logg.L(`I: `, roomid, "未获得亲密度")
-				break
-			} else {
-				// 发送了足量弹幕/点赞仍不能获得，尝试发送历史弹幕
-				if e, his := ptr.BiliApi.GetHisDanmu(roomid); e != nil {
-					err = e
+			if i.IsLighted == 0 {
+				if e, his := ptr.BiliApi.GetHisDanmu(i.RoomID); e != nil {
+					ptr.Logg.L(`E: `, e)
 				} else if len(his) > 0 {
-					v.danmu += 1
-					if e := ptr.SendDanmu(his[0], roomid); e != nil {
-						err = e
+					if e := ptr.SendDanmu(his[0], i.RoomID); e != nil {
+						ptr.Logg.L(`E: `, e)
 					}
 				}
 			}
