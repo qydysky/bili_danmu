@@ -1,6 +1,7 @@
 package send
 
 import (
+	"encoding/json"
 	"errors"
 	"net/url"
 	"strconv"
@@ -8,7 +9,6 @@ import (
 
 	c "github.com/qydysky/bili_danmu/CV"
 
-	p "github.com/qydysky/part"
 	limit "github.com/qydysky/part/limit"
 	reqf "github.com/qydysky/part/reqf"
 	sys "github.com/qydysky/part/sys"
@@ -82,7 +82,11 @@ func Send_pm(uid int, msg string) error {
 		return e
 	}
 
-	if code := p.Json().GetValFromS(string(req.Respon), "code"); code == nil || code.(float64) != 0 {
+	J := struct {
+		Code int `json:"code"`
+	}{}
+
+	if e := json.Unmarshal(req.Respon, &J); e != nil {
 		log.L(`E: `, string(req.Respon))
 		return errors.New(string(req.Respon))
 	}

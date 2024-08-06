@@ -84,7 +84,7 @@ var Msg_map = map[string]func(replyF, string){
 	"ROOM_SHIELD":                       nil,
 	"USER_TOAST_MSG":                    replyF.user_toast_msg,     //大航海购买信息
 	"WIN_ACTIVITY":                      replyF.win_activity,       //活动
-	"SPECIAL_GIFT":                      replyF.special_gift,       //节奏风暴
+	"SPECIAL_GIFT":                      nil,                       //replyF.special_gift,       //节奏风暴
 	"GUARD_BUY":                         nil,                       //replyF.guard_buy,//大航海购买
 	"WELCOME_GUARD":                     nil,                       //replyF.welcome_guard,//大航海进入 ？已废弃？
 	"DANMU_MSG":                         replyF.danmu,              //弹幕

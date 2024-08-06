@@ -21,7 +21,6 @@ import (
 	"github.com/qydysky/bili_danmu/Reply/F/recStartEnd"
 	ws_msg "github.com/qydysky/bili_danmu/Reply/ws_msg"
 	send "github.com/qydysky/bili_danmu/Send"
-	p "github.com/qydysky/part"
 	funcCtrl "github.com/qydysky/part/funcCtrl"
 	mq "github.com/qydysky/part/msgq"
 	pool "github.com/qydysky/part/pool"
@@ -312,33 +311,43 @@ func (t replyF) vtr_gift_lottery(s string) {
 
 // msg-直播间进入信息，此处用来提示关注
 func (t replyF) interact_word(s string) {
-	msg_type := p.Json().GetValFromS(s, "data.msg_type")
-	if v, ok := msg_type.(float64); !ok || v < 2 {
+	J := struct {
+		Data struct {
+			MsgType int    `json:"msg_type"`
+			Uname   string `json:"uname"`
+		} `json:"data"`
+	}{}
+	if e := json.Unmarshal([]byte(s), &J); e != nil {
+		return
+	}
+	if J.Data.MsgType < 2 {
 		return
 	} //关注时为2,进入时为1
-	uname := p.Json().GetValFromS(s, "data.uname")
-	if v, ok := uname.(string); ok {
-		{ //语言tts
-			t.Common.Danmu_Main_mq.Push_tag(`tts`, Danmu_mq_t{
-				uid: `0follow`,
-				msg: fmt.Sprint(v + `关注了直播间`),
-			})
-		}
-		Gui_show(v+`关注了直播间`, `0follow`)
-		msglog.Base_add("房").Log_show_control(false).L(`I`, v+`关注了直播间`)
+	{ //语言tts
+		t.Common.Danmu_Main_mq.Push_tag(`tts`, Danmu_mq_t{
+			uid: `0follow`,
+			msg: fmt.Sprint(J.Data.Uname + `关注了直播间`),
+		})
 	}
+	Gui_show(J.Data.Uname+`关注了直播间`, `0follow`)
+	msglog.Base_add("房").Log_show_control(false).L(`I`, J.Data.Uname+`关注了直播间`)
 }
 
 // Msg-天选之人开始
 func (t replyF) anchor_lot_start(s string) {
-	award_name := p.Json().GetValFromS(s, "data.award_name")
-	var sh = []interface{}{">天选"}
-	if award_name != nil {
-		sh = append(sh, award_name, "开始")
+	J := struct {
+		Data struct {
+			AwardName any `json:"award_name"`
+		} `json:"data"`
+	}{}
+
+	var sh = []any{">天选"}
+	if J.Data.AwardName != nil {
+		sh = append(sh, J.Data.AwardName, "开始")
 	}
 
 	{ //额外 ass
-		Assf(fmt.Sprintln("天选之人", award_name, "开始"))
+		Assf(fmt.Sprintln("天选之人", J.Data.AwardName, "开始"))
 	}
 	fmt.Println(sh...)
 	Gui_show(Itos(sh), `0tianxuan`)
@@ -348,30 +357,31 @@ func (t replyF) anchor_lot_start(s string) {
 
 // Msg-天选之人结束
 func (t replyF) anchor_lot_award(s string) {
-	award_name := p.Json().GetValFromS(s, "data.award_name")
-	award_users := p.Json().GetValFromS(s, "data.award_users")
+	J := struct {
+		Data struct {
+			AwardName  any `json:"award_name"`
+			AwardUsers []struct {
+				Uname string `json:"uname"`
+				Uid   int    `json:"uid"`
+			} `json:"award_users"`
+		} `json:"data"`
+	}{}
 
 	var sh = []interface{}{">天选"}
 
-	if award_name != nil {
-		sh = append(sh, award_name, "获奖[")
+	if J.Data.AwardName != nil {
+		sh = append(sh, J.Data.AwardName, "获奖[")
 	}
-	if award_users != nil {
-		for _, v := range award_users.([]interface{}) {
-			uname := p.Json().GetValFrom(v, "uname")
-			uid := p.Json().GetValFrom(v, "uid")
-			if uname != nil && uid != nil {
-				if v, ok := uid.(float64); ok { //uid可能为float型
-					sh = append(sh, uname, "(", strconv.Itoa(int(v)), ")")
-				} else {
-					sh = append(sh, uname, "(", uid, ")")
-				}
+	if J.Data.AwardUsers != nil {
+		for _, v := range J.Data.AwardUsers {
+			if v.Uname != "" && v.Uid != 0 {
+				sh = append(sh, v.Uname, "(", v.Uid, ")")
 			}
 		}
 	}
 	sh = append(sh, "]")
 	{ //额外 ass
-		Assf(fmt.Sprintln("天选之人", award_name, "结束"))
+		Assf(fmt.Sprintln("天选之人", J.Data.AwardName, "结束"))
 	}
 	fmt.Println(sh...)
 	Gui_show(Itos(sh), `0tianxuan`)
@@ -570,10 +580,16 @@ func (t replyF) heartbeat(s int) {
 
 // Msg-房间特殊活动
 func (t replyF) win_activity(s string) {
-	title := p.Json().GetValFromS(s, "data.title")
-
-	fmt.Println("活动", title, "已开启")
-	msglog.Base_add("房").Log_show_control(false).L(`I: `, "活动", title, "已开启")
+	J := struct {
+		Data struct {
+			Title any `json:"title"`
+		} `json:"data"`
+	}{}
+	if e := json.Unmarshal([]byte(s), &J); e != nil {
+		return
+	}
+	fmt.Println("活动", J.Data.Title, "已开启")
+	msglog.Base_add("房").Log_show_control(false).L(`I: `, "活动", J.Data.Title, "已开启")
 }
 
 // Msg-观看人数
@@ -594,33 +610,32 @@ func (t replyF) watched_change(s string) {
 }
 
 // Msg-特殊礼物，当前仅观察到节奏风暴
-func (t replyF) special_gift(s string) {
+// func (t replyF) special_gift(s string) {
 
-	content := p.Json().GetValFromS(s, "data.39.content")
-	action := p.Json().GetValFromS(s, "data.39.action")
+// 	content := p.Json().GetValFromS(s, "data.39.content")
+// 	action := p.Json().GetValFromS(s, "data.39.action")
 
-	var sh []interface{}
+// 	var sh []interface{}
 
-	if action != nil && action.(string) == "end" {
-		return
-	}
-	if content != nil {
-		sh = append(sh, "节奏风暴", content)
-	}
-	{ //额外
-		Assf(fmt.Sprintln(sh...))
-	}
-	fmt.Println("\n====")
-	fmt.Println(sh...)
-	fmt.Print("====\n\n")
+// 	if action != nil && action.(string) == "end" {
+// 		return
+// 	}
+// 	if content != nil {
+// 		sh = append(sh, "节奏风暴", content)
+// 	}
+// 	{ //额外
+// 		Assf(fmt.Sprintln(sh...))
+// 	}
+// 	fmt.Println("\n====")
+// 	fmt.Println(sh...)
+// 	fmt.Print("====\n\n")
 
-	// Gui_show("\n====")
-	Gui_show(Itos(sh), "0jiezou")
-	// Gui_show("====\n")
+// 	// Gui_show("\n====")
+// 	Gui_show(Itos(sh), "0jiezou")
+// 	// Gui_show("====\n")
 
-	msglog.Base_add("礼", "节奏风暴").Log_show_control(false).L(`I: `, sh...)
-
-}
+// 	msglog.Base_add("礼", "节奏风暴").Log_show_control(false).L(`I: `, sh...)
+// }
 
 var roomChangeFC funcCtrl.FlashFunc
 
@@ -890,14 +905,17 @@ func (t replyF) send_gift(s string) {
 
 // Msg-房间封禁信息
 func (t replyF) room_block_msg(s string) {
-	if uname := p.Json().GetValFromS(s, "uname"); uname == nil {
-		msglog.L(`E: `, "uname", uname)
+
+	J := struct {
+		Uname string `json:"uname"`
+	}{}
+	if e := json.Unmarshal([]byte(s), &J); e != nil {
 		return
-	} else {
-		Gui_show(Itos([]interface{}{"用户", uname, "已被封禁"}), "0room")
-		fmt.Println("用户", uname, "已被封禁")
-		msglog.Base_add("封").Log_show_control(false).L(`I: `, "用户", uname, "已被封禁")
 	}
+
+	Gui_show(Itos([]interface{}{"用户", J.Uname, "已被封禁"}), "0room")
+	fmt.Println("用户", J.Uname, "已被封禁")
+	msglog.Base_add("封").Log_show_control(false).L(`I: `, "用户", J.Uname, "已被封禁")
 }
 
 // Msg-房间准备信息，通常出现在下播而不出现在开播
@@ -1218,14 +1236,19 @@ func (t replyF) entry_effect(s string) {
 func (t replyF) roomsilent(s string) {
 	msglog := msglog.Base_add("房")
 
-	if level := p.Json().GetValFromS(s, "data.level"); level == nil {
-		msglog.L(`E: `, "level", level)
+	J := struct {
+		Data struct {
+			Level int `json:"level"`
+		} `json:"data"`
+	}{}
+	if e := json.Unmarshal([]byte(s), &J); e != nil {
 		return
+	}
+
+	if J.Data.Level == 0 {
+		msglog.L(`I: `, "主播关闭了禁言")
 	} else {
-		if level.(float64) == 0 {
-			msglog.L(`I: `, "主播关闭了禁言")
-		}
-		msglog.L(`I: `, "主播开启了等级禁言:", level)
+		msglog.L(`I: `, "主播开启了等级禁言:", J.Data.Level)
 	}
 }
 
