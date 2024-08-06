@@ -5,7 +5,7 @@ go 1.22.2
 require (
 	github.com/gotk3/gotk3 v0.6.4
 	github.com/mdp/qrterminal/v3 v3.2.0
-	github.com/qydysky/part v0.28.20240721124143
+	github.com/qydysky/part v0.28.20240806174534
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966
 	golang.org/x/text v0.16.0
@@ -48,7 +48,6 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/miekg/dns v1.1.61 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
-	github.com/thedevsaddam/gojsonq/v2 v2.5.2 // indirect
 	github.com/tklauser/go-sysconf v0.3.14 // indirect
 	github.com/tklauser/numcpus v0.8.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect

@@ -20,7 +20,6 @@ import (
 	"golang.org/x/exp/slices"
 
 	_ "github.com/qydysky/biliApi"
-	p "github.com/qydysky/part"
 	cmp "github.com/qydysky/part/component2"
 	file "github.com/qydysky/part/file"
 	funcCtrl "github.com/qydysky/part/funcCtrl"
@@ -921,7 +920,7 @@ func (t *GetFunc) Get_cookie() (missKey []string) {
 		}
 	}()
 
-	if p.Checkfile().IsExist("cookie.txt") { //读取cookie文件
+	if file.New("cookie.txt", 0, true).IsExist() { //读取cookie文件
 		if cookieString := string(CookieGet()); cookieString != `` {
 			for k, v := range reqf.Cookies_String_2_Map(cookieString) { //cookie存入全局变量syncmap
 				t.Cookie.Store(k, v)
@@ -968,7 +967,7 @@ func (t *GetFunc) Get_cookie() (missKey []string) {
 	}
 
 	{ //生成二维码
-		if e := qr.WriteFile(img_url, qr.Medium, 256, `qr.png`); e != nil || !p.Checkfile().IsExist(`qr.png`) {
+		if e := qr.WriteFile(img_url, qr.Medium, 256, `qr.png`); e != nil || !file.New("qr.png", 0, true).IsExist() {
 			apilog.L(`E: `, `qr error`)
 			return
 		}

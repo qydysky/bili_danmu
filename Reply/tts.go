@@ -19,6 +19,7 @@ import (
 	p "github.com/qydysky/part"
 	file "github.com/qydysky/part/file"
 	funcCtrl "github.com/qydysky/part/funcCtrl"
+	phash "github.com/qydysky/part/hash"
 	limit "github.com/qydysky/part/limit"
 	msgq "github.com/qydysky/part/msgq"
 	reqf "github.com/qydysky/part/reqf"
@@ -236,7 +237,7 @@ func youdao(msg string) error {
 		}
 		postS string
 	)
-	api[`sign`] = strings.ToUpper(p.Md5().Md5String(api[`youdaoappKey`] + api[`q`] + api[`salt`] + youdaoappKey))
+	api[`sign`] = strings.ToUpper(phash.Md5String(api[`youdaoappKey`] + api[`q`] + api[`salt`] + youdaoappKey))
 	for k, v := range api {
 		if postS != "" {
 			postS += "&"
