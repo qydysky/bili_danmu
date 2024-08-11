@@ -17,6 +17,7 @@ var msglog = c.C.Log.Base(`Msg`)
 
 // Msg类型数据处理方法map
 var Msg_map = map[string]func(replyF, string){
+	`CHG_RANK_REFRESH`:                  nil,
 	`RANK_CHANGED`:                      replyF.rank_changed, //热门榜变动
 	`LIVE_MULTI_VIEW_NEW_INFO`:          nil,
 	`POPULARITY_RANK_TAB_CHG`:           nil,
