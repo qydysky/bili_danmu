@@ -46,8 +46,8 @@ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZb
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/qydysky/biliApi v0.0.0-20240725184407-15076dddb6fb h1:dtSpNF9hLQa09TUfR+xbYFkHcx2breAFsXeU7e599gE=
 github.com/qydysky/biliApi v0.0.0-20240725184407-15076dddb6fb/go.mod h1:om024vfxALQ5vxsbaGoMm8IS0esLYBnEOpJI8FsGoDg=
-github.com/qydysky/part v0.28.20240811143447 h1:jLgsPJN+evowd/NqSqqN0SOntiU2CAzdc0IV7SiAitA=
-github.com/qydysky/part v0.28.20240811143447/go.mod h1:dgagZnPYRFZDbt7XJf7nADOJLoYwlebD9B8Z8g5aHhI=
+github.com/qydysky/part v0.28.20240811150311 h1:I72L/Sv9IssdOs9Tp1BYyjmXDdmXUlz78QU9c80nzMM=
+github.com/qydysky/part v0.28.20240811150311/go.mod h1:dgagZnPYRFZDbt7XJf7nADOJLoYwlebD9B8Z8g5aHhI=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec h1:W09IVJc94icq4NjY3clb7Lk8O1qJ8BdBEF8z0ibU0rE=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec/go.mod h1:qqbHyh8v60DhA7CoWK5oRCqLrMHRGoxYCSS9EjAz6Eo=
 github.com/shirou/gopsutil v3.21.11+incompatible h1:+1+c1VGhc88SSonWP6foOcLhvnKlUeu/erjjvaPEYiI=
