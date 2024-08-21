@@ -79,13 +79,6 @@
 
 保持期间，可能会频繁发送弹幕（间隔5秒/条），此时可能会影响其他使用。
 
-由于bilibili粉丝牌策略调整，目前当配置项`保持牌子亮着`为`true`时，将会
-
-- 正在直播的直播间：点赞
-- 未直播的直播间：发送弹幕
-
-从而获取每日亲密度。
-
 #### 直播回放显示表情
 配置文件中添加配置项`弹幕表情`(>v0.14.9)。默认为true，当为true时，将会保存弹幕中的表情png到emots目录下，并在回放时显示表情。
 
@@ -697,7 +690,7 @@ Asaki大人 开心鸭鸭杀 直播中
 还支持登录、搜索主播直播间、查看历史记录、查看关注的直播间、保存直播流等功能
 
 #### cookie加密
-保护cookie.txt
+*使用X25519和chacha20poly1305*(>v0.14.15) 保护cookie.txt
 
 在`demo/config/config_K_v.json`中可找到配置项
 ```
@@ -712,8 +705,20 @@ Asaki大人 开心鸭鸭杀 直播中
 
 附：创建公(public.pem)私(private.pem)钥
 ```
-openssl genrsa -out private.pem 2048
-openssl rsa -in private.pem -pubout -out public.pem
+使用 -genKey 生成(>v0.14.15)
+main(main.exe) -genKey
+
+公钥：
+-----BEGIN ECDH PUBLIC KEY-----
+tvdVdbI7DTlRcyE44va7zXhi5rewxcm44/Dmp8DMnGY=
+-----END ECDH PUBLIC KEY-----
+
+私钥：
+-----BEGIN ECDH PRIVATE KEY-----
+xrWweTO5upvzDha6WrEBQKkToUYLyMCI7An2btRqop0=
+-----END ECDH PRIVATE KEY-----
+
+请复制以上公私钥并另存为文件,可以在cookie加密公钥、cookie解密私钥中使用
 ```
 
 #### 私信
@@ -832,8 +837,8 @@ windows: set CGO_ENABLED=0;go build .
 
 clone/下载本项目。进入`demo`目录(文件夹)，运行：
 ```
-linux: CGO_ENABLED=0 go run . [-r 房间ID] [-ckv 自定义config_K_v.json]
-windows: set CGO_ENABLED=0;go run . [-r 房间ID] [-ckv 自定义config_K_v.json]
+linux: CGO_ENABLED=0 go run . [-r 房间ID] [-ckv 自定义config_K_v.json] [-genKey]
+windows: set CGO_ENABLED=0;go run . [-r 房间ID] [-ckv 自定义config_K_v.json] [-genKey]
 ```
 
 3. docker部署
@@ -860,8 +865,8 @@ go build .
 
 前往[releases](https://github.com/qydysky/bili_danmu/releases)页下载对应系统版本。解压后进入`demo`目录(文件夹)，运行`main`(`main.exe`)。
 ```
-./main [-r 房间ID] [-ckv 自定义config_K_v.json]
-./main.exe [-r 房间ID] [-ckv 自定义config_K_v.json]
+./main [-r 房间ID] [-ckv 自定义config_K_v.json] [-genKey]
+./main.exe [-r 房间ID] [-ckv 自定义config_K_v.json] [-genKey]
 ```
 
 #### 注意事项

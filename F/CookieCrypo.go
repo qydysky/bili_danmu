@@ -2,6 +2,8 @@ package F
 
 import (
 	"fmt"
+	"io"
+	"os"
 	"sync"
 
 	c "github.com/qydysky/bili_danmu/CV"
@@ -25,7 +27,7 @@ func CookieGet() []byte {
 
 	if len(pri) == 0 {
 		if priS, ok := c.C.K_v.LoadV(`cookie解密私钥`).(string); ok && priS != `` {
-			if d, e := crypto.FileLoad(priS); e != nil {
+			if d, e := FileLoad(priS); e != nil {
 				clog.L(`E: `, e)
 				return []byte{}
 			} else {
@@ -39,14 +41,14 @@ func CookieGet() []byte {
 				clog.L(`E: `, "输入错误", err)
 				return []byte{}
 			}
-			if d, e := crypto.FileLoad(priS); e != nil {
+			if d, e := FileLoad(priS); e != nil {
 				clog.L(`E: `, e)
 				return []byte{}
 			} else {
 				pri = d
 			}
 		} else {
-			if d, e := crypto.FileLoad(`cookie.txt`); e != nil {
+			if d, e := FileLoad(`cookie.txt`); e != nil {
 				clog.L(`E: `, e, `cookie保存格式`)
 				return []byte{}
 			} else if string(d[:6]) == `t=nol;` {
@@ -59,7 +61,7 @@ func CookieGet() []byte {
 			}
 		}
 	}
-	if d, e := crypto.FileLoad(`cookie.txt`); e != nil {
+	if d, e := FileLoad(`cookie.txt`); e != nil {
 		clog.L(`E: `, e, `cookie保存格式`)
 		return []byte{}
 	} else if string(d[:6]) == `t=pem;` {
@@ -90,7 +92,7 @@ func CookieSet(source []byte) {
 
 	if len(pub) == 0 {
 		if pubS, ok := c.C.K_v.LoadV(`cookie加密公钥`).(string); ok && pubS != `` {
-			if d, e := crypto.FileLoad(pubS); e != nil {
+			if d, e := FileLoad(pubS); e != nil {
 				clog.L(`E: `, e)
 				return
 			} else {
@@ -111,4 +113,19 @@ func CookieSet(source []byte) {
 		_ = f.Delete()
 		_, _ = f.Write(append([]byte("t=pem;"), source...), true)
 	}
+}
+
+func FileLoad(path string) (data []byte, err error) {
+	fileObject, e := os.OpenFile(path, os.O_RDONLY, 0644)
+	if e != nil {
+		err = e
+		return
+	}
+	defer fileObject.Close()
+	data, e = io.ReadAll(fileObject)
+	if e != nil {
+		err = e
+		return
+	}
+	return
 }

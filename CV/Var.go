@@ -21,6 +21,7 @@ import (
 	"github.com/dustin/go-humanize"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	crypto "github.com/qydysky/part/crypto"
 	pctx "github.com/qydysky/part/ctx"
 	file "github.com/qydysky/part/file"
 	log "github.com/qydysky/part/log"
@@ -373,9 +374,24 @@ func (t *Common) Init() *Common {
 	var (
 		ckv     = flag.String("ckv", "", "自定义配置KV文件，将会覆盖config_K_v配置")
 		roomIdP = flag.Int("r", 0, "roomid")
+		genKey  = flag.Bool("genKey", false, "生成cookie加密公私钥")
 	)
 	testing.Init()
 	flag.Parse()
+
+	if *genKey {
+		if pri, pub, e := crypto.NewKey(); e != nil {
+			panic(e)
+		} else {
+			fmt.Println("公钥：")
+			fmt.Println(string(pub))
+			fmt.Println("私钥：")
+			fmt.Println(string(pri))
+			fmt.Println("请复制以上公私钥并另存为文件,可以在cookie加密公钥、cookie解密私钥中使用")
+			os.Exit(0)
+		}
+	}
+
 	t.Roomid = *roomIdP
 
 	if e := t.loadConf(*ckv); e != nil {

@@ -275,7 +275,6 @@ func entryRoom(mainCtx context.Context, danmulog *part.Log_interface, common *c.
 		u, _ := url.Parse(v)
 		ws_c, err := ws.New_client(&ws.Client{
 			Url:               v,
-			BufSize:           10,
 			TO:                (heartinterval + 5) * 1000,
 			Proxy:             common.Proxy,
 			Func_abort_close:  func() { danmulog.L(`I: `, `服务器连接中断`) },
