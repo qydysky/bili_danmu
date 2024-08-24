@@ -30,6 +30,7 @@ import (
 	reqf "github.com/qydysky/part/reqf"
 	psql "github.com/qydysky/part/sql"
 	syncmap "github.com/qydysky/part/sync"
+	sys "github.com/qydysky/part/sys"
 	web "github.com/qydysky/part/web"
 	_ "modernc.org/sqlite"
 )
@@ -428,6 +429,27 @@ func (t *Common) Init() *Common {
 			panic(e)
 		}
 
+		port := `80`
+		if s := strings.Split(serAdress, ":"); len(s) > 1 {
+			port = s[1]
+		}
+
+		var ips []string
+		{
+			// 启动时显示ip
+			showIpOnBoot, _ := t.K_v.LoadV("启动时显示ip").(bool)
+			for ip := range sys.GetIpByCidr() {
+				if showIpOnBoot {
+					if ip.To4() != nil {
+						fmt.Printf("当前地址 http://%s:%s\n", ip.String(), port)
+					} else {
+						fmt.Printf("当前地址 http://[%s]:%s\n", ip.String(), port)
+					}
+				}
+				ips = append(ips, ip.String())
+			}
+		}
+
 		var (
 			readTimeout       = 3
 			readHeaderTimeout = 3
@@ -465,6 +487,19 @@ func (t *Common) Init() *Common {
 					}
 				}
 			}
+		}
+
+		if val, ok := t.K_v.LoadV("ip路径").(string); ok && val != "" {
+			t.SerF.Store(val, func(w http.ResponseWriter, r *http.Request) {
+				if DefaultHttpCheck(t, w, r, http.MethodGet) {
+					return
+				}
+				for _, v := range ips {
+					if _, e := w.Write([]byte(v + "\n")); e != nil {
+						return
+					}
+				}
+			})
 		}
 
 		if val, ok := t.K_v.LoadV("性能路径").(string); ok && val != "" {

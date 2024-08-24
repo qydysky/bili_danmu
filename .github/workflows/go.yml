@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go: [ '1.22' ]
+        go: [ '1.23' ]
     steps:
     - name: Set up Go${{ matrix.go }}
       uses: actions/setup-go@v5
@@ -53,7 +53,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go: [ '1.22' ]
+        go: [ '1.23' ]
     steps:
     - name: Set up Go${{ matrix.go }}
       uses: actions/setup-go@v5
@@ -93,7 +93,7 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        go: [ '1.22' ]
+        go: [ '1.23' ]
     steps:
     - name: Set up Go${{ matrix.go }}
       uses: actions/setup-go@v5
@@ -133,7 +133,7 @@ jobs:
     runs-on: macos-latest
     strategy:
       matrix:
-        go: [ '1.22' ]
+        go: [ '1.23' ]
     steps:
     - name: Set up Go${{ matrix.go }}
       uses: actions/setup-go@v5

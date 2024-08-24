@@ -74,6 +74,43 @@
 ### 说明
 本项目使用github action自动构建，构建过程详见[yml](https://github.com/qydysky/bili_danmu/blob/master/.github/workflows/go.yml)
 
+#### ip路径
+配置文件中添加配置项`ip路径`(>v0.14.16)。不为空时，将会在指定路径显示出当前主机ip,从而可以使用主机名来获取主机ipv6,以便于[ddns-go](https://github.com/jeessy2/ddns-go)等通过命令获取ipv6。默认空。
+
+例子：
+```
+{
+  "Web服务地址":"0.0.0.0:11000",
+  "ip路径":"/ip/"
+}
+```
+
+```
+curl -s http://{主机名}:11000/ip/
+192.168.31.230
+172.16.0.1
+172.17.144.244
+172.17.0.1
+172.17.0.10
+172.17.121.35
+2409:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:8ce5
+fd55:d4a5:a9e7:0:aab8:e0ff:fe03:8ce5
+fe80::aab8:e0ff:fe03:8ce5
+fe80::d8dc:35ff:fe21:d71b
+fe80::785f:8dff:fe34:9443
+fe80::440a:9fff:fe6d:5da6
+fe80::60ff:4cff:fee7:c226
+fe80::4c24:e3ff:fe65:b955
+fe80::8099:ecff:fefa:f36c
+fe80::68fe:63ff:fe74:6e35
+```
+
+```
+curl -s http://{主机名}:11000/ip/ | awk '/240:?/'
+
+2409:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:8ce5
+```
+
 #### 保持粉丝牌点亮
 配置文件中添加配置项`保持牌子亮着_指定时间`(>v0.14.11)。将会在指定时间启动保持。默认`00:00:00`
 
