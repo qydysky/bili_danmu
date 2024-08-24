@@ -553,6 +553,7 @@ ass编码GB18030支持中文
     
   ```json
   {
+    "ip路径":"/xxxxxxx/",
     "日志文件输出-help": "为空时不保存日志",
     "日志文件输出": "",
     "指定弹幕重启录制":[
@@ -570,7 +571,10 @@ ass编码GB18030支持中文
     "Web服务地址":"0.0.0.0:10000",
     "直播Web服务路径":"/web/",
     "直播Web可以发送弹幕":false,
+    "直播流不使用mcdn":false,
+    "fmp4获取更多服务器": true,
     "fmp4跳过解码出错的帧": true,
+    "flv使用内置头": true,
     "直播流回放速率": "3 MB",
     "分段时长min": 60,
     "标题修改检测s": 1200,
@@ -591,6 +595,11 @@ ass编码GB18030支持中文
             "help":"公网网段",
             "cidr":"127.0.0.1/32",
             "max":2
+        },
+        {
+            "help":"公网网段",
+            "cidr":"::/0",
+            "max":2
         }
     ],
     "cookie保护": "下填路径",
@@ -599,6 +608,7 @@ ass编码GB18030支持中文
     "debug模式-help":"启用额外调试信息",
     "debug模式":true,
     "debug路径-help":"当Web服务地址不为空时, 访问此路径可以获取调试信息，为空时关闭，需要/结尾",
+    "debug路径":"/xxxxxxx/",
     "生成pgo":"",
     "扫码登录":true,
     "保存弹幕至db": {
@@ -614,7 +624,9 @@ ass编码GB18030支持中文
         "字段help":"$1:Prefix $2:Base $3:Msgs, use ? or $%d not placeholder",
         "create":"create table log (created timestamp, Prefix varchar(10), Base varchar(30), Msgs varchar(500))",
         "insert":"insert into log (created, Prefix, Base, Msgs) values (now(),$1,$2,$3)"
-    }
+    },
+    "服务器时区":28800,
+    "弹幕表情": true
   }
   ```
   </details>
