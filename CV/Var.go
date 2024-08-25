@@ -434,7 +434,6 @@ func (t *Common) Init() *Common {
 			port = s[1]
 		}
 
-		var ips []string
 		{
 			// 启动时显示ip
 			showIpOnBoot, _ := t.K_v.LoadV("启动时显示ip").(bool)
@@ -446,7 +445,6 @@ func (t *Common) Init() *Common {
 						fmt.Printf("当前地址 http://[%s]:%s\n", ip.String(), port)
 					}
 				}
-				ips = append(ips, ip.String())
 			}
 		}
 
@@ -494,8 +492,8 @@ func (t *Common) Init() *Common {
 				if DefaultHttpCheck(t, w, r, http.MethodGet) {
 					return
 				}
-				for _, v := range ips {
-					if _, e := w.Write([]byte(v + "\n")); e != nil {
+				for ip := range sys.GetIpByCidr() {
+					if _, e := w.Write([]byte(ip.String() + "\n")); e != nil {
 						return
 					}
 				}
