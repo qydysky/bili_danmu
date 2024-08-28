@@ -5,7 +5,7 @@ go 1.23
 require (
 	github.com/gotk3/gotk3 v0.6.4
 	github.com/mdp/qrterminal/v3 v3.2.0
-	github.com/qydysky/part v0.28.20240824023126
+	github.com/qydysky/part v0.28.20240828143014
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966
 	golang.org/x/text v0.17.0
@@ -14,6 +14,7 @@ require (
 require (
 	github.com/google/uuid v1.6.0
 	github.com/qydysky/biliApi v0.0.0-20240725184407-15076dddb6fb
+	github.com/qydysky/brotli v0.0.0-20240828134800-e9913a6e7ed9
 	golang.org/x/exp v0.0.0-20240613232115-7f521ea00fb8
 )
 
@@ -38,7 +39,6 @@ require (
 )
 
 require (
-	github.com/andybalholm/brotli v1.1.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-sql-driver/mysql v1.8.1

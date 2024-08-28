@@ -12,7 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	brotli "github.com/andybalholm/brotli"
+	brotli "github.com/qydysky/brotli"
 	c "github.com/qydysky/bili_danmu/CV"
 	F "github.com/qydysky/bili_danmu/F"
 	danmuemotes "github.com/qydysky/bili_danmu/Reply/F/danmuEmotes"
