@@ -12,7 +12,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	brotli "github.com/qydysky/brotli"
 	c "github.com/qydysky/bili_danmu/CV"
 	F "github.com/qydysky/bili_danmu/F"
 	danmuemotes "github.com/qydysky/bili_danmu/Reply/F/danmuEmotes"
@@ -21,6 +20,7 @@ import (
 	"github.com/qydysky/bili_danmu/Reply/F/recStartEnd"
 	ws_msg "github.com/qydysky/bili_danmu/Reply/ws_msg"
 	send "github.com/qydysky/bili_danmu/Send"
+	brotli "github.com/qydysky/brotli"
 	funcCtrl "github.com/qydysky/part/funcCtrl"
 	mq "github.com/qydysky/part/msgq"
 	pool "github.com/qydysky/part/pool"
