@@ -662,26 +662,23 @@ func (t *GetFunc) getRoomPlayInfoByQn() (missKey []string) {
 		return
 	}
 
-	AcceptQn := []int{}
-	for k := range t.AcceptQn {
-		if k <= t.Live_want_qn {
-			AcceptQn = append(AcceptQn, k)
+	// 挑选最大的画质
+	{
+		MaxQn := 0
+		for k := range t.AcceptQn {
+			if k <= t.Live_want_qn && k > MaxQn {
+				MaxQn = k
+			}
 		}
-	}
-	MaxQn := 0
-	for i := 0; len(AcceptQn) > i; i += 1 {
-		if AcceptQn[i] > MaxQn {
-			MaxQn = AcceptQn[i]
+		if t.Live_want_qn != MaxQn {
+			apilog.L(`W: `, "期望清晰度不可用，使用", t.Qn[MaxQn])
 		}
+		t.Live_qn = MaxQn
 	}
-	if MaxQn == 0 {
-		apilog.L(`W: `, "使用默认")
-	}
-	t.Live_qn = MaxQn
 
 	//Roominitres
 	{
-		if err, res := biliApi.GetRoomPlayInfo(t.Roomid, MaxQn); err != nil {
+		if err, res := biliApi.GetRoomPlayInfo(t.Roomid, t.Live_qn); err != nil {
 			apilog.L(`E: `, err)
 			return
 		} else {
