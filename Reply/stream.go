@@ -278,10 +278,21 @@ func (t *M4SStream) getFirstBuf() []byte {
 }
 
 func (t *M4SStream) fetchCheckStream() bool {
+	_log := t.log.BaseAdd("获取流")
 	// 获取流地址
 	t.common.Live_want_qn = t.config.want_qn
 	if F.Get(t.common).Get(`Live`); len(t.common.Live) == 0 {
 		return false
+	}
+
+	// 直播流仅清晰度
+	if v, ok := t.common.K_v.LoadV("直播流仅清晰度").(bool); ok && v {
+		if _, ok := t.common.Qn[t.config.want_qn]; ok {
+			if t.config.want_qn != t.common.Live_qn {
+				_log.L(`W: `, `仅清晰度true,当前清晰度`, t.common.Qn[t.common.Live_qn])
+				return false
+			}
+		}
 	}
 
 	// 保存流类型
@@ -309,7 +320,7 @@ func (t *M4SStream) fetchCheckStream() bool {
 	)
 	if v, ok := t.common.K_v.LoadV("直播流不使用mcdn").(bool); ok && v {
 		if reg, err := regexp.Compile(`\.mcdn\.`); err != nil {
-			t.log.L(`W: `, `停用流服务器`, `正则错误`, err)
+			_log.L(`W: `, `停用流服务器`, `正则错误`, err)
 		} else {
 			noSer = append(noSer, reg)
 		}
@@ -318,7 +329,7 @@ func (t *M4SStream) fetchCheckStream() bool {
 		for i := 0; i < len(v); i++ {
 			if s, ok := v[i].(string); ok {
 				if reg, err := regexp.Compile(s); err != nil {
-					t.log.L(`W: `, `停用流服务器`, `正则错误`, err)
+					_log.L(`W: `, `停用流服务器`, `正则错误`, err)
 				} else {
 					noSer = append(noSer, reg)
 				}
@@ -332,7 +343,7 @@ func (t *M4SStream) fetchCheckStream() bool {
 	for _, v := range t.common.Live {
 		if noSerF(v.Url) {
 			v.Disable(time.Now().Add(time.Hour * 100))
-			t.log.L(`I: `, `停用流服务器`, F.ParseHost(v.Url))
+			_log.L(`I: `, `停用流服务器`, F.ParseHost(v.Url))
 			continue
 		}
 
@@ -355,23 +366,23 @@ func (t *M4SStream) fetchCheckStream() bool {
 			Timeout:          5 * 1000,
 			JustResponseCode: true,
 		}); e != nil {
-			t.log.L(`W: `, F.ParseHost(v.Url), e)
+			_log.L(`W: `, F.ParseHost(v.Url), e)
 			v.DisableAuto()
 			continue
 		}
 
 		if r.Response == nil {
-			t.log.L(`W: `, `live响应错误`, F.ParseHost(v.Url))
+			_log.L(`W: `, `live响应错误`, F.ParseHost(v.Url))
 			v.DisableAuto()
 			continue
 		} else if r.Response.StatusCode&200 != 200 {
-			t.log.L(`W: `, `live响应错误`, F.ParseHost(v.Url), r.Response.Status)
+			_log.L(`W: `, `live响应错误`, F.ParseHost(v.Url), r.Response.Status)
 			v.DisableAuto()
 			continue
 		}
 
 		// 显示使用流服务器
-		t.log.L(`I: `, `使用流服务器`, F.ParseHost(v.Url))
+		_log.L(`I: `, `使用流服务器`, F.ParseHost(v.Url))
 	}
 
 	return t.common.ValidLive() != nil
