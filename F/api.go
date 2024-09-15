@@ -670,7 +670,9 @@ func (t *GetFunc) getRoomPlayInfoByQn() (missKey []string) {
 				MaxQn = k
 			}
 		}
-		if t.Live_want_qn != MaxQn {
+		if MaxQn == 0 {
+			apilog.L(`W: `, "使用默认")
+		} else if t.Live_want_qn != MaxQn {
 			apilog.L(`W: `, "期望清晰度不可用，使用", t.Qn[MaxQn])
 		}
 		t.Live_qn = MaxQn
