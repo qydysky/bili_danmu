@@ -14,6 +14,8 @@ jobs:
     strategy:
       matrix:
         go: [ '1.23' ]
+    env:
+      GH_TOKEN: ${{ github.token }}
     steps:
     - name: Set up Go${{ matrix.go }}
       uses: actions/setup-go@v5
@@ -46,6 +48,10 @@ jobs:
       with:
         token: ${{secrets.CODECOV_TOKEN}}
         file: coverage
+    
+    - name: Create draft release
+      run: |
+        gh release create draft --draft
 
   u-build:
     name: build_ubuntu_go${{ matrix.go }}
@@ -54,6 +60,8 @@ jobs:
     strategy:
       matrix:
         go: [ '1.23' ]
+    env:
+      GH_TOKEN: ${{ github.token }}
     steps:
     - name: Set up Go${{ matrix.go }}
       uses: actions/setup-go@v5
@@ -81,11 +89,8 @@ jobs:
       run: zip -q -r ubuntu_go${{ matrix.go }}.zip demo
 
     - name: Upload a Release Asset
-      uses: softprops/action-gh-release@v2
-      with:
-        draft: true
-        files: |
-          ./ubuntu_go${{ matrix.go }}.zip
+      run: |
+        gh release upload draft ubuntu_go${{ matrix.go }}.zip
 
   w-build:
     name: build_windows_go${{ matrix.go }}
@@ -94,6 +99,8 @@ jobs:
     strategy:
       matrix:
         go: [ '1.23' ]
+    env:
+      GH_TOKEN: ${{ github.token }}
     steps:
     - name: Set up Go${{ matrix.go }}
       uses: actions/setup-go@v5
@@ -121,11 +128,8 @@ jobs:
       run: .\7za.exe a -r .\windows_go${{ matrix.go }}.zip ./demo
 
     - name: Upload a Release Asset
-      uses: softprops/action-gh-release@v2
-      with:
-        draft: true
-        files: |
-          ./windows_go${{ matrix.go }}.zip
+      run: |
+        gh release upload draft windows_go${{ matrix.go }}.zip
 
   m-build:
     name: build_macos_go${{ matrix.go }}
@@ -134,6 +138,8 @@ jobs:
     strategy:
       matrix:
         go: [ '1.23' ]
+    env:
+      GH_TOKEN: ${{ github.token }}
     steps:
     - name: Set up Go${{ matrix.go }}
       uses: actions/setup-go@v5
@@ -161,8 +167,5 @@ jobs:
       run: zip -q -r macos_go${{ matrix.go }}.zip demo
 
     - name: Upload a Release Asset
-      uses: softprops/action-gh-release@v2
-      with:
-        draft: true
-        files: |
-          ./macos_go${{ matrix.go }}.zip
+      run: |
+        gh release upload draft macos_go${{ matrix.go }}.zip
