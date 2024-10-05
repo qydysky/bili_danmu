@@ -1128,7 +1128,7 @@ func init() {
 		// debug模式
 		if debugP, ok := c.C.K_v.LoadV(`debug路径`).(string); ok && debugP != "" {
 			c.C.SerF.Store(debugP, func(w http.ResponseWriter, r *http.Request) {
-				if c.DefaultHttpCheck(c.C, w, r, http.MethodGet, http.MethodPost) {
+				if c.DefaultHttpFunc(c.C, w, r, http.MethodGet, http.MethodPost) {
 					return
 				}
 				if name, found := strings.CutPrefix(r.URL.Path, debugP); found && name != "" {
@@ -1169,7 +1169,7 @@ func init() {
 
 		// 直播流主页
 		c.C.SerF.Store(spath, func(w http.ResponseWriter, r *http.Request) {
-			if c.DefaultHttpCheck(c.C, w, r, http.MethodGet, http.MethodHead) {
+			if c.DefaultHttpFunc(c.C, w, r, http.MethodGet, http.MethodHead) {
 				return
 			}
 
@@ -1203,7 +1203,7 @@ func init() {
 
 		// 直播流文件列表api
 		c.C.SerF.Store(spath+"filePath", func(w http.ResponseWriter, r *http.Request) {
-			if c.DefaultHttpCheck(c.C, w, r, http.MethodGet) {
+			if c.DefaultHttpFunc(c.C, w, r, http.MethodGet) {
 				return
 			}
 
@@ -1281,7 +1281,7 @@ func init() {
 
 		// 表情
 		c.C.SerF.Store(spath+"emots/", func(w http.ResponseWriter, r *http.Request) {
-			if c.DefaultHttpCheck(c.C, w, r, http.MethodGet) {
+			if c.DefaultHttpFunc(c.C, w, r, http.MethodGet) {
 				return
 			}
 
@@ -1302,7 +1302,7 @@ func init() {
 
 		// 直播流播放器
 		c.C.SerF.Store(spath+"player/", func(w http.ResponseWriter, r *http.Request) {
-			if c.DefaultHttpCheck(c.C, w, r, http.MethodGet) {
+			if c.DefaultHttpFunc(c.C, w, r, http.MethodGet) {
 				return
 			}
 
@@ -1348,7 +1348,7 @@ func init() {
 		}
 
 		c.C.SerF.Store(spath+"keepAlive", func(w http.ResponseWriter, r *http.Request) {
-			if c.DefaultHttpCheck(c.C, w, r, http.MethodGet) {
+			if c.DefaultHttpFunc(c.C, w, r, http.MethodGet) {
 				return
 			}
 			if key, e := expirer.Reg(time.Second*30, r.URL.Query().Get("key")); e != nil {
@@ -1360,7 +1360,7 @@ func init() {
 
 		// 流地址
 		c.C.SerF.Store(spath+"stream", func(w http.ResponseWriter, r *http.Request) {
-			if c.DefaultHttpCheck(c.C, w, r, http.MethodGet) {
+			if c.DefaultHttpFunc(c.C, w, r, http.MethodGet) {
 				return
 			}
 
@@ -1531,7 +1531,7 @@ func init() {
 
 		// 弹幕回放
 		c.C.SerF.Store(spath+"player/ws", func(w http.ResponseWriter, r *http.Request) {
-			if c.DefaultHttpCheck(c.C, w, r, http.MethodGet) {
+			if c.DefaultHttpFunc(c.C, w, r, http.MethodGet) {
 				return
 			}
 
@@ -1619,7 +1619,7 @@ func init() {
 
 		// 弹幕回放xml
 		c.C.SerF.Store(spath+"player/xml", func(w http.ResponseWriter, r *http.Request) {
-			if c.DefaultHttpCheck(c.C, w, r, http.MethodGet) {
+			if c.DefaultHttpFunc(c.C, w, r, http.MethodGet) {
 				return
 			}
 

@@ -974,7 +974,7 @@ func (t *GetFunc) Get_cookie() (missKey []string) {
 		//启动web
 		if scanPath, ok := t.K_v.LoadV("扫码登录路径").(string); ok && scanPath != "" {
 			t.SerF.Store(scanPath, func(w http.ResponseWriter, r *http.Request) {
-				if c.DefaultHttpCheck(t.Common, w, r, http.MethodGet) {
+				if c.DefaultHttpFunc(t.Common, w, r, http.MethodGet) {
 					return
 				}
 				_ = file.New("qr.png", 0, true).CopyToIoWriter(w, pio.CopyConfig{})

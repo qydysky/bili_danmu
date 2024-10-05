@@ -489,7 +489,7 @@ func (t *Common) Init() *Common {
 
 		if val, ok := t.K_v.LoadV("ip路径").(string); ok && val != "" {
 			t.SerF.Store(val, func(w http.ResponseWriter, r *http.Request) {
-				if DefaultHttpCheck(t, w, r, http.MethodGet) {
+				if DefaultHttpFunc(t, w, r, http.MethodGet) {
 					return
 				}
 				for ip := range sys.GetIpByCidr() {
@@ -503,7 +503,7 @@ func (t *Common) Init() *Common {
 		if val, ok := t.K_v.LoadV("性能路径").(string); ok && val != "" {
 			var cache web.Cache
 			t.SerF.Store(val, func(w http.ResponseWriter, r *http.Request) {
-				if DefaultHttpCheck(t, w, r, http.MethodGet) {
+				if DefaultHttpFunc(t, w, r, http.MethodGet) {
 					return
 				}
 
@@ -748,7 +748,7 @@ func (t ResStruct) Write(w http.ResponseWriter) []byte {
 	return data
 }
 
-func DefaultHttpCheck(c *Common, w http.ResponseWriter, r *http.Request, method ...string) bool {
+func DefaultHttpFunc(c *Common, w http.ResponseWriter, r *http.Request, method ...string) bool {
 	if strings.Contains(r.URL.Path, "../") {
 		web.WithStatusCode(w, http.StatusForbidden)
 		return true
@@ -762,6 +762,18 @@ func DefaultHttpCheck(c *Common, w http.ResponseWriter, r *http.Request, method 
 	if c.SerLimit.AddCount(r) {
 		web.WithStatusCode(w, http.StatusTooManyRequests)
 		return true
+	}
+	//Web自定义响应头
+	if resHeaders, ok := c.K_v.LoadV("Web自定义响应头").(map[string]any); ok && len(resHeaders) > 0 {
+		for k, v := range resHeaders {
+			if k == "" {
+				continue
+			} else if vs, ok := v.(string); !ok || vs == "" {
+				continue
+			} else {
+				w.Header().Set(k, vs)
+			}
+		}
 	}
 	return false
 }

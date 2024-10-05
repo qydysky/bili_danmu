@@ -74,6 +74,32 @@
 ### 说明
 本项目使用github action自动构建，构建过程详见[yml](https://github.com/qydysky/bili_danmu/blob/master/.github/workflows/go.yml)
 
+#### Web自定义响应头
+配置文件中添加配置项`Web自定义响应头`(>v0.14.19)。默认为空，当不为空时，将在所有响应中添加指定头。
+例子：
+```
+{
+  "Web服务地址":"0.0.0.0:11000",
+  "直播Web服务路径":"/web/",
+  "Web自定义响应头": {
+    "Access-Control-Allow-Origin":"*"
+  }
+}
+```
+
+```
+curl -i http://{主机名}:11000/web/emots/4e9621239e8a349b1ad198af90458e06.png
+HTTP/1.1 200 OK
+Access-Control-Allow-Origin: *
+Cache-Control: private
+Etag: 2024-09-24T01:53:03+08:00
+Last-Modified: Tue, 24 Sep 2024 01:53:03 CST
+Date: Sat, 05 Oct 2024 14:02:18 GMT
+Content-Type: image/png
+Transfer-Encoding: chunked
+```
+
+
 #### ip路径
 配置文件中添加配置项`ip路径`(>v0.14.16)。不为空时，将会在指定路径显示出当前主机ip,从而可以使用主机名来获取主机ipv6,以便于[ddns-go](https://github.com/jeessy2/ddns-go)等通过命令获取ipv6。默认空。
 
