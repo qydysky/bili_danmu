@@ -147,7 +147,7 @@
         "ReadHeaderTimeout":3,
         "IdleTimeout":3
     },
-"Web自定义响应头-help": "都不为空字符串时，使用set方法到响应头，默认空",
+    "Web自定义响应头-help": "都不为空字符串时，使用set方法到响应头，默认空",
     "Web自定义响应头": {"":""},
     "直播Web服务路径":"/web/",
     "直播Web可以发送弹幕":true,
