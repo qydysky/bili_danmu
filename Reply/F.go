@@ -1079,7 +1079,7 @@ var StreamWs = websocket.New_server()
 
 func SendStreamWs(item Danmu_item) {
 	var msg string
-	if item.auth != nil {
+	if item.auth != nil && !item.hideAuth {
 		msg += fmt.Sprint(item.auth) + `: `
 	}
 	msg += item.msg

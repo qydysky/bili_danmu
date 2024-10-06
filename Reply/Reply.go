@@ -1254,13 +1254,14 @@ func (t replyF) roomsilent(s string) {
 
 // Msg-弹幕处理
 type Danmu_item struct {
-	msg    string
-	color  string
-	border bool
-	mode   int
-	auth   any
-	uid    string
-	roomid int //to avoid danmu show when room has changed
+	msg      string
+	color    string
+	border   bool
+	mode     int
+	auth     any
+	hideAuth bool
+	uid      string
+	roomid   int //to avoid danmu show when room has changed
 }
 
 func (t replyF) danmu(s string) {
@@ -1275,6 +1276,9 @@ func (t replyF) danmu(s string) {
 
 	infob := j.Info
 	item := Danmu_item{}
+	if v, ok := t.Common.K_v.LoadV(`弹幕回放_隐藏发送人`).(bool); ok && v {
+		item.hideAuth = true
+	}
 	{
 		//解析
 		if len(infob) > 0 {
@@ -1402,7 +1406,7 @@ func Msg_showdanmu(item Danmu_item) {
 		//直播流服务弹幕
 		SendStreamWs(item)
 
-		if item.auth != nil {
+		if item.auth != nil && !item.hideAuth {
 			Gui_show(fmt.Sprint(item.auth)+`: `+item.msg, item.uid)
 		} else {
 			Gui_show(item.msg, item.uid)
