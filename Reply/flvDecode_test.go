@@ -25,6 +25,7 @@ func Test_FLVdeal(t *testing.T) {
 	buf := make([]byte, humanize.MByte)
 	buff := slice.New[byte](10 * humanize.MByte)
 	max := 0
+	flvDecoder := NewFlvDecoder()
 
 	for c := 0; true; c++ {
 		n, e := f.Read(buf)
@@ -37,7 +38,11 @@ func Test_FLVdeal(t *testing.T) {
 			max = s
 		}
 		keyframe := slice.New[byte]()
-		front_buf, last_available_offset, e := Search_stream_tag(buff.GetPureBuf(), keyframe)
+		front_buf, last_available_offset, e := flvDecoder.InitFlv(buff.GetPureBuf())
+		if e != nil {
+			t.Fatal(e)
+		}
+		last_available_offset, e = flvDecoder.SearchStreamTag(buff.GetPureBuf()[last_available_offset:], keyframe)
 		if e != nil {
 			t.Fatal(e)
 		}

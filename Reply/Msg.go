@@ -84,6 +84,7 @@ var Msg_map = map[string]func(replyF, string){
 	"HOUR_RANK_AWARDS":                  nil,
 	"ROOM_RANK":                         nil,
 	"ROOM_SHIELD":                       nil,
+	"USER_TOAST_MSG_V2":                 nil,                       //大航海购买信息
 	"USER_TOAST_MSG":                    replyF.user_toast_msg,     //大航海购买信息
 	"WIN_ACTIVITY":                      replyF.win_activity,       //活动
 	"SPECIAL_GIFT":                      nil,                       //replyF.special_gift,       //节奏风暴

@@ -24,6 +24,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/dustin/go-humanize"
 	c "github.com/qydysky/bili_danmu/CV"
 	F "github.com/qydysky/bili_danmu/F"
 
@@ -797,16 +798,12 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 		{
 			pipe := pio.NewPipe()
 			var (
-				leastReadUnix     atomic.Int64
-				readTO            int64 = 3
-				useInterFlvHeader bool  = false
+				leastReadUnix atomic.Int64
+				readTO        int64 = 10
 			)
 			leastReadUnix.Store(time.Now().Unix())
 			if v, ok := t.common.K_v.LoadV(`flv断流超时s`).(float64); ok && int64(v) > readTO {
 				readTO = int64(v)
-			}
-			if v, ok := t.common.K_v.LoadV(`flv使用内置头`).(bool); ok && v {
-				useInterFlvHeader = v
 			}
 
 			// read timeout
@@ -843,85 +840,67 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 				defer cancel()
 
 				var (
-					ticker   = time.NewTicker(time.Second)
-					buff     = slice.New[byte]()
-					keyframe = slice.New[byte]()
-					buf      = make([]byte, 1<<16)
+					buff       = slice.New[byte]()
+					keyframe   = slice.New[byte]()
+					buf        = make([]byte, humanize.KByte)
+					flvDecoder = NewFlvDecoder()
+					bufSize    = humanize.KByte * 1100
 				)
-				defer ticker.Stop()
+
+				if v, ok := c.C.K_v.LoadV(`flv音视频时间戳容差ms`).(float64); ok && v > 100 {
+					flvDecoder.Diff = v
+				}
 
 				for {
-					n, e := pipe.Read(buf)
-					_ = buff.Append(buf[:n])
-					if e != nil {
+					if n, e := pipe.Read(buf); e != nil {
 						pctx.PutVal(cancelC, &errCtx, e)
 						break
-					}
-
-					select {
-					case <-ticker.C:
-					default:
+					} else if e = buff.Append(buf[:n]); e != nil {
+						pctx.PutVal(cancelC, &errCtx, e)
+						break
+					} else if buff.Size() < bufSize {
 						continue
 					}
 
 					if !buff.IsEmpty() {
-						keyframe.Reset()
+						// front_buf
 						buf, unlock := buff.GetPureBufRLock()
-						front_buf, last_available_offset, e := Search_stream_tag(buf, keyframe)
+						frontBuf, dropOffset, e := flvDecoder.Parse(buf, keyframe)
 						unlock()
 						if e != nil {
-							if strings.Contains(e.Error(), `no found available tag`) {
-								continue
-							}
+							t.log.L(`E: `, e)
 							pctx.PutVal(cancelC, &errCtx, errors.New("[decoder]"+e.Error()))
-							//丢弃所有数据
-							buff.Reset()
+							break
 						}
-						// 存在有效数据
-						if len(front_buf) != 0 || keyframe.Size() != 0 {
-							leastReadUnix.Store(time.Now().Unix())
-						}
-						if len(front_buf) != 0 && len(t.first_buf) == 0 {
-							t.first_buf = t.first_buf[:0]
-							t.first_buf = append(t.first_buf, front_buf...)
-							// fmt.Println("write front_buf")
-							// t.Stream_msg.PushLock_tag(`data`, t.first_buf)
+
+						if len(frontBuf) != 0 {
+							t.first_buf = frontBuf
 							t.msg.Push_tag(`load`, t)
 						}
+
 						if keyframe.Size() != 0 {
-							if len(t.first_buf) == 0 {
-								if useInterFlvHeader {
-									switch v.Codec {
-									case "hevc":
-										t.log.L(`W: `, `flv未接收到起始段,使用内置头`)
-										t.first_buf = t.first_buf[:0]
-										t.first_buf = append(t.first_buf, flvHeaderHevc...)
-										t.msg.Push_tag(`load`, t)
-									case "avc":
-										t.log.L(`W: `, `flv未接收到起始段,使用内置头`)
-										t.first_buf = t.first_buf[:0]
-										t.first_buf = append(t.first_buf, flvHeader...)
-										t.msg.Push_tag(`load`, t)
-									default:
-									}
-								}
-								if len(t.first_buf) == 0 {
-									t.log.L(`W: `, `flv未接收到起始段`)
-									pctx.PutVal(cancelC, &errCtx, errors.New(`flv未接收到起始段`))
-									break
-								}
-							}
+							// 存在有效数据
+							leastReadUnix.Store(time.Now().Unix())
+
 							buf, unlock := keyframe.GetPureBufRLock()
 							t.bootBufPush(buf)
 							t.Stream_msg.PushLock_tag(`data`, buf)
 							unlock()
+
 							keyframe.Reset()
 							t.frameCount += 1
 							t.msg.Push_tag(`keyFrame`, t)
+						} else {
+							bufSize += humanize.KByte * 50
+							if bufSize > humanize.MByte*10 {
+								t.log.L(`E: `, `缓冲池过大`)
+								pctx.PutVal(cancelC, &errCtx, errors.New("缓冲池过大"))
+								break
+							}
 						}
-						if last_available_offset > 1 {
-							// fmt.Println("write Sync")
-							_ = buff.RemoveFront(last_available_offset - 1)
+
+						if dropOffset > 0 {
+							_ = buff.RemoveFront(dropOffset)
 						}
 					}
 				}
