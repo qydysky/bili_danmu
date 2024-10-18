@@ -44,12 +44,6 @@ import (
 	pweb "github.com/qydysky/part/web"
 )
 
-//go:embed flvHeaders/flvHeader
-var flvHeader []byte
-
-//go:embed flvHeaders/flvHeaderHevc
-var flvHeaderHevc []byte
-
 const (
 	defaultStartCount uint = 3 //直播流接收n帧才保存,默认值
 )
