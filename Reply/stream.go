@@ -290,6 +290,50 @@ func (t *M4SStream) fetchCheckStream() bool {
 		}
 	}
 
+	// 直播流仅类型
+	if v, ok := t.common.K_v.LoadV("直播流仅类型").(bool); ok && v {
+		// 期望类型
+		if vt, ok := t.common.K_v.LoadV(`直播流类型`).(string); ok {
+			var (
+				pass   bool
+				cuType string
+				cuCode string
+			)
+
+			if strings.Contains(t.common.Live[0].Codec, `hevc`) {
+				cuCode = `hevc`
+			} else if strings.Contains(t.common.Live[0].Codec, `avc`) {
+				cuCode = `avc`
+			} else {
+				cuCode = `unknow`
+			}
+
+			if strings.Contains(t.common.Live[0].Url, `m3u8`) {
+				cuType = `m3u8`
+			} else if strings.Contains(t.common.Live[0].Url, `flv`) {
+				cuType = `flv`
+			} else {
+				cuType = `unknow`
+			}
+
+			switch vt {
+			case `fmp4H`:
+				pass = cuType == `m3u8` && cuCode == `hevc`
+			case `fmp4`:
+				pass = cuType == `m3u8` && cuCode == `avc`
+			case `flvH`:
+				pass = cuType == `flv` && cuCode == `hevc`
+			case `flv`:
+				pass = cuType == `flv` && cuCode == `avc`
+			}
+
+			if !pass {
+				_log.L(`W: `, `仅类型true,当前类型`, cuType, cuCode)
+				return false
+			}
+		}
+	}
+
 	// 保存流类型
 	if strings.Contains(t.common.Live[0].Url, `m3u8`) {
 		t.stream_type = "mp4"
