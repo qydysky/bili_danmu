@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"os"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -390,6 +391,18 @@ func (t *Common) Init() *Common {
 			fmt.Println(string(pri))
 			fmt.Println("请复制以上公私钥并另存为文件,可以在cookie加密公钥、cookie解密私钥中使用")
 			os.Exit(0)
+		}
+	}
+
+	// load from env
+	if tmp := os.Getenv("ckv"); *ckv == "" && tmp != "" {
+		fmt.Println("加载环境变量ckv:", tmp)
+		*ckv = tmp
+	}
+	if tmp := os.Getenv("r"); *roomIdP == 0 && tmp != "" {
+		fmt.Println("加载环境变量r:", tmp)
+		if r, e := strconv.Atoi(tmp); e == nil {
+			*roomIdP = r
 		}
 	}
 
