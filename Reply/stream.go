@@ -917,6 +917,9 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 						}
 
 						if keyframe.Size() != 0 {
+							if l := leastReadUnix.Load(); l > 0 && time.Now().Unix()-l > readTO-5 {
+								t.log.L(`W: `, fmt.Sprintf("flv断流超时s(%d)或许应该大于%d", readTO, (time.Now().Unix()-l+5)))
+							}
 							// 存在有效数据
 							leastReadUnix.Store(time.Now().Unix())
 

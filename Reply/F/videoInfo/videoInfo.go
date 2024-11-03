@@ -38,6 +38,7 @@ type Paf struct {
 	CurrentSavePath string `json:"-"`
 	Format          string `json:"format"`
 	StartLiveT      string `json:"startLiveT"`
+	OnlinesPerMin   []int  `json:"onlinesPerMin"`
 }
 
 func save(ctx context.Context, i Info) (*Paf, error) {
@@ -60,6 +61,8 @@ func save(ctx context.Context, i Info) (*Paf, error) {
 				}
 				return
 			case <-time.After(time.Minute):
+				infop.OnlinesPerMin = append(infop.OnlinesPerMin, info.Common().OnlineNum)
+
 				if infop.Name != info.Common().Title {
 					infop.Name = info.Common().Title
 					if e := _save(infop); e != nil {
@@ -138,6 +141,7 @@ func _newPaf(common *c.Common, savePath, streamType string) *Paf {
 		Path:            path.Base(savePath),
 		CurrentSavePath: savePath,
 		Format:          streamType,
+		OnlinesPerMin:   []int{common.OnlineNum},
 		StartLiveT:      common.Live_Start_Time.Format(time.DateTime),
 	}
 }
