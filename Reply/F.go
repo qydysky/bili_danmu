@@ -1499,13 +1499,13 @@ func init() {
 
 					if duration != 0 {
 						if strings.HasSuffix(v, "flv") {
-							w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=\"%s.%d.mp4\"", qref, time.Now().Unix()))
+							w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=\"%s.%d.flv\"", qref, time.Now().Unix()))
 							if e := NewFlvDecoder().Cut(f, startT, duration, w); e != nil && !errors.Is(e, io.EOF) {
 								flog.L(`E: `, e)
 							}
 						}
 						if strings.HasSuffix(v, "mp4") {
-							w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=\"%s.%d.flv\"", qref, time.Now().Unix()))
+							w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=\"%s.%d.mp4\"", qref, time.Now().Unix()))
 							if e := NewFmp4Decoder().Cut(f, startT, duration, w); e != nil && !errors.Is(e, io.EOF) {
 								flog.L(`E: `, e)
 							}
