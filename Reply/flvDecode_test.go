@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"io"
 	"testing"
+	"time"
 
 	"github.com/dustin/go-humanize"
+	perrors "github.com/qydysky/part/errors"
 	file "github.com/qydysky/part/file"
 	slice "github.com/qydysky/part/slice"
 )
@@ -47,4 +49,33 @@ func Test_FLVdeal(t *testing.T) {
 		_ = buff.RemoveFront(last_available_offset)
 	}
 	t.Log("max", humanize.Bytes(uint64(max)))
+}
+
+func _Test_FLVCut(t *testing.T) {
+
+	cutf := file.New("testdata/1.cut.flv", 0, false)
+	defer cutf.Close()
+	cutf.Delete()
+
+	f := file.New("testdata/1.flv", 0, false)
+	defer f.Close()
+
+	if f.IsDir() || !f.IsExist() {
+		t.Fatal("file not support")
+	}
+
+	e := NewFlvDecoder().Cut(f, time.Second*10, time.Second*20, cutf.File())
+	if perrors.Catch(e, "Read") {
+		t.Log("err Read", e)
+	}
+	if perrors.Catch(e, "InitFlv") {
+		t.Log("err InitFlv", e)
+	}
+	if perrors.Catch(e, "skip") {
+		t.Log("err skip", e)
+	}
+	if perrors.Catch(e, "cutW") {
+		t.Log("err cutW", e)
+	}
+	t.Log(e)
 }

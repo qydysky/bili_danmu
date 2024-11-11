@@ -74,6 +74,57 @@
 ### 说明
 本项目使用github action自动构建，构建过程详见[yml](https://github.com/qydysky/bili_danmu/blob/master/.github/workflows/go.yml)
 
+#### 从录播文件获取指定时间、指定时长的切片视频
+当请求`http://{Web服务地址}{直播Web服务路径}stream/ref={录播文件夹名}&st={起始时间}&dur={片段时长}`时，将返回从录播文件的切片视频(>v0.14.21)
+
+切片将从大于`{起始时间}`的关键帧开始，`{片段时长}`之后的关键帧结束，故大多数情况不能获得精确时间的切片视频
+
+其中`dur`为空时，将返回全部时长。`st`参数可以为空或不传，此时从录播文件起始点开始。
+
+`{起始时间}`、`{片段时长}`格式使用[time.ParseDuration](https://pkg.go.dev/time#ParseDuration)进行转换。例：`1m`为1分钟、`1h2m`为1小时2分。
+
+注意：当配置`直播流回放连接检查`启用时（默认不启用），你需要配置`直播流回放连接检查忽略key`(>v0.14.21)以避免检查，url加上参数`&key={配置的key}`。
+
+例子：
+
+```json
+{
+  "Web服务地址":"0.0.0.0:11000",
+  "直播Web服务路径":"/web/",
+  "直播流回放连接检查": 10,
+  "直播流回放连接检查忽略key-help": "字符串数组，默认空，空字符串将忽略，当不为空时，将不会定时检查指定key值的请求",
+  "直播流回放连接检查忽略key": ["cut"],
+}
+```
+
+```
+curl -v "http://192.168.31.230:20000/web/stream?ref=2024_11_04-01_29_47-47867-250-edd590-JdB&key=cut&dur=1m"
+*   Trying 192.168.31.230:20000...
+* Connected to 192.168.31.230 (192.168.31.230) port 20000
+> GET /web/stream?ref=2024_11_04-01_29_47-47867-250-edd590-JdB&key=cut&dur=1m HTTP/1.1
+> Host: 192.168.31.230:20000
+> User-Agent: curl/8.9.1
+> Accept: */*
+> 
+* Request completely sent off
+< HTTP/1.1 200 OK
+< Access-Control-Allow-Credentials: true
+< Access-Control-Allow-Headers: *
+< Access-Control-Allow-Methods: POST, GET, OPTIONS
+< Access-Control-Allow-Origin: *
+< Connection: keep-alive
+< Content-Disposition: inline; filename="2024_11_04-01_29_47-47867-250-edd590-JdB.1731342591.mp4"
+< Content-Transfer-Encoding: binary
+< Content-Type: flv-application/octet-stream
+< Date: Mon, 11 Nov 2024 16:29:51 GMT
+< Transfer-Encoding: chunked
+< 
+Warning: Binary output can mess up your terminal. Use "--output -" to tell curl to output it to your terminal anyway, or consider "--output <FILE>" to save to a file.
+* client returned ERROR on write of 1004 bytes
+* Failed reading the chunked-encoded stream
+* closing connection #0
+```
+
 #### Web自定义响应头
 配置文件中添加配置项`Web自定义响应头`(>v0.14.19)。默认为空，当不为空时，将在所有响应中添加指定头。
 例子：

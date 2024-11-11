@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"time"
 
 	"github.com/dustin/go-humanize"
 	F "github.com/qydysky/bili_danmu/F"
@@ -400,6 +401,337 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 				}
 				return false, nil
 			}})
+	return
+}
+
+func (t *Fmp4Decoder) oneF(buf []byte, w ...io.Writer) (cuT float64, cu int, err error) {
+	if len(buf) > humanize.MByte*100 {
+		return 0, 0, ErrBufTooLarge
+	}
+	if len(t.traks) == 0 {
+		return 0, 0, ErrMisTraks
+	}
+	t.buf.Reset()
+
+	defer func() {
+		if err != nil {
+			cu = 0
+		}
+	}()
+
+	var (
+		haveKeyframe bool
+		bufModified  = t.buf.GetModified()
+		// maxSequenceNumber int //有时并不是单调增加
+		maxVT float64
+		maxAT float64
+
+		//get timeStamp
+		get_timeStamp = func(tfdt int) (ts timeStamp) {
+			switch buf[tfdt+8] {
+			case 0:
+				ts.data = buf[tfdt+16 : tfdt+20]
+				ts.timeStamp = int(F.Btoi32(buf, tfdt+16))
+			case 1:
+				ts.data = buf[tfdt+12 : tfdt+20]
+				ts.timeStamp = int(F.Btoi64(buf, tfdt+12))
+			}
+			return
+		}
+
+		//get track type
+		get_track_type = func(tfhd, tfdt int) (ts timeStamp, handlerType byte) {
+			track, ok := t.traks[int(F.Btoi(buf, tfhd+12, 4))]
+			if ok {
+				ts := get_timeStamp(tfdt)
+				// if track.firstTimeStamp == -1 {
+				// 	track.firstTimeStamp = ts.timeStamp
+				// }
+
+				// ts.firstTimeStamp = track.firstTimeStamp
+				ts.handlerType = track.handlerType
+				ts.timescale = track.timescale
+
+				// if ts.timeStamp > track.lastTimeStamp {
+				// 	track.lastTimeStamp = ts.timeStamp
+				// 	ts.resetTs()
+				// }
+
+				return ts, track.handlerType
+			}
+			return
+		}
+
+		//is SampleEntries error?
+		checkSampleEntries = func(trun, mdat int) error {
+			if buf[trun+11] == 'b' {
+				for i := trun + 24; i < mdat; i += 12 {
+					if F.Btoi(buf, i+4, 4) < 1000 {
+						return errors.New("find sample size less then 1000")
+					}
+				}
+			}
+			return nil
+		}
+
+		//is t error?
+		check_set_maxT = func(ts timeStamp, equal func(ts timeStamp) error, larger func(ts timeStamp) error) (err error) {
+			switch ts.handlerType {
+			case 'v':
+				if maxVT == 0 {
+					maxVT = ts.getT()
+				} else if maxVT == ts.getT() && equal != nil {
+					err = equal(ts)
+				} else if maxVT > ts.getT() && larger != nil {
+					err = larger(ts)
+				} else {
+					maxVT = ts.getT()
+				}
+			case 'a':
+				if maxAT == 0 {
+					maxAT = ts.getT()
+				} else if maxAT == ts.getT() && equal != nil {
+					err = equal(ts)
+				} else if maxAT > ts.getT() && larger != nil {
+					err = larger(ts)
+				} else {
+					maxAT = ts.getT()
+				}
+			default:
+			}
+			return
+		}
+	)
+
+	ies, e := decode(buf, "moof")
+	if e != nil {
+		return 0, 0, e
+	}
+
+	var ErrNormal = perrors.New("ErrNormal", "ErrNormal")
+
+	err = deals(ies,
+		[][]string{
+			{"moof", "mfhd", "traf", "tfhd", "tfdt", "trun", "mdat"},
+			{"moof", "mfhd", "traf", "tfhd", "tfdt", "trun", "traf", "tfhd", "tfdt", "trun", "mdat"}},
+		[]func(m []ie) (bool, error){
+			func(m []ie) (bool, error) {
+				var (
+					keyframeMoof = buf[m[5].i+20] == byte(0x02)
+					// moofSN       = int(F.Btoi(buf, m[1].i+12, 4))
+					video timeStamp
+				)
+
+				{
+					ts, handlerType := get_track_type(m[3].i, m[4].i)
+					if ts.handlerType == 'v' {
+						if e := checkSampleEntries(m[5].i, m[6].i); e != nil {
+							//skip
+							t.buf.Reset()
+							haveKeyframe = false
+							cu = m[0].i
+							return false, e
+						}
+					}
+					if handlerType == 'v' {
+						video = ts
+					}
+					if e := check_set_maxT(ts, func(_ timeStamp) error {
+						return errors.New("skip")
+					}, func(_ timeStamp) error {
+						t.buf.Reset()
+						haveKeyframe = false
+						cu = m[0].i
+						return errors.New("skip")
+					}); e != nil {
+						return false, e
+					}
+				}
+
+				// fmt.Println(ts.getT(), "frame0", keyframeMoof, t.buf.size(), m[0].i, m[6].n, m[6].e)
+
+				//deal frame
+				if keyframeMoof {
+					if v, e := t.buf.HadModified(bufModified); e == nil && v && !t.buf.IsEmpty() {
+						cu = m[0].i
+						cuT = video.getT()
+						if haveKeyframe && len(w) > 0 {
+							w[0].Write(t.buf.GetPureBuf())
+							return true, ErrNormal
+						}
+						t.buf.Reset()
+					}
+					haveKeyframe = true
+				} else if !haveKeyframe {
+					cu = m[6].e
+				}
+				if haveKeyframe {
+					if e := t.buf.Append(buf[m[0].i:m[6].e]); e != nil {
+						return false, e
+					}
+				}
+				return false, nil
+			},
+			func(m []ie) (bool, error) {
+				var (
+					keyframeMoof = buf[m[5].i+20] == byte(0x02) || buf[m[9].i+20] == byte(0x02)
+					// moofSN       = int(F.Btoi(buf, m[1].i+12, 4))
+					video timeStamp
+					audio timeStamp
+				)
+
+				// fmt.Println(moofSN, "frame1", keyframeMoof, t.buf.size(), m[0].i, m[10].n, m[10].e)
+
+				{
+					ts, handlerType := get_track_type(m[3].i, m[4].i)
+					if handlerType == 'v' {
+						if e := checkSampleEntries(m[5].i, m[6].i); e != nil {
+							//skip
+							t.buf.Reset()
+							haveKeyframe = false
+							cu = m[0].i
+							return false, e
+						}
+					}
+					switch handlerType {
+					case 'v':
+						video = ts
+					case 's':
+						audio = ts
+					}
+					if e := check_set_maxT(ts, func(_ timeStamp) error {
+						return errors.New("skip")
+					}, func(_ timeStamp) error {
+						t.buf.Reset()
+						haveKeyframe = false
+						cu = m[0].i
+						return errors.New("skip")
+					}); e != nil {
+						return false, e
+					}
+				}
+				{
+					ts, handlerType := get_track_type(m[7].i, m[8].i)
+					if handlerType == 'v' {
+						if e := checkSampleEntries(m[9].i, m[10].i); e != nil {
+							//skip
+							t.buf.Reset()
+							haveKeyframe = false
+							cu = m[0].i
+							return false, e
+						}
+					}
+					switch handlerType {
+					case 'v':
+						video = ts
+					case 's':
+						audio = ts
+					}
+					if e := check_set_maxT(ts, func(_ timeStamp) error {
+						return errors.New("skip")
+					}, func(_ timeStamp) error {
+						t.buf.Reset()
+						haveKeyframe = false
+						cu = m[0].i
+						return errors.New("skip")
+					}); e != nil {
+						return false, e
+					}
+				}
+
+				//sync audio timeStamp
+				if t.AVTDiff <= 0.1 {
+					t.AVTDiff = 0.1
+				}
+				if diff := math.Abs(video.getT() - audio.getT()); diff > t.AVTDiff {
+					return false, fmt.Errorf("时间戳不匹配 %v %v (或许应调整fmp4音视频时间戳容差s>%.2f)", video.timeStamp, audio.timeStamp, diff)
+					// copy(video.data, F.Itob64(int64(audio.getT()*float64(video.timescale))))
+				}
+
+				//deal frame
+				if keyframeMoof {
+					if v, e := t.buf.HadModified(bufModified); e == nil && v && !t.buf.IsEmpty() {
+						cu = m[0].i
+						cuT = video.getT()
+						if haveKeyframe && len(w) > 0 {
+							w[0].Write(t.buf.GetPureBuf())
+							return true, ErrNormal
+						}
+						t.buf.Reset()
+					}
+					haveKeyframe = true
+				} else if !haveKeyframe {
+					cu = m[10].e
+				}
+				if haveKeyframe {
+					if e := t.buf.Append(buf[m[0].i:m[10].e]); e != nil {
+						return false, e
+					}
+				}
+				return false, nil
+			},
+		},
+	)
+
+	if errors.Is(err, ErrNormal) {
+		err = nil
+	}
+
+	return
+}
+
+func (t *Fmp4Decoder) Cut(reader io.Reader, startT, duration time.Duration, w io.Writer) (err error) {
+	buf := make([]byte, humanize.MByte)
+	buff := slice.New[byte](10 * humanize.MByte)
+	init := false
+	skiped := false
+	startTM := startT.Seconds()
+	durationM := duration.Seconds()
+	firstFT := -1.0
+	for c := 0; err == nil; c++ {
+		n, e := reader.Read(buf)
+		if n == 0 && errors.Is(e, io.EOF) {
+			return io.EOF
+		}
+		err = buff.Append(buf[:n])
+
+		if !init {
+			if frontBuf, e := t.Init_fmp4(buf); e != nil {
+				return perrors.New("Init_fmp4", e.Error())
+			} else {
+				if len(frontBuf) == 0 {
+					continue
+				} else {
+					init = true
+					w.Write(frontBuf)
+				}
+			}
+		} else if !skiped {
+			if dropT, dropOffset, e := t.oneF(buff.GetPureBuf()); e != nil {
+				return perrors.New("skip", e.Error())
+			} else {
+				if dropOffset != 0 {
+					_ = buff.RemoveFront(dropOffset)
+				}
+				if firstFT == -1 {
+					firstFT = dropT
+				} else if startTM < dropT-firstFT {
+					skiped = true
+				}
+			}
+		} else {
+			if dropT, dropOffset, e := t.oneF(buff.GetPureBuf(), w); e != nil {
+				return perrors.New("w", e.Error())
+			} else {
+				if dropOffset != 0 {
+					_ = buff.RemoveFront(dropOffset)
+				}
+				if durationM+startTM < dropT-firstFT {
+					return
+				}
+			}
+		}
+	}
 	return
 }
 

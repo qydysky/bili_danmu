@@ -34,7 +34,7 @@ func TestSaveDanmuToDB(t *testing.T) {
 		t.Fatal(e)
 	} else {
 		tx := psql.BeginTx[any](db, pctx.GenTOCtx(time.Second*5))
-		tx.Do(psql.SqlFunc[any]{Query: "select msg as Msg from danmu"})
+		tx.Do(psql.SqlFunc[any]{Sql: "select msg as Msg from danmu"})
 		tx.AfterQF(func(_ *any, rows *sql.Rows, e *error) {
 			type row struct {
 				Msg string

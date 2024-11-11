@@ -1370,11 +1370,27 @@ func init() {
 				return
 			}
 
-			if e := expirer.LoopCheck(r.Context(), r.URL.Query().Get("key"), func(key string, e error) {
-				_ = c.C.SerF.GetConn(r).Close()
-			}); e != nil {
-				w.WriteHeader(http.StatusTooManyRequests)
-				return
+			// 检查key
+			{
+				var checkKey = true
+
+				if v, ok := c.C.K_v.LoadV(`直播流回放连接检查忽略key`).([]any); ok && len(v) != 0 {
+					for i := 0; i < len(v); i++ {
+						if s, ok := v[i].(string); ok && s != "" && r.URL.Query().Get("key") == s {
+							checkKey = false
+							break
+						}
+					}
+				}
+
+				if checkKey {
+					if e := expirer.LoopCheck(r.Context(), r.URL.Query().Get("key"), func(key string, e error) {
+						_ = c.C.SerF.GetConn(r).Close()
+					}); e != nil {
+						w.WriteHeader(http.StatusTooManyRequests)
+						return
+					}
+				}
 			}
 
 			//header
@@ -1385,9 +1401,14 @@ func init() {
 			w.Header().Set("Connection", "keep-alive")
 			w.Header().Set("Content-Transfer-Encoding", "binary")
 
-			var rpath string
+			var (
+				rpath       string
+				qref        = r.URL.Query().Get("ref")
+				startT, _   = time.ParseDuration(r.URL.Query().Get("st"))
+				duration, _ = time.ParseDuration(r.URL.Query().Get("dur"))
+			)
 
-			if qref := r.URL.Query().Get("ref"); rpath == "" && qref != "" {
+			if rpath == "" && qref != "" {
 				rpath = "/" + qref + "/"
 			}
 
@@ -1476,7 +1497,20 @@ func init() {
 					ts := time.Now()
 					defer func() { flog.L(`T: `, r.RemoteAddr, `断开录播`, time.Since(ts)) }()
 
-					if e := f.CopyToIoWriter(w, pio.CopyConfig{BytePerSec: speed}); e != nil {
+					if duration != 0 {
+						if strings.HasSuffix(v, "flv") {
+							w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=\"%s.%d.mp4\"", qref, time.Now().Unix()))
+							if e := NewFlvDecoder().Cut(f, startT, duration, w); e != nil && !errors.Is(e, io.EOF) {
+								flog.L(`E: `, e)
+							}
+						}
+						if strings.HasSuffix(v, "mp4") {
+							w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=\"%s.%d.flv\"", qref, time.Now().Unix()))
+							if e := NewFmp4Decoder().Cut(f, startT, duration, w); e != nil && !errors.Is(e, io.EOF) {
+								flog.L(`E: `, e)
+							}
+						}
+					} else if e := f.CopyToIoWriter(w, pio.CopyConfig{BytePerSec: speed}); e != nil {
 						flog.L(`E: `, e)
 					}
 					// }
@@ -1778,7 +1812,7 @@ func (t *SaveDanmuToDB) init(c *c.Common) {
 				t.db = db
 				if createok {
 					tx := psql.BeginTx[any](db, pctx.GenTOCtx(time.Second*5))
-					tx.Do(psql.SqlFunc[any]{Query: create, SkipSqlErr: true})
+					tx.Do(psql.SqlFunc[any]{Sql: create, SkipSqlErr: true})
 					if _, e := tx.Fin(); e != nil {
 						c.Log.Base_add("保存弹幕至db").L(`E: `, e)
 						return
@@ -1813,7 +1847,7 @@ func (t *SaveDanmuToDB) danmu(item Danmu_item) {
 		}
 
 		tx := psql.BeginTx[any](t.db, pctx.GenTOCtx(time.Second*5))
-		tx.DoPlaceHolder(psql.SqlFunc[any]{Query: t.insert}, &DanmuI{
+		tx.DoPlaceHolder(psql.SqlFunc[any]{Sql: t.insert}, &DanmuI{
 			Date:   time.Now().Format(time.DateTime),
 			Unix:   time.Now().Unix(),
 			Msg:    item.msg,

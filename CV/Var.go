@@ -629,7 +629,7 @@ func (t *Common) Init() *Common {
 				if createok {
 					tx := psql.BeginTx[any](db, pctx.GenTOCtx(time.Second*5))
 					tx.Do(psql.SqlFunc[any]{
-						Query:      create,
+						Sql:        create,
 						SkipSqlErr: true,
 					})
 					if _, e := tx.Fin(); e != nil {

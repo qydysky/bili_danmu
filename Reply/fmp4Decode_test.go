@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"io"
 	"testing"
+	"time"
 
 	"github.com/dustin/go-humanize"
+	perrors "github.com/qydysky/part/errors"
 	file "github.com/qydysky/part/file"
 	slice "github.com/qydysky/part/slice"
 )
@@ -59,4 +61,33 @@ func Test_deal(t *testing.T) {
 		_ = buff.RemoveFront(last_available_offset)
 	}
 	t.Log("max", humanize.Bytes(uint64(max)))
+}
+
+func _Test_Mp4Cut(t *testing.T) {
+
+	cutf := file.New("testdata/1.cut.mp4", 0, false)
+	defer cutf.Close()
+	cutf.Delete()
+
+	f := file.New("testdata/1.mp4", 0, false)
+	defer f.Close()
+
+	if f.IsDir() || !f.IsExist() {
+		t.Fatal("file not support")
+	}
+
+	e := NewFmp4Decoder().Cut(f, time.Second*10, time.Second*20, cutf.File())
+	if perrors.Catch(e, "Read") {
+		t.Log("err Read", e)
+	}
+	if perrors.Catch(e, "Init_fmp4") {
+		t.Log("err Init_fmp4", e)
+	}
+	if perrors.Catch(e, "skip") {
+		t.Log("err skip", e)
+	}
+	if perrors.Catch(e, "cutW") {
+		t.Log("err cutW", e)
+	}
+	t.Log(e)
 }
