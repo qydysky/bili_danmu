@@ -74,7 +74,7 @@
 ### 说明
 本项目使用github action自动构建，构建过程详见[yml](https://github.com/qydysky/bili_danmu/blob/master/.github/workflows/go.yml)
 
-#### 从录播文件获取指定时间、指定时长的切片视频
+#### 获取视频切片
 当请求`http://{Web服务地址}{直播Web服务路径}stream/ref={录播文件夹名}&st={起始时间}&dur={片段时长}`时，将返回从录播文件的切片视频(>v0.14.21)
 
 切片将从大于`{起始时间}`的关键帧开始，`{片段时长}`之后的关键帧结束，故大多数情况不能获得精确时间的切片视频
