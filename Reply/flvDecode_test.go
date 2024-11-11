@@ -51,17 +51,17 @@ func Test_FLVdeal(t *testing.T) {
 	t.Log("max", humanize.Bytes(uint64(max)))
 }
 
-func _Test_FLVCut(t *testing.T) {
+func Test_FLVCut(t *testing.T) {
 
 	cutf := file.New("testdata/1.cut.flv", 0, false)
 	defer cutf.Close()
-	cutf.Delete()
+	_ = cutf.Delete()
 
 	f := file.New("testdata/1.flv", 0, false)
 	defer f.Close()
 
 	if f.IsDir() || !f.IsExist() {
-		t.Fatal("file not support")
+		t.Log("test file not exist")
 	}
 
 	e := NewFlvDecoder().Cut(f, time.Second*10, time.Second*20, cutf.File())

@@ -556,7 +556,7 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...io.Writer) (cuT float64, cu int, err
 						cu = m[0].i
 						cuT = video.getT()
 						if haveKeyframe && len(w) > 0 {
-							w[0].Write(t.buf.GetPureBuf())
+							_, err = w[0].Write(t.buf.GetPureBuf())
 							return true, ErrNormal
 						}
 						t.buf.Reset()
@@ -654,7 +654,7 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...io.Writer) (cuT float64, cu int, err
 						cu = m[0].i
 						cuT = video.getT()
 						if haveKeyframe && len(w) > 0 {
-							w[0].Write(t.buf.GetPureBuf())
+							_, err = w[0].Write(t.buf.GetPureBuf())
 							return true, ErrNormal
 						}
 						t.buf.Reset()
@@ -703,7 +703,7 @@ func (t *Fmp4Decoder) Cut(reader io.Reader, startT, duration time.Duration, w io
 					continue
 				} else {
 					init = true
-					w.Write(frontBuf)
+					_, err = w.Write(frontBuf)
 				}
 			}
 		} else if !skiped {

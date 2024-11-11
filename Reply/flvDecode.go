@@ -264,7 +264,7 @@ func (t *FlvDecoder) oneF(buf []byte, w ...io.Writer) (dropT int, dropOffset int
 			if keyframeOp >= 0 {
 				dropOffset = bufOffset
 				if len(w) > 0 {
-					w[0].Write(buf[keyframeOp:bufOffset])
+					_, err = w[0].Write(buf[keyframeOp:bufOffset])
 				}
 				return
 			}
@@ -301,7 +301,7 @@ func (t *FlvDecoder) Cut(reader io.Reader, startT, duration time.Duration, w io.
 				if len(frontBuf) == 0 {
 					continue
 				} else {
-					w.Write(frontBuf)
+					_, err = w.Write(frontBuf)
 				}
 			}
 		} else if !skiped {
