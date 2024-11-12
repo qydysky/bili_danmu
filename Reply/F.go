@@ -1221,7 +1221,10 @@ func init() {
 				w.WriteHeader(http.StatusServiceUnavailable)
 				flog.L(`W: `, `直播流保存位置无效`)
 				return
-			} else if qref != `now` {
+			} else if qref == `now` {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte("[]"))
+			} else {
 				rpath := "/" + qref + "/"
 				if strings.HasSuffix(v, "/") || strings.HasSuffix(v, "\\") {
 					v += rpath[1:]
@@ -1240,8 +1243,6 @@ func init() {
 					flog.L(`W: `, "获取弹幕统计", e)
 					return
 				}
-			} else {
-				w.WriteHeader(http.StatusNotFound)
 			}
 		})
 
@@ -1306,7 +1307,7 @@ func init() {
 							if currentStreamO != nil &&
 								currentStreamO.Common().Liveing &&
 								strings.Contains(currentStreamO.GetSavePath(), filePath.Path) {
-								filePath.Name = "Now:" + filePath.Name
+								filePath.Name = "Now: " + filePath.Name
 								filePath.Path = "now"
 							}
 							filePaths = append(filePaths, filePath)
