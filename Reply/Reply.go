@@ -14,6 +14,7 @@ import (
 
 	c "github.com/qydysky/bili_danmu/CV"
 	F "github.com/qydysky/bili_danmu/F"
+	replyFunc "github.com/qydysky/bili_danmu/Reply/F"
 	danmuemotes "github.com/qydysky/bili_danmu/Reply/F/danmuEmotes"
 	"github.com/qydysky/bili_danmu/Reply/F/danmuReLiveTriger"
 	"github.com/qydysky/bili_danmu/Reply/F/liveOver"
@@ -1314,6 +1315,8 @@ func (t replyF) danmu(s string) {
 	}
 
 	{ // 附加功能 弹幕机 封禁 弹幕合并
+		// 弹幕统计
+		replyFunc.DanmuCountPerMin.Do(item.roomid)
 		// 保存弹幕至db
 		saveDanmuToDB.init(t.Common)
 		saveDanmuToDB.danmu(item)

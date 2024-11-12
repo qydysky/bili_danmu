@@ -75,7 +75,7 @@
 本项目使用github action自动构建，构建过程详见[yml](https://github.com/qydysky/bili_danmu/blob/master/.github/workflows/go.yml)
 
 #### 获取视频切片
-当请求`http://{Web服务地址}{直播Web服务路径}stream/ref={录播文件夹名}&st={起始时间}&dur={片段时长}`时，将返回从录播文件的切片视频(>v0.14.21)
+当请求`http://{Web服务地址}{直播Web服务路径}stream?ref={录播文件夹名}&st={起始时间}&dur={片段时长}`时，将返回从录播文件的切片视频(>v0.14.21)
 
 切片将从大于`{起始时间}`的关键帧开始，`{片段时长}`之后的关键帧结束，故大多数情况不能获得精确时间的切片视频
 
@@ -117,7 +117,7 @@ curl -v "http://192.168.31.230:20000/web/stream?ref=2024_11_04-01_29_47-47867-25
 < Connection: keep-alive
 < Content-Disposition: inline; filename="2024_11_04-01_29_47-47867-250-edd590-JdB.1731342591.mp4"
 < Content-Transfer-Encoding: binary
-< Content-Type: flv-application/octet-stream
+< Content-Type: video/mp4
 < Date: Mon, 11 Nov 2024 16:29:51 GMT
 < Transfer-Encoding: chunked
 < 

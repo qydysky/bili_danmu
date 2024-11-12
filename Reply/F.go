@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/http/pprof"
 	"net/url"
+	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -29,7 +30,7 @@ import (
 	"github.com/dustin/go-humanize"
 	c "github.com/qydysky/bili_danmu/CV"
 	F "github.com/qydysky/bili_danmu/F"
-	_ "github.com/qydysky/bili_danmu/Reply/F"
+	replyFunc "github.com/qydysky/bili_danmu/Reply/F"
 	danmuemotes "github.com/qydysky/bili_danmu/Reply/F/danmuEmotes"
 	"github.com/qydysky/bili_danmu/Reply/F/danmuXml"
 	"github.com/qydysky/bili_danmu/Reply/F/keepMedalLight"
@@ -37,6 +38,7 @@ import (
 	send "github.com/qydysky/bili_danmu/Send"
 
 	p "github.com/qydysky/part"
+	compress "github.com/qydysky/part/compress"
 	pctx "github.com/qydysky/part/ctx"
 	file "github.com/qydysky/part/file"
 	fctrl "github.com/qydysky/part/funcCtrl"
@@ -1179,11 +1181,13 @@ func init() {
 				p += "index.html"
 			}
 			if strings.HasSuffix(p, ".js") {
-				w.Header().Set("content-type", "application/javascript")
+				w.Header().Set("Content-Type", "application/javascript")
+			} else if strings.HasSuffix(p, ".map") {
+				w.Header().Set("Content-Type", "application/json")
 			} else if strings.HasSuffix(p, ".css") {
-				w.Header().Set("content-type", "text/css")
+				w.Header().Set("Content-Type", "text/css")
 			} else if strings.HasSuffix(p, ".html") {
-				w.Header().Set("content-type", "text/html")
+				w.Header().Set("Content-Type", "text/html")
 			}
 
 			f := file.New("html/streamList/"+p, 0, true)
@@ -1197,8 +1201,48 @@ func init() {
 				return
 			}
 
-			b, _ := f.ReadAll(humanize.KByte, humanize.MByte)
+			b, _ := f.ReadAll(humanize.KByte, 10*humanize.MByte)
+			b, _ = compress.InGzip(b, 1)
+			w.Header().Set("Content-Encoding", "gzip")
 			_, _ = w.Write(b)
+		})
+
+		// 直播流文件弹幕统计api
+		c.C.SerF.Store(spath+"danmuCountPerMin", func(w http.ResponseWriter, r *http.Request) {
+			if c.DefaultHttpFunc(c.C, w, r, http.MethodGet) {
+				return
+			}
+			qref := r.URL.Query().Get("ref")
+			if qref == "" {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+			if v, ok := c.C.K_v.LoadV(`直播流保存位置`).(string); !ok || v == "" {
+				w.WriteHeader(http.StatusServiceUnavailable)
+				flog.L(`W: `, `直播流保存位置无效`)
+				return
+			} else if qref != `now` {
+				rpath := "/" + qref + "/"
+				if strings.HasSuffix(v, "/") || strings.HasSuffix(v, "\\") {
+					v += rpath[1:]
+				} else {
+					v += rpath
+				}
+				if rawPath, e := url.PathUnescape(v); e != nil {
+					w.WriteHeader(http.StatusServiceUnavailable)
+					flog.L(`I: `, "路径解码失败", v)
+					return
+				} else {
+					v = rawPath
+				}
+				if e := replyFunc.DanmuCountPerMin.GetRec(v, w); e != nil && !errors.Is(e, os.ErrNotExist) {
+					w.WriteHeader(http.StatusServiceUnavailable)
+					flog.L(`W: `, "获取弹幕统计", e)
+					return
+				}
+			} else {
+				w.WriteHeader(http.StatusNotFound)
+			}
 		})
 
 		// 直播流文件列表api
@@ -1408,15 +1452,12 @@ func init() {
 				duration, _ = time.ParseDuration(r.URL.Query().Get("dur"))
 			)
 
-			if rpath == "" && qref != "" {
-				rpath = "/" + qref + "/"
-			}
-
-			if rpath == "" {
+			if qref == "" {
 				w.Header().Set("Retry-After", "1")
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
+			rpath = "/" + qref + "/"
 
 			if rpath != `/now/` {
 				if v, ok := c.C.K_v.LoadV(`直播流保存位置`).(string); !ok || v == "" {

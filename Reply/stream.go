@@ -28,6 +28,7 @@ import (
 	c "github.com/qydysky/bili_danmu/CV"
 	F "github.com/qydysky/bili_danmu/F"
 
+	replyFunc "github.com/qydysky/bili_danmu/Reply/F"
 	videoInfo "github.com/qydysky/bili_danmu/Reply/F/videoInfo"
 	pctx "github.com/qydysky/part/ctx"
 	pe "github.com/qydysky/part/errors"
@@ -1440,8 +1441,9 @@ func (t *M4SStream) Start() bool {
 						l.L(`E: `, e)
 					}
 
-					go StartRecDanmu(contextC, ms.GetSavePath())                           //保存弹幕
-					go Ass_f(contextC, ms.GetSavePath(), ms.GetSavePath()+"0", time.Now()) //开始ass
+					go StartRecDanmu(contextC, ms.GetSavePath())                                    //保存弹幕
+					go Ass_f(contextC, ms.GetSavePath(), ms.GetSavePath()+"0", time.Now())          //开始ass
+					go replyFunc.DanmuCountPerMin.Rec(contextC, ms.common.Roomid, ms.GetSavePath()) //弹幕数量统计
 
 					startT := time.Now()
 					if e := ms.PusherToFile(contextC, ms.GetSavePath()+`0.`+ms.GetStreamType(), startf, stopf); e != nil {
