@@ -12935,18 +12935,20 @@ __webpack_require__.r(__webpack_exports__);
 
     console.log("init 31");
 
+    let para = new URL(window.location.href).searchParams;
+
     let player,
         flvPlayer,
         config = {
             container: '.artplayer-app',
-            url: "../stream?_=" + new Date().getTime()+"&ref="+new URL(window.location.href).searchParams.get("ref"),
+            url: "../stream?_=" + new Date().getTime()+"&ref="+para.get("ref")+"&st="+para.get("st")+"&dur="+para.get("dur"),
             title: "" + new Date().getTime(),
-            type: new URL(window.location.href).searchParams.get("format")||"flv",
+            type: para.get("format")||"flv",
             volume: 0.5,
             hotkey: true,
             isLive: true,
             muted: false,
-            autoplay: new URL(window.location.href).searchParams.get("ref")=="now",
+            autoplay: para.get("ref")=="now",
             autoMini: true,
             screenshot: true,
             setting: true,
@@ -13068,6 +13070,8 @@ __webpack_require__.r(__webpack_exports__);
      * ws 收发
      */
      function ws(player) {
+        let st = new URL(window.location.href).searchParams.get("st")
+        if(st)st=st.replace("m","")
         if (window["WebSocket"]) {
             var conn = new WebSocket("ws://" + window.location.host + window.location.pathname+"ws?ref="+new URL(window.location.href).searchParams.get("ref"));
             let interval_handle = undefined;
@@ -13110,8 +13114,9 @@ __webpack_require__.r(__webpack_exports__);
                     if(conn != undefined)conn.send("%S"+danmu.text);
                 });
 
+
                 if(!interval_handle)interval_handle = setInterval(()=>{
-                    if(conn && player && player.currentTime)conn.send(player.currentTime)
+                    if(conn && player && player.currentTime)conn.send(Number(st)*60+7+player.currentTime)
                 },3000);
             };
         }

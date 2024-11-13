@@ -68,7 +68,7 @@ func (t *danmuCountPerMin) Rec(ctx context.Context, rid int, savePath string) {
 			cpm = append(cpm, make([]int, cu+1-len(cpm))...)
 		}
 
-		if data, e := json.MarshalIndent(cpm, " ", " "); e != nil {
+		if data, e := json.MarshalIndent(cpm, "", " "); e != nil {
 			fmt.Println(e)
 		} else {
 			f := file.New(savePath+filename, 0, true)

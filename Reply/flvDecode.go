@@ -278,11 +278,13 @@ func (t *FlvDecoder) oneF(buf []byte, w ...io.Writer) (dropT int, dropOffset int
 }
 
 func (t *FlvDecoder) Cut(reader io.Reader, startT, duration time.Duration, w io.Writer) (err error) {
-	buf := make([]byte, humanize.MByte)
-	buff := slice.New[byte](10 * humanize.MByte)
+	bufSize := humanize.KByte * 1100
+	buf := make([]byte, humanize.KByte*500)
+	buff := slice.New[byte]()
 	skiped := false
 	startTM := startT.Milliseconds()
 	durationM := duration.Milliseconds()
+	blockD := time.Millisecond
 	firstFT := -1
 	for c := 0; err == nil; c++ {
 		n, e := reader.Read(buf)
@@ -290,13 +292,18 @@ func (t *FlvDecoder) Cut(reader io.Reader, startT, duration time.Duration, w io.
 			return io.EOF
 		}
 		err = buff.Append(buf[:n])
+		if buff.Size() < bufSize {
+			continue
+		}
 
 		if !t.init {
-			if frontBuf, dropOffset, e := t.InitFlv(buf); e != nil {
+			if frontBuf, dropOffset, e := t.InitFlv(buff.GetPureBuf()); e != nil {
 				return perrors.New("InitFlv", e.Error())
 			} else {
 				if dropOffset != 0 {
 					_ = buff.RemoveFront(dropOffset)
+				} else {
+					bufSize += bufSize * 50
 				}
 				if len(frontBuf) == 0 {
 					continue
@@ -310,10 +317,13 @@ func (t *FlvDecoder) Cut(reader io.Reader, startT, duration time.Duration, w io.
 			} else {
 				if dropOffset != 0 {
 					_ = buff.RemoveFront(dropOffset)
+				} else {
+					bufSize += bufSize * 50
 				}
 				if firstFT == -1 {
 					firstFT = dropT
 				} else if startTM < int64(dropT-firstFT) {
+					blockD = time.Millisecond * time.Duration(int64(dropT-firstFT)-startTM)
 					skiped = true
 				}
 			}
@@ -323,6 +333,12 @@ func (t *FlvDecoder) Cut(reader io.Reader, startT, duration time.Duration, w io.
 			} else {
 				if dropOffset != 0 {
 					_ = buff.RemoveFront(dropOffset)
+				} else {
+					bufSize += bufSize * 50
+				}
+				if blockD != time.Millisecond {
+					time.Sleep(blockD)
+					blockD = time.Millisecond
 				}
 				if durationM+startTM < int64(dropT-firstFT) {
 					return

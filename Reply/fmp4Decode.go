@@ -681,8 +681,9 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...io.Writer) (cuT float64, cu int, err
 }
 
 func (t *Fmp4Decoder) Cut(reader io.Reader, startT, duration time.Duration, w io.Writer) (err error) {
+	bufSize := humanize.KByte * 1100
 	buf := make([]byte, humanize.MByte)
-	buff := slice.New[byte](10 * humanize.MByte)
+	buff := slice.New[byte]()
 	init := false
 	skiped := false
 	startTM := startT.Seconds()
@@ -694,12 +695,16 @@ func (t *Fmp4Decoder) Cut(reader io.Reader, startT, duration time.Duration, w io
 			return io.EOF
 		}
 		err = buff.Append(buf[:n])
+		if buff.Size() < bufSize {
+			continue
+		}
 
 		if !init {
-			if frontBuf, e := t.Init_fmp4(buf); e != nil {
+			if frontBuf, e := t.Init_fmp4(buff.GetPureBuf()); e != nil {
 				return perrors.New("Init_fmp4", e.Error())
 			} else {
 				if len(frontBuf) == 0 {
+					bufSize += bufSize * 50
 					continue
 				} else {
 					init = true
@@ -712,6 +717,8 @@ func (t *Fmp4Decoder) Cut(reader io.Reader, startT, duration time.Duration, w io
 			} else {
 				if dropOffset != 0 {
 					_ = buff.RemoveFront(dropOffset)
+				} else {
+					bufSize += bufSize * 50
 				}
 				if firstFT == -1 {
 					firstFT = dropT
@@ -725,6 +732,8 @@ func (t *Fmp4Decoder) Cut(reader io.Reader, startT, duration time.Duration, w io
 			} else {
 				if dropOffset != 0 {
 					_ = buff.RemoveFront(dropOffset)
+				} else {
+					bufSize += bufSize * 50
 				}
 				if durationM+startTM < dropT-firstFT {
 					return

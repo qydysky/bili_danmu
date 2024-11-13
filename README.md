@@ -621,9 +621,13 @@ ass编码GB18030支持中文
 
 直接进入直播Web服务路径，`http://127.0.0.1:10000/web/`，将进入由[Vue](https://vuejs.org/)，[element-plus](https://element-plus.org/)创建的简易web目录。
 
+[https://github.com/qydysky/bili_danmu_streamList](https://github.com/qydysky/bili_danmu_streamList)
+
 ![](_Screenshot/Snipaste_2023-06-28_08-52-30.png)
 
 点击目录项，将进入由[artplayer](https://artplayer.org/)、[mpegts](https://github.com/xqq/mpegts.js)创建的简易回放界面
+
+[https://github.com/qydysky/bili_danmu_artplayer](https://github.com/qydysky/bili_danmu_artplayer)
 
 ![](_Screenshot/Snipaste_2023-02-15_22-13-40.png)
 

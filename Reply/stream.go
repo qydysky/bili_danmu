@@ -1424,6 +1424,7 @@ func (t *M4SStream) Start() bool {
 					l := ms.log.Base_add(`文件保存`)
 					startf := func(_ *M4SStream) error {
 						l.L(`T: `, `开始`)
+						go replyFunc.DanmuCountPerMin.Rec(contextC, ms.common.Roomid, ms.GetSavePath()) //弹幕数量统计
 						return nil
 					}
 					stopf := func(_ *M4SStream) error {
@@ -1441,9 +1442,8 @@ func (t *M4SStream) Start() bool {
 						l.L(`E: `, e)
 					}
 
-					go StartRecDanmu(contextC, ms.GetSavePath())                                    //保存弹幕
-					go Ass_f(contextC, ms.GetSavePath(), ms.GetSavePath()+"0", time.Now())          //开始ass
-					go replyFunc.DanmuCountPerMin.Rec(contextC, ms.common.Roomid, ms.GetSavePath()) //弹幕数量统计
+					go StartRecDanmu(contextC, ms.GetSavePath())                           //保存弹幕
+					go Ass_f(contextC, ms.GetSavePath(), ms.GetSavePath()+"0", time.Now()) //开始ass
 
 					startT := time.Now()
 					if e := ms.PusherToFile(contextC, ms.GetSavePath()+`0.`+ms.GetStreamType(), startf, stopf); e != nil {

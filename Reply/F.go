@@ -1542,13 +1542,21 @@ func init() {
 					if duration != 0 {
 						if strings.HasSuffix(v, "flv") {
 							w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=\"%s.%d.flv\"", qref, time.Now().Unix()))
-							if e := NewFlvDecoder().Cut(f, startT, duration, w); e != nil && !errors.Is(e, io.EOF) {
+							flvDecoder := NewFlvDecoder()
+							if v, ok := c.C.K_v.LoadV(`flv音视频时间戳容差ms`).(float64); ok && v > 100 {
+								flvDecoder.Diff = v
+							}
+							if e := flvDecoder.Cut(f, startT, duration, w); e != nil && !errors.Is(e, io.EOF) {
 								flog.L(`E: `, e)
 							}
 						}
 						if strings.HasSuffix(v, "mp4") {
 							w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=\"%s.%d.mp4\"", qref, time.Now().Unix()))
-							if e := NewFmp4Decoder().Cut(f, startT, duration, w); e != nil && !errors.Is(e, io.EOF) {
+							fmp4Decoder := NewFmp4Decoder()
+							if v, ok := c.C.K_v.LoadV(`fmp4音视频时间戳容差s`).(float64); ok && v > 0.1 {
+								fmp4Decoder.AVTDiff = v
+							}
+							if e := fmp4Decoder.Cut(f, startT, duration, w); e != nil && !errors.Is(e, io.EOF) {
 								flog.L(`E: `, e)
 							}
 						}
