@@ -12,10 +12,12 @@ import (
 	file "github.com/qydysky/part/file"
 	part "github.com/qydysky/part/io"
 	msgq "github.com/qydysky/part/msgq"
+	pweb "github.com/qydysky/part/web"
 )
 
 type TargetInterface interface {
-	GetRec(savePath string, w http.ResponseWriter) error
+	// will WriteHeader
+	GetRec(savePath string, r *http.Request, w http.ResponseWriter) error
 	Rec(ctx context.Context, roomid int, savePath string)
 	Do(roomid int)
 }
@@ -30,18 +32,33 @@ func init() {
 
 const filename = "danmuCountPerMin.json"
 
+var noFoundModT, _ = time.Parse(time.DateTime, "2006-01-02 15:04:05")
+
 type danmuCountPerMin struct {
 	m *msgq.MsgType[int]
 }
 
-func (t *danmuCountPerMin) GetRec(savePath string, w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/json")
+func (t *danmuCountPerMin) GetRec(savePath string, r *http.Request, w http.ResponseWriter) error {
 	f := file.New(savePath+filename, 0, true)
+
 	if f.IsDir() || !f.IsExist() {
+		if pweb.NotModified(r, w, noFoundModT) {
+			return nil
+		}
+		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte("[]"))
 		return os.ErrNotExist
 	}
-	return file.New(savePath+filename, 0, true).CopyToIoWriter(w, part.CopyConfig{})
+
+	if mod, e := f.GetFileModTimeT(); e != nil {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		return e
+	} else if pweb.NotModified(r, w, mod) {
+		return nil
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	return f.CopyToIoWriter(w, part.CopyConfig{})
 }
 
 func (t *danmuCountPerMin) Rec(ctx context.Context, rid int, savePath string) {

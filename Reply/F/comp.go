@@ -9,7 +9,8 @@ import (
 )
 
 var DanmuCountPerMin = comp.Get[interface {
-	GetRec(savePath string, w http.ResponseWriter) error
+	// will WriteHeader
+	GetRec(savePath string, r *http.Request, w http.ResponseWriter) error
 	Rec(ctx context.Context, roomid int, savePath string)
 	Do(roomid int)
 }](`danmuCountPerMin`)

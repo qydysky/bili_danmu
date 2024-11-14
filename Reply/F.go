@@ -1238,8 +1238,7 @@ func init() {
 				} else {
 					v = rawPath
 				}
-				if e := replyFunc.DanmuCountPerMin.GetRec(v, w); e != nil && !errors.Is(e, os.ErrNotExist) {
-					w.WriteHeader(http.StatusServiceUnavailable)
+				if e := replyFunc.DanmuCountPerMin.GetRec(v, r, w); e != nil && !errors.Is(e, os.ErrNotExist) {
 					flog.L(`W: `, "获取弹幕统计", e)
 					return
 				}
