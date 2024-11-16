@@ -1522,7 +1522,7 @@ func init() {
 						}
 					}
 
-					f := file.New(v, int64(rangeHeaderNum), false)
+					f := file.New(v, 0, false)
 					defer f.Close()
 
 					// 设置当前返回区间，并拷贝
@@ -1539,8 +1539,7 @@ func init() {
 					defer func() { flog.L(`T: `, r.RemoteAddr, `断开录播`, time.Since(ts)) }()
 
 					if duration != 0 {
-						// too fast copy with break js work
-						res := pio.WriterWithConfig(w, pio.CopyConfig{BytePerSec: speed})
+						res := pio.WriterWithConfig(w, pio.CopyConfig{BytePerSec: speed, SkipByte: rangeHeaderNum})
 
 						if strings.HasSuffix(v, "flv") {
 							w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=\"%s.%d.flv\"", qref, time.Now().Unix()))
@@ -1562,7 +1561,7 @@ func init() {
 								flog.L(`E: `, e)
 							}
 						}
-					} else if e := f.CopyToIoWriter(w, pio.CopyConfig{BytePerSec: speed}); e != nil {
+					} else if e := f.CopyToIoWriter(w, pio.CopyConfig{BytePerSec: speed, SkipByte: rangeHeaderNum}); e != nil {
 						flog.L(`E: `, e)
 					}
 					// }
