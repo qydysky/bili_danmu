@@ -201,7 +201,7 @@ func (t *FlvDecoder) SearchStreamTag(buf []byte, keyframe *slice.Buf[byte]) (dro
 	return
 }
 
-func (t *FlvDecoder) oneF(buf []byte, w ...io.Writer) (dropT int, dropOffset int, err error) {
+func (t *FlvDecoder) oneF(buf []byte, ifWrite func(t int) bool, w ...io.Writer) (dropOffset int, err error) {
 
 	if !t.init {
 		err = ErrNoInit
@@ -261,14 +261,13 @@ func (t *FlvDecoder) oneF(buf []byte, w ...io.Writer) (dropT int, dropOffset int
 		}
 
 		if buf[bufOffset] == videoTag && buf[bufOffset+11]&0xf0 == 0x10 { //key frame
-			if keyframeOp >= 0 {
+			if keyframeOp >= 0 && len(w) > 0 {
 				dropOffset = bufOffset
-				if len(w) > 0 {
+				if ifWrite(timeStamp) {
 					_, err = w[0].Write(buf[keyframeOp:bufOffset])
 				}
 				return
 			}
-			dropT = timeStamp
 			keyframeOp = bufOffset
 		}
 		bufOffset += tagSizeCheck + previouTagSize
@@ -281,12 +280,24 @@ func (t *FlvDecoder) Cut(reader io.Reader, startT, duration time.Duration, w io.
 	bufSize := humanize.KByte * 1100
 	buf := make([]byte, humanize.KByte*500)
 	buff := slice.New[byte]()
-	skiped := false
+	over := false
 	startTM := startT.Milliseconds()
 	durationM := duration.Milliseconds()
-	blockD := time.Millisecond
 	firstFT := -1
-	for c := 0; err == nil; c++ {
+
+	ifWriteF := func(t int) bool {
+		if firstFT == -1 {
+			firstFT = t
+		}
+		cu := int64(t - firstFT)
+		over = cu <= durationM+startTM
+		if startTM <= cu && over {
+			return true
+		}
+		return false
+	}
+
+	for c := 0; err == nil && !over; c++ {
 		n, e := reader.Read(buf)
 		if n == 0 && errors.Is(e, io.EOF) {
 			return io.EOF
@@ -303,7 +314,7 @@ func (t *FlvDecoder) Cut(reader io.Reader, startT, duration time.Duration, w io.
 				if dropOffset != 0 {
 					_ = buff.RemoveFront(dropOffset)
 				} else {
-					bufSize += bufSize * 50
+					bufSize *= 2
 				}
 				if len(frontBuf) == 0 {
 					continue
@@ -311,37 +322,14 @@ func (t *FlvDecoder) Cut(reader io.Reader, startT, duration time.Duration, w io.
 					_, err = w.Write(frontBuf)
 				}
 			}
-		} else if !skiped {
-			if dropT, dropOffset, e := t.oneF(buff.GetPureBuf()); e != nil {
+		} else {
+			if dropOffset, e := t.oneF(buff.GetPureBuf(), ifWriteF, w); e != nil {
 				return perrors.New("skip", e.Error())
 			} else {
 				if dropOffset != 0 {
 					_ = buff.RemoveFront(dropOffset)
 				} else {
-					bufSize += bufSize * 50
-				}
-				if firstFT == -1 {
-					firstFT = dropT
-				} else if startTM < int64(dropT-firstFT) {
-					blockD = time.Millisecond * time.Duration(int64(dropT-firstFT)-startTM)
-					skiped = true
-				}
-			}
-		} else {
-			if dropT, dropOffset, e := t.oneF(buff.GetPureBuf(), w); e != nil {
-				return perrors.New("w", e.Error())
-			} else {
-				if dropOffset != 0 {
-					_ = buff.RemoveFront(dropOffset)
-				} else {
-					bufSize += bufSize * 50
-				}
-				if blockD != time.Millisecond {
-					time.Sleep(blockD)
-					blockD = time.Millisecond
-				}
-				if durationM+startTM < int64(dropT-firstFT) {
-					return
+					bufSize *= 2
 				}
 			}
 		}

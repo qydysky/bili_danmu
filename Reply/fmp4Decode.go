@@ -404,12 +404,12 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 	return
 }
 
-func (t *Fmp4Decoder) oneF(buf []byte, w ...io.Writer) (cuT float64, cu int, err error) {
+func (t *Fmp4Decoder) oneF(buf []byte, ifWrite func(t float64) bool, w ...io.Writer) (cu int, err error) {
 	if len(buf) > humanize.MByte*100 {
-		return 0, 0, ErrBufTooLarge
+		return 0, ErrBufTooLarge
 	}
 	if len(t.traks) == 0 {
-		return 0, 0, ErrMisTraks
+		return 0, ErrMisTraks
 	}
 	t.buf.Reset()
 
@@ -505,7 +505,7 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...io.Writer) (cuT float64, cu int, err
 
 	ies, e := decode(buf, "moof")
 	if e != nil {
-		return 0, 0, e
+		return 0, e
 	}
 
 	var ErrNormal = perrors.New("ErrNormal", "ErrNormal")
@@ -554,9 +554,11 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...io.Writer) (cuT float64, cu int, err
 				if keyframeMoof {
 					if v, e := t.buf.HadModified(bufModified); e == nil && v && !t.buf.IsEmpty() {
 						cu = m[0].i
-						cuT = video.getT()
 						if haveKeyframe && len(w) > 0 {
-							_, err = w[0].Write(t.buf.GetPureBuf())
+							if ifWrite(video.getT()) {
+								_, err = w[0].Write(t.buf.GetPureBuf())
+							}
+							t.buf.Reset()
 							return true, ErrNormal
 						}
 						t.buf.Reset()
@@ -652,9 +654,10 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...io.Writer) (cuT float64, cu int, err
 				if keyframeMoof {
 					if v, e := t.buf.HadModified(bufModified); e == nil && v && !t.buf.IsEmpty() {
 						cu = m[0].i
-						cuT = video.getT()
 						if haveKeyframe && len(w) > 0 {
-							_, err = w[0].Write(t.buf.GetPureBuf())
+							if ifWrite(video.getT()) {
+								_, err = w[0].Write(t.buf.GetPureBuf())
+							}
 							return true, ErrNormal
 						}
 						t.buf.Reset()
@@ -685,11 +688,24 @@ func (t *Fmp4Decoder) Cut(reader io.Reader, startT, duration time.Duration, w io
 	buf := make([]byte, humanize.MByte)
 	buff := slice.New[byte]()
 	init := false
-	skiped := false
+	over := false
 	startTM := startT.Seconds()
 	durationM := duration.Seconds()
 	firstFT := -1.0
-	for c := 0; err == nil; c++ {
+
+	ifWriteF := func(t float64) bool {
+		if firstFT == -1 {
+			firstFT = t
+		}
+		cu := t - firstFT
+		over = cu <= durationM+startTM
+		if startTM <= cu && over {
+			return true
+		}
+		return false
+	}
+
+	for c := 0; err == nil && !over; c++ {
 		n, e := reader.Read(buf)
 		if n == 0 && errors.Is(e, io.EOF) {
 			return io.EOF
@@ -704,39 +720,21 @@ func (t *Fmp4Decoder) Cut(reader io.Reader, startT, duration time.Duration, w io
 				return perrors.New("Init_fmp4", e.Error())
 			} else {
 				if len(frontBuf) == 0 {
-					bufSize += bufSize * 50
+					bufSize *= 2
 					continue
 				} else {
 					init = true
 					_, err = w.Write(frontBuf)
 				}
 			}
-		} else if !skiped {
-			if dropT, dropOffset, e := t.oneF(buff.GetPureBuf()); e != nil {
-				return perrors.New("skip", e.Error())
-			} else {
-				if dropOffset != 0 {
-					_ = buff.RemoveFront(dropOffset)
-				} else {
-					bufSize += bufSize * 50
-				}
-				if firstFT == -1 {
-					firstFT = dropT
-				} else if startTM < dropT-firstFT {
-					skiped = true
-				}
-			}
 		} else {
-			if dropT, dropOffset, e := t.oneF(buff.GetPureBuf(), w); e != nil {
+			if dropOffset, e := t.oneF(buff.GetPureBuf(), ifWriteF, w); e != nil {
 				return perrors.New("w", e.Error())
 			} else {
 				if dropOffset != 0 {
 					_ = buff.RemoveFront(dropOffset)
 				} else {
-					bufSize += bufSize * 50
-				}
-				if durationM+startTM < dropT-firstFT {
-					return
+					bufSize *= 2
 				}
 			}
 		}
