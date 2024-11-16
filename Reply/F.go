@@ -1539,13 +1539,16 @@ func init() {
 					defer func() { flog.L(`T: `, r.RemoteAddr, `断开录播`, time.Since(ts)) }()
 
 					if duration != 0 {
+						// too fast copy with break js work
+						res := pio.WriterWithConfig(w, pio.CopyConfig{BytePerSec: speed})
+
 						if strings.HasSuffix(v, "flv") {
 							w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=\"%s.%d.flv\"", qref, time.Now().Unix()))
 							flvDecoder := NewFlvDecoder()
 							if v, ok := c.C.K_v.LoadV(`flv音视频时间戳容差ms`).(float64); ok && v > 100 {
 								flvDecoder.Diff = v
 							}
-							if e := flvDecoder.Cut(f, startT, duration, w); e != nil && !errors.Is(e, io.EOF) {
+							if e := flvDecoder.Cut(f, startT, duration, res); e != nil && !errors.Is(e, io.EOF) {
 								flog.L(`E: `, e)
 							}
 						}
@@ -1555,7 +1558,7 @@ func init() {
 							if v, ok := c.C.K_v.LoadV(`fmp4音视频时间戳容差s`).(float64); ok && v > 0.1 {
 								fmp4Decoder.AVTDiff = v
 							}
-							if e := fmp4Decoder.Cut(f, startT, duration, w); e != nil && !errors.Is(e, io.EOF) {
+							if e := fmp4Decoder.Cut(f, startT, duration, res); e != nil && !errors.Is(e, io.EOF) {
 								flog.L(`E: `, e)
 							}
 						}
