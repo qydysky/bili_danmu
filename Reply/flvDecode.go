@@ -290,8 +290,8 @@ func (t *FlvDecoder) Cut(reader io.Reader, startT, duration time.Duration, w io.
 			firstFT = t
 		}
 		cu := int64(t - firstFT)
-		over = cu <= durationM+startTM
-		if startTM <= cu && over {
+		over = cu > durationM+startTM
+		if startTM <= cu && !over {
 			return true
 		}
 		return false
