@@ -1252,13 +1252,13 @@ func init() {
 			}
 
 			//cache
-			if bp, ok := cache.IsCache(spath + "filePath"); ok {
+			if bp, ok := cache.IsCache(r.RequestURI); ok {
 				w.Header().Set("Content-Type", "application/json")
 				w.Header().Set("Cache-Control", "max-age=5")
 				_, _ = w.Write(*bp)
 				return
 			}
-			w = cache.Cache(spath+"filePath", time.Second*5, w)
+			w = cache.Cache(r.RequestURI, time.Second*5, w)
 
 			var filePaths []*videoInfo.Paf
 
@@ -1295,7 +1295,9 @@ func init() {
 					c.ResStruct{Code: -1, Message: e.Error(), Data: nil}.Write(w)
 					return
 				} else {
-					for i, n := 0, len(fs); i < n; i++ {
+					skip, _ := strconv.Atoi(r.URL.Query().Get("skip"))
+					size, _ := strconv.Atoi(r.URL.Query().Get("size"))
+					for i, n := skip, len(fs); i < n && (size == 0 || len(filePaths) < size); i++ {
 						if filePath, e := videoInfo.Get.Run(context.Background(), fs[i]); e != nil {
 							flog.L(`W: `, fs[i], e)
 							continue
