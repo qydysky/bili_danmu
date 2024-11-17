@@ -1295,9 +1295,7 @@ func init() {
 					c.ResStruct{Code: -1, Message: e.Error(), Data: nil}.Write(w)
 					return
 				} else {
-					skip, _ := strconv.Atoi(r.URL.Query().Get("skip"))
-					size, _ := strconv.Atoi(r.URL.Query().Get("size"))
-					for i, n := skip, len(fs); i < n && (size == 0 || len(filePaths) < size); i++ {
+					for i, n := 0, len(fs); i < n; i++ {
 						if filePath, e := videoInfo.Get.Run(context.Background(), fs[i]); e != nil {
 							flog.L(`W: `, fs[i], e)
 							continue
@@ -1318,6 +1316,14 @@ func init() {
 				sort.Slice(filePaths, func(i, j int) bool {
 					return filePaths[i].StartT > filePaths[j].StartT
 				})
+				skip, _ := strconv.Atoi(r.URL.Query().Get("skip"))
+				size, _ := strconv.Atoi(r.URL.Query().Get("size"))
+				if skip <= len(filePaths) {
+					filePaths = filePaths[skip:]
+				}
+				if size < len(filePaths) {
+					filePaths = filePaths[:size]
+				}
 			} else if len(filePaths) == 0 {
 				c.ResStruct{Code: -1, Message: "直播流保存位置无效", Data: nil}.Write(w)
 				flog.L(`W: `, `直播流保存位置无效`)
