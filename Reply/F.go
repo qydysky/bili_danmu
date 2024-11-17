@@ -1320,8 +1320,10 @@ func init() {
 				size, _ := strconv.Atoi(r.URL.Query().Get("size"))
 				if skip <= len(filePaths) {
 					filePaths = filePaths[skip:]
+				} else {
+					filePaths = filePaths[:0]
 				}
-				if size < len(filePaths) {
+				if size <= len(filePaths) {
 					filePaths = filePaths[:size]
 				}
 			} else if len(filePaths) == 0 {
