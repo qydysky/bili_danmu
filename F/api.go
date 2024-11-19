@@ -36,11 +36,13 @@ const id = "github.com/qydysky/bili_danmu/F.biliApi"
 var apilog = c.C.Log.Base(`api`)
 var api_limit = limit.New(2, "1s", "30s") //频率限制2次/s，最大等待时间30s
 
-var biliApi = cmp.Get(id, func(ba BiliApiInter) BiliApiInter {
-	ba.SetLocation(c.C.SerLocation)
-	ba.SetProxy(c.C.Proxy)
-	ba.SetReqPool(c.C.ReqPool)
-	return ba
+var biliApi = cmp.Get(id, cmp.PreFuncCu[BiliApiInter]{
+	Initf: func(ba BiliApiInter) BiliApiInter {
+		ba.SetLocation(c.C.SerLocation)
+		ba.SetProxy(c.C.Proxy)
+		ba.SetReqPool(c.C.ReqPool)
+		return ba
+	},
 })
 
 var (
