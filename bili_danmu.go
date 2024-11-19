@@ -14,6 +14,7 @@ import (
 	c "github.com/qydysky/bili_danmu/CV"
 	F "github.com/qydysky/bili_danmu/F"
 	reply "github.com/qydysky/bili_danmu/Reply"
+	replyFunc "github.com/qydysky/bili_danmu/Reply/F"
 	"github.com/qydysky/bili_danmu/Reply/F/danmuReLiveTriger"
 	"github.com/qydysky/bili_danmu/Reply/F/genCpuPprof"
 	"github.com/qydysky/bili_danmu/Reply/F/recStartEnd"
@@ -368,9 +369,9 @@ func entryRoom(mainCtx context.Context, danmulog *part.Log_interface, common *c.
 			`bili_jct`,
 			`DedeUserID`,
 			`LIVE_BUVID`,
-		}); len(missKey) == 0 {
+		}); len(missKey) == 0 && reply.IsOn("自动弹幕机") {
 			//附加功能 弹幕机 无cookie无法发送弹幕
-			reply.Danmuji_auto()
+			replyFunc.Danmuji.Danmuji_auto(mainCtx, c.C.K_v.LoadV(`自动弹幕机_内容`).([]any), c.C.K_v.LoadV(`自动弹幕机_发送间隔s`).(float64), reply.Msg_senddanmu)
 		}
 		{ //附加功能 进房间发送弹幕 直播流保存 每日签到
 			go F.Dosign()

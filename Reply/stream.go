@@ -1442,8 +1442,13 @@ func (t *M4SStream) Start() bool {
 						l.L(`E: `, e)
 					}
 
-					go StartRecDanmu(contextC, ms.GetSavePath())                           //保存弹幕
-					go Ass_f(contextC, ms.GetSavePath(), ms.GetSavePath()+"0", time.Now()) //开始ass
+					//保存弹幕
+					go StartRecDanmu(contextC, ms.GetSavePath())
+
+					//ass
+					if enc, ok := c.C.K_v.LoadV("Ass编码").(string); c.C.IsOn(`生成Ass弹幕`) && c.C.IsOn(`仅保存当前直播间流`) && ok {
+						go replyFunc.Ass.Ass_f(contextC, enc, ms.GetSavePath(), time.Now())
+					}
 
 					startT := time.Now()
 					if e := ms.PusherToFile(contextC, ms.GetSavePath()+`0.`+ms.GetStreamType(), startf, stopf); e != nil {
