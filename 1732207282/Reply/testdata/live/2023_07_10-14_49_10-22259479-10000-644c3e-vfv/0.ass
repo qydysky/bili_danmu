@@ -1,0 +1,39 @@
+[Script Info]
+Title: Default Ass file
+ScriptType: v4.00+
+WrapStyle: 0
+ScaledBorderAndShadow: yes
+PlayResX: 720
+PlayResY: 1280
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Default,,50,&H40FFFFFF,&H000017FF,&H80000000,&H40000000,0,0,0,0,100,100,0,0,1,4,4,7,20,20,50,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:05.07,0:00:12.07,Default,,0,0,0,,{\fad(200,500)\blur3}2
+Dialogue: 0,0:00:15.97,0:00:22.97,Default,,0,0,0,,{\fad(200,500)\blur3}[委屈]
+Dialogue: 0,0:00:18.57,0:00:25.57,Default,,0,0,0,,{\fad(200,500)\blur3}1
+Dialogue: 0,0:00:20.00,0:00:27.00,Default,,0,0,0,,{\fad(200,500)\blur3}[花]
+Dialogue: 0,0:00:22.24,0:00:29.24,Default,,0,0,0,,{\fad(200,500)\blur3}[手机]
+Dialogue: 0,0:00:36.05,0:00:43.05,Default,,0,0,0,,{\fad(200,500)\blur3}1
+Dialogue: 0,0:00:47.09,0:00:54.09,Default,,0,0,0,,{\fad(200,500)\blur3}11
+Dialogue: 0,0:01:28.47,0:01:35.47,Default,,0,0,0,,{\fad(200,500)\blur3}[赞]
+Dialogue: 0,0:01:34.62,0:01:41.62,Default,,0,0,0,,{\fad(200,500)\blur3}妙啊
+Dialogue: 0,0:01:35.68,0:01:42.68,Default,,0,0,0,,{\fad(200,500)\blur3}离谱
+Dialogue: 0,0:01:36.95,0:01:43.95,Default,,0,0,0,,{\fad(200,500)\blur3}赢麻了
+Dialogue: 0,0:01:38.31,0:01:45.31,Default,,0,0,0,,{\fad(200,500)\blur3}[妙]
+Dialogue: 0,0:01:41.65,0:01:48.65,Default,,0,0,0,,{\fad(200,500)\blur3}[花]
+Dialogue: 0,0:01:47.11,0:01:54.11,Default,,0,0,0,,{\fad(200,500)\blur3}2 x 妙啊
+Dialogue: 0,0:01:51.57,0:01:58.57,Default,,0,0,0,,{\fad(200,500)\blur3}1
+Dialogue: 0,0:02:17.43,0:02:24.43,Default,,0,0,0,,{\fad(200,500)\blur3}[比心]
+Dialogue: 0,0:02:18.79,0:02:25.79,Default,,0,0,0,,{\fad(200,500)\blur3}很有精神
+Dialogue: 0,0:02:19.45,0:02:26.45,Default,,0,0,0,,{\fad(200,500)\blur3}[委屈]
+Dialogue: 0,0:02:22.53,0:02:29.53,Default,,0,0,0,,{\fad(200,500)\blur3}1
+Dialogue: 0,0:02:31.54,0:02:38.54,Default,,0,0,0,,{\fad(200,500)\blur3}2 x 很有精神
+Dialogue: 0,0:02:55.48,0:03:02.48,Default,,0,0,0,,{\fad(200,500)\blur3}╮(￣▽￣)╭.
+Dialogue: 0,0:03:00.41,0:03:07.41,Default,,0,0,0,,{\fad(200,500)\blur3}3
+Dialogue: 0,0:03:03.79,0:03:10.79,Default,,0,0,0,,{\fad(200,500)\blur3}4
+Dialogue: 0,0:03:06.00,0:03:13.00,Default,,0,0,0,,{\fad(200,500)\blur3}2 x 1
+Dialogue: 0,0:03:07.71,0:03:14.71,Default,,0,0,0,,{\fad(200,500)\blur3}5
