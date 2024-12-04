@@ -79,6 +79,7 @@ type Fmp4Decoder struct {
 	buf   *slice.Buf[byte]
 
 	AVTDiff float64 // 音视频时间戳容差
+	Debug   bool
 }
 
 func NewFmp4Decoder() *Fmp4Decoder {
@@ -723,6 +724,9 @@ func (t *Fmp4Decoder) Cut(reader io.Reader, startT, duration time.Duration, w io
 					bufSize *= 2
 					continue
 				} else {
+					if t.Debug {
+						fmt.Printf("Cut: frontBufSize: %d", len(frontBuf))
+					}
 					init = true
 					_, err = w.Write(frontBuf)
 				}
