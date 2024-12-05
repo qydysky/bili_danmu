@@ -707,7 +707,7 @@ func (t *Fmp4Decoder) Cut(reader io.Reader, startT, duration time.Duration, w io
 	}
 
 	if t.Debug {
-		fmt.Printf("cut startT: %v duration: %v", startT, duration)
+		fmt.Printf("cut startT: %v duration: %v\n", startT, duration)
 	}
 	for c := 0; err == nil && !over; c++ {
 		n, e := reader.Read(buf)
@@ -728,7 +728,7 @@ func (t *Fmp4Decoder) Cut(reader io.Reader, startT, duration time.Duration, w io
 					continue
 				} else {
 					if t.Debug {
-						fmt.Printf("write frontBuf: frontBufSize: %d", len(frontBuf))
+						fmt.Printf("write frontBuf: frontBufSize: %d\n", len(frontBuf))
 					}
 					init = true
 					_, err = w.Write(frontBuf)
@@ -742,6 +742,9 @@ func (t *Fmp4Decoder) Cut(reader io.Reader, startT, duration time.Duration, w io
 					_ = buff.RemoveFront(dropOffset)
 				} else {
 					bufSize *= 2
+					if t.Debug {
+						fmt.Printf("bufSize: %d\n", bufSize)
+					}
 				}
 			}
 		}
