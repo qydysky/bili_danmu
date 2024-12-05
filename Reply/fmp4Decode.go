@@ -525,9 +525,6 @@ func (t *Fmp4Decoder) oneF(buf []byte, ifWrite func(t float64) bool, w ...io.Wri
 
 				{
 					ts, handlerType := get_track_type(m[3].i, m[4].i)
-					if t.Debug {
-						fmt.Println(ts, handlerType, "frame0", keyframeMoof)
-					}
 					if ts.handlerType == 'v' {
 						if e := checkSampleEntries(m[5].i, m[6].i); e != nil {
 							//skip
@@ -588,9 +585,6 @@ func (t *Fmp4Decoder) oneF(buf []byte, ifWrite func(t float64) bool, w ...io.Wri
 
 				{
 					ts, handlerType := get_track_type(m[3].i, m[4].i)
-					if t.Debug {
-						fmt.Println(ts, handlerType, "frame1", keyframeMoof)
-					}
 					if handlerType == 'v' {
 						if e := checkSampleEntries(m[5].i, m[6].i); e != nil {
 							//skip
@@ -675,6 +669,9 @@ func (t *Fmp4Decoder) oneF(buf []byte, ifWrite func(t float64) bool, w ...io.Wri
 					if e := t.buf.Append(buf[m[0].i:m[10].e]); e != nil {
 						return false, e
 					}
+				}
+				if t.Debug {
+					fmt.Println(haveKeyframe, keyframeMoof, cu)
 				}
 				return false, nil
 			},
