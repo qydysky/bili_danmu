@@ -725,7 +725,7 @@ func (t *Fmp4Decoder) Cut(reader io.Reader, startT, duration time.Duration, w io
 					continue
 				} else {
 					if t.Debug {
-						fmt.Printf("Cut: frontBufSize: %d", len(frontBuf))
+						fmt.Printf("write frontBuf: frontBufSize: %d", len(frontBuf))
 					}
 					init = true
 					_, err = w.Write(frontBuf)
