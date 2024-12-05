@@ -525,6 +525,9 @@ func (t *Fmp4Decoder) oneF(buf []byte, ifWrite func(t float64) bool, w ...io.Wri
 
 				{
 					ts, handlerType := get_track_type(m[3].i, m[4].i)
+					if t.Debug {
+						fmt.Println(ts, handlerType, "frame0", keyframeMoof)
+					}
 					if ts.handlerType == 'v' {
 						if e := checkSampleEntries(m[5].i, m[6].i); e != nil {
 							//skip
@@ -583,10 +586,11 @@ func (t *Fmp4Decoder) oneF(buf []byte, ifWrite func(t float64) bool, w ...io.Wri
 					audio timeStamp
 				)
 
-				// fmt.Println(moofSN, "frame1", keyframeMoof, t.buf.size(), m[0].i, m[10].n, m[10].e)
-
 				{
 					ts, handlerType := get_track_type(m[3].i, m[4].i)
+					if t.Debug {
+						fmt.Println(ts, handlerType, "frame1", keyframeMoof)
+					}
 					if handlerType == 'v' {
 						if e := checkSampleEntries(m[5].i, m[6].i); e != nil {
 							//skip
@@ -735,9 +739,6 @@ func (t *Fmp4Decoder) Cut(reader io.Reader, startT, duration time.Duration, w io
 				}
 			}
 		} else {
-			if t.Debug {
-				fmt.Printf("bufSize: %d\n", buff.Size())
-			}
 			if dropOffset, e := t.oneF(buff.GetPureBuf(), ifWriteF, w); e != nil {
 				return perrors.New("w", e.Error())
 			} else {
