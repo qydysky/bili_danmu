@@ -1191,6 +1191,9 @@ func init() {
 						if strings.HasSuffix(v, "mp4") {
 							w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=\"%s.%d.mp4\"", qref, time.Now().Unix()))
 							fmp4Decoder := NewFmp4Decoder()
+							if v, ok := c.C.K_v.LoadV(`debug模式`).(bool); ok && v {
+								fmp4Decoder.Debug = true
+							}
 							if v, ok := c.C.K_v.LoadV(`fmp4音视频时间戳容差s`).(float64); ok && v > 0.1 {
 								fmp4Decoder.AVTDiff = v
 							}
