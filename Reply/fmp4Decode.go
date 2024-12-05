@@ -735,6 +735,9 @@ func (t *Fmp4Decoder) Cut(reader io.Reader, startT, duration time.Duration, w io
 				}
 			}
 		} else {
+			if t.Debug {
+				fmt.Printf("bufSize: %d\n", buff.Size())
+			}
 			if dropOffset, e := t.oneF(buff.GetPureBuf(), ifWriteF, w); e != nil {
 				return perrors.New("w", e.Error())
 			} else {
@@ -742,9 +745,6 @@ func (t *Fmp4Decoder) Cut(reader io.Reader, startT, duration time.Duration, w io
 					_ = buff.RemoveFront(dropOffset)
 				} else {
 					bufSize *= 2
-					if t.Debug {
-						fmt.Printf("bufSize: %d\n", bufSize)
-					}
 				}
 			}
 		}
