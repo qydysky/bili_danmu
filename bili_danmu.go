@@ -374,7 +374,7 @@ func entryRoom(mainCtx context.Context, danmulog *part.Log_interface, common *c.
 			replyFunc.Danmuji.Danmuji_auto(mainCtx, c.C.K_v.LoadV(`自动弹幕机_内容`).([]any), c.C.K_v.LoadV(`自动弹幕机_发送间隔s`).(float64), reply.Msg_senddanmu)
 		}
 		{ //附加功能 进房间发送弹幕 直播流保存 每日签到
-			go F.Dosign()
+			// go F.Dosign()
 			go reply.Entry_danmu(common)
 			if _, e := recStartEnd.RecStartCheck.Run(mainCtx, common); e == nil {
 				go reply.StreamOStart(common, common.Roomid)
