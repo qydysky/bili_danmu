@@ -706,6 +706,9 @@ func (t *Fmp4Decoder) Cut(reader io.Reader, startT, duration time.Duration, w io
 		return false
 	}
 
+	if t.Debug {
+		fmt.Printf("cut startT: %v duration: %v", startT, duration)
+	}
 	for c := 0; err == nil && !over; c++ {
 		n, e := reader.Read(buf)
 		if n == 0 && errors.Is(e, io.EOF) {
