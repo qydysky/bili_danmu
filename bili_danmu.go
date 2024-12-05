@@ -89,7 +89,7 @@ func Start() {
 		//兑换硬币
 		F.Get(c.C).Silver_2_coin()
 		//每日签到
-		F.Dosign()
+		// F.Dosign()
 		// 附加功能 savetojson
 		reply.SaveToJson.Init()
 		// 附加功能 保持牌子点亮
@@ -177,7 +177,7 @@ func Start() {
 				`new day`: func(_ any) bool { //日期更换
 					go func() {
 						//每日签到
-						F.Dosign()
+						// F.Dosign()
 						//每日兑换硬币
 						F.Get(c.C).Silver_2_coin()
 						//附加功能 每日发送弹幕
