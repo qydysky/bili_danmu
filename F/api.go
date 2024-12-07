@@ -1216,6 +1216,7 @@ func (t *GetFunc) CheckSwitch_FansMedal() (missKey []string) {
 }
 
 // 签到
+// 签到活动已下线
 func Dosign() {
 	apilog := apilog.Base_add(`签到`).L(`T: `, `签到`)
 	//验证cookie

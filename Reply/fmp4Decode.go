@@ -79,6 +79,7 @@ type Fmp4Decoder struct {
 	buf   *slice.Buf[byte]
 
 	AVTDiff float64 // 音视频时间戳容差
+	Debug   bool
 }
 
 func NewFmp4Decoder() *Fmp4Decoder {
@@ -582,8 +583,6 @@ func (t *Fmp4Decoder) oneF(buf []byte, ifWrite func(t float64) bool, w ...io.Wri
 					audio timeStamp
 				)
 
-				// fmt.Println(moofSN, "frame1", keyframeMoof, t.buf.size(), m[0].i, m[10].n, m[10].e)
-
 				{
 					ts, handlerType := get_track_type(m[3].i, m[4].i)
 					if handlerType == 'v' {
@@ -658,6 +657,7 @@ func (t *Fmp4Decoder) oneF(buf []byte, ifWrite func(t float64) bool, w ...io.Wri
 							if ifWrite(video.getT()) {
 								_, err = w[0].Write(t.buf.GetPureBuf())
 							}
+							t.buf.Reset()
 							return true, ErrNormal
 						}
 						t.buf.Reset()
@@ -699,19 +699,19 @@ func (t *Fmp4Decoder) Cut(reader io.Reader, startT, duration time.Duration, w io
 		}
 		cu := t - firstFT
 		over = cu > durationM+startTM
-		if startTM <= cu && !over {
-			return true
-		}
-		return false
+		return startTM <= cu && !over
 	}
 
+	if t.Debug {
+		fmt.Printf("cut startT: %v duration: %v\n", startT, duration)
+	}
 	for c := 0; err == nil && !over; c++ {
-		n, e := reader.Read(buf)
-		if n == 0 && errors.Is(e, io.EOF) {
-			return io.EOF
-		}
-		err = buff.Append(buf[:n])
 		if buff.Size() < bufSize {
+			n, e := reader.Read(buf)
+			if n == 0 && errors.Is(e, io.EOF) {
+				return io.EOF
+			}
+			err = buff.Append(buf[:n])
 			continue
 		}
 
@@ -723,6 +723,9 @@ func (t *Fmp4Decoder) Cut(reader io.Reader, startT, duration time.Duration, w io
 					bufSize *= 2
 					continue
 				} else {
+					if t.Debug {
+						fmt.Printf("write frontBuf: frontBufSize: %d\n", len(frontBuf))
+					}
 					init = true
 					_, err = w.Write(frontBuf)
 				}

@@ -891,13 +891,14 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 				}
 
 				for {
-					if n, e := pipe.Read(buf); e != nil {
-						pctx.PutVal(cancelC, &errCtx, e)
-						break
-					} else if e = buff.Append(buf[:n]); e != nil {
-						pctx.PutVal(cancelC, &errCtx, e)
-						break
-					} else if buff.Size() < bufSize {
+					if buff.Size() < bufSize {
+						if n, e := pipe.Read(buf); e != nil {
+							pctx.PutVal(cancelC, &errCtx, e)
+							break
+						} else if e = buff.Append(buf[:n]); e != nil {
+							pctx.PutVal(cancelC, &errCtx, e)
+							break
+						}
 						continue
 					}
 
@@ -1011,7 +1012,22 @@ func (t *M4SStream) removeSer() {
 
 func (t *M4SStream) saveStreamM4s() (e error) {
 
+	var (
+		// 同时下载数限制
+		downloadLimit    = funcCtrl.NewBlockFuncN(3)
+		buf              = slice.New[byte]()
+		fmp4Decoder      = NewFmp4Decoder()
+		keyframe         = slice.New[byte]()
+		lastM4s          *m4s_link_item
+		to               = 3
+		fmp4ListUpdateTo = 5.0
+		fmp4Count        = 0
+		startT           = time.Now()
+		skipErrFrame     = false
+	)
+
 	if v, ok := t.common.K_v.LoadV(`debug模式`).(bool); ok && v {
+		fmp4Decoder.Debug = true
 		cancle := make(chan struct{})
 		defer close(cancle)
 		go func() {
@@ -1027,21 +1043,6 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 			}
 		}()
 	}
-
-	var (
-		// 同时下载数限制
-		downloadLimit    = funcCtrl.NewBlockFuncN(3)
-		buf              = slice.New[byte]()
-		fmp4Decoder      = NewFmp4Decoder()
-		keyframe         = slice.New[byte]()
-		lastM4s          *m4s_link_item
-		to               = 3
-		fmp4ListUpdateTo = 5.0
-		fmp4Count        = 0
-		startT           = time.Now()
-		skipErrFrame     = false
-	)
-
 	if v, ok := t.common.K_v.LoadV(`fmp4音视频时间戳容差s`).(float64); ok && v > 0.1 {
 		fmp4Decoder.AVTDiff = v
 	}
