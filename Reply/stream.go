@@ -891,13 +891,14 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 				}
 
 				for {
-					if n, e := pipe.Read(buf); e != nil {
-						pctx.PutVal(cancelC, &errCtx, e)
-						break
-					} else if e = buff.Append(buf[:n]); e != nil {
-						pctx.PutVal(cancelC, &errCtx, e)
-						break
-					} else if buff.Size() < bufSize {
+					if buff.Size() < bufSize {
+						if n, e := pipe.Read(buf); e != nil {
+							pctx.PutVal(cancelC, &errCtx, e)
+							break
+						} else if e = buff.Append(buf[:n]); e != nil {
+							pctx.PutVal(cancelC, &errCtx, e)
+							break
+						}
 						continue
 					}
 

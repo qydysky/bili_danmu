@@ -298,12 +298,12 @@ func (t *FlvDecoder) Cut(reader io.Reader, startT, duration time.Duration, w io.
 	}
 
 	for c := 0; err == nil && !over; c++ {
-		n, e := reader.Read(buf)
-		if n == 0 && errors.Is(e, io.EOF) {
-			return io.EOF
-		}
-		err = buff.Append(buf[:n])
 		if buff.Size() < bufSize {
+			n, e := reader.Read(buf)
+			if n == 0 && errors.Is(e, io.EOF) {
+				return io.EOF
+			}
+			err = buff.Append(buf[:n])
 			continue
 		}
 

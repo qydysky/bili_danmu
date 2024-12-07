@@ -657,6 +657,7 @@ func (t *Fmp4Decoder) oneF(buf []byte, ifWrite func(t float64) bool, w ...io.Wri
 							if ifWrite(video.getT()) {
 								_, err = w[0].Write(t.buf.GetPureBuf())
 							}
+							t.buf.Reset()
 							return true, ErrNormal
 						}
 						t.buf.Reset()
@@ -669,9 +670,6 @@ func (t *Fmp4Decoder) oneF(buf []byte, ifWrite func(t float64) bool, w ...io.Wri
 					if e := t.buf.Append(buf[m[0].i:m[10].e]); e != nil {
 						return false, e
 					}
-				}
-				if t.Debug {
-					fmt.Println(haveKeyframe, keyframeMoof, cu)
 				}
 				return false, nil
 			},
@@ -701,22 +699,19 @@ func (t *Fmp4Decoder) Cut(reader io.Reader, startT, duration time.Duration, w io
 		}
 		cu := t - firstFT
 		over = cu > durationM+startTM
-		if startTM <= cu && !over {
-			return true
-		}
-		return false
+		return startTM <= cu && !over
 	}
 
 	if t.Debug {
 		fmt.Printf("cut startT: %v duration: %v\n", startT, duration)
 	}
 	for c := 0; err == nil && !over; c++ {
-		n, e := reader.Read(buf)
-		if n == 0 && errors.Is(e, io.EOF) {
-			return io.EOF
-		}
-		err = buff.Append(buf[:n])
 		if buff.Size() < bufSize {
+			n, e := reader.Read(buf)
+			if n == 0 && errors.Is(e, io.EOF) {
+				return io.EOF
+			}
+			err = buff.Append(buf[:n])
 			continue
 		}
 
