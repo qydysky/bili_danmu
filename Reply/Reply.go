@@ -440,7 +440,7 @@ func (t replyF) user_toast_msg(s string) {
 		sh = append(sh, role_name)
 	}
 	if price != 0 {
-		sh_log = append(sh, "￥", price/1000) //不在界面显示价格
+		sh_log = append(sh, fmt.Sprintf("￥%d", price/1000)) //不在界面显示价格
 		t.Common.Danmu_Main_mq.Push_tag(`c.Rev_add`, struct {
 			Roomid int
 			Rev    float64
@@ -1023,7 +1023,7 @@ func (t replyF) super_chat_message(s string) {
 	logg := sh
 	if price != 0 {
 		sh = append(sh, "\n") //界面不显示价格
-		logg = append(logg, "￥", price)
+		logg = append(logg, fmt.Sprintf("￥%d", price))
 		t.Common.Danmu_Main_mq.Push_tag(`c.Rev_add`, struct {
 			Roomid int
 			Rev    float64
