@@ -413,19 +413,27 @@ sqlite3:
     "指定房间录制回调-help":"当指定roomid的房间结束录制后触发对应的命令，命令执行目录为录播目录，占位符({type}:视频类型)，durationS：录制时长超过指定秒数才触发",
     "指定房间录制回调":[
         {
+            "例子":"windows转为正常的视频",
             "roomid":0,
             "durationS":60,
-            "after":["cmd","/c","ffmpeg","-i","0.{type}","-y","-c","copy","-movflags","+faststart","1.{type}","1>1.log","2>&1"]
+            "after":["cmd","/c","ffmpeg","-i","0.{type}","-y","-c","copy","-movflags","+faststart","1.{type}"]
         },
         {
+            "例子":"linux转为正常的视频",
             "roomid":0,
             "durationS":60,
             "after":["ffmpeg","-i","0.{type}","-y","-c","copy","-movflags","+faststart","1.{type}"]
+        },
+        {
+            "例子":"linux调整为统一分辨率(一个视频中出现分辨率改变eg:连麦)",
+            "roomid":0,
+            "durationS":60,
+            "after":["ffmpeg","-i","0.{type}","-vf","scale=1920:1080:force_original_aspect_ratio=decrease:eval=frame,pad=1920:1080:-1:-1:color=black","1.{type}"]
         }
     ]
 }
 ```
-上述例子中演示了windows下使用[ffmpeg](https://ffmpeg.org/) ，这将使得保存的流文件`0.mp4 or 0.flv`转为正常的视频`1.mp4 or 1.flv`。
+上述例子中演示了windows、linux下使用[ffmpeg](https://ffmpeg.org/) 进行视频转换。
 
 注意：命令运行是异步的，如同步执行多个命令，应使用脚本。
 
