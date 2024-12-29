@@ -698,7 +698,7 @@ func (t *Fmp4Decoder) Cut(reader io.Reader, startT, duration time.Duration, w io
 			firstFT = t
 		}
 		cu := t - firstFT
-		over = cu > durationM+startTM
+		over = duration != 0 && cu > durationM+startTM
 		return startTM <= cu && !over
 	}
 
