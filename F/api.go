@@ -921,8 +921,13 @@ func (t *GetFunc) Get_cookie() (missKey []string) {
 		}
 	}()
 
-	if file.New("cookie.txt", 0, true).IsExist() { //读取cookie文件
-		if cookieString := string(CookieGet()); cookieString != `` {
+	savepath := "./cookie.txt"
+	if tmp, ok := t.K_v.LoadV("cookie路径").(string); ok && tmp != "" {
+		savepath = tmp
+	}
+
+	if file.New(savepath, 0, true).IsExist() { //读取cookie文件
+		if cookieString := string(CookieGet(savepath)); cookieString != `` {
 			for k, v := range reqf.Cookies_String_2_Map(cookieString) { //cookie存入全局变量syncmap
 				t.Cookie.Store(k, v)
 			}
@@ -1396,16 +1401,13 @@ func (t *GetFunc) Silver_2_coin() (missKey []string) {
 
 var ErrNoCookiesSave = errors.New("ErrNoCookiesSave")
 
-func save_cookie(Cookies []*http.Cookie, cs ...*c.Common) error {
+func save_cookie(Cookies []*http.Cookie, cs *c.Common) error {
 	if len(Cookies) == 0 {
 		return ErrNoCookiesSave
 	}
 
 	for k, v := range reqf.Cookies_List_2_Map(Cookies) {
 		c.C.Cookie.Store(k, v)
-		for i := 0; i < len(cs); i++ {
-			cs[i].Cookie.Store(k, v)
-		}
 	}
 
 	Cookie := make(map[string]string)
@@ -1413,7 +1415,12 @@ func save_cookie(Cookies []*http.Cookie, cs ...*c.Common) error {
 		Cookie[k.(string)] = v.(string)
 		return true
 	})
-	CookieSet([]byte(reqf.Map_2_Cookies_String(Cookie)))
+
+	savepath := "./cookie.txt"
+	if tmp, ok := cs.K_v.LoadV("cookie路径").(string); ok && tmp != "" {
+		savepath = tmp
+	}
+	CookieSet(savepath, []byte(reqf.Map_2_Cookies_String(Cookie)))
 	biliApi.SetCookies(Cookies)
 	return nil
 }
