@@ -190,6 +190,8 @@
         ""
     ],
     "自动弹幕机_发送间隔s": 30,
+    "cookie路径-help": "为空时，为程序所在目录./cookie.txt",
+    "cookie路径": "./cookie.txt",
     "cookie保护": "下填路径",
     "cookie加密公钥": "public.pem",
     "cookie解密私钥": "private.pem",

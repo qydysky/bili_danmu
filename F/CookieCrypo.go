@@ -19,7 +19,7 @@ var (
 	cookieLock sync.RWMutex
 )
 
-func CookieGet() []byte {
+func CookieGet(path string) []byte {
 	clog := clog.Base_add(`获取`)
 
 	cookieLock.RLock()
@@ -48,7 +48,7 @@ func CookieGet() []byte {
 				pri = d
 			}
 		} else {
-			if d, e := FileLoad(`cookie.txt`); e != nil {
+			if d, e := FileLoad(path); e != nil {
 				clog.L(`E: `, e, `cookie保存格式`)
 				return []byte{}
 			} else if string(d[:6]) == `t=nol;` {
@@ -61,7 +61,7 @@ func CookieGet() []byte {
 			}
 		}
 	}
-	if d, e := FileLoad(`cookie.txt`); e != nil {
+	if d, e := FileLoad(path); e != nil {
 		clog.L(`E: `, e, `cookie保存格式`)
 		return []byte{}
 	} else if string(d[:6]) == `t=pem;` {
@@ -84,7 +84,7 @@ func CookieGet() []byte {
 	}
 }
 
-func CookieSet(source []byte) {
+func CookieSet(path string, source []byte) {
 	clog := clog.Base_add(`设置`)
 
 	cookieLock.Lock()
@@ -99,7 +99,7 @@ func CookieSet(source []byte) {
 				pub = d
 			}
 		} else {
-			f := file.New(`cookie.txt`, 0, true)
+			f := file.New(path, 0, true)
 			_ = f.Delete()
 			_, _ = f.Write(append([]byte("t=nol;"), source...), true)
 			return
@@ -109,7 +109,7 @@ func CookieSet(source []byte) {
 		clog.L(`E: `, e)
 		return
 	} else {
-		f := file.New(`cookie.txt`, 0, true)
+		f := file.New(path, 0, true)
 		_ = f.Delete()
 		_, _ = f.Write(append([]byte("t=pem;"), source...), true)
 	}
