@@ -719,6 +719,110 @@ func (t *Common) loadConf(customConf string) error {
 		t.K_v.Store(k, v)
 	}
 
+	// 从环境变量获取
+	if v, ok := t.K_v.LoadV("从环境变量覆盖").([]any); ok && len(v) > 0 {
+		for i := 0; i < len(v); i++ {
+			if vm, ok := v[i].(map[string]any); ok {
+				if err := dealEnv(&t.K_v, vm); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+var (
+	ErrDealEnvUnknowType          = errors.New("ErrDealEnvUnknowType")
+	ErrDealEnvEnvValueTypeNoMatch = errors.New("ErrDealEnvEnvValueTypeNoMatch")
+	ErrDealEnvKeyNoArray          = errors.New("ErrDealEnv")
+	ErrDealEnvKeyNoMap            = errors.New("ErrDealEnvKeyNoMap")
+	ErrDealEnvKeyArrayNoUInt      = errors.New("ErrDealEnvKeyArrayNoUInt")
+)
+
+// vm:{"key":"","type":"","env":""}
+func dealEnv(K_v *syncmap.Map, vm map[string]any) error {
+	_key, ok := vm[`key`].(string)
+	if !ok || strings.TrimSpace(_key) == `` {
+		return nil
+	}
+	var val any
+	{
+		_env, ok := vm[`env`].(string)
+		if !ok || strings.TrimSpace(_env) == `` {
+			return nil
+		}
+		_val := os.Getenv(_env)
+		_type, ok := vm[`type`].(string)
+		if !ok || strings.TrimSpace(_type) == `` {
+			_type = "string"
+		}
+		switch _type {
+		case `string`:
+			val = _val
+		case `float64`:
+			if v, err := strconv.ParseFloat(_val, 64); err != nil {
+				return ErrDealEnvEnvValueTypeNoMatch
+			} else {
+				val = v
+			}
+		case `bool`:
+			switch strings.ToLower(_val) {
+			case `true`:
+				val = true
+			case `false`:
+				val = false
+			default:
+				return ErrDealEnvEnvValueTypeNoMatch
+			}
+		default:
+			return ErrDealEnvUnknowType
+		}
+	}
+
+	_keys := strings.Split(_key, ".")
+	if len(_keys) == 1 {
+		K_v.Store(_keys[0], val)
+	} else {
+		var key = K_v.LoadV(_keys[0])
+		for i := 1; i < len(_keys)-1; i++ {
+			if strings.Contains(_keys[i], "[") {
+				if tmp, ok := key.([]any); !ok {
+					return ErrDealEnvKeyNoArray
+				} else if n, err := strconv.ParseInt(_keys[i][1:len(_keys[i])-1], 0, 64); err != nil {
+					return ErrDealEnvKeyArrayNoUInt
+				} else if int(n) > len(tmp)-1 {
+					return nil
+				} else {
+					key = tmp[int(n)]
+				}
+			} else {
+				if tmp, ok := key.(map[string]any); !ok {
+					return ErrDealEnvKeyNoMap
+				} else {
+					key = tmp[_keys[i]]
+				}
+			}
+		}
+		if strings.Contains(_keys[len(_keys)-1], "[") {
+			if tmp, ok := key.([]any); !ok {
+				return ErrDealEnvKeyNoArray
+			} else if n, err := strconv.ParseInt(_keys[len(_keys)-1][1:len(_keys[len(_keys)-1])-1], 0, 64); err != nil {
+				return ErrDealEnvKeyArrayNoUInt
+			} else if int(n) > len(tmp)-1 {
+				return nil
+			} else {
+				tmp[n] = val
+			}
+		} else {
+			if tmp, ok := key.(map[string]any); !ok {
+				return ErrDealEnvKeyNoMap
+			} else {
+				tmp[_keys[len(_keys)-1]] = val
+			}
+		}
+	}
 	return nil
 }
 
