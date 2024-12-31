@@ -736,7 +736,7 @@ func (t *Common) loadConf(customConf string) error {
 var (
 	ErrDealEnvUnknowType          = errors.New("ErrDealEnvUnknowType")
 	ErrDealEnvEnvValueTypeNoMatch = errors.New("ErrDealEnvEnvValueTypeNoMatch")
-	ErrDealEnvKeyNoArray          = errors.New("ErrDealEnv")
+	ErrDealEnvKeyNoArray          = errors.New("ErrDealEnvKeyNoArray")
 	ErrDealEnvKeyNoMap            = errors.New("ErrDealEnvKeyNoMap")
 	ErrDealEnvKeyArrayNoUInt      = errors.New("ErrDealEnvKeyArrayNoUInt")
 )
