@@ -1175,7 +1175,7 @@ func init() {
 					ts := time.Now()
 					defer func() { flog.L(`T: `, r.RemoteAddr, `断开录播`, time.Since(ts)) }()
 
-					if startT != 0 {
+					if startT+duration != 0 {
 						res := pio.WriterWithConfig(w, pio.CopyConfig{BytePerSec: speed, SkipByte: rangeHeaderNum})
 
 						if strings.HasSuffix(v, "flv") {
