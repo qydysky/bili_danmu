@@ -83,23 +83,23 @@ func get(ctx context.Context, savepath string) (*Paf, error) {
 	defer dirf.Close()
 	if dirf.IsDir() {
 		// 从文件夹获取信息
-		{
-			dirfName := path.Base(dirf.File().Name())
-			if len(dirfName) > 20 {
-				d = Paf{Name: dirfName[20:], StartT: dirfName[:19], Path: dirfName}
-			}
-			mp4f := file.New(savepath+string(os.PathSeparator)+"0.mp4", 0, true)
-			if mp4f.IsExist() {
-				d.Format = "mp4"
-			} else {
-				d.Format = "flv"
-			}
-		}
+		// {
+		// 	dirfName := path.Base(dirf.File().Name())
+		// 	if len(dirfName) > 20 {
+		// 		d = Paf{Name: dirfName[20:], StartT: dirfName[:19], Path: dirfName}
+		// 	}
+		// 	mp4f := file.New(savepath+string(os.PathSeparator)+"0.mp4", 0, true)
+		// 	if mp4f.IsExist() {
+		// 		d.Format = "mp4"
+		// 	} else {
+		// 		d.Format = "flv"
+		// 	}
+		// }
 		// 从0.json获取信息
 		{
 			json0 := file.New(savepath+string(os.PathSeparator)+"0.json", 0, true)
 			if !json0.IsExist() {
-				return &d, nil
+				return &d, os.ErrNotExist
 			}
 			defer json0.Close()
 			if data, e := json0.ReadAll(1<<8, 1<<16); e != nil && !errors.Is(e, io.EOF) {
