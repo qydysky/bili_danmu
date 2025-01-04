@@ -937,7 +937,9 @@ func init() {
 					size, _ := strconv.Atoi(r.URL.Query().Get("size"))
 					for i, n := skip, len(fs); i < n && (size == 0 || len(filePaths) < size); i++ {
 						if filePath, e := videoInfo.Get.Run(context.Background(), fs[i]); e != nil {
-							flog.L(`W: `, fs[i], e)
+							if !errors.Is(e, os.ErrNotExist) {
+								flog.L(`W: `, fs[i], e)
+							}
 							continue
 						} else {
 							if t, e := time.Parse("2006_01_02-15_04_05", filePath.StartT); e == nil {
