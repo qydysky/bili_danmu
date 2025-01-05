@@ -919,6 +919,22 @@ func init() {
 			// }
 
 			if v, ok := c.C.K_v.LoadV(`直播流保存位置`).(string); ok && v != "" {
+
+				// 支持ref
+				if qref := r.URL.Query().Get("ref"); qref != "" {
+					if rawPath, e := url.PathUnescape(qref); e != nil {
+						w.WriteHeader(http.StatusServiceUnavailable)
+						flog.L(`I: `, "路径解码失败", qref)
+						return
+					} else {
+						if strings.HasSuffix(v, "/") || strings.HasSuffix(v, "\\") {
+							v += qref
+						} else {
+							v += "/" + rawPath
+						}
+					}
+				}
+
 				dir := file.New(v, 0, true)
 				defer dir.Close()
 				if !dir.IsDir() {
