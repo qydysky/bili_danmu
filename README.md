@@ -665,6 +665,16 @@ ass编码GB18030支持中文
 
 直接进入直播Web服务路径，`http://127.0.0.1:10000/web/`，将进入由[Vue](https://vuejs.org/)，[element-plus](https://element-plus.org/)创建的简易web目录。
 
+添加`ref`参数，从而可以从指定位置加载目录(>v0.14.27)。
+
+例如：
+```json
+{
+  "直播流保存位置":"/bili"
+}
+```
+当有录播文件夹存放在`/bili/a`时，通过`http://127.0.0.1:10000/web/?ref=a/`可以读取`a`下的列表
+
 [https://github.com/qydysky/bili_danmu_streamList](https://github.com/qydysky/bili_danmu_streamList)
 
 ![](_Screenshot/Snipaste_2023-06-28_08-52-30.png)
