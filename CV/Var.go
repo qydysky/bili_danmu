@@ -866,7 +866,7 @@ func (t ResStruct) Write(w http.ResponseWriter) []byte {
 }
 
 func DefaultHttpFunc(c *Common, w http.ResponseWriter, r *http.Request, method ...string) bool {
-	if strings.Contains(r.URL.Path, "../") {
+	if strings.Contains(r.RequestURI, "..") {
 		web.WithStatusCode(w, http.StatusForbidden)
 		return true
 	}
