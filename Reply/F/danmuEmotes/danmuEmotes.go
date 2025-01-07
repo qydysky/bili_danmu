@@ -6,47 +6,48 @@ import (
 	"strings"
 
 	c "github.com/qydysky/bili_danmu/CV"
-	comp "github.com/qydysky/part/component"
+	comp "github.com/qydysky/part/component2"
 	file "github.com/qydysky/part/file"
 	phash "github.com/qydysky/part/hash"
 	log "github.com/qydysky/part/log"
 	reqf "github.com/qydysky/part/reqf"
 )
 
-// path
-var (
-	SaveEmote = comp.NewComp(saveEmote)
-	Hashr     = comp.NewComp(func(ctx context.Context, s string) (r string, e error) {
-		return hashr(s), nil
-	})
-	// danmuPool = ppool.New(ppool.PoolFunc[pslice.Buf[byte]]{
-	// 	New: func() *pslice.Buf[byte] {
-	// 		return pslice.New[byte]()
-	// 	},
-	// 	InUse: func(b *pslice.Buf[byte]) bool {
-	// 		return !b.IsEmpty()
-	// 	},
-	// 	Reuse: func(b *pslice.Buf[byte]) *pslice.Buf[byte] {
-	// 		return b
-	// 	},
-	// 	Pool: func(b *pslice.Buf[byte]) *pslice.Buf[byte] {
-	// 		b.Reset()
-	// 		return b
-	// 	},
-	// }, 100)
-)
-
-type Danmu struct {
-	Logg *log.Log_interface
-	Info []any
-	Msg  *string
+type TargetInterface interface {
+	SaveEmote(ctx context.Context, ptr struct {
+		Logg *log.Log_interface
+		Info []any
+		Msg  *string
+	}) (ret any, err error)
+	Hashr(s string) (r string)
+	SetLayerN(n int)
 }
 
 func init() {
-	_, _ = file.New("emots/README.md", 0, true).Write([]byte(""), false)
+	i := danmuEmotes{
+		Dir:    "emots/",
+		LayerN: 0,
+	}
+	if e := comp.Register[TargetInterface]("danmuEmotes", &i); e != nil {
+		panic(e)
+	}
+	_, _ = file.New(i.Dir+"README.md", 0, true).Write([]byte(""), false)
 }
 
-func saveEmote(ctx context.Context, ptr Danmu) (ret any, err error) {
+type danmuEmotes struct {
+	Dir    string
+	LayerN int
+}
+
+func (t *danmuEmotes) SetLayerN(n int) {
+	t.LayerN = n
+}
+
+func (t *danmuEmotes) SaveEmote(ctx context.Context, ptr struct {
+	Logg *log.Log_interface
+	Info []any
+	Msg  *string
+}) (ret any, err error) {
 	if m, ok := ptr.Info[13].(map[string]any); ok {
 		if url, ok := m[`url`].(string); ok {
 			if !strings.Contains(*ptr.Msg, "[") {
@@ -54,7 +55,7 @@ func saveEmote(ctx context.Context, ptr Danmu) (ret any, err error) {
 					*ptr.Msg = "[" + *ptr.Msg + emoticon_unique + "]"
 				}
 			}
-			savePath := "emots/" + hashr(*ptr.Msg) + ".png"
+			savePath := t.Dir + t.Hashr(*ptr.Msg) + ".png"
 			if !file.New(savePath, 0, true).IsExist() {
 				go func() {
 					req := c.C.ReqPool.Get()
@@ -100,7 +101,7 @@ func saveEmote(ctx context.Context, ptr Danmu) (ret any, err error) {
 							continue
 						}
 
-						savePath := "emots/" + hashr(k) + ".png"
+						savePath := t.Dir + t.Hashr(k) + ".png"
 						if file.New(savePath, 0, true).IsExist() {
 							continue
 						}
@@ -134,45 +135,19 @@ func saveEmote(ctx context.Context, ptr Danmu) (ret any, err error) {
 	return
 }
 
-func hashr(s string) (r string) {
-	return phash.Md5String(s)
-
-	// buf := danmuPool.Get()
-	// defer danmuPool.Put(buf)
-
-	// emoteB := false
-	// for i := 0; i < len(s); i++ {
-	// 	if !emoteB {
-	// 		_ = buf.Append([]byte{s[i]})
-	// 		emoteB = s[i] == '['
-	// 		continue
-	// 	} else if s[i] == ']' {
-	// 		_ = buf.Append([]byte{s[i]})
-	// 		emoteB = false
-	// 		continue
-	// 	}
-	// 	switch s[i] {
-	// 	case '\\':
-	// 		_ = buf.Append([]byte("_1"))
-	// 	case '/':
-	// 		_ = buf.Append([]byte("_2"))
-	// 	case '*':
-	// 		_ = buf.Append([]byte("_3"))
-	// 	case '<':
-	// 		_ = buf.Append([]byte("_4"))
-	// 	case '>':
-	// 		_ = buf.Append([]byte("_5"))
-	// 	case '|':
-	// 		_ = buf.Append([]byte("_6"))
-	// 	case ':':
-	// 		_ = buf.Append([]byte("："))
-	// 	case '?':
-	// 		_ = buf.Append([]byte("？"))
-	// 	case '"':
-	// 		_ = buf.Append([]byte("“"))
-	// 	default:
-	// 		_ = buf.Append([]byte{s[i]})
-	// 	}
-	// }
-	// return string(buf.GetCopyBuf())
+func (t *danmuEmotes) Hashr(s string) (r string) {
+	rs := phash.Md5String(s)
+	rr := []byte{}
+	layer := t.LayerN
+	if layer > len(rs)-1 {
+		layer = layer - 1
+	}
+	for i := 0; i < len(rs); i++ {
+		rr = append(rr, rs[i])
+		if layer > 0 {
+			rr = append(rr, '/')
+			layer -= 1
+		}
+	}
+	return string(rr)
 }

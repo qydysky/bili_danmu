@@ -7,8 +7,10 @@ import (
 
 	_ "github.com/qydysky/bili_danmu/Reply/F/ass"
 	_ "github.com/qydysky/bili_danmu/Reply/F/danmuCountPerMin"
+	_ "github.com/qydysky/bili_danmu/Reply/F/danmuEmotes"
 	_ "github.com/qydysky/bili_danmu/Reply/F/danmuji"
 	comp "github.com/qydysky/part/component2"
+	log "github.com/qydysky/part/log"
 )
 
 var DanmuCountPerMin = comp.Get[interface {
@@ -27,3 +29,19 @@ var Danmuji = comp.Get[interface {
 	Danmujif(s string, then func(string))
 	Danmuji_auto(ctx context.Context, danmus []any, waitSec float64, then func(string))
 }](`danmuji`)
+
+type DanmuEmotesS struct {
+	Logg *log.Log_interface
+	Info []any
+	Msg  *string
+}
+
+var DanmuEmotes = comp.Get[interface {
+	SaveEmote(ctx context.Context, ptr struct {
+		Logg *log.Log_interface
+		Info []any
+		Msg  *string
+	}) (ret any, err error)
+	Hashr(s string) (r string)
+	SetLayerN(n int)
+}](`danmuEmotes`)

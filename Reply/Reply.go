@@ -15,7 +15,6 @@ import (
 	c "github.com/qydysky/bili_danmu/CV"
 	F "github.com/qydysky/bili_danmu/F"
 	replyFunc "github.com/qydysky/bili_danmu/Reply/F"
-	danmuemotes "github.com/qydysky/bili_danmu/Reply/F/danmuEmotes"
 	"github.com/qydysky/bili_danmu/Reply/F/danmuReLiveTriger"
 	"github.com/qydysky/bili_danmu/Reply/F/liveOver"
 	"github.com/qydysky/bili_danmu/Reply/F/recStartEnd"
@@ -1290,7 +1289,7 @@ func (t replyF) danmu(s string) {
 			item.color = "#" + fmt.Sprintf("%x", F.Itob32(int32(i[3].(float64)))[1:])
 
 			if v, ok := t.Common.K_v.LoadV(`弹幕表情`).(bool); ok && v {
-				if _, e := danmuemotes.SaveEmote.Run(context.Background(), danmuemotes.Danmu{Logg: msglog, Info: i, Msg: &item.msg}); e != nil {
+				if _, e := replyFunc.DanmuEmotes.SaveEmote(context.Background(), replyFunc.DanmuEmotesS{Logg: msglog, Info: i, Msg: &item.msg}); e != nil {
 					msglog.L(`E: `, e)
 				}
 			}
