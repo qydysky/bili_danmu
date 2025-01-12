@@ -1214,8 +1214,17 @@ func init() {
 							if v, ok := c.C.K_v.LoadV(`fmp4音视频时间戳容差s`).(float64); ok && v > 0.1 {
 								fmp4Decoder.AVTDiff = v
 							}
-							if e := fmp4Decoder.Cut(f, startT, duration, res); e != nil && !errors.Is(e, io.EOF) {
-								flog.L(`E: `, e)
+							// fastSeed
+							if fastSeedF := file.New(v+".fastSeed", 0, true); fastSeedF.IsExist() {
+								if gf, e := replyFunc.VideoFastSeed.InitGet(v + ".fastSeed"); e != nil {
+									flog.L(`E: `, e)
+								} else if e := fmp4Decoder.CutSeed(f, startT, duration, res, f, gf); e != nil && !errors.Is(e, io.EOF) {
+									flog.L(`E: `, e)
+								}
+							} else {
+								if e := fmp4Decoder.Cut(f, startT, duration, res); e != nil && !errors.Is(e, io.EOF) {
+									flog.L(`E: `, e)
+								}
 							}
 						}
 					} else if e := f.CopyToIoWriter(w, pio.CopyConfig{BytePerSec: speed, SkipByte: rangeHeaderNum}); e != nil {
