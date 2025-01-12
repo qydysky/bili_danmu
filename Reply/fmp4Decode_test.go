@@ -102,6 +102,46 @@ func Test_Mp4Cut(t *testing.T) {
 	t.Log(e)
 }
 
+func Test_Mp4GenFastSeed(t *testing.T) {
+	var VideoFastSeed = comp.Get[interface {
+		InitGet(fastSeedFilePath string) (getIndex func(seedTo time.Duration) (int64, error), e error)
+		InitSav(fastSeedFilePath string) (savIndex func(seedTo time.Duration, cuIndex int64) error, e error)
+	}](`videoFastSeed`)
+
+	f := file.New("testdata/0.mp4", 0, false)
+	defer f.Close()
+	sf, e := VideoFastSeed.InitSav("testdata/0.fastSeed")
+	if e != nil {
+		t.Fatal(e)
+	}
+
+	e = NewFmp4Decoder().GenFastSeed(f, func(seedTo time.Duration, cuIndex int64) error {
+		return sf(seedTo, cuIndex)
+	})
+	if perrors.Catch(e, "Read") {
+		t.Log("err Read", e)
+	}
+	if perrors.Catch(e, "Init_fmp4") {
+		t.Log("err Init_fmp4", e)
+	}
+	if perrors.Catch(e, "skip") {
+		t.Log("err skip", e)
+	}
+	if perrors.Catch(e, "cutW") {
+		t.Log("err cutW", e)
+	}
+	t.Log(e)
+
+	// VideoFastSeed.BeforeGet("testdata/1.fastSeed")
+	// {
+	// 	index, _ := VideoFastSeed.GetIndex(0)
+	// 	f.SeekIndex(index, file.AtOrigin)
+	// 	buf := make([]byte, 8)
+	// 	f.Read(buf)
+	// 	fmt.Println(string(buf[4:8]))
+	// }
+}
+
 // 10s-30s 90.05983ms
 // 10m-10m20s 88.769475ms
 // 30m-30m20s 104.381225ms
@@ -148,44 +188,4 @@ func Test_Mp4CutSeed(t *testing.T) {
 		t.Log("err cutW", e)
 	}
 	t.Log(e)
-}
-
-func Test_Mp4GenFastSeed(t *testing.T) {
-	var VideoFastSeed = comp.Get[interface {
-		InitGet(fastSeedFilePath string) (getIndex func(seedTo time.Duration) (int64, error), e error)
-		InitSav(fastSeedFilePath string) (savIndex func(seedTo time.Duration, cuIndex int64) error, e error)
-	}](`videoFastSeed`)
-
-	f := file.New("testdata/0.mp4", 0, false)
-	defer f.Close()
-	sf, e := VideoFastSeed.InitSav("testdata/0.fastSeed")
-	if e != nil {
-		t.Fatal(e)
-	}
-
-	e = NewFmp4Decoder().GenFastSeed(f, func(seedTo time.Duration, cuIndex int64) error {
-		return sf(seedTo, cuIndex)
-	})
-	if perrors.Catch(e, "Read") {
-		t.Log("err Read", e)
-	}
-	if perrors.Catch(e, "Init_fmp4") {
-		t.Log("err Init_fmp4", e)
-	}
-	if perrors.Catch(e, "skip") {
-		t.Log("err skip", e)
-	}
-	if perrors.Catch(e, "cutW") {
-		t.Log("err cutW", e)
-	}
-	t.Log(e)
-
-	// VideoFastSeed.BeforeGet("testdata/1.fastSeed")
-	// {
-	// 	index, _ := VideoFastSeed.GetIndex(0)
-	// 	f.SeekIndex(index, file.AtOrigin)
-	// 	buf := make([]byte, 8)
-	// 	f.Read(buf)
-	// 	fmt.Println(string(buf[4:8]))
-	// }
 }
