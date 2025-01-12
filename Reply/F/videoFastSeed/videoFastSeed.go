@@ -50,7 +50,7 @@ func (_ videoFastSeed) InitSav(fastSeedFilePath string) (savIndex func(seedTo ti
 	f := file.New(t.filepath, -1, false)
 	defer f.Close()
 	if f.IsExist() {
-		f.Delete()
+		_ = f.Delete()
 	}
 	t.initSav = true
 	return t.SavIndex, nil
