@@ -405,7 +405,9 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 	return
 }
 
-func (t *Fmp4Decoder) oneF(buf []byte, ifWrite func(t float64) bool, w ...io.Writer) (cu int, err error) {
+type dealF func(t float64, index int, buf *slice.Buf[byte]) error
+
+func (t *Fmp4Decoder) oneF(buf []byte, w ...dealF) (cu int, err error) {
 	if len(buf) > humanize.MByte*100 {
 		return 0, ErrBufTooLarge
 	}
@@ -556,9 +558,7 @@ func (t *Fmp4Decoder) oneF(buf []byte, ifWrite func(t float64) bool, w ...io.Wri
 					if v, e := t.buf.HadModified(bufModified); e == nil && v && !t.buf.IsEmpty() {
 						cu = m[0].i
 						if haveKeyframe && len(w) > 0 {
-							if ifWrite(video.getT()) {
-								_, err = w[0].Write(t.buf.GetPureBuf())
-							}
+							err = w[0](video.getT(), cu, t.buf)
 							t.buf.Reset()
 							return true, ErrNormal
 						}
@@ -654,9 +654,7 @@ func (t *Fmp4Decoder) oneF(buf []byte, ifWrite func(t float64) bool, w ...io.Wri
 					if v, e := t.buf.HadModified(bufModified); e == nil && v && !t.buf.IsEmpty() {
 						cu = m[0].i
 						if haveKeyframe && len(w) > 0 {
-							if ifWrite(video.getT()) {
-								_, err = w[0].Write(t.buf.GetPureBuf())
-							}
+							err = w[0](video.getT(), cu, t.buf)
 							t.buf.Reset()
 							return true, ErrNormal
 						}
@@ -683,23 +681,32 @@ func (t *Fmp4Decoder) oneF(buf []byte, ifWrite func(t float64) bool, w ...io.Wri
 	return
 }
 
+// Deprecated: 效率低于GenFastSeed+CutSeed
 func (t *Fmp4Decoder) Cut(reader io.Reader, startT, duration time.Duration, w io.Writer) (err error) {
+	return t.CutSeed(reader, startT, duration, w, nil, nil)
+}
+
+func (t *Fmp4Decoder) CutSeed(reader io.Reader, startT, duration time.Duration, w io.Writer, seeker io.Seeker, getIndex func(seedTo time.Duration) (int64, error)) (err error) {
 	bufSize := humanize.KByte * 1100
 	buf := make([]byte, humanize.MByte)
 	buff := slice.New[byte]()
 	init := false
+	seek := false
 	over := false
 	startTM := startT.Seconds()
 	durationM := duration.Seconds()
 	firstFT := -1.0
 
-	ifWriteF := func(t float64) bool {
+	wf := func(t float64, index int, buf *slice.Buf[byte]) (e error) {
 		if firstFT == -1 {
 			firstFT = t
 		}
 		cu := t - firstFT
 		over = duration != 0 && cu > durationM+startTM
-		return startTM <= cu && !over
+		if startTM <= cu && !over {
+			_, e = w.Write(buf.GetPureBuf())
+		}
+		return
 	}
 
 	if t.Debug {
@@ -731,7 +738,70 @@ func (t *Fmp4Decoder) Cut(reader io.Reader, startT, duration time.Duration, w io
 				}
 			}
 		} else {
-			if dropOffset, e := t.oneF(buff.GetPureBuf(), ifWriteF, w); e != nil {
+			if !seek && seeker != nil && getIndex != nil {
+				if index, e := getIndex(startT); e != nil {
+					return perrors.New("s", e.Error())
+				} else {
+					if _, e := seeker.Seek(index, io.SeekStart); e != nil {
+						return perrors.New("s", e.Error())
+					}
+				}
+				seek = true
+				startTM = 0
+				buff.Clear()
+			}
+			if dropOffset, e := t.oneF(buff.GetPureBuf(), wf); e != nil {
+				return perrors.New("w", e.Error())
+			} else {
+				if dropOffset != 0 {
+					_ = buff.RemoveFront(dropOffset)
+				} else {
+					bufSize *= 2
+				}
+			}
+		}
+	}
+	return
+}
+
+func (t *Fmp4Decoder) GenFastSeed(reader io.Reader, save func(seedTo time.Duration, cuIndex int64) error) (err error) {
+	bufSize := humanize.KByte * 1100
+	totalRead := 0
+	buf := make([]byte, humanize.MByte)
+	buff := slice.New[byte]()
+	init := false
+	over := false
+	firstFT := -1.0
+
+	for c := 0; err == nil && !over; c++ {
+		if buff.Size() < bufSize {
+			n, e := reader.Read(buf)
+			if n == 0 && errors.Is(e, io.EOF) {
+				return io.EOF
+			}
+			totalRead += n
+			err = buff.Append(buf[:n])
+			continue
+		}
+
+		if !init {
+			if frontBuf, e := t.Init_fmp4(buff.GetPureBuf()); e != nil {
+				return perrors.New("Init_fmp4", e.Error())
+			} else {
+				if len(frontBuf) == 0 {
+					bufSize *= 2
+					continue
+				} else {
+					init = true
+				}
+			}
+		} else {
+			if dropOffset, e := t.oneF(buff.GetPureBuf(), func(t float64, index int, buf *slice.Buf[byte]) error {
+				if firstFT == -1 {
+					firstFT = t
+				}
+				return save(time.Second*time.Duration(t-firstFT), int64(totalRead-buff.Size()+index))
+			}); e != nil {
 				return perrors.New("w", e.Error())
 			} else {
 				if dropOffset != 0 {

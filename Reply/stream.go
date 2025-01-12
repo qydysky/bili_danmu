@@ -1447,15 +1447,35 @@ func (t *M4SStream) Start() bool {
 					go StartRecDanmu(contextC, ms.GetSavePath())
 
 					//ass
-					if enc, ok := c.C.K_v.LoadV("Ass编码").(string); c.C.IsOn(`生成Ass弹幕`) && c.C.IsOn(`仅保存当前直播间流`) && ok {
+					if enc, ok := ms.common.K_v.LoadV("Ass编码").(string); ms.common.IsOn(`生成Ass弹幕`) && ms.common.IsOn(`仅保存当前直播间流`) && ok {
 						go replyFunc.Ass.Ass_f(contextC, enc, ms.GetSavePath(), time.Now())
 					}
 
+					path := ms.GetSavePath() + `0.` + ms.GetStreamType()
 					startT := time.Now()
-					if e := ms.PusherToFile(contextC, ms.GetSavePath()+`0.`+ms.GetStreamType(), startf, stopf); e != nil {
+					if e := ms.PusherToFile(contextC, path, startf, stopf); e != nil {
 						l.L(`E: `, e)
 					}
 					duration := time.Since(startT)
+
+					//PusherToFile fin genFastSeed
+					{
+						switch ms.GetStreamType() {
+						case `mp4`:
+							fmp4Decoder := NewFmp4Decoder()
+							if v, ok := ms.common.K_v.LoadV(`fmp4音视频时间戳容差s`).(float64); ok && v > 0.1 {
+								fmp4Decoder.AVTDiff = v
+							}
+							f := file.New(path, 0, false)
+							if sf, e := replyFunc.VideoFastSeed.InitSav(path + ".fastSeed"); e != nil {
+								l.L(`E: `, e)
+							} else if e := fmp4Decoder.GenFastSeed(f, sf); e != nil && !errors.Is(e, io.EOF) {
+								l.L(`E: `, e)
+							}
+							f.Close()
+						default:
+						}
+					}
 
 					// 结束，不发送空值停止直播回放
 					// t.Stream_msg.PushLock_tag(`data`, []byte{})

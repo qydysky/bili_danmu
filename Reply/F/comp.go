@@ -9,6 +9,7 @@ import (
 	_ "github.com/qydysky/bili_danmu/Reply/F/danmuCountPerMin"
 	_ "github.com/qydysky/bili_danmu/Reply/F/danmuEmotes"
 	_ "github.com/qydysky/bili_danmu/Reply/F/danmuji"
+	_ "github.com/qydysky/bili_danmu/Reply/F/videoFastSeed"
 	comp "github.com/qydysky/part/component2"
 	log "github.com/qydysky/part/log"
 )
@@ -29,6 +30,11 @@ var Danmuji = comp.Get[interface {
 	Danmujif(s string, then func(string))
 	Danmuji_auto(ctx context.Context, danmus []any, waitSec float64, then func(string))
 }](`danmuji`)
+
+var VideoFastSeed = comp.Get[interface {
+	InitGet(fastSeedFilePath string) (getIndex func(seedTo time.Duration) (int64, error), e error)
+	InitSav(fastSeedFilePath string) (savIndex func(seedTo time.Duration, cuIndex int64) error, e error)
+}](`videoFastSeed`)
 
 type DanmuEmotesS struct {
 	Logg *log.Log_interface
