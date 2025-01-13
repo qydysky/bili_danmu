@@ -163,10 +163,13 @@ Warning: Binary output can mess up your terminal. Use "--output -" to tell curl 
 * closing connection #0
 ```
 
-添加快速索引文件生成，将在录制完成后，读取视频文件，并将关键帧的时间戳和对应的下标值记录在`.fastSeed`文件，用于加快后续切片请求响应。(>v0.14.28)
+添加快速索引文件生成，将在录制完成后，自定义回调命令执行前，读取视频文件，并将关键帧的时间戳和对应的下标值记录在`.fastSeed`文件，用于加快后续切片请求响应。(>v0.14.28)
 
-相较于之前的请求时进行查找，效率提升如下（以mp4格式为例）
+可以设置`禁用快速索引生成`(默认为`false`)为`true`来禁用这个动作(>v0.14.28)
+
+相较于之前的请求时进行查找，效率提升如下
 ```
+mp4：
 旧：
 // 10s-30s 110.962896ms
 // 10m-10m20s 1.955749395s
@@ -176,6 +179,15 @@ Warning: Binary output can mess up your terminal. Use "--output -" to tell curl 
 // 10s-30s 90.05983ms
 // 10m-10m20s 88.769475ms
 // 30m-30m20s 104.381225ms
+
+flv：
+旧：
+// 10s-30s 184.852917ms
+// 10m-10m20s 3.278605875s
+
+新：
+// 10s-30s 215.815423ms
+// 10m-10m20s 174.918508ms
 ```
 
 `.fastSeed`文件格式：

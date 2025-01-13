@@ -201,7 +201,9 @@ func (t *FlvDecoder) SearchStreamTag(buf []byte, keyframe *slice.Buf[byte]) (dro
 	return
 }
 
-func (t *FlvDecoder) oneF(buf []byte, ifWrite func(t int) bool, w ...io.Writer) (dropOffset int, err error) {
+type dealFFlv func(t int, index int, buf []byte) error
+
+func (t *FlvDecoder) oneF(buf []byte, w ...dealFFlv) (dropOffset int, err error) {
 
 	if !t.init {
 		err = ErrNoInit
@@ -263,9 +265,7 @@ func (t *FlvDecoder) oneF(buf []byte, ifWrite func(t int) bool, w ...io.Writer) 
 		if buf[bufOffset] == videoTag && buf[bufOffset+11]&0xf0 == 0x10 { //key frame
 			if keyframeOp >= 0 && len(w) > 0 {
 				dropOffset = bufOffset
-				if ifWrite(timeStamp) {
-					_, err = w[0].Write(buf[keyframeOp:bufOffset])
-				}
+				err = w[0](timeStamp, keyframeOp, buf[keyframeOp:bufOffset])
 				return
 			}
 			keyframeOp = bufOffset
@@ -276,25 +276,31 @@ func (t *FlvDecoder) oneF(buf []byte, ifWrite func(t int) bool, w ...io.Writer) 
 	return
 }
 
+// Deprecated: 效率低于GenFastSeed+CutSeed
 func (t *FlvDecoder) Cut(reader io.Reader, startT, duration time.Duration, w io.Writer) (err error) {
+	return t.CutSeed(reader, startT, duration, w, nil, nil)
+}
+
+func (t *FlvDecoder) CutSeed(reader io.Reader, startT, duration time.Duration, w io.Writer, seeker io.Seeker, getIndex func(seedTo time.Duration) (int64, error)) (err error) {
 	bufSize := humanize.KByte * 1100
 	buf := make([]byte, humanize.KByte*500)
 	buff := slice.New[byte]()
 	over := false
+	seek := false
 	startTM := startT.Milliseconds()
 	durationM := duration.Milliseconds()
 	firstFT := -1
 
-	ifWriteF := func(t int) bool {
+	wf := func(t int, index int, buf []byte) (e error) {
 		if firstFT == -1 {
 			firstFT = t
 		}
 		cu := int64(t - firstFT)
 		over = duration != 0 && cu > durationM+startTM
 		if startTM <= cu && !over {
-			return true
+			_, e = w.Write(buf)
 		}
-		return false
+		return
 	}
 
 	for c := 0; err == nil && !over; c++ {
@@ -323,7 +329,71 @@ func (t *FlvDecoder) Cut(reader io.Reader, startT, duration time.Duration, w io.
 				}
 			}
 		} else {
-			if dropOffset, e := t.oneF(buff.GetPureBuf(), ifWriteF, w); e != nil {
+			if !seek && seeker != nil && getIndex != nil {
+				if index, e := getIndex(startT); e != nil {
+					return perrors.New("s", e.Error())
+				} else {
+					if _, e := seeker.Seek(index, io.SeekStart); e != nil {
+						return perrors.New("s", e.Error())
+					}
+				}
+				seek = true
+				startTM = 0
+				buff.Clear()
+			}
+			if dropOffset, e := t.oneF(buff.GetPureBuf(), wf); e != nil {
+				return perrors.New("skip", e.Error())
+			} else {
+				if dropOffset != 0 {
+					_ = buff.RemoveFront(dropOffset)
+				} else {
+					bufSize *= 2
+				}
+			}
+		}
+	}
+	return
+}
+
+func (t *FlvDecoder) GenFastSeed(reader io.Reader, save func(seedTo time.Duration, cuIndex int64) error) (err error) {
+	bufSize := humanize.KByte * 1100
+	totalRead := 0
+	buf := make([]byte, humanize.KByte*500)
+	buff := slice.New[byte]()
+	over := false
+	firstFT := -1
+
+	for c := 0; err == nil && !over; c++ {
+		if buff.Size() < bufSize {
+			n, e := reader.Read(buf)
+			if n == 0 && errors.Is(e, io.EOF) {
+				return io.EOF
+			}
+			totalRead += n
+			err = buff.Append(buf[:n])
+			continue
+		}
+
+		if !t.init {
+			if frontBuf, dropOffset, e := t.InitFlv(buff.GetPureBuf()); e != nil {
+				return perrors.New("InitFlv", e.Error())
+			} else {
+				if dropOffset != 0 {
+					_ = buff.RemoveFront(dropOffset)
+				} else {
+					bufSize *= 2
+				}
+				if len(frontBuf) == 0 {
+					continue
+				}
+			}
+		} else {
+			if dropOffset, e := t.oneF(buff.GetPureBuf(), func(t, index int, buf []byte) error {
+				if firstFT == -1 {
+					firstFT = t
+				}
+				return save(time.Millisecond*time.Duration(t-firstFT), int64(totalRead-buff.Size()+index))
+			}); e != nil {
 				return perrors.New("skip", e.Error())
 			} else {
 				if dropOffset != 0 {

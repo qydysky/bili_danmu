@@ -1459,21 +1459,36 @@ func (t *M4SStream) Start() bool {
 					duration := time.Since(startT)
 
 					//PusherToFile fin genFastSeed
-					{
+					if disableFastSeed, ok := ms.common.K_v.LoadV("禁用快速索引生成").(bool); !ok || !disableFastSeed {
+						type deal interface {
+							GenFastSeed(reader io.Reader, save func(seedTo time.Duration, cuIndex int64) error) (err error)
+						}
+						var dealer deal
+
 						switch ms.GetStreamType() {
 						case `mp4`:
 							fmp4Decoder := NewFmp4Decoder()
 							if v, ok := ms.common.K_v.LoadV(`fmp4音视频时间戳容差s`).(float64); ok && v > 0.1 {
 								fmp4Decoder.AVTDiff = v
 							}
+							dealer = fmp4Decoder
+						case `flv`:
+							flvDecoder := NewFlvDecoder()
+							if v, ok := ms.common.K_v.LoadV(`flv音视频时间戳容差ms`).(float64); ok && v > 100 {
+								flvDecoder.Diff = v
+							}
+							dealer = flvDecoder
+						default:
+						}
+
+						if dealer != nil {
 							f := file.New(path, 0, false)
 							if sf, e := replyFunc.VideoFastSeed.InitSav(path + ".fastSeed"); e != nil {
 								l.L(`E: `, e)
-							} else if e := fmp4Decoder.GenFastSeed(f, sf); e != nil && !errors.Is(e, io.EOF) {
+							} else if e := dealer.GenFastSeed(f, sf); e != nil && !errors.Is(e, io.EOF) {
 								l.L(`E: `, e)
 							}
 							f.Close()
-						default:
 						}
 					}
 
