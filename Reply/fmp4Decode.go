@@ -405,9 +405,9 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 	return
 }
 
-type dealF func(t float64, index int, buf *slice.Buf[byte]) error
+type dealFMp4 func(t float64, index int, buf *slice.Buf[byte]) error
 
-func (t *Fmp4Decoder) oneF(buf []byte, w ...dealF) (cu int, err error) {
+func (t *Fmp4Decoder) oneF(buf []byte, w ...dealFMp4) (cu int, err error) {
 	if len(buf) > humanize.MByte*100 {
 		return 0, ErrBufTooLarge
 	}

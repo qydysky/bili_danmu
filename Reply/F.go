@@ -1201,8 +1201,17 @@ func init() {
 							if v, ok := c.C.K_v.LoadV(`flv音视频时间戳容差ms`).(float64); ok && v > 100 {
 								flvDecoder.Diff = v
 							}
-							if e := flvDecoder.Cut(f, startT, duration, res); e != nil && !errors.Is(e, io.EOF) {
-								flog.L(`E: `, e)
+							// fastSeed
+							if fastSeedF := file.New(v+".fastSeed", 0, true); fastSeedF.IsExist() {
+								if gf, e := replyFunc.VideoFastSeed.InitGet(v + ".fastSeed"); e != nil {
+									flog.L(`E: `, e)
+								} else if e := flvDecoder.CutSeed(f, startT, duration, res, f, gf); e != nil && !errors.Is(e, io.EOF) {
+									flog.L(`E: `, e)
+								}
+							} else {
+								if e := flvDecoder.Cut(f, startT, duration, res); e != nil && !errors.Is(e, io.EOF) {
+									flog.L(`E: `, e)
+								}
 							}
 						}
 						if strings.HasSuffix(v, "mp4") {
