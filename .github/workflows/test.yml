@@ -9,6 +9,8 @@ on:
       - '**.go'
       - '**.mod'
       - '**.sum'
+      - '**.flv'
+      - '**.mp4'
 
 jobs:
   buildtest:
