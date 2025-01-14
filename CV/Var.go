@@ -636,7 +636,7 @@ func (t *Common) Init() *Common {
 						panic("保存日志至db打开连接错误 " + e.Error())
 					}
 				}
-				t.Log = t.Log.LDB(db, insert, time.Second*5)
+				t.Log = t.Log.LDB(dbname, db, insert, time.Second*5)
 			}
 		}
 

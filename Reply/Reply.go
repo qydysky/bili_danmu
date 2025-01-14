@@ -1310,7 +1310,7 @@ func (t replyF) danmu(s string) {
 
 	if v, ok := t.Common.K_v.LoadV(`弹幕输出到日志`).(bool); !ok || !v {
 		danmulog.LFile("")
-		danmulog.LDB(nil, "")
+		danmulog.LDB("", nil, "")
 	}
 
 	{ // 附加功能 弹幕机 封禁 弹幕合并

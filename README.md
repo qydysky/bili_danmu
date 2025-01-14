@@ -384,47 +384,47 @@ curl -s http://{主机名}:11000/ip/ | awk '/240:?/'
 ```
 
 #### 保存日志至DB
-配置文件中添加配置项`保存日志至db`。大部分可以参考保存弹幕至db,但有些许不同：
+配置文件中添加配置项`保存日志至db`。~~大部分~~ 可以参考保存弹幕至db ~~,但有些许不同~~：
 
-`insert`语句中不能使用`{...}`的占位符，默认占位符1为Prefix,2为Base,3为具体内容。见下面的mysql实例。
+~~`insert`语句中不能使用`{...}`的占位符，默认占位符1为Prefix,2为Base,3为具体内容。见下面的mysql实例。~~
+
+使用`{...}`占位符，而非`?`。可选字段见下方示例(>v0.14.28)
+
 ```json
 {
-  "保存日志至db": {
-      "dbname": "mysql",
-      "url":"root:root@(192.168.31.103:10836)/test",
-      "字段help":"$1:Prefix $2:Base $3:Msgs, use ? or $%d not placeholder",
-      "create":"create table log (t datetime,Prefix varchar(20), Base varchar(50), Msgs varchar(500))",
-      "insert":"insert into log (t,Prefix, Base, Msgs) values (now(),?,?,?)"
+  "保存日志至db":{
+    "dbname": "postgres",
+    "url":"postgres://postgres:qydysky@192.168.31.103:5432/postgres?sslmode=disable",
+    "字段help":"{Date} time.Now().Format(time.DateTime), {Unix} time.Now().Unix(), {Prefix} string,{Base} string,{Msgs} string",
+    "create":"create table log2 (created varchar(20), createdunix varchar(20), Prefix varchar(10), Base varchar(30), Msgs varchar(500))",
+    "insert":"insert into log2 (created, createdunix, Prefix, Base, Msgs) values ({Date},{Unix},{Prefix},{Base},{Msgs})"
   }
 }
 ```
 
 log：
 
-|t|Prefix|Base|Msgs|
-|-|------|----|----|
-|2023-06-22 04:59:57|T:|Ass|编码: GB18030|
-|2023-06-22 04:59:57|T:|功能 更少弹幕|每秒弹幕数: 1|
-|2023-06-22 04:59:57|I:|功能 直播Web服务|启动于 http://0.0.0.0:11000/web/|
-|2023-06-22 04:59:57|I:|bilidanmu|当前PID: 716582|
-|2023-06-22 04:59:57|I:|bilidanmu|version:  20230614221100|
-|2023-06-22 04:59:57|I:|bilidanmu|3s内2次ctrl+c退出|
-|2023-06-22 04:59:57|I:|bilidanmu|当前ip：http://192.168.31.101|
-|2023-06-22 04:59:57|I:|bilidanmu|当前ip：http://172.16.0.1|
-|2023-06-22 04:59:57|I:|bilidanmu|当前ip：http://172.17.0.1|
-|2023-06-22 04:59:57|I:|bilidanmu|当前ip：http://172.17.0.10|
-|2023-06-22 04:59:57|I:|bilidanmu|当前ip：http://172.17.86.21|
-|2023-06-22 04:59:58|T:|api IsConnected|已连接|
-|2023-06-22 04:59:58|T:|api Get|Get Cookie|
-|2023-06-22 04:59:58|I:|api 获取Cookie|已登录|
-|2023-06-22 04:59:59|T:|api Get|Get LIVE_BUVID|
-|2023-06-22 04:59:59|I:|api LIVE_BUVID|获取到LIVE_BUVID，保存cookie|
-|2023-06-22 04:59:59|T:|api Get|Get Uid|
-|2023-06-22 04:59:59|T:|命令行操作|回车查看帮助|
-|2023-06-22 04:59:59|T:|api 银瓜子=>硬币|现在有银瓜子 396 个|
-|2023-06-22 04:59:59|W:|api 银瓜子=>硬币|当前银瓜子数量不足|
-|2023-06-22 04:59:59|T:|api 签到|签到|
-|2023-06-22 05:00:01|I:|bilidanmu|结束退出|
+|"created"            |"createdunix"|"prefix"|"base"         |"msgs"                       |
+|-------|-----------|---|-----|----|
+|"2025-01-15 01:42:25"|"1736876545" |T:      |功能 更少弹幕        |每秒弹幕数: 1                     |
+|"2025-01-15 01:42:25"|"1736876545" |I:      |功能 直播Web服务     |启动于 http://0.0.0.0:20000/web/|
+|"2025-01-15 01:42:25"|"1736876545" |I:      |bilidanmu      |当前PID: 485073                |
+|"2025-01-15 01:42:25"|"1736876545" |I:      |bilidanmu      |version:  20250105171800     |
+|"2025-01-15 01:42:25"|"1736876545" |I:      |bilidanmu      |"3s内2次ctrl+c退出"              |
+|"2025-01-15 01:42:26"|"1736876546" |T:      |api IsConnected|已连接                          |
+|"2025-01-15 01:42:26"|"1736876546" |T:      |api Get        |Get Cookie                   |
+|"2025-01-15 01:42:26"|"1736876546" |I:      |api 获取Cookie   |已登录                          |
+|"2025-01-15 01:42:27"|"1736876547" |T:      |api Get        |Get LIVE_BUVID               |
+|"2025-01-15 01:42:27"|"1736876547" |I:      |api LIVE_BUVID |获取到LIVE_BUVID，保存cookie       |
+|"2025-01-15 01:42:27"|"1736876547" |T:      |api Get        |Get Uid                      |
+|"2025-01-15 01:42:27"|"1736876547" |T:      |命令行操作          |回车查看帮助                       |
+|"2025-01-15 01:42:28"|"1736876548" |T:      |api 银瓜子=>硬币    |现在有银瓜子 518 个                 |
+|"2025-01-15 01:42:28"|"1736876548" |I:      |api 银瓜子=>硬币    |当前银瓜子数量不足                    |
+|"2025-01-15 01:42:28"|"1736876548" |I:      |功能 保持亮牌        |将在 00:00:00 启动               |
+|"2025-01-15 01:42:28"|"1736876548" |T:      |指定弹幕重启录制       |加载 1 条规则                     |
+|"2025-01-15 01:42:51"|"1736876571" |I:      |bilidanmu      |等待1m0s协程结束                   |
+|"2025-01-15 01:42:51"|"1736876571" |I:      |bilidanmu      |结束                           |
+
 
 #### 保存弹幕至DB
 配置文件中添加配置项`保存弹幕至db`。参考以下实例：
