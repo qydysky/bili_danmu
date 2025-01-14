@@ -45,7 +45,7 @@
     "保存弹幕至db": {
         "dbname": "",
         "url":"",
-        "字段help":"time.Now().Format(time.DateTime), time.Now().Unix(), item.msg, item.color, item.auth, item.uid, item.roomid",
+        "字段help":"{Date} time.Now().Format(time.DateTime), {Unix} time.Now().Unix(), {Msg} item.msg, {Color} item.color, {auth} item.auth, {Uid} item.uid, {Roomid} item.roomid",
         "create":"",
         "insert":""
     },
@@ -60,7 +60,7 @@
     "保存日志至db": {
         "dbname": "",
         "url":"",
-        "字段help":"$1:Prefix $2:Base $3:Msgs, use ? or $%d not placeholder",
+        "字段help":"{Date} time.Now().Format(time.DateTime), {Unix} time.Now().Unix(), {Prefix} string,{Base} string,{Msgs} string",
         "create":"",
         "insert":""
     },

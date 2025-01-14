@@ -1565,11 +1565,12 @@ func (t *SaveDanmuToDB) danmu(item Danmu_item) {
 			Roomid int64
 		}
 
-		var replaceF []func(index int, holder string) (replaceTo string)
-		if t.dbname == "postgres" {
-			replaceF = append(replaceF, func(index int, holder string) (replaceTo string) {
-				return fmt.Sprintf("$%d", index+1)
-			})
+		var replaceF psql.ReplaceF
+		switch t.dbname {
+		case "postgres":
+			replaceF = psql.PlaceHolderB
+		default:
+			replaceF = psql.PlaceHolderA
 		}
 
 		tx := psql.BeginTx[any](t.db, pctx.GenTOCtx(time.Second*5))
@@ -1581,7 +1582,7 @@ func (t *SaveDanmuToDB) danmu(item Danmu_item) {
 			Auth:   item.auth,
 			Uid:    item.uid,
 			Roomid: int64(item.roomid),
-		}, replaceF...)
+		}, replaceF)
 		tx.AfterEF(func(_ *any, result sql.Result, e *error) {
 			if v, err := result.RowsAffected(); err != nil {
 				*e = err
