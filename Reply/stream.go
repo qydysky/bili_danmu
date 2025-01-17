@@ -1,11 +1,9 @@
 package reply
 
 import (
-	"bytes"
 	"context"
 	"crypto/md5"
 	_ "embed"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -448,7 +446,9 @@ func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo floa
 	defer t.reqPool.Put(r)
 
 	// 请求解析m3u8内容
-	for _, v := range t.common.Live {
+	for i := 0; i < len(t.common.Live); i++ {
+		v := t.common.Live[i]
+
 		// 跳过尚未启用的live地址
 		if !v.Valid() {
 			continue
@@ -477,7 +477,6 @@ func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo floa
 		}
 
 		if err := r.Reqf(rval); err != nil {
-			// 1min后重新启用
 			v.DisableAuto()
 			t.log.L("W: ", fmt.Sprintf("服务器 %s 发生故障 %s", F.ParseHost(v.Url), pe.ErrorFormat(err, pe.ErrSimplifyFunc)))
 			if t.common.ValidLive() == nil {
@@ -499,19 +498,6 @@ func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo floa
 			}
 		}
 
-		// m3u8字节流
-		var m3u8_respon = r.Respon
-
-		// base64解码
-		if len(m3u8_respon) != 0 && !bytes.Contains(m3u8_respon, []byte("#")) {
-			var err error
-			m3u8_respon, err = base64.StdEncoding.DecodeString(string(m3u8_respon))
-			if err != nil {
-				e = err
-				return
-			}
-		}
-
 		// 解析m3u8
 		// var tmp []*m4s_link_item
 		var lastNo int
@@ -519,56 +505,33 @@ func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo floa
 			lastNo, _ = lastM4s.getNo()
 		}
 
-		m3u := bytes.Split(m3u8_respon, []byte("\n"))
-		for i := 0; i < len(m3u); i++ {
-			line := m3u[i]
-			if len(line) == 0 {
-				continue
-			}
-
-			var (
-				m4s_link string //切片文件名
-				isHeader bool
-			)
-
-			if line[0] == '#' {
-				if strings.HasPrefix(string(line), "#EXT-X-MAP") {
-					if lastM4s != nil {
-						continue
-					}
-					e := bytes.Index(line[16:], []byte(`"`)) + 16
-					m4s_link = string(line[16:e])
-					isHeader = true
-				} else if strings.HasPrefix(string(line), "#EXT-X-STREAM-INF") {
-					// m3u8 指向新连接
-					i += 1
-					line = m3u[i]
-					newUrl := strings.TrimSpace(string(line))
-					t.log.L(`I: `, `指向新连接`, v.Host(), "=>", F.ParseHost(newUrl))
-					v.SetUrl(newUrl)
-					continue
-				} else {
-					continue
-				}
+		if rg, redirectUrl, err := replyFunc.ParseM3u8.Parse(r.Respon, lastNo); err != nil {
+			if replyFunc.ParseM3u8.IsErrRedirect(err) {
+				// 指向新连接
+				t.log.L(`I: `, `指向新连接`, v.Host(), "=>", F.ParseHost(redirectUrl))
+				v.SetUrl(redirectUrl)
+				i -= 1
 			} else {
-				m4s_link = string(line)
-			}
-
-			if !isHeader {
-				// 只增加新的切片
-				if no, _ := strconv.Atoi(m4s_link[:len(m4s_link)-4]); lastNo >= no {
-					continue
+				// 1min后重新启用
+				t.log.L("W: ", fmt.Sprintf("服务器 %s 发生故障 %v", F.ParseHost(v.Url), err))
+				v.DisableAuto()
+				if t.common.ValidLive() == nil {
+					e = errors.New("全部切片服务器发生故障")
+					break
 				}
 			}
-
-			//将切片添加到返回切片数组
-			p := t.getM4s()
-			p.SerUuid = v.Uuid
-			p.Url = F.ResolveReferenceLast(v.Url, m4s_link+"?trid="+F.ParseQuery(v.Url, "trid="))
-			p.Base = m4s_link
-			p.isHeader = isHeader
-			p.createdTime = time.Now()
-			m4s_links = append(m4s_links, p)
+			continue
+		} else {
+			for m4sLinkI := range rg {
+				//将切片添加到返回切片数组
+				p := t.getM4s()
+				p.SerUuid = v.Uuid
+				p.Url = F.ResolveReferenceLast(v.Url, m4sLinkI.M4sLink()+"?trid="+F.ParseQuery(v.Url, "trid="))
+				p.Base = m4sLinkI.M4sLink()
+				p.isHeader = m4sLinkI.IsHeader()
+				p.createdTime = time.Now()
+				m4s_links = append(m4s_links, p)
+			}
 		}
 
 		if len(m4s_links) == 0 {
