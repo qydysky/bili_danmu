@@ -21,7 +21,6 @@ demo/qr.png
 demo/live
 demo/main.exe
 *.m4s
-*.m3u8
 demo/build.bat
 demo/build.sh
 Reply/0.flv.log

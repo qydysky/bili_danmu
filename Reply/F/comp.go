@@ -2,6 +2,7 @@ package f
 
 import (
 	"context"
+	"iter"
 	"net/http"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 	_ "github.com/qydysky/bili_danmu/Reply/F/danmuCountPerMin"
 	_ "github.com/qydysky/bili_danmu/Reply/F/danmuEmotes"
 	_ "github.com/qydysky/bili_danmu/Reply/F/danmuji"
+	_ "github.com/qydysky/bili_danmu/Reply/F/parseM3u8"
 	_ "github.com/qydysky/bili_danmu/Reply/F/videoFastSeed"
 	comp "github.com/qydysky/part/component2"
 	log "github.com/qydysky/part/log"
@@ -35,6 +37,14 @@ var VideoFastSeed = comp.Get[interface {
 	InitGet(fastSeedFilePath string) (getIndex func(seedTo time.Duration) (int64, error), e error)
 	InitSav(fastSeedFilePath string) (savIndex func(seedTo time.Duration, cuIndex int64) error, e error)
 }](`videoFastSeed`)
+
+var ParseM3u8 = comp.Get[interface {
+	Parse(respon []byte, lastNo int) (m4sLink iter.Seq[interface {
+		IsHeader() bool
+		M4sLink() string
+	}], redirectUrl string, err error)
+	IsErrRedirect(e error) bool
+}](`parseM3u8`)
 
 type DanmuEmotesS struct {
 	Logg *log.Log_interface
