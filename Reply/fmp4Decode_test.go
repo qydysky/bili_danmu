@@ -87,19 +87,7 @@ func Test_Mp4Cut(t *testing.T) {
 	}
 
 	e := NewFmp4Decoder().Cut(f, time.Minute*30, time.Second*20, cutf.File())
-	if perrors.Catch(e, "Read") {
-		t.Log("err Read", e)
-	}
-	if perrors.Catch(e, "Init_fmp4") {
-		t.Log("err Init_fmp4", e)
-	}
-	if perrors.Catch(e, "skip") {
-		t.Log("err skip", e)
-	}
-	if perrors.Catch(e, "cutW") {
-		t.Log("err cutW", e)
-	}
-	t.Log(e)
+	t.Log(perrors.ErrorFormat(e))
 }
 
 func Test_Mp4GenFastSeed(t *testing.T) {
@@ -118,19 +106,7 @@ func Test_Mp4GenFastSeed(t *testing.T) {
 	e = NewFmp4Decoder().GenFastSeed(f, func(seedTo time.Duration, cuIndex int64) error {
 		return sf(seedTo, cuIndex)
 	})
-	if perrors.Catch(e, "Read") {
-		t.Log("err Read", e)
-	}
-	if perrors.Catch(e, "Init_fmp4") {
-		t.Log("err Init_fmp4", e)
-	}
-	if perrors.Catch(e, "skip") {
-		t.Log("err skip", e)
-	}
-	if perrors.Catch(e, "cutW") {
-		t.Log("err cutW", e)
-	}
-	t.Log(e)
+	t.Log(perrors.ErrorFormat(e))
 
 	// VideoFastSeed.BeforeGet("testdata/1.fastSeed")
 	// {
@@ -175,17 +151,5 @@ func Test_Mp4CutSeed(t *testing.T) {
 	}
 
 	e = NewFmp4Decoder().CutSeed(f, time.Minute*30, time.Second*20, cutf.File(), f, gf)
-	if perrors.Catch(e, "Read") {
-		t.Log("err Read", e)
-	}
-	if perrors.Catch(e, "Init_fmp4") {
-		t.Log("err Init_fmp4", e)
-	}
-	if perrors.Catch(e, "skip") {
-		t.Log("err skip", e)
-	}
-	if perrors.Catch(e, "cutW") {
-		t.Log("err cutW", e)
-	}
-	t.Log(e)
+	t.Log(perrors.ErrorFormat(e))
 }

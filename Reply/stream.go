@@ -165,7 +165,7 @@ func (link *m4s_link_item) download(reqPool *pool.Buf[reqf.Req], reqConfig reqf.
 		return perrors.New(e.Error(), AEFDA)
 	} else {
 		if int64(reqConfig.Timeout) < r.UsedTime.Milliseconds()+3000 {
-			err = perrors.New(fmt.Sprintf("fmp4切片下载超时s(%d)或许应该大于%d", reqConfig.Timeout/1000, (r.UsedTime.Milliseconds()+3000)/1000), AEFDCTO)
+			err = perrors.New(fmt.Sprintf("fmp4切片下载超时s(%d)或许应该大于%d", reqConfig.Timeout/1000, (r.UsedTime.Milliseconds()+4000)/1000), AEFDCTO)
 		}
 		link.status = 2 // 设置切片状态为下载完成
 		return
@@ -983,7 +983,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 		fmp4Decoder      = NewFmp4Decoder()
 		keyframe         = slice.New[byte]()
 		lastM4s          *m4s_link_item
-		to               = 3
+		to               = 4
 		fmp4ListUpdateTo = 5.0
 		fmp4Count        = 0
 		startT           = time.Now()

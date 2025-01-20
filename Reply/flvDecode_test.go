@@ -73,19 +73,7 @@ func Test_FLVCut(t *testing.T) {
 	}
 
 	e := NewFlvDecoder().Cut(f, time.Minute*10, time.Second*20, cutf.File())
-	if perrors.Catch(e, "Read") {
-		t.Log("err Read", e)
-	}
-	if perrors.Catch(e, "InitFlv") {
-		t.Log("err InitFlv", e)
-	}
-	if perrors.Catch(e, "skip") {
-		t.Log("err skip", e)
-	}
-	if perrors.Catch(e, "cutW") {
-		t.Log("err cutW", e)
-	}
-	t.Log(e)
+	t.Log(perrors.ErrorFormat(e))
 }
 
 func Test_FLVGenFastSeed(t *testing.T) {
@@ -108,19 +96,7 @@ func Test_FLVGenFastSeed(t *testing.T) {
 	e = NewFlvDecoder().GenFastSeed(f, func(seedTo time.Duration, cuIndex int64) error {
 		return sf(seedTo, cuIndex)
 	})
-	if perrors.Catch(e, "Read") {
-		t.Log("err Read", e)
-	}
-	if perrors.Catch(e, "InitFlv") {
-		t.Log("err InitFlv", e)
-	}
-	if perrors.Catch(e, "skip") {
-		t.Log("err skip", e)
-	}
-	if perrors.Catch(e, "cutW") {
-		t.Log("err cutW", e)
-	}
-	t.Log(e)
+	t.Log(perrors.ErrorFormat(e))
 }
 
 // 10s-30s 215.815423ms
@@ -154,17 +130,5 @@ func Test_FLVCutSeed(t *testing.T) {
 	}
 
 	e = NewFlvDecoder().CutSeed(f, time.Minute*10, time.Second*20, cutf.File(), f, gf)
-	if perrors.Catch(e, "Read") {
-		t.Log("err Read", e)
-	}
-	if perrors.Catch(e, "InitFlv") {
-		t.Log("err InitFlv", e)
-	}
-	if perrors.Catch(e, "skip") {
-		t.Log("err skip", e)
-	}
-	if perrors.Catch(e, "cutW") {
-		t.Log("err cutW", e)
-	}
-	t.Log(e)
+	t.Log(perrors.ErrorFormat(e))
 }

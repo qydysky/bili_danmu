@@ -35,6 +35,11 @@ var (
 	ErrStreamId         = errors.New("ErrStreamId")
 	ErrTagSize          = errors.New("ErrTagSize")
 	ErrSignLost         = errors.New("ErrSignLost")
+
+	ActionInitFlv     perrors.Action = `InitFlv`
+	ActionGetIndexFlv perrors.Action = `GetIndexFlv`
+	ActionSeekFlv     perrors.Action = `SeekFlv`
+	ActionOneFFlv     perrors.Action = `OneFFlv`
 )
 
 type FlvDecoder struct {
@@ -315,7 +320,7 @@ func (t *FlvDecoder) CutSeed(reader io.Reader, startT, duration time.Duration, w
 
 		if !t.init {
 			if frontBuf, dropOffset, e := t.InitFlv(buff.GetPureBuf()); e != nil {
-				return perrors.New("InitFlv", e.Error())
+				return perrors.New(e.Error(), ActionInitFlv)
 			} else {
 				if dropOffset != 0 {
 					_ = buff.RemoveFront(dropOffset)
@@ -331,10 +336,10 @@ func (t *FlvDecoder) CutSeed(reader io.Reader, startT, duration time.Duration, w
 		} else {
 			if !seek && seeker != nil && getIndex != nil {
 				if index, e := getIndex(startT); e != nil {
-					return perrors.New("s", e.Error())
+					return perrors.New(e.Error(), ActionGetIndexFlv)
 				} else {
 					if _, e := seeker.Seek(index, io.SeekStart); e != nil {
-						return perrors.New("s", e.Error())
+						return perrors.New(e.Error(), ActionSeekFlv)
 					}
 				}
 				seek = true
@@ -342,7 +347,7 @@ func (t *FlvDecoder) CutSeed(reader io.Reader, startT, duration time.Duration, w
 				buff.Clear()
 			}
 			if dropOffset, e := t.oneF(buff.GetPureBuf(), wf); e != nil {
-				return perrors.New("skip", e.Error())
+				return perrors.New(e.Error(), ActionOneFFlv)
 			} else {
 				if dropOffset != 0 {
 					_ = buff.RemoveFront(dropOffset)
@@ -376,7 +381,7 @@ func (t *FlvDecoder) GenFastSeed(reader io.Reader, save func(seedTo time.Duratio
 
 		if !t.init {
 			if frontBuf, dropOffset, e := t.InitFlv(buff.GetPureBuf()); e != nil {
-				return perrors.New("InitFlv", e.Error())
+				return perrors.New(e.Error(), ActionInitFlv)
 			} else {
 				if dropOffset != 0 {
 					_ = buff.RemoveFront(dropOffset)
@@ -394,7 +399,7 @@ func (t *FlvDecoder) GenFastSeed(reader io.Reader, save func(seedTo time.Duratio
 				}
 				return save(time.Millisecond*time.Duration(t-firstFT), int64(totalRead-buff.Size()+index))
 			}); e != nil {
-				return perrors.New("skip", e.Error())
+				return perrors.New(e.Error(), ActionOneFFlv)
 			} else {
 				if dropOffset != 0 {
 					_ = buff.RemoveFront(dropOffset)

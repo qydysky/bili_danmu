@@ -14,6 +14,13 @@ import (
 	slice "github.com/qydysky/part/slice"
 )
 
+var (
+	ActionInitFmp4     perrors.Action = `InitFmp4`
+	ActionGetIndexFmp4 perrors.Action = `GetIndexFmp4`
+	ActionSeekFmp4     perrors.Action = `SeekFmp4`
+	ActionOneFFmp4     perrors.Action = `OneFFmp4`
+)
+
 var boxs map[string]bool
 
 func init() {
@@ -724,7 +731,7 @@ func (t *Fmp4Decoder) CutSeed(reader io.Reader, startT, duration time.Duration, 
 
 		if !init {
 			if frontBuf, e := t.Init_fmp4(buff.GetPureBuf()); e != nil {
-				return perrors.New("Init_fmp4", e.Error())
+				return perrors.New(e.Error(), ActionInitFmp4)
 			} else {
 				if len(frontBuf) == 0 {
 					bufSize *= 2
@@ -740,10 +747,10 @@ func (t *Fmp4Decoder) CutSeed(reader io.Reader, startT, duration time.Duration, 
 		} else {
 			if !seek && seeker != nil && getIndex != nil {
 				if index, e := getIndex(startT); e != nil {
-					return perrors.New("s", e.Error())
+					return perrors.New(e.Error(), ActionGetIndexFmp4)
 				} else {
 					if _, e := seeker.Seek(index, io.SeekStart); e != nil {
-						return perrors.New("s", e.Error())
+						return perrors.New(e.Error(), ActionSeekFmp4)
 					}
 				}
 				seek = true
@@ -751,7 +758,7 @@ func (t *Fmp4Decoder) CutSeed(reader io.Reader, startT, duration time.Duration, 
 				buff.Clear()
 			}
 			if dropOffset, e := t.oneF(buff.GetPureBuf(), wf); e != nil {
-				return perrors.New("w", e.Error())
+				return perrors.New(e.Error(), ActionOneFFmp4)
 			} else {
 				if dropOffset != 0 {
 					_ = buff.RemoveFront(dropOffset)
@@ -786,7 +793,7 @@ func (t *Fmp4Decoder) GenFastSeed(reader io.Reader, save func(seedTo time.Durati
 
 		if !init {
 			if frontBuf, e := t.Init_fmp4(buff.GetPureBuf()); e != nil {
-				return perrors.New("Init_fmp4", e.Error())
+				return perrors.New(e.Error(), ActionInitFmp4)
 			} else {
 				if len(frontBuf) == 0 {
 					bufSize *= 2
@@ -802,7 +809,7 @@ func (t *Fmp4Decoder) GenFastSeed(reader io.Reader, save func(seedTo time.Durati
 				}
 				return save(time.Second*time.Duration(t-firstFT), int64(totalRead-buff.Size()+index))
 			}); e != nil {
-				return perrors.New("w", e.Error())
+				return perrors.New(e.Error(), ActionOneFFmp4)
 			} else {
 				if dropOffset != 0 {
 					_ = buff.RemoveFront(dropOffset)
@@ -830,13 +837,13 @@ func deals(ies []ie, boxNames [][]string, fs []func([]ie) (breakloop bool, e err
 				matchCounts[i] += 1
 				if matchCounts[i] == len(boxNames[i]) {
 					matchCounts[i] = 0
-					if breakloop, e := fs[i](ies[cu-len(boxNames[i])+1 : cu+1]); e != nil {
-						return e
-					} else if breakloop {
+					if breakloop, e := fs[i](ies[cu-len(boxNames[i])+1 : cu+1]); breakloop {
 						boxNames = append(boxNames[:i], boxNames[i+1:]...)
 						fs = append(fs[:i], fs[i+1:]...)
 						matchCounts = append(matchCounts[:i], matchCounts[i+1:]...)
 						i -= 1
+					} else if e != nil {
+						return e
 					}
 				}
 			} else {
