@@ -139,10 +139,7 @@ func (t *m4s_link_item) getNo() (int, error) {
 }
 
 var (
-	AEFD    perrors.Action = `ActionErrFmp4Download`
-	AEFDR                  = AEFD.Append(`Req`)
-	AEFDA                  = AEFD.Append(`Append`)
-	AEFDCTO                = AEFD.Append(`CareTO`)
+	AEFDCTO perrors.Action = `ActionErrFmp4DownloadCareTO`
 )
 
 func (link *m4s_link_item) download(reqPool *pool.Buf[reqf.Req], reqConfig reqf.Rval) (err error) {
@@ -158,11 +155,11 @@ func (link *m4s_link_item) download(reqPool *pool.Buf[reqf.Req], reqConfig reqf.
 	if e := r.Reqf(reqConfig); e != nil && !errors.Is(e, io.EOF) {
 		link.status = 3 // 设置切片状态为下载失败
 		link.err = e
-		return perrors.New(e.Error(), AEFDR)
+		return e
 	} else if e = link.data.Append(r.Respon); e != nil {
 		link.status = 3 // 设置切片状态为下载失败
 		link.err = e
-		return perrors.New(e.Error(), AEFDA)
+		return e
 	} else {
 		if int64(reqConfig.Timeout) < r.UsedTime.Milliseconds()+3000 {
 			err = perrors.New(fmt.Sprintf("fmp4切片下载超时s(%d)或许应该大于%d", reqConfig.Timeout/1000, (r.UsedTime.Milliseconds()+4000)/1000), AEFDCTO)
@@ -479,7 +476,7 @@ func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo floa
 
 		if err := r.Reqf(rval); err != nil {
 			v.DisableAuto()
-			t.log.L("W: ", fmt.Sprintf("服务器 %s 发生故障 %s", F.ParseHost(v.Url), perrors.ErrorFormat(err, perrors.ErrSimplifyFunc)))
+			t.log.L("W: ", fmt.Sprintf("服务器 %s 发生故障 %s", F.ParseHost(v.Url), perrors.ErrorFormat(err, perrors.ErrActionInLineFunc)))
 			if t.common.ValidLive() == nil {
 				e = errors.New("全部流服务器发生故障")
 				break
@@ -983,7 +980,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 		fmp4Decoder      = NewFmp4Decoder()
 		keyframe         = slice.New[byte]()
 		lastM4s          *m4s_link_item
-		to               = 4
+		to               = 5
 		fmp4ListUpdateTo = 5.0
 		fmp4Count        = 0
 		startT           = time.Now()
@@ -1130,7 +1127,10 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 						t.log.L(`W: `, e.Error())
 					} else if e != nil {
 						downErr.Store(true)
-						t.log.L(`W: `, `切片下载失败`, link.Base, e)
+						if reqf.IsTimeout(e) {
+							t.log.L(`W: `, fmt.Sprintf("fmp4切片下载超时s或许应该大于%d", to))
+						}
+						t.log.L(`W: `, `切片下载失败`, link.Base, perrors.ErrorFormat(e, perrors.ErrActionInLineFunc))
 					}
 				}(download_seq[i])
 			}
