@@ -297,7 +297,7 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 				if keyframeMoof {
 					if v, e := t.buf.HadModified(bufModified); e == nil && v && !t.buf.IsEmpty() {
 						if e := t.buf.AppendTo(keyframe); e != nil {
-							return false, e
+							return true, e
 						}
 						cu = m[0].i
 						t.buf.Reset()
@@ -308,7 +308,7 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 				}
 				if haveKeyframe {
 					if e := t.buf.Append(buf[m[0].i:m[6].e]); e != nil {
-						return false, e
+						return true, e
 					}
 				}
 				return false, nil
@@ -393,7 +393,7 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 				if keyframeMoof {
 					if v, e := t.buf.HadModified(bufModified); e == nil && v && !t.buf.IsEmpty() {
 						if e := t.buf.AppendTo(keyframe); e != nil {
-							return false, e
+							return true, e
 						}
 						cu = m[0].i
 						t.buf.Reset()
@@ -404,7 +404,7 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 				}
 				if haveKeyframe {
 					if e := t.buf.Append(buf[m[0].i:m[10].e]); e != nil {
-						return false, e
+						return true, e
 					}
 				}
 				return false, nil
@@ -577,7 +577,7 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...dealFMp4) (cu int, err error) {
 				}
 				if haveKeyframe {
 					if e := t.buf.Append(buf[m[0].i:m[6].e]); e != nil {
-						return false, e
+						return true, e
 					}
 				}
 				return false, nil
@@ -673,7 +673,7 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...dealFMp4) (cu int, err error) {
 				}
 				if haveKeyframe {
 					if e := t.buf.Append(buf[m[0].i:m[10].e]); e != nil {
-						return false, e
+						return true, e
 					}
 				}
 				return false, nil
