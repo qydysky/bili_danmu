@@ -10,15 +10,15 @@ import (
 
 	"github.com/dustin/go-humanize"
 	F "github.com/qydysky/bili_danmu/F"
-	perrors "github.com/qydysky/part/errors"
+	pe "github.com/qydysky/part/errors"
 	slice "github.com/qydysky/part/slice"
 )
 
 var (
-	ActionInitFmp4     perrors.Action = `InitFmp4`
-	ActionGetIndexFmp4 perrors.Action = `GetIndexFmp4`
-	ActionSeekFmp4     perrors.Action = `SeekFmp4`
-	ActionOneFFmp4     perrors.Action = `OneFFmp4`
+	ActionInitFmp4     pe.Action = `InitFmp4`
+	ActionGetIndexFmp4 pe.Action = `GetIndexFmp4`
+	ActionSeekFmp4     pe.Action = `SeekFmp4`
+	ActionOneFFmp4     pe.Action = `OneFFmp4`
 )
 
 var boxs map[string]bool
@@ -104,23 +104,24 @@ func (t *Fmp4Decoder) Init_fmp4(buf []byte) (b []byte, err error) {
 		return
 	}
 
-	err = deal(ies,
-		[]string{"ftyp", "moov"},
-		func(m []ie) (bool, error) {
+	err = deal(ies, dealIE{
+		boxNames: []string{"ftyp", "moov"},
+		fs: func(m []ie) error {
 			ftypI = m[0].i
 			ftypE = m[0].e
 			moovI = m[1].i
 			moovE = m[1].e
-			return true, nil
-		})
+			return nil
+		},
+	})
 
 	if err != nil {
 		return nil, err
 	}
 
-	err = deal(ies,
-		[]string{"tkhd", "mdia", "mdhd", "hdlr"},
-		func(m []ie) (bool, error) {
+	err = deal(ies, dealIE{
+		boxNames: []string{"tkhd", "mdia", "mdhd", "hdlr"},
+		fs: func(m []ie) error {
 			tackId := int(F.Btoi(buf, m[0].i+20, 4))
 			t.traks[tackId] = &trak{
 				trackID: tackId,
@@ -129,8 +130,9 @@ func (t *Fmp4Decoder) Init_fmp4(buf []byte) (b []byte, err error) {
 				timescale:   int(F.Btoi(buf, m[2].i+20, 4)),
 				handlerType: buf[m[3].i+16],
 			}
-			return false, nil
-		})
+			return nil
+		},
+	})
 
 	if err != nil {
 		return nil, err
@@ -258,157 +260,161 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 	}
 
 	err = deals(ies,
-		[][]string{
-			{"moof", "mfhd", "traf", "tfhd", "tfdt", "trun", "mdat"},
-			{"moof", "mfhd", "traf", "tfhd", "tfdt", "trun", "traf", "tfhd", "tfdt", "trun", "mdat"}},
-		[]func(m []ie) (bool, error){
-			func(m []ie) (bool, error) {
-				var (
-					keyframeMoof = buf[m[5].i+20] == byte(0x02)
-					// moofSN       = int(F.Btoi(buf, m[1].i+12, 4))
-				)
+		[]dealIE{
+			{
+				boxNames: []string{"moof", "mfhd", "traf", "tfhd", "tfdt", "trun", "mdat"},
+				fs: func(m []ie) error {
+					var (
+						keyframeMoof = buf[m[5].i+20] == byte(0x02)
+						// moofSN       = int(F.Btoi(buf, m[1].i+12, 4))
+					)
 
-				{
-					ts, _ := get_track_type(m[3].i, m[4].i)
-					if ts.handlerType == 'v' {
-						if e := checkSampleEntries(m[5].i, m[6].i); e != nil {
-							//skip
+					{
+						ts, _ := get_track_type(m[3].i, m[4].i)
+						if ts.handlerType == 'v' {
+							if e := checkSampleEntries(m[5].i, m[6].i); e != nil {
+								//skip
+								t.buf.Reset()
+								haveKeyframe = false
+								cu = m[0].i
+								return pe.Join(ErrDealIESkip.New(), e)
+							}
+						}
+						if e := check_set_maxT(ts, func(_ timeStamp) error {
+							return errors.New("skip")
+						}, func(_ timeStamp) error {
 							t.buf.Reset()
 							haveKeyframe = false
 							cu = m[0].i
-							return false, e
+							return errors.New("skip")
+						}); e != nil {
+							return pe.Join(ErrDealIESkip.New(), e)
 						}
 					}
-					if e := check_set_maxT(ts, func(_ timeStamp) error {
-						return errors.New("skip")
-					}, func(_ timeStamp) error {
-						t.buf.Reset()
-						haveKeyframe = false
-						cu = m[0].i
-						return errors.New("skip")
-					}); e != nil {
-						return false, e
-					}
-				}
 
-				// fmt.Println(ts.getT(), "frame0", keyframeMoof, t.buf.size(), m[0].i, m[6].n, m[6].e)
+					// fmt.Println(ts.getT(), "frame0", keyframeMoof, t.buf.size(), m[0].i, m[6].n, m[6].e)
 
-				//deal frame
-				if keyframeMoof {
-					if v, e := t.buf.HadModified(bufModified); e == nil && v && !t.buf.IsEmpty() {
-						if e := t.buf.AppendTo(keyframe); e != nil {
-							return true, e
+					//deal frame
+					if keyframeMoof {
+						if v, e := t.buf.HadModified(bufModified); e == nil && v && !t.buf.IsEmpty() {
+							if e := t.buf.AppendTo(keyframe); e != nil {
+								return pe.Join(ErrDealIEBreak.New(), e)
+							}
+							cu = m[0].i
+							t.buf.Reset()
 						}
-						cu = m[0].i
-						t.buf.Reset()
+						haveKeyframe = true
+					} else if !haveKeyframe {
+						cu = m[6].e
 					}
-					haveKeyframe = true
-				} else if !haveKeyframe {
-					cu = m[6].e
-				}
-				if haveKeyframe {
-					if e := t.buf.Append(buf[m[0].i:m[6].e]); e != nil {
-						return true, e
+					if haveKeyframe {
+						if e := t.buf.Append(buf[m[0].i:m[6].e]); e != nil {
+							return pe.Join(ErrDealIEBreak.New(), e)
+						}
 					}
-				}
-				return false, nil
+					return nil
+				},
 			},
-			func(m []ie) (bool, error) {
-				var (
-					keyframeMoof = buf[m[5].i+20] == byte(0x02) || buf[m[9].i+20] == byte(0x02)
-					// moofSN       = int(F.Btoi(buf, m[1].i+12, 4))
-					video timeStamp
-					audio timeStamp
-				)
+			{
+				boxNames: []string{"moof", "mfhd", "traf", "tfhd", "tfdt", "trun", "traf", "tfhd", "tfdt", "trun", "mdat"},
+				fs: func(m []ie) error {
+					var (
+						keyframeMoof = buf[m[5].i+20] == byte(0x02) || buf[m[9].i+20] == byte(0x02)
+						// moofSN       = int(F.Btoi(buf, m[1].i+12, 4))
+						video timeStamp
+						audio timeStamp
+					)
 
-				// fmt.Println(moofSN, "frame1", keyframeMoof, t.buf.size(), m[0].i, m[10].n, m[10].e)
+					// fmt.Println(moofSN, "frame1", keyframeMoof, t.buf.size(), m[0].i, m[10].n, m[10].e)
 
-				{
-					ts, handlerType := get_track_type(m[3].i, m[4].i)
-					if handlerType == 'v' {
-						if e := checkSampleEntries(m[5].i, m[6].i); e != nil {
-							//skip
+					{
+						ts, handlerType := get_track_type(m[3].i, m[4].i)
+						if handlerType == 'v' {
+							if e := checkSampleEntries(m[5].i, m[6].i); e != nil {
+								//skip
+								t.buf.Reset()
+								haveKeyframe = false
+								cu = m[0].i
+								return pe.Join(ErrDealIESkip.New(), e)
+							}
+						}
+						switch handlerType {
+						case 'v':
+							video = ts
+						case 's':
+							audio = ts
+						}
+						if e := check_set_maxT(ts, func(_ timeStamp) error {
+							return errors.New("skip")
+						}, func(_ timeStamp) error {
 							t.buf.Reset()
 							haveKeyframe = false
 							cu = m[0].i
-							return false, e
+							return errors.New("skip")
+						}); e != nil {
+							return pe.Join(ErrDealIESkip.New(), e)
 						}
 					}
-					switch handlerType {
-					case 'v':
-						video = ts
-					case 's':
-						audio = ts
-					}
-					if e := check_set_maxT(ts, func(_ timeStamp) error {
-						return errors.New("skip")
-					}, func(_ timeStamp) error {
-						t.buf.Reset()
-						haveKeyframe = false
-						cu = m[0].i
-						return errors.New("skip")
-					}); e != nil {
-						return false, e
-					}
-				}
-				{
-					ts, handlerType := get_track_type(m[7].i, m[8].i)
-					if handlerType == 'v' {
-						if e := checkSampleEntries(m[9].i, m[10].i); e != nil {
-							//skip
+					{
+						ts, handlerType := get_track_type(m[7].i, m[8].i)
+						if handlerType == 'v' {
+							if e := checkSampleEntries(m[9].i, m[10].i); e != nil {
+								//skip
+								t.buf.Reset()
+								haveKeyframe = false
+								cu = m[0].i
+								return pe.Join(ErrDealIESkip.New(), e)
+							}
+						}
+						switch handlerType {
+						case 'v':
+							video = ts
+						case 's':
+							audio = ts
+						}
+						if e := check_set_maxT(ts, func(_ timeStamp) error {
+							return errors.New("skip")
+						}, func(_ timeStamp) error {
 							t.buf.Reset()
 							haveKeyframe = false
 							cu = m[0].i
-							return false, e
+							return errors.New("skip")
+						}); e != nil {
+							return pe.Join(ErrDealIESkip.New(), e)
 						}
 					}
-					switch handlerType {
-					case 'v':
-						video = ts
-					case 's':
-						audio = ts
-					}
-					if e := check_set_maxT(ts, func(_ timeStamp) error {
-						return errors.New("skip")
-					}, func(_ timeStamp) error {
-						t.buf.Reset()
-						haveKeyframe = false
-						cu = m[0].i
-						return errors.New("skip")
-					}); e != nil {
-						return false, e
-					}
-				}
 
-				//sync audio timeStamp
-				if t.AVTDiff <= 0.1 {
-					t.AVTDiff = 0.1
-				}
-				if diff := math.Abs(video.getT() - audio.getT()); diff > t.AVTDiff {
-					return false, fmt.Errorf("时间戳不匹配 %v %v (或许应调整fmp4音视频时间戳容差s>%.2f)", video.timeStamp, audio.timeStamp, diff)
-					// copy(video.data, F.Itob64(int64(audio.getT()*float64(video.timescale))))
-				}
+					//sync audio timeStamp
+					if t.AVTDiff <= 0.1 {
+						t.AVTDiff = 0.1
+					}
+					if diff := math.Abs(video.getT() - audio.getT()); diff > t.AVTDiff {
+						return pe.Join(ErrDealIEBreak.New(), fmt.Errorf("时间戳不匹配 %v %v (或许应调整fmp4音视频时间戳容差s>%.2f)", video.timeStamp, audio.timeStamp, diff))
+						// copy(video.data, F.Itob64(int64(audio.getT()*float64(video.timescale))))
+					}
 
-				//deal frame
-				if keyframeMoof {
-					if v, e := t.buf.HadModified(bufModified); e == nil && v && !t.buf.IsEmpty() {
-						if e := t.buf.AppendTo(keyframe); e != nil {
-							return true, e
+					//deal frame
+					if keyframeMoof {
+						if v, e := t.buf.HadModified(bufModified); e == nil && v && !t.buf.IsEmpty() {
+							if e := t.buf.AppendTo(keyframe); e != nil {
+								return pe.Join(ErrDealIEBreak.New(), e)
+							}
+							cu = m[0].i
+							t.buf.Reset()
 						}
-						cu = m[0].i
-						t.buf.Reset()
+						haveKeyframe = true
+					} else if !haveKeyframe {
+						cu = m[10].e
 					}
-					haveKeyframe = true
-				} else if !haveKeyframe {
-					cu = m[10].e
-				}
-				if haveKeyframe {
-					if e := t.buf.Append(buf[m[0].i:m[10].e]); e != nil {
-						return true, e
+					if haveKeyframe {
+						if e := t.buf.Append(buf[m[0].i:m[10].e]); e != nil {
+							return pe.Join(ErrDealIEBreak.New(), e)
+						}
 					}
-				}
-				return false, nil
-			}})
+					return nil
+				},
+			},
+		})
 	return
 }
 
@@ -518,165 +524,168 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...dealFMp4) (cu int, err error) {
 		return 0, e
 	}
 
-	var ErrNormal = perrors.New("ErrNormal", "ErrNormal")
+	var ErrNormal = pe.New("ErrNormal", "ErrNormal")
 
 	err = deals(ies,
-		[][]string{
-			{"moof", "mfhd", "traf", "tfhd", "tfdt", "trun", "mdat"},
-			{"moof", "mfhd", "traf", "tfhd", "tfdt", "trun", "traf", "tfhd", "tfdt", "trun", "mdat"}},
-		[]func(m []ie) (bool, error){
-			func(m []ie) (bool, error) {
-				var (
-					keyframeMoof = buf[m[5].i+20] == byte(0x02)
-					// moofSN       = int(F.Btoi(buf, m[1].i+12, 4))
-					video timeStamp
-				)
+		[]dealIE{
+			{
+				boxNames: []string{"moof", "mfhd", "traf", "tfhd", "tfdt", "trun", "mdat"},
+				fs: func(m []ie) error {
+					var (
+						keyframeMoof = buf[m[5].i+20] == byte(0x02)
+						// moofSN       = int(F.Btoi(buf, m[1].i+12, 4))
+						video timeStamp
+					)
 
-				{
-					ts, handlerType := get_track_type(m[3].i, m[4].i)
-					if ts.handlerType == 'v' {
-						if e := checkSampleEntries(m[5].i, m[6].i); e != nil {
-							//skip
+					{
+						ts, handlerType := get_track_type(m[3].i, m[4].i)
+						if ts.handlerType == 'v' {
+							if e := checkSampleEntries(m[5].i, m[6].i); e != nil {
+								//skip
+								t.buf.Reset()
+								haveKeyframe = false
+								cu = m[0].i
+								return pe.Join(ErrDealIESkip.New(), e)
+							}
+						}
+						if handlerType == 'v' {
+							video = ts
+						}
+						if e := check_set_maxT(ts, func(_ timeStamp) error {
+							return errors.New("skip")
+						}, func(_ timeStamp) error {
 							t.buf.Reset()
 							haveKeyframe = false
 							cu = m[0].i
-							return false, e
+							return errors.New("skip")
+						}); e != nil {
+							return pe.Join(ErrDealIESkip.New(), e)
 						}
 					}
-					if handlerType == 'v' {
-						video = ts
-					}
-					if e := check_set_maxT(ts, func(_ timeStamp) error {
-						return errors.New("skip")
-					}, func(_ timeStamp) error {
-						t.buf.Reset()
-						haveKeyframe = false
-						cu = m[0].i
-						return errors.New("skip")
-					}); e != nil {
-						return false, e
-					}
-				}
 
-				// fmt.Println(ts.getT(), "frame0", keyframeMoof, t.buf.size(), m[0].i, m[6].n, m[6].e)
+					// fmt.Println(ts.getT(), "frame0", keyframeMoof, t.buf.size(), m[0].i, m[6].n, m[6].e)
 
-				//deal frame
-				if keyframeMoof {
-					if v, e := t.buf.HadModified(bufModified); e == nil && v && !t.buf.IsEmpty() {
-						cu = m[0].i
-						if haveKeyframe && len(w) > 0 {
-							err = w[0](video.getT(), cu, t.buf)
+					//deal frame
+					if keyframeMoof {
+						if v, e := t.buf.HadModified(bufModified); e == nil && v && !t.buf.IsEmpty() {
+							cu = m[0].i
+							if haveKeyframe && len(w) > 0 {
+								err = w[0](video.getT(), cu, t.buf)
+								t.buf.Reset()
+								return ErrNormal
+							}
 							t.buf.Reset()
-							return true, ErrNormal
 						}
-						t.buf.Reset()
+						haveKeyframe = true
+					} else if !haveKeyframe {
+						cu = m[6].e
 					}
-					haveKeyframe = true
-				} else if !haveKeyframe {
-					cu = m[6].e
-				}
-				if haveKeyframe {
-					if e := t.buf.Append(buf[m[0].i:m[6].e]); e != nil {
-						return true, e
+					if haveKeyframe {
+						if e := t.buf.Append(buf[m[0].i:m[6].e]); e != nil {
+							return pe.Join(ErrDealIEBreak.New(), e)
+						}
 					}
-				}
-				return false, nil
+					return nil
+				},
 			},
-			func(m []ie) (bool, error) {
-				var (
-					keyframeMoof = buf[m[5].i+20] == byte(0x02) || buf[m[9].i+20] == byte(0x02)
-					// moofSN       = int(F.Btoi(buf, m[1].i+12, 4))
-					video timeStamp
-					audio timeStamp
-				)
+			{
+				boxNames: []string{"moof", "mfhd", "traf", "tfhd", "tfdt", "trun", "traf", "tfhd", "tfdt", "trun", "mdat"},
+				fs: func(m []ie) error {
+					var (
+						keyframeMoof = buf[m[5].i+20] == byte(0x02) || buf[m[9].i+20] == byte(0x02)
+						// moofSN       = int(F.Btoi(buf, m[1].i+12, 4))
+						video timeStamp
+						audio timeStamp
+					)
 
-				{
-					ts, handlerType := get_track_type(m[3].i, m[4].i)
-					if handlerType == 'v' {
-						if e := checkSampleEntries(m[5].i, m[6].i); e != nil {
-							//skip
+					{
+						ts, handlerType := get_track_type(m[3].i, m[4].i)
+						if handlerType == 'v' {
+							if e := checkSampleEntries(m[5].i, m[6].i); e != nil {
+								//skip
+								t.buf.Reset()
+								haveKeyframe = false
+								cu = m[0].i
+								return pe.Join(ErrDealIESkip.New(), e)
+							}
+						}
+						switch handlerType {
+						case 'v':
+							video = ts
+						case 's':
+							audio = ts
+						}
+						if e := check_set_maxT(ts, func(_ timeStamp) error {
+							return errors.New("skip")
+						}, func(_ timeStamp) error {
 							t.buf.Reset()
 							haveKeyframe = false
 							cu = m[0].i
-							return false, e
+							return errors.New("skip")
+						}); e != nil {
+							return pe.Join(ErrDealIESkip.New(), e)
 						}
 					}
-					switch handlerType {
-					case 'v':
-						video = ts
-					case 's':
-						audio = ts
-					}
-					if e := check_set_maxT(ts, func(_ timeStamp) error {
-						return errors.New("skip")
-					}, func(_ timeStamp) error {
-						t.buf.Reset()
-						haveKeyframe = false
-						cu = m[0].i
-						return errors.New("skip")
-					}); e != nil {
-						return false, e
-					}
-				}
-				{
-					ts, handlerType := get_track_type(m[7].i, m[8].i)
-					if handlerType == 'v' {
-						if e := checkSampleEntries(m[9].i, m[10].i); e != nil {
-							//skip
+					{
+						ts, handlerType := get_track_type(m[7].i, m[8].i)
+						if handlerType == 'v' {
+							if e := checkSampleEntries(m[9].i, m[10].i); e != nil {
+								//skip
+								t.buf.Reset()
+								haveKeyframe = false
+								cu = m[0].i
+								return pe.Join(ErrDealIESkip.New(), e)
+							}
+						}
+						switch handlerType {
+						case 'v':
+							video = ts
+						case 's':
+							audio = ts
+						}
+						if e := check_set_maxT(ts, func(_ timeStamp) error {
+							return errors.New("skip")
+						}, func(_ timeStamp) error {
 							t.buf.Reset()
 							haveKeyframe = false
 							cu = m[0].i
-							return false, e
+							return errors.New("skip")
+						}); e != nil {
+							return pe.Join(ErrDealIESkip.New(), e)
 						}
 					}
-					switch handlerType {
-					case 'v':
-						video = ts
-					case 's':
-						audio = ts
-					}
-					if e := check_set_maxT(ts, func(_ timeStamp) error {
-						return errors.New("skip")
-					}, func(_ timeStamp) error {
-						t.buf.Reset()
-						haveKeyframe = false
-						cu = m[0].i
-						return errors.New("skip")
-					}); e != nil {
-						return false, e
-					}
-				}
 
-				//sync audio timeStamp
-				if t.AVTDiff <= 0.1 {
-					t.AVTDiff = 0.1
-				}
-				if diff := math.Abs(video.getT() - audio.getT()); diff > t.AVTDiff {
-					return false, fmt.Errorf("时间戳不匹配 %v %v (或许应调整fmp4音视频时间戳容差s>%.2f)", video.timeStamp, audio.timeStamp, diff)
-					// copy(video.data, F.Itob64(int64(audio.getT()*float64(video.timescale))))
-				}
+					//sync audio timeStamp
+					if t.AVTDiff <= 0.1 {
+						t.AVTDiff = 0.1
+					}
+					if diff := math.Abs(video.getT() - audio.getT()); diff > t.AVTDiff {
+						return pe.Join(ErrDealIEBreak.New(), fmt.Errorf("时间戳不匹配 %v %v (或许应调整fmp4音视频时间戳容差s>%.2f)", video.timeStamp, audio.timeStamp, diff))
+						// copy(video.data, F.Itob64(int64(audio.getT()*float64(video.timescale))))
+					}
 
-				//deal frame
-				if keyframeMoof {
-					if v, e := t.buf.HadModified(bufModified); e == nil && v && !t.buf.IsEmpty() {
-						cu = m[0].i
-						if haveKeyframe && len(w) > 0 {
-							err = w[0](video.getT(), cu, t.buf)
+					//deal frame
+					if keyframeMoof {
+						if v, e := t.buf.HadModified(bufModified); e == nil && v && !t.buf.IsEmpty() {
+							cu = m[0].i
+							if haveKeyframe && len(w) > 0 {
+								err = w[0](video.getT(), cu, t.buf)
+								t.buf.Reset()
+								return ErrNormal
+							}
 							t.buf.Reset()
-							return true, ErrNormal
 						}
-						t.buf.Reset()
+						haveKeyframe = true
+					} else if !haveKeyframe {
+						cu = m[10].e
 					}
-					haveKeyframe = true
-				} else if !haveKeyframe {
-					cu = m[10].e
-				}
-				if haveKeyframe {
-					if e := t.buf.Append(buf[m[0].i:m[10].e]); e != nil {
-						return true, e
+					if haveKeyframe {
+						if e := t.buf.Append(buf[m[0].i:m[10].e]); e != nil {
+							return pe.Join(ErrDealIEBreak.New(), e)
+						}
 					}
-				}
-				return false, nil
+					return nil
+				},
 			},
 		},
 	)
@@ -731,7 +740,7 @@ func (t *Fmp4Decoder) CutSeed(reader io.Reader, startT, duration time.Duration, 
 
 		if !init {
 			if frontBuf, e := t.Init_fmp4(buff.GetPureBuf()); e != nil {
-				return perrors.New(e.Error(), ActionInitFmp4)
+				return pe.New(e.Error(), ActionInitFmp4)
 			} else {
 				if len(frontBuf) == 0 {
 					bufSize *= 2
@@ -747,10 +756,10 @@ func (t *Fmp4Decoder) CutSeed(reader io.Reader, startT, duration time.Duration, 
 		} else {
 			if !seek && seeker != nil && getIndex != nil {
 				if index, e := getIndex(startT); e != nil {
-					return perrors.New(e.Error(), ActionGetIndexFmp4)
+					return pe.New(e.Error(), ActionGetIndexFmp4)
 				} else {
 					if _, e := seeker.Seek(index, io.SeekStart); e != nil {
-						return perrors.New(e.Error(), ActionSeekFmp4)
+						return pe.New(e.Error(), ActionSeekFmp4)
 					}
 				}
 				seek = true
@@ -758,7 +767,7 @@ func (t *Fmp4Decoder) CutSeed(reader io.Reader, startT, duration time.Duration, 
 				buff.Clear()
 			}
 			if dropOffset, e := t.oneF(buff.GetPureBuf(), wf); e != nil {
-				return perrors.New(e.Error(), ActionOneFFmp4)
+				return pe.New(e.Error(), ActionOneFFmp4)
 			} else {
 				if dropOffset != 0 {
 					_ = buff.RemoveFront(dropOffset)
@@ -793,7 +802,7 @@ func (t *Fmp4Decoder) GenFastSeed(reader io.Reader, save func(seedTo time.Durati
 
 		if !init {
 			if frontBuf, e := t.Init_fmp4(buff.GetPureBuf()); e != nil {
-				return perrors.New(e.Error(), ActionInitFmp4)
+				return pe.New(e.Error(), ActionInitFmp4)
 			} else {
 				if len(frontBuf) == 0 {
 					bufSize *= 2
@@ -809,7 +818,7 @@ func (t *Fmp4Decoder) GenFastSeed(reader io.Reader, save func(seedTo time.Durati
 				}
 				return save(time.Second*time.Duration(t-firstFT), int64(totalRead-buff.Size()+index))
 			}); e != nil {
-				return perrors.New(e.Error(), ActionOneFFmp4)
+				return pe.New(e.Error(), ActionOneFFmp4)
 			} else {
 				if dropOffset != 0 {
 					_ = buff.RemoveFront(dropOffset)
@@ -822,32 +831,39 @@ func (t *Fmp4Decoder) GenFastSeed(reader io.Reader, save func(seedTo time.Durati
 	return
 }
 
-func deal(ies []ie, boxNames []string, fs func([]ie) (breakloop bool, err error)) (err error) {
-	return deals(ies, [][]string{boxNames}, []func([]ie) (breakloop bool, err error){fs})
+var (
+	ErrDealIEBreak = pe.Action(`ErrDealIEBreak`)
+	ErrDealIESkip  = pe.Action(`ErrDealIESkip`)
+)
+
+type dealIE struct {
+	matchCounts int
+	boxNames    []string
+	fs          func([]ie) (err error)
 }
 
-func deals(ies []ie, boxNames [][]string, fs []func([]ie) (breakloop bool, e error)) (err error) {
-	if len(boxNames) != len(fs) {
-		panic("boxNames与fs数量不相等")
+func (t *dealIE) deal(ies []ie, cu int) (err error) {
+	if t.boxNames[t.matchCounts] == ies[cu].n {
+		t.matchCounts += 1
+		if t.matchCounts == len(t.boxNames) {
+			t.matchCounts = 0
+			return t.fs(ies[cu+1-len(t.boxNames) : cu+1])
+		}
+	} else {
+		t.matchCounts = 0
 	}
-	var matchCounts = make([]int, len(boxNames))
-	for cu := 0; cu < len(ies) && len(boxNames) != 0; cu++ {
-		for i := 0; i < len(boxNames); i++ {
-			if ies[cu].n == boxNames[i][matchCounts[i]] {
-				matchCounts[i] += 1
-				if matchCounts[i] == len(boxNames[i]) {
-					matchCounts[i] = 0
-					if breakloop, e := fs[i](ies[cu-len(boxNames[i])+1 : cu+1]); breakloop {
-						boxNames = append(boxNames[:i], boxNames[i+1:]...)
-						fs = append(fs[:i], fs[i+1:]...)
-						matchCounts = append(matchCounts[:i], matchCounts[i+1:]...)
-						i -= 1
-					} else if e != nil {
-						return e
-					}
-				}
-			} else {
-				matchCounts[i] = 0
+	return nil
+}
+
+func deal(ies []ie, dealIEf dealIE) (err error) {
+	return deals(ies, []dealIE{dealIEf})
+}
+
+func deals(ies []ie, dealIEs []dealIE) (err error) {
+	for cu := 0; cu < len(ies) && len(dealIEs) != 0; cu++ {
+		for i := 0; i < len(dealIEs); i++ {
+			if e := dealIEs[i].deal(ies, cu); e != nil && !pe.Catch(e, ErrDealIESkip) {
+				return e
 			}
 		}
 	}
@@ -855,8 +871,8 @@ func deals(ies []ie, boxNames [][]string, fs []func([]ie) (breakloop bool, e err
 }
 
 var (
-	ErrMisBox     = perrors.New("decode", "ErrMisBox")
-	ErrCantResync = perrors.New("decode")
+	ErrMisBox     = pe.New("decode", "ErrMisBox")
+	ErrCantResync = pe.New("decode")
 )
 
 func decode(buf []byte, reSyncboxName string) (m []ie, err error) {
@@ -892,7 +908,7 @@ func decode(buf []byte, reSyncboxName string) (m []ie, err error) {
 }
 
 var (
-	ErrUnkownBox = perrors.New("ErrUnkownBox")
+	ErrUnkownBox = pe.New("ErrUnkownBox")
 )
 
 func searchBox(buf []byte, cu *int) (boxName string, i int, e int, err error) {
