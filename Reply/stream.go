@@ -29,7 +29,7 @@ import (
 	replyFunc "github.com/qydysky/bili_danmu/Reply/F"
 	videoInfo "github.com/qydysky/bili_danmu/Reply/F/videoInfo"
 	pctx "github.com/qydysky/part/ctx"
-	pe "github.com/qydysky/part/errors"
+	perrors "github.com/qydysky/part/errors"
 	file "github.com/qydysky/part/file"
 	funcCtrl "github.com/qydysky/part/funcCtrl"
 	pio "github.com/qydysky/part/io"
@@ -138,7 +138,11 @@ func (t *m4s_link_item) getNo() (int, error) {
 	return strconv.Atoi(base[:len(base)-4])
 }
 
-func (link *m4s_link_item) download(reqPool *pool.Buf[reqf.Req], reqConfig reqf.Rval) error {
+var (
+	AEFDCTO perrors.Action = `ActionErrFmp4DownloadCareTO`
+)
+
+func (link *m4s_link_item) download(reqPool *pool.Buf[reqf.Req], reqConfig reqf.Rval) (err error) {
 	link.status = 1 // 设置切片状态为正在下载
 	link.err = nil
 	link.tryDownCount += 1
@@ -148,16 +152,7 @@ func (link *m4s_link_item) download(reqPool *pool.Buf[reqf.Req], reqConfig reqf.
 	defer reqPool.Put(r)
 	reqConfig.Url = link.Url
 
-	// fmt.Println(`T: `, `下载`, link.Base)
-	// defer t.log.L(`T: `, `下载完成`, link.Base, link.status, link.err)
-
 	if e := r.Reqf(reqConfig); e != nil && !errors.Is(e, io.EOF) {
-		// t.log.L(`T: `, `下载错误`, link.Base, e)
-		// if !reqf.IsTimeout(e) {
-		// 	// 发生非超时错误
-		// 	link.err = e
-		// 	link.tryDownCount = 3 // 设置切片状态为下载失败
-		// }
 		link.status = 3 // 设置切片状态为下载失败
 		link.err = e
 		return e
@@ -166,8 +161,11 @@ func (link *m4s_link_item) download(reqPool *pool.Buf[reqf.Req], reqConfig reqf.
 		link.err = e
 		return e
 	} else {
+		if int64(reqConfig.Timeout) < r.UsedTime.Milliseconds()+3000 {
+			err = perrors.New(fmt.Sprintf("fmp4切片下载超时s(%d)或许应该大于%d", reqConfig.Timeout/1000, (r.UsedTime.Milliseconds()+4000)/1000), AEFDCTO)
+		}
 		link.status = 2 // 设置切片状态为下载完成
-		return nil
+		return
 	}
 }
 
@@ -478,7 +476,7 @@ func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo floa
 
 		if err := r.Reqf(rval); err != nil {
 			v.DisableAuto()
-			t.log.L("W: ", fmt.Sprintf("服务器 %s 发生故障 %s", F.ParseHost(v.Url), pe.ErrorFormat(err, pe.ErrSimplifyFunc)))
+			t.log.L("W: ", fmt.Sprintf("服务器 %s 发生故障 %s", F.ParseHost(v.Url), perrors.ErrorFormat(err, perrors.ErrActionInLineFunc)))
 			if t.common.ValidLive() == nil {
 				e = errors.New("全部流服务器发生故障")
 				break
@@ -982,7 +980,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 		fmp4Decoder      = NewFmp4Decoder()
 		keyframe         = slice.New[byte]()
 		lastM4s          *m4s_link_item
-		to               = 3
+		to               = 5
 		fmp4ListUpdateTo = 5.0
 		fmp4Count        = 0
 		startT           = time.Now()
@@ -1117,16 +1115,22 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 				go func(link *m4s_link_item) {
 					defer done()
 
-					if e := link.download(t.reqPool, reqf.Rval{
+					e := link.download(t.reqPool, reqf.Rval{
 						Timeout:     to * 1000,
 						WriteLoopTO: (to + 2) * 1000,
 						Proxy:       t.common.Proxy,
 						Header: map[string]string{
 							`Connection`: `close`,
 						},
-					}); e != nil {
+					})
+					if perrors.Catch(e, AEFDCTO) {
+						t.log.L(`W: `, e.Error())
+					} else if e != nil {
 						downErr.Store(true)
-						t.log.L(`W: `, `切片下载失败`, link.Base, e)
+						if reqf.IsTimeout(e) {
+							t.log.L(`W: `, fmt.Sprintf("fmp4切片下载超时s或许应该大于%d", to))
+						}
+						t.log.L(`W: `, `切片下载失败`, link.Base, perrors.ErrorFormat(e, perrors.ErrActionInLineFunc))
 					}
 				}(download_seq[i])
 			}
