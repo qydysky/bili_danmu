@@ -1647,20 +1647,39 @@ func (t *M4SStream) PusherToHttp(conn net.Conn, w http.ResponseWriter, r *http.R
 		return err
 	}
 
+	var (
+		ctx, cancel = context.WithCancelCause(r.Context())
+		pushLock    atomic.Bool
+		pushBuf     []byte
+	)
+
 	var cancelRec = t.Stream_msg.Pull_tag(map[string]func([]byte) bool{
 		`data`: func(b []byte) bool {
 			select {
-			case <-r.Context().Done():
+			case <-ctx.Done():
 				return true
 			default:
 			}
 			if len(b) == 0 {
 				return true
 			}
-			_ = conn.SetWriteDeadline(time.Now().Add(time.Second * 30))
-			if n, err := w.Write(b); err != nil || n == 0 {
-				return true
+
+			if !pushLock.CompareAndSwap(false, true) {
+				fmt.Printf("PusherToHttp buf still writing %s", r.RemoteAddr)
+				return false
 			}
+
+			pushBuf = append(pushBuf[:0], b...)
+
+			go func() {
+				defer pushLock.Store(false)
+
+				_ = conn.SetWriteDeadline(time.Now().Add(time.Second * 30))
+				if n, err := w.Write(pushBuf); err != nil || n == 0 {
+					cancel(err)
+				}
+			}()
+
 			return false
 		},
 		`close`: func(_ []byte) bool {
@@ -1668,14 +1687,18 @@ func (t *M4SStream) PusherToHttp(conn net.Conn, w http.ResponseWriter, r *http.R
 		},
 	})
 
-	<-r.Context().Done()
+	<-ctx.Done()
 	cancelRec()
 
 	if e := stopFunc(t); e != nil {
 		return e
 	}
 
-	return nil
+	if errors.Is(ctx.Err(), context.Canceled) {
+		return nil
+	}
+
+	return ctx.Err()
 }
 
 func (t *M4SStream) bootBufPush(buf []byte) {
