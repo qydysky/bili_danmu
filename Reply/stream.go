@@ -1665,7 +1665,7 @@ func (t *M4SStream) PusherToHttp(conn net.Conn, w http.ResponseWriter, r *http.R
 			}
 
 			if !pushLock.CompareAndSwap(false, true) {
-				fmt.Printf("PusherToHttp buf still writing %s", r.RemoteAddr)
+				fmt.Printf("PusherToHttp buf still writing %s\n", r.RemoteAddr)
 				return false
 			}
 
