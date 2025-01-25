@@ -1590,7 +1590,7 @@ func (t *M4SStream) PusherToFile(contextC context.Context, filepath string, star
 // 流服务推送方法
 //
 // 在客户端存在某种代理时，将有可能无法监测到客户端关闭，这有可能导致goroutine泄漏
-func (t *M4SStream) PusherToHttp(conn net.Conn, w http.ResponseWriter, r *http.Request, startFunc func(*M4SStream) error, stopFunc func(*M4SStream) error) error {
+func (t *M4SStream) PusherToHttp(plog *log.Log_interface, conn net.Conn, w http.ResponseWriter, r *http.Request, startFunc func(*M4SStream) error, stopFunc func(*M4SStream) error) error {
 	switch t.stream_type {
 	case `m3u8`:
 		fallthrough
@@ -1647,16 +1647,12 @@ func (t *M4SStream) PusherToHttp(conn net.Conn, w http.ResponseWriter, r *http.R
 		return err
 	}
 
-	var (
-		ctx, cancel = context.WithCancelCause(r.Context())
-		pushLock    atomic.Bool
-		pushBuf     []byte
-	)
+	w = pweb.WithCache(w)
 
 	var cancelRec = t.Stream_msg.Pull_tag(map[string]func([]byte) bool{
 		`data`: func(b []byte) bool {
 			select {
-			case <-ctx.Done():
+			case <-r.Context().Done():
 				return true
 			default:
 			}
@@ -1664,22 +1660,14 @@ func (t *M4SStream) PusherToHttp(conn net.Conn, w http.ResponseWriter, r *http.R
 				return true
 			}
 
-			if !pushLock.CompareAndSwap(false, true) {
-				fmt.Printf("PusherToHttp buf still writing %s\n", r.RemoteAddr)
-				return false
-			}
-
-			pushBuf = append(pushBuf[:0], b...)
-
-			go func() {
-				defer pushLock.Store(false)
-
-				_ = conn.SetWriteDeadline(time.Now().Add(time.Second * 30))
-				if n, err := w.Write(pushBuf); err != nil || n == 0 {
-					cancel(err)
+			_ = conn.SetWriteDeadline(time.Now().Add(time.Second * 30))
+			if n, err := w.Write(b); err != nil || n == 0 {
+				if pweb.IsCacheBusy(err) {
+					plog.L(`I: `, r.RemoteAddr, "回放连接慢，缓存跳过")
+					return false
 				}
-			}()
-
+				return true
+			}
 			return false
 		},
 		`close`: func(_ []byte) bool {
@@ -1687,18 +1675,14 @@ func (t *M4SStream) PusherToHttp(conn net.Conn, w http.ResponseWriter, r *http.R
 		},
 	})
 
-	<-ctx.Done()
+	<-r.Context().Done()
 	cancelRec()
 
 	if e := stopFunc(t); e != nil {
 		return e
 	}
 
-	if errors.Is(ctx.Err(), context.Canceled) {
-		return nil
-	}
-
-	return ctx.Err()
+	return nil
 }
 
 func (t *M4SStream) bootBufPush(buf []byte) {
