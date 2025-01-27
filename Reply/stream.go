@@ -425,7 +425,7 @@ func (t *M4SStream) fetchCheckStream() bool {
 	return t.common.ValidLive() != nil
 }
 
-func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo float64) (m4s_links []*m4s_link_item, e error) {
+func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo float64) (m4s_links []*m4s_link_item, guessCount int, e error) {
 	{
 		n := t.common.ValidNum()
 		if d, ok := t.common.K_v.LoadV("fmp4获取更多服务器").(bool); ok && d && n <= 1 && len(t.common.Live) <= 5 {
@@ -577,7 +577,7 @@ func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo floa
 			return
 		} else {
 			// 来到此处说明出现了丢失 尝试补充
-			t.log.L(`I: `, `发现`, linksFirstNo-lastNo-1, `个切片遗漏，重新下载`)
+			guessCount = linksFirstNo - lastNo - 1
 			for guess_no := linksFirstNo - 1; guess_no > lastNo; guess_no-- {
 				//将切片添加到返回切片数组前
 				p := t.getM4s()
@@ -983,8 +983,8 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 		lastM4s          *m4s_link_item
 		to               = 5
 		fmp4ListUpdateTo = 5.0
-		fmp4Count        = 0
-		startT           = time.Now()
+		planSecPeriod    = 5.0
+		lastNewT         = time.Now()
 		skipErrFrame     = false
 	)
 
@@ -1026,16 +1026,11 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 		// 获取解析m3u8
 		{
 			// 防止过快的下载
-			dru := time.Since(startT).Seconds()
-			if wait := float64(fmp4Count) - dru - 1; wait > 5 {
-				time.Sleep(time.Second * 5)
-			} else if wait > 2 {
-				time.Sleep(time.Duration(wait) * time.Second)
-			} else {
-				time.Sleep(time.Second * 2)
+			if needWaitSec := planSecPeriod - time.Since(lastNewT).Seconds(); needWaitSec > 0 {
+				time.Sleep(time.Duration(needWaitSec) * time.Second)
 			}
 
-			var m4s_links, err = t.fetchParseM3U8(lastM4s, fmp4ListUpdateTo)
+			var m4s_links, guessCount, err = t.fetchParseM3U8(lastM4s, fmp4ListUpdateTo)
 			if err != nil {
 				t.log.L(`E: `, `获取解析m3u8发生错误`, err)
 				// if len(download_seq) != 0 {
@@ -1047,15 +1042,29 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 				}
 			}
 
-			// n秒未产出切片
-			fmp4Count = len(m4s_links)
-			if dru > fmp4ListUpdateTo && fmp4Count == 0 {
-				e = fmt.Errorf("%.2f 秒未产出切片", dru)
+			countInLastPeriod := len(m4s_links)
+			secInLastPeriod := time.Since(lastNewT).Seconds()
+			if countInLastPeriod != 0 {
+				lastNewT = time.Now()
+			} else if secInLastPeriod > fmp4ListUpdateTo {
+				// fmp4ListUpdateTo秒未产出切片
+				e = fmt.Errorf("%.2f 秒未产出切片", secInLastPeriod)
 				t.log.L("E: ", "获取解析m3u8发生错误", e)
 				break
 			}
-			if fmp4Count != 0 {
-				startT = time.Now()
+
+			// 评估一轮正常下载的周期时长
+			if countInLastPeriod-guessCount > 0 && countInLastPeriod > 0 && secInLastPeriod > 0 {
+				planSecPeriod = float64(countInLastPeriod-guessCount) / float64(countInLastPeriod) * secInLastPeriod
+				if guessCount == 0 {
+					planSecPeriod += 0.2
+				}
+				if guessCount >= 3 {
+					t.log.L(`I: `, `发现`, guessCount, `个切片遗漏，优先下载`)
+				}
+			}
+			if planSecPeriod < 3 {
+				planSecPeriod = 3
 			}
 
 			// 设置最后的切片
