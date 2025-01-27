@@ -40,6 +40,7 @@ import (
 	signal "github.com/qydysky/part/signal"
 	slice "github.com/qydysky/part/slice"
 	pstring "github.com/qydysky/part/strings"
+	pu "github.com/qydysky/part/util"
 	pweb "github.com/qydysky/part/web"
 )
 
@@ -1556,28 +1557,42 @@ func (t *M4SStream) PusherToFile(contextC context.Context, filepath string, star
 		return e
 	}
 
-	contextC, done := pctx.WaitCtx(contextC)
+	ctx1, done := pctx.WaitCtx(contextC)
 	defer done()
+
+	to := 2.0
+	if tmp, ok := t.common.K_v.LoadV("直播流保存写入超时").(float64); ok && tmp > 2 {
+		to = tmp
+	}
 
 	_, _ = f.Write(t.getFirstBuf(), true)
 	cancelRec := t.Stream_msg.Pull_tag(map[string]func([]byte) bool{
 		`data`: func(b []byte) bool {
+			defer pu.Callback(func(startT time.Time, args ...any) {
+				if dru := time.Since(startT).Seconds(); dru > to {
+					t.log.L("W: ", "磁盘写入超时", dru)
+					done()
+				}
+			})()
+
 			select {
-			case <-contextC.Done():
+			case <-ctx1.Done():
 				return true
 			default:
 			}
 			if len(b) == 0 {
 				return true
 			}
-			_, _ = f.Write(b, true)
+			if n, err := f.Write(b, true); err != nil || n == 0 {
+				done()
+			}
 			return false
 		},
 		`close`: func(_ []byte) bool {
 			return true
 		},
 	})
-	<-contextC.Done()
+	<-ctx1.Done()
 	cancelRec()
 
 	if e := stopFunc(t); e != nil {
