@@ -26,6 +26,14 @@
     </head>
     <body>
         <div class="artplayer-app"></div>
-        <script src="bundle.js"></script>
+        <script type="">
+            function addDOM(El,ElN,text,cla){
+                var d=document.createElement(ElN);
+                if(text)d.innerHTML=text;
+                for(var i=0;i<cla.length;i++)d.setAttribute(cla[i][0],cla[i][1]);
+                El.appendChild(d);
+            }
+            addDOM(document.body, "script", "", [["src","bundle.js?_="+(new Date().getTime())]]);
+        </script>
     </body>
 </html>
