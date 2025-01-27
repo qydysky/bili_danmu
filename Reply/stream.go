@@ -40,6 +40,7 @@ import (
 	signal "github.com/qydysky/part/signal"
 	slice "github.com/qydysky/part/slice"
 	pstring "github.com/qydysky/part/strings"
+	pu "github.com/qydysky/part/util"
 	pweb "github.com/qydysky/part/web"
 )
 
@@ -1556,28 +1557,42 @@ func (t *M4SStream) PusherToFile(contextC context.Context, filepath string, star
 		return e
 	}
 
-	contextC, done := pctx.WaitCtx(contextC)
+	ctx1, done := pctx.WaitCtx(contextC)
 	defer done()
+
+	to := 2.0
+	if tmp, ok := t.common.K_v.LoadV("直播流保存写入超时").(float64); ok && tmp > 2 {
+		to = tmp
+	}
 
 	_, _ = f.Write(t.getFirstBuf(), true)
 	cancelRec := t.Stream_msg.Pull_tag(map[string]func([]byte) bool{
 		`data`: func(b []byte) bool {
+			defer pu.Callback(func(startT time.Time, args ...any) {
+				if dru := time.Since(startT).Seconds(); dru > to {
+					t.log.L("W: ", "磁盘写入超时", dru)
+					done()
+				}
+			})()
+
 			select {
-			case <-contextC.Done():
+			case <-ctx1.Done():
 				return true
 			default:
 			}
 			if len(b) == 0 {
 				return true
 			}
-			_, _ = f.Write(b, true)
+			if n, err := f.Write(b, true); err != nil || n == 0 {
+				done()
+			}
 			return false
 		},
 		`close`: func(_ []byte) bool {
 			return true
 		},
 	})
-	<-contextC.Done()
+	<-ctx1.Done()
 	cancelRec()
 
 	if e := stopFunc(t); e != nil {
@@ -1590,7 +1605,7 @@ func (t *M4SStream) PusherToFile(contextC context.Context, filepath string, star
 // 流服务推送方法
 //
 // 在客户端存在某种代理时，将有可能无法监测到客户端关闭，这有可能导致goroutine泄漏
-func (t *M4SStream) PusherToHttp(conn net.Conn, w http.ResponseWriter, r *http.Request, startFunc func(*M4SStream) error, stopFunc func(*M4SStream) error) error {
+func (t *M4SStream) PusherToHttp(plog *log.Log_interface, conn net.Conn, w http.ResponseWriter, r *http.Request, startFunc func(*M4SStream) error, stopFunc func(*M4SStream) error) error {
 	switch t.stream_type {
 	case `m3u8`:
 		fallthrough
@@ -1647,6 +1662,8 @@ func (t *M4SStream) PusherToHttp(conn net.Conn, w http.ResponseWriter, r *http.R
 		return err
 	}
 
+	w = pweb.WithCache(w)
+
 	var cancelRec = t.Stream_msg.Pull_tag(map[string]func([]byte) bool{
 		`data`: func(b []byte) bool {
 			select {
@@ -1657,8 +1674,13 @@ func (t *M4SStream) PusherToHttp(conn net.Conn, w http.ResponseWriter, r *http.R
 			if len(b) == 0 {
 				return true
 			}
+
 			_ = conn.SetWriteDeadline(time.Now().Add(time.Second * 30))
 			if n, err := w.Write(b); err != nil || n == 0 {
+				if pweb.IsCacheBusy(err) {
+					plog.L(`I: `, r.RemoteAddr, "回放连接慢，缓存跳过")
+					return false
+				}
 				return true
 			}
 			return false

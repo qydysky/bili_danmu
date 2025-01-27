@@ -1283,7 +1283,7 @@ func init() {
 				// 	}
 				// }
 
-				if e := currentStreamO.PusherToHttp(conn, w, r, startFunc, stopFunc); e != nil {
+				if e := currentStreamO.PusherToHttp(flog, conn, w, r, startFunc, stopFunc); e != nil {
 					flog.L(`W: `, e)
 				}
 			}
