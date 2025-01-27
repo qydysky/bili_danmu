@@ -13072,11 +13072,12 @@ __webpack_require__.r(__webpack_exports__);
     /**
      * ws 收发
      */
-     function ws(player) {
+     function ws(player, firstT) {
         let st = new URL(window.location.href).searchParams.get("st")
         if(st)st=st.replace("m","")
         if (window["WebSocket"]) {
             var conn = new WebSocket("ws://" + window.location.host + window.location.pathname+"ws?ref="+new URL(window.location.href).searchParams.get("ref"));
+            
             let interval_handle = undefined;
             conn.onclose = function (evt) {
                 clearInterval(interval_handle)
@@ -13096,7 +13097,7 @@ __webpack_require__.r(__webpack_exports__);
                 }
             };
             conn.onerror = () => {
-                clearInterval(interval_handle)
+                clearInterval(interval_handle);
             };
             conn.onopen = function () {
                 conn.send(`pause`)
@@ -13109,9 +13110,11 @@ __webpack_require__.r(__webpack_exports__);
                 });
                 player.on('video:error', (...args) => {
                     if(conn != undefined)conn.close();
+                    clearInterval(interval_handle);
                 });
                 player.on('ended', (...args) => {
                     if(conn != undefined)conn.close();
+                    clearInterval(interval_handle);
                 });
                 player.on('artplayerPluginDanmuku:emit', (danmu) => {
                     if(conn != undefined)conn.send("%S"+danmu.text);
@@ -13119,7 +13122,7 @@ __webpack_require__.r(__webpack_exports__);
 
 
                 if(!interval_handle)interval_handle = setInterval(()=>{
-                    if(conn && player && player.currentTime)conn.send(Number(st)*60+7+player.currentTime)
+                    if(conn && player && player.currentTime && firstT)conn.send(Number(st)*60+7+(player.currentTime-firstT))
                 },3000);
             };
         }
@@ -13128,9 +13131,9 @@ __webpack_require__.r(__webpack_exports__);
     function initPlay(config) {
         if(player != undefined && player.destroy != undefined)player.destroy();
         player = new (artplayer__WEBPACK_IMPORTED_MODULE_0___default())(config);
-        ws(player)
         player.on('ready', () => {
             player.autoHeight();
+            ws(player, player.currentTime);
         });
         player.on('resize', () => {
             player.autoHeight();
