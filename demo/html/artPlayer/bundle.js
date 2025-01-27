@@ -12938,6 +12938,7 @@ __webpack_require__.r(__webpack_exports__);
     let para = new URL(window.location.href).searchParams;
 
     let player,
+        initT=null,
         flvPlayer,
         config = {
             container: '.artplayer-app',
@@ -13072,7 +13073,7 @@ __webpack_require__.r(__webpack_exports__);
     /**
      * ws 收发
      */
-     function ws(player, firstT) {
+     function ws(player) {
         let st = new URL(window.location.href).searchParams.get("st")
         if(st)st=st.replace("m","")
         if (window["WebSocket"]) {
@@ -13103,6 +13104,10 @@ __webpack_require__.r(__webpack_exports__);
                 conn.send(`pause`)
 
                 player.on("video:play", (event) => {
+                    if(initT==null){
+                        initT = player.currentTime;
+                        console.log(initT)
+                    }
                     if(conn != undefined)conn.send(`play`);
                 });
                 player.on('pause', (...args) => {
@@ -13122,7 +13127,7 @@ __webpack_require__.r(__webpack_exports__);
 
 
                 if(!interval_handle)interval_handle = setInterval(()=>{
-                    if(conn && player && player.currentTime && firstT)conn.send(Number(st)*60+7+(player.currentTime-firstT))
+                    if(conn && player && player.currentTime && initT!=null)conn.send(Number(st)*60+7+(player.currentTime-initT))
                 },3000);
             };
         }
@@ -13133,7 +13138,7 @@ __webpack_require__.r(__webpack_exports__);
         player = new (artplayer__WEBPACK_IMPORTED_MODULE_0___default())(config);
         player.on('ready', () => {
             player.autoHeight();
-            ws(player, player.currentTime);
+            ws(player);
         });
         player.on('resize', () => {
             player.autoHeight();
