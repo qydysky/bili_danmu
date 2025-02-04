@@ -1635,12 +1635,14 @@ func (t *M4SStream) PusherToHttp(plog *log.Log_interface, conn net.Conn, w http.
 
 	w = pweb.WithFlush(w)
 
+	ctx, cancel := context.WithCancelCause(r.Context())
+	defer cancel(nil)
 	//写入头
 	{
 		retry := 5
 		for retry > 0 {
 			select {
-			case <-r.Context().Done():
+			case <-ctx.Done():
 				break
 			default:
 			}
@@ -1673,20 +1675,19 @@ func (t *M4SStream) PusherToHttp(plog *log.Log_interface, conn net.Conn, w http.
 		return err
 	}
 
-	bufsize := uint64(humanize.MiByte)
+	bufsize := humanize.MiByte * 5
 	if tmp, ok := t.common.K_v.LoadV("直播流实时回放缓存").(string); ok && tmp != "" {
-		if ts, e := humanize.ParseBytes(tmp); e == nil && ts > bufsize {
-			bufsize = ts
+		if ts, e := humanize.ParseBytes(tmp); e == nil && int(ts) > bufsize {
+			bufsize = int(ts)
 		}
 	}
 
-	cw := pio.NewCacheWriter(w, bufsize)
-	w = pweb.WithCache(w, cw)
+	w = pweb.WithCache(w, 10, bufsize)
 
 	var cancelRec = t.Stream_msg.Pull_tag(map[string]func([]byte) bool{
 		`data`: func(b []byte) bool {
 			select {
-			case <-r.Context().Done():
+			case <-ctx.Done():
 				return true
 			default:
 			}
@@ -1696,11 +1697,13 @@ func (t *M4SStream) PusherToHttp(plog *log.Log_interface, conn net.Conn, w http.
 
 			_ = conn.SetWriteDeadline(time.Now().Add(time.Second * 30))
 			if n, err := w.Write(b); err != nil || n == 0 {
-				if errors.Is(err, slice.ErrFIFOOverflow) {
+				if errors.Is(err, pio.ErrCacheWriterCapOverflow) {
 					plog.L(`I: `, r.RemoteAddr, "回放缓存跳过，或许应该增加`直播流实时回放缓存`")
-					return false
+				} else {
+					plog.L(`W: `, r.RemoteAddr, err)
+					cancel(err)
+					return true
 				}
-				return true
 			}
 			return false
 		},
@@ -1709,7 +1712,7 @@ func (t *M4SStream) PusherToHttp(plog *log.Log_interface, conn net.Conn, w http.
 		},
 	})
 
-	<-r.Context().Done()
+	<-ctx.Done()
 	cancelRec()
 
 	if e := stopFunc(t); e != nil {
