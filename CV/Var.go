@@ -395,10 +395,6 @@ func (t *Common) Init() *Common {
 	}
 
 	// load from env
-	if tmp := os.Getenv("cdir"); *cdir == "" && tmp != "" {
-		fmt.Println("加载环境变量cdir:", tmp)
-		*cdir = tmp
-	}
 	if tmp := os.Getenv("ckv"); *ckv == "" && tmp != "" {
 		fmt.Println("加载环境变量ckv:", tmp)
 		*ckv = tmp
