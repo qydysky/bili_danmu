@@ -60,4 +60,5 @@ var DanmuEmotes = comp.Get[interface {
 	}) (ret any, err error)
 	Hashr(s string) (r string)
 	SetLayerN(n int)
+	IsErrNoEmote(e error) bool
 }](`danmuEmotes`)

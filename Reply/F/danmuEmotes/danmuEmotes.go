@@ -3,6 +3,7 @@ package danmuemotes
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"strings"
 
 	c "github.com/qydysky/bili_danmu/CV"
@@ -21,6 +22,7 @@ type TargetInterface interface {
 	}) (ret any, err error)
 	Hashr(s string) (r string)
 	SetLayerN(n int)
+	IsErrNoEmote(e error) bool
 }
 
 func init() {
@@ -34,9 +36,15 @@ func init() {
 	_, _ = file.New(i.Dir+"README.md", 0, true).Write([]byte(""), false)
 }
 
+var errNoEmote = errors.New("errNoEmote")
+
 type danmuEmotes struct {
 	Dir    string
 	LayerN int
+}
+
+func (t *danmuEmotes) IsErrNoEmote(e error) bool {
+	return errors.Is(e, errNoEmote)
 }
 
 func (t *danmuEmotes) SetLayerN(n int) {
@@ -48,6 +56,7 @@ func (t *danmuEmotes) SaveEmote(ctx context.Context, ptr struct {
 	Info []any
 	Msg  *string
 }) (ret any, err error) {
+	isEmote := false
 	if m, ok := ptr.Info[13].(map[string]any); ok {
 		if url, ok := m[`url`].(string); ok {
 			if !strings.Contains(*ptr.Msg, "[") {
@@ -55,6 +64,7 @@ func (t *danmuEmotes) SaveEmote(ctx context.Context, ptr struct {
 					*ptr.Msg = "[" + *ptr.Msg + emoticon_unique + "]"
 				}
 			}
+			isEmote = true
 			savePath := t.Dir + t.Hashr(*ptr.Msg) + ".png"
 			if !file.New(savePath, 0, true).IsExist() {
 				go func() {
@@ -101,6 +111,7 @@ func (t *danmuEmotes) SaveEmote(ctx context.Context, ptr struct {
 							continue
 						}
 
+						isEmote = true
 						savePath := t.Dir + t.Hashr(k) + ".png"
 						if file.New(savePath, 0, true).IsExist() {
 							continue
@@ -131,6 +142,9 @@ func (t *danmuEmotes) SaveEmote(ctx context.Context, ptr struct {
 				}
 			}
 		}
+	}
+	if !isEmote {
+		err = errNoEmote
 	}
 	return
 }
