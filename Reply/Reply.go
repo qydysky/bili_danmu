@@ -1257,6 +1257,7 @@ type Danmu_item struct {
 	msg      string
 	color    string
 	border   bool
+	hasEmote bool
 	mode     int
 	auth     any
 	hideAuth bool
@@ -1289,7 +1290,9 @@ func (t replyF) danmu(s string) {
 			item.color = "#" + fmt.Sprintf("%x", F.Itob32(int32(i[3].(float64)))[1:])
 
 			if v, ok := t.Common.K_v.LoadV(`弹幕表情`).(bool); ok && v {
-				if _, e := replyFunc.DanmuEmotes.SaveEmote(context.Background(), replyFunc.DanmuEmotesS{Logg: msglog, Info: i, Msg: &item.msg}); e != nil {
+				_, e := replyFunc.DanmuEmotes.SaveEmote(context.Background(), replyFunc.DanmuEmotesS{Logg: msglog, Info: i, Msg: &item.msg})
+				item.hasEmote = e == nil
+				if e != nil && !replyFunc.DanmuEmotes.IsErrNoEmote(e) {
 					msglog.L(`E: `, e)
 				}
 			}
@@ -1366,11 +1369,13 @@ func (t replyF) danmu(s string) {
 			danmulog.L(`I: `, item.auth, ":", item.msg)
 			return
 		}
-		if _msg := Shortdanmuf(item.msg); _msg == "" {
-			danmulog.L(`I: `, item.auth, ":", item.msg)
-			return
-		} else {
-			item.msg = _msg
+		if !item.hasEmote { // 表情跳过，避免破坏表情代码
+			if _msg := Shortdanmuf(item.msg); _msg == "" {
+				danmulog.L(`I: `, item.auth, ":", item.msg)
+				return
+			} else {
+				item.msg = _msg
+			}
 		}
 	}
 	if item.auth != nil {

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"math"
 	"net"
 	"net/http"
 	"net/url"
@@ -1143,6 +1144,8 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 						t.log.L(`W: `, `切片下载失败`, link.Base, perrors.ErrorFormat(e, perrors.ErrActionInLineFunc))
 					}
 				}(download_seq[i])
+				// 间隔100ms发起
+				time.Sleep(time.Millisecond * 100)
 			}
 
 			// 等待队列下载完成
@@ -1633,12 +1636,14 @@ func (t *M4SStream) PusherToHttp(plog *log.Log_interface, conn net.Conn, w http.
 
 	w = pweb.WithFlush(w)
 
+	ctx, cancel := context.WithCancelCause(r.Context())
+	defer cancel(nil)
 	//写入头
 	{
 		retry := 5
 		for retry > 0 {
 			select {
-			case <-r.Context().Done():
+			case <-ctx.Done():
 				break
 			default:
 			}
@@ -1671,12 +1676,17 @@ func (t *M4SStream) PusherToHttp(plog *log.Log_interface, conn net.Conn, w http.
 		return err
 	}
 
-	w = pweb.WithCache(w)
+	size := uint32(2)
+	if tmp, ok := t.common.K_v.LoadV("直播流实时回放缓存").(float64); ok && int(tmp) > int(size) && tmp < math.MaxUint32 {
+		size = uint32(tmp)
+	}
+
+	w = pweb.WithCache(w, size)
 
 	var cancelRec = t.Stream_msg.Pull_tag(map[string]func([]byte) bool{
 		`data`: func(b []byte) bool {
 			select {
-			case <-r.Context().Done():
+			case <-ctx.Done():
 				return true
 			default:
 			}
@@ -1686,11 +1696,13 @@ func (t *M4SStream) PusherToHttp(plog *log.Log_interface, conn net.Conn, w http.
 
 			_ = conn.SetWriteDeadline(time.Now().Add(time.Second * 30))
 			if n, err := w.Write(b); err != nil || n == 0 {
-				if pweb.IsCacheBusy(err) {
-					plog.L(`I: `, r.RemoteAddr, "回放连接慢，缓存跳过")
-					return false
+				if errors.Is(err, pio.ErrCacheWriterBusy) {
+					plog.L(`I: `, r.RemoteAddr, "回放缓存跳过，或许应该增加`直播流实时回放缓存`")
+				} else {
+					plog.L(`W: `, r.RemoteAddr, err)
+					cancel(err)
+					return true
 				}
-				return true
 			}
 			return false
 		},
@@ -1699,7 +1711,7 @@ func (t *M4SStream) PusherToHttp(plog *log.Log_interface, conn net.Conn, w http.
 		},
 	})
 
-	<-r.Context().Done()
+	<-ctx.Done()
 	cancelRec()
 
 	if e := stopFunc(t); e != nil {
