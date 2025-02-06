@@ -48,7 +48,7 @@ func Cmd() {
 			fmt.Println("搜索主播->输入' sea关键词'回车")
 			fmt.Println("房间信息->输入' room'回车")
 			fmt.Println("开始结束录制->输入' rec'回车")
-			fmt.Println("录播切片->输入' cut'回车")
+			fmt.Println("录播分段->输入' cut'回车")
 			fmt.Println("退出当前房间->输入' exit'回车")
 			fmt.Println("其他输出隔断不影响")
 			fmt.Print("\n")
@@ -56,7 +56,7 @@ func Cmd() {
 			cmdlog.L(`W: `, "不支持功能键")
 		} else if inputs[0] == 32 { // 开头
 			cmdlog.L(`T: `, "指令("+inputs+")")
-			//录播切片
+			//录播分段
 			if strings.Contains(inputs, ` cut`) {
 				if c.C.Roomid != 0 && reply.StreamOStatus(c.C.Roomid) {
 					reply.StreamOCut(c.C.Roomid)

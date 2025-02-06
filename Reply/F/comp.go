@@ -19,8 +19,8 @@ import (
 var DanmuCountPerMin = comp.Get[interface {
 	// will WriteHeader
 	GetRec(savePath string, r *http.Request, w http.ResponseWriter) error
-	Rec(ctx context.Context, roomid int, savePath string)
-	Do(roomid int)
+	Rec(ctx context.Context, roomid int, savePath string) func(map[string]any)
+	Do(roomid int, msg string, uid string)
 }](`danmuCountPerMin`)
 
 var Ass = comp.Get[interface {

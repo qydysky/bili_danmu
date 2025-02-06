@@ -1318,7 +1318,7 @@ func (t replyF) danmu(s string) {
 
 	{ // 附加功能 弹幕机 封禁 弹幕合并
 		// 弹幕统计
-		replyFunc.DanmuCountPerMin.Do(item.roomid)
+		replyFunc.DanmuCountPerMin.Do(item.roomid, item.msg, item.uid)
 		// 保存弹幕至db
 		saveDanmuToDB.init(t.Common)
 		saveDanmuToDB.danmu(item)

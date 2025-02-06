@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"regexp"
 	"time"
 
 	comp "github.com/qydysky/part/component2"
@@ -18,13 +19,13 @@ import (
 type TargetInterface interface {
 	// will WriteHeader
 	GetRec(savePath string, r *http.Request, w http.ResponseWriter) error
-	Rec(ctx context.Context, roomid int, savePath string)
-	Do(roomid int)
+	Rec(ctx context.Context, roomid int, savePath string) func(map[string]any)
+	Do(roomid int, msg string, uid string)
 }
 
 func init() {
 	if e := comp.Register[TargetInterface]("danmuCountPerMin", &danmuCountPerMin{
-		m: msgq.NewType[int](),
+		m: msgq.NewType[mi](),
 	}); e != nil {
 		panic(e)
 	}
@@ -34,8 +35,13 @@ const filename = "danmuCountPerMin.json"
 
 var noFoundModT, _ = time.Parse(time.DateTime, "2006-01-02 15:04:05")
 
+type mi struct {
+	msg string
+	uid string
+}
+
 type danmuCountPerMin struct {
-	m *msgq.MsgType[int]
+	m *msgq.MsgType[mi]
 }
 
 func (t *danmuCountPerMin) GetRec(savePath string, r *http.Request, w http.ResponseWriter) error {
@@ -61,43 +67,82 @@ func (t *danmuCountPerMin) GetRec(savePath string, r *http.Request, w http.Respo
 	return f.CopyToIoWriter(w, part.CopyConfig{})
 }
 
-func (t *danmuCountPerMin) Rec(ctx context.Context, rid int, savePath string) {
-	go func() {
-		var cpm []int
-		var startT = time.Now()
+func (t *danmuCountPerMin) Rec(ctx context.Context, rid int, savePath string) func(map[string]any) {
+	return func(cfg map[string]any) {
+		cfgMsg := make(map[*regexp.Regexp]int)
+		cfgUid := make(map[string]int)
 
-		cancel := t.m.Pull_tag_only(`do`, func(roomid int) (disable bool) {
-			if rid == roomid {
+		if m, ok := cfg["danmu"].(map[string]any); ok {
+			for k, v := range m {
+				if point, ok := v.(float64); ok && point != 0 {
+					if reg, err := regexp.Compile(k); err == nil {
+						cfgMsg[reg] = int(point)
+					}
+				}
+			}
+		}
+
+		if m, ok := cfg["uid"].(map[string]any); ok {
+			for k, v := range m {
+				if point, ok := v.(float64); ok && point != 0 {
+					cfgUid[k] = int(point)
+				}
+			}
+		}
+
+		if len(cfgMsg)+len(cfgUid) == 0 {
+			return
+		}
+
+		go func() {
+			var cpm []int
+			var startT = time.Now()
+
+			cancel := t.m.Pull_tag_only(fmt.Sprintf("do%d", rid), func(i mi) (disable bool) {
+				point := 0
+				for k, v := range cfgMsg {
+					if k.MatchString(i.msg) {
+						point += v
+					}
+				}
+				for k, v := range cfgUid {
+					if k == i.uid {
+						point += v
+					}
+				}
+				if point == 0 {
+					return false
+				}
 				cu := int(time.Since(startT).Minutes())
 				if len(cpm) < cu+1 {
 					cpm = append(cpm, make([]int, cu+1-len(cpm))...)
 				}
-				cpm[cu] += 1
+				cpm[cu] += point
+				return false
+			})
+
+			<-ctx.Done()
+			cancel()
+
+			cu := int(time.Since(startT).Minutes())
+			if len(cpm) < cu+1 {
+				cpm = append(cpm, make([]int, cu+1-len(cpm))...)
 			}
-			return false
-		})
 
-		<-ctx.Done()
-		cancel()
-
-		cu := int(time.Since(startT).Minutes())
-		if len(cpm) < cu+1 {
-			cpm = append(cpm, make([]int, cu+1-len(cpm))...)
-		}
-
-		if data, e := json.MarshalIndent(cpm, "", " "); e != nil {
-			fmt.Println(e)
-		} else {
-			f := file.New(savePath+filename, 0, true)
-			defer f.Close()
-			_ = f.Delete()
-			if _, e = f.Write(data, false); e != nil {
+			if data, e := json.MarshalIndent(cpm, "", " "); e != nil {
 				fmt.Println(e)
+			} else {
+				f := file.New(savePath+filename, 0, true)
+				defer f.Close()
+				_ = f.Delete()
+				if _, e = f.Write(data, false); e != nil {
+					fmt.Println(e)
+				}
 			}
-		}
-	}()
+		}()
+	}
 }
 
-func (t *danmuCountPerMin) Do(roomid int) {
-	t.m.Push_tag(`do`, roomid)
+func (t *danmuCountPerMin) Do(roomid int, msg string, uid string) {
+	t.m.Push_tag(fmt.Sprintf("do%d", roomid), mi{msg, uid})
 }
