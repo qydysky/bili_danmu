@@ -234,7 +234,7 @@
             "env": ""
         }
     ],
-    "弹幕分值-help":"对每条弹幕进行评分，每分钟输出分值到danmuCountPerMin.json，无有效规则时不生成json，用于后续评估",
+    "弹幕分值-help":"对每条弹幕进行评分，每分钟输出分值到danmuCountPerMin.json，无有效规则时默认统计弹幕数，用于后续评估",
     "弹幕分值":{
         "danmu-help":"key为正则表达式，匹配成功时分值加value，value为0时忽略",
         "danmu": {
