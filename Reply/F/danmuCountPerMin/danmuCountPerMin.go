@@ -72,6 +72,14 @@ func (t *danmuCountPerMin) Rec(ctx context.Context, rid int, savePath string) fu
 		cfgMsg := make(map[*regexp.Regexp]int)
 		cfgUid := make(map[string]int)
 
+		if cfg == nil { // 默认统计弹幕数
+			cfg = map[string]any{
+				`danmu`: map[string]any{
+					`.`: 1.0,
+				},
+			}
+		}
+
 		if m, ok := cfg["danmu"].(map[string]any); ok {
 			for k, v := range m {
 				if point, ok := v.(float64); ok && point != 0 {

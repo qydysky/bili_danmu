@@ -1406,9 +1406,7 @@ func (t *M4SStream) Start() bool {
 					startf := func(_ *M4SStream) error {
 						l.L(`T: `, `开始`)
 						//弹幕分值统计
-						if m, ok := ms.common.K_v.LoadV("弹幕分值").(map[string]any); ok {
-							replyFunc.DanmuCountPerMin.Rec(contextC, ms.common.Roomid, ms.GetSavePath())(m)
-						}
+						replyFunc.DanmuCountPerMin.Rec(contextC, ms.common.Roomid, ms.GetSavePath())(ms.common.K_v.LoadV("弹幕分值").(map[string]any))
 						return nil
 					}
 					stopf := func(_ *M4SStream) error {
