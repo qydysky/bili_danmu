@@ -19,7 +19,7 @@ import (
 type TargetInterface interface {
 	// will WriteHeader
 	GetRec(savePath string, r *http.Request, w http.ResponseWriter) error
-	Rec(ctx context.Context, roomid int, savePath string) func(map[string]any)
+	Rec(ctx context.Context, roomid int, savePath string) func(any)
 	Do(roomid int, msg string, uid string)
 }
 
@@ -36,8 +36,9 @@ const filename = "danmuCountPerMin.json"
 var noFoundModT, _ = time.Parse(time.DateTime, "2006-01-02 15:04:05")
 
 type mi struct {
-	msg string
-	uid string
+	roomid int
+	msg    string
+	uid    string
 }
 
 type danmuCountPerMin struct {
@@ -67,59 +68,84 @@ func (t *danmuCountPerMin) GetRec(savePath string, r *http.Request, w http.Respo
 	return f.CopyToIoWriter(w, part.CopyConfig{})
 }
 
-func (t *danmuCountPerMin) Rec(ctx context.Context, rid int, savePath string) func(map[string]any) {
-	return func(cfg map[string]any) {
-		cfgMsg := make(map[*regexp.Regexp]int)
-		cfgUid := make(map[string]int)
-
-		if cfg == nil { // 默认统计弹幕数
-			cfg = map[string]any{
-				`danmu`: map[string]any{
-					`.`: 1.0,
-				},
-			}
+func (t *danmuCountPerMin) Rec(ctx context.Context, rid int, savePath string) func(any) {
+	return func(cfg any) {
+		cfgM := make(map[int][]func(mi) int)
+		// 默认统计弹幕数
+		cfgM[-1] = []func(mi) int{
+			func(m mi) int {
+				return 1
+			},
 		}
 
-		if m, ok := cfg["danmu"].(map[string]any); ok {
-			for k, v := range m {
-				if point, ok := v.(float64); ok && point != 0 {
-					if reg, err := regexp.Compile(k); err == nil {
-						cfgMsg[reg] = int(point)
+		if cfgs, ok := cfg.([]any); ok {
+			// 配置特定房间
+			for i := 0; i < len(cfgs); i++ {
+				cfg, ok := cfgs[i].(map[string]any)
+				if !ok {
+					continue
+				}
+
+				roomid := 0
+				if m, ok := cfg["roomid"].(float64); !ok || roomid == 0 {
+					continue
+				} else {
+					roomid = int(m)
+				}
+
+				var funcs []func(mi) int
+
+				if m, ok := cfg["danmu"].(map[string]any); ok {
+					for k, v := range m {
+						if point, ok := v.(float64); ok && point != 0 {
+							if reg, err := regexp.Compile(k); err == nil {
+								funcs = append(funcs, func(m mi) int {
+									if reg.MatchString(m.msg) {
+										return int(point)
+									}
+									return 0
+								})
+							}
+						}
 					}
 				}
-			}
-		}
 
-		if m, ok := cfg["uid"].(map[string]any); ok {
-			for k, v := range m {
-				if point, ok := v.(float64); ok && point != 0 {
-					cfgUid[k] = int(point)
+				if m, ok := cfg["uid"].(map[string]any); ok {
+					for k, v := range m {
+						if point, ok := v.(float64); ok && point != 0 {
+							funcs = append(funcs, func(m mi) int {
+								if k == m.uid {
+									return int(point)
+								}
+								return 0
+							})
+						}
+					}
 				}
+
+				if len(funcs) == 0 {
+					continue
+				}
+
+				cfgM[roomid] = funcs
+
+				fmt.Println(roomid, len(funcs))
 			}
 		}
-
-		if len(cfgMsg)+len(cfgUid) == 0 {
-			return
-		}
-
 		go func() {
 			var cpm []int
 			var startT = time.Now()
 
-			cancel := t.m.Pull_tag_only(fmt.Sprintf("do%d", rid), func(i mi) (disable bool) {
+			cancel := t.m.Pull_tag_only(`do`, func(m mi) (disable bool) {
 				point := 0
-				for k, v := range cfgMsg {
-					if k.MatchString(i.msg) {
-						point += v
+				if fs, ok := cfgM[m.roomid]; ok {
+					for i := 0; i < len(fs); i++ {
+						point += fs[i](m)
 					}
-				}
-				for k, v := range cfgUid {
-					if k == i.uid {
-						point += v
+				} else if fs, ok := cfgM[-1]; ok {
+					for i := 0; i < len(fs); i++ {
+						point += fs[i](m)
 					}
-				}
-				if point == 0 {
-					return false
 				}
 				cu := int(time.Since(startT).Minutes())
 				if len(cpm) < cu+1 {
@@ -152,5 +178,5 @@ func (t *danmuCountPerMin) Rec(ctx context.Context, rid int, savePath string) fu
 }
 
 func (t *danmuCountPerMin) Do(roomid int, msg string, uid string) {
-	t.m.Push_tag(fmt.Sprintf("do%d", roomid), mi{msg, uid})
+	t.m.Push_tag(`do`, mi{roomid, msg, uid})
 }
