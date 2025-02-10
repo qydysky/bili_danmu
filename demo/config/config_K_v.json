@@ -234,15 +234,19 @@
             "env": ""
         }
     ],
-    "弹幕分值-help":"对每条弹幕进行评分，每分钟输出分值到danmuCountPerMin.json，无有效规则时默认统计弹幕数，用于后续评估",
-    "弹幕分值":{
-        "danmu-help":"key为正则表达式，匹配成功时分值加value，value为0时忽略",
-        "danmu": {
-            ".":1
-        }, 
-        "uid-help":"key为uid，相等时分值加value，value为0时忽略",
-        "uid": {
-            "":0
+    "弹幕分值-help":"对每条弹幕进行评分，每分钟输出分值到danmuCountPerMin.json，无有效规则时默认配置统计弹幕数，用于后续评估",
+    "弹幕分值":[
+        {
+            "roomid-help":"为0时忽略,为-1时可覆盖默认配置,>0时为指定房间号",
+            "roomid": -1,
+            "danmu-help":"key为正则表达式，匹配成功时分值加value，value为0时忽略",
+            "danmu": {
+                ".":1
+            }, 
+            "uid-help":"key为uid，相等时分值加value，value为0时忽略",
+            "uid": {
+                "":0
+            }
         }
-    }
+    ]
 }
