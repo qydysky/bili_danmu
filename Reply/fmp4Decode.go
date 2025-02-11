@@ -15,10 +15,16 @@ import (
 )
 
 var (
-	ActionInitFmp4     pe.Action = `InitFmp4`
-	ActionGetIndexFmp4 pe.Action = `GetIndexFmp4`
-	ActionSeekFmp4     pe.Action = `SeekFmp4`
-	ActionOneFFmp4     pe.Action = `OneFFmp4`
+	fmp4BoxLenSize  = 4
+	fmp4BoxNameSize = 4
+)
+
+var (
+	ActionInitFmp4        pe.Action = `InitFmp4`
+	ActionGetIndexFmp4    pe.Action = `GetIndexFmp4`
+	ActionGenFastSeedFmp4 pe.Action = `GenFastSeedFmp4`
+	ActionSeekFmp4        pe.Action = `SeekFmp4`
+	ActionOneFFmp4        pe.Action = `OneFFmp4`
 )
 
 var boxs map[string]bool
@@ -277,7 +283,7 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 								t.buf.Reset()
 								haveKeyframe = false
 								cu = m[0].i
-								return pe.Join(ErrDealIESkip.New(), e)
+								return pe.Join(ErrDealIESkip, e)
 							}
 						}
 						if e := check_set_maxT(ts, func(_ timeStamp) error {
@@ -288,7 +294,7 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 							cu = m[0].i
 							return errors.New("skip")
 						}); e != nil {
-							return pe.Join(ErrDealIESkip.New(), e)
+							return pe.Join(ErrDealIESkip, e)
 						}
 					}
 
@@ -298,7 +304,7 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 					if keyframeMoof {
 						if v, e := t.buf.HadModified(bufModified); e == nil && v && !t.buf.IsEmpty() {
 							if e := t.buf.AppendTo(keyframe); e != nil {
-								return pe.Join(ErrDealIEBreak.New(), e)
+								return pe.Join(ErrDealIEBreak, e)
 							}
 							cu = m[0].i
 							t.buf.Reset()
@@ -309,7 +315,7 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 					}
 					if haveKeyframe {
 						if e := t.buf.Append(buf[m[0].i:m[6].e]); e != nil {
-							return pe.Join(ErrDealIEBreak.New(), e)
+							return pe.Join(ErrDealIEBreak, e)
 						}
 					}
 					return nil
@@ -335,7 +341,7 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 								t.buf.Reset()
 								haveKeyframe = false
 								cu = m[0].i
-								return pe.Join(ErrDealIESkip.New(), e)
+								return pe.Join(ErrDealIESkip, e)
 							}
 						}
 						switch handlerType {
@@ -352,7 +358,7 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 							cu = m[0].i
 							return errors.New("skip")
 						}); e != nil {
-							return pe.Join(ErrDealIESkip.New(), e)
+							return pe.Join(ErrDealIESkip, e)
 						}
 					}
 					{
@@ -363,7 +369,7 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 								t.buf.Reset()
 								haveKeyframe = false
 								cu = m[0].i
-								return pe.Join(ErrDealIESkip.New(), e)
+								return pe.Join(ErrDealIESkip, e)
 							}
 						}
 						switch handlerType {
@@ -380,7 +386,7 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 							cu = m[0].i
 							return errors.New("skip")
 						}); e != nil {
-							return pe.Join(ErrDealIESkip.New(), e)
+							return pe.Join(ErrDealIESkip, e)
 						}
 					}
 
@@ -389,7 +395,7 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 						t.AVTDiff = 0.1
 					}
 					if diff := math.Abs(video.getT() - audio.getT()); diff > t.AVTDiff {
-						return pe.Join(ErrDealIEBreak.New(), fmt.Errorf("时间戳不匹配 %v %v (或许应调整fmp4音视频时间戳容差s>%.2f)", video.timeStamp, audio.timeStamp, diff))
+						return pe.Join(ErrDealIEBreak, fmt.Errorf("时间戳不匹配 %v %v (或许应调整fmp4音视频时间戳容差s>%.2f)", video.timeStamp, audio.timeStamp, diff))
 						// copy(video.data, F.Itob64(int64(audio.getT()*float64(video.timescale))))
 					}
 
@@ -397,7 +403,7 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 					if keyframeMoof {
 						if v, e := t.buf.HadModified(bufModified); e == nil && v && !t.buf.IsEmpty() {
 							if e := t.buf.AppendTo(keyframe); e != nil {
-								return pe.Join(ErrDealIEBreak.New(), e)
+								return pe.Join(ErrDealIEBreak, e)
 							}
 							cu = m[0].i
 							t.buf.Reset()
@@ -408,7 +414,7 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 					}
 					if haveKeyframe {
 						if e := t.buf.Append(buf[m[0].i:m[10].e]); e != nil {
-							return pe.Join(ErrDealIEBreak.New(), e)
+							return pe.Join(ErrDealIEBreak, e)
 						}
 					}
 					return nil
@@ -606,7 +612,7 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...dealFMp4) (cu int, err error) {
 								t.buf.Reset()
 								haveKeyframe = false
 								cu = m[0].i
-								return pe.Join(ErrDealIESkip.New(), e)
+								return pe.Join(ErrDealIESkip, e)
 							}
 						}
 						switch handlerType {
@@ -623,7 +629,7 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...dealFMp4) (cu int, err error) {
 							cu = m[0].i
 							return errors.New("skip")
 						}); e != nil {
-							return pe.Join(ErrDealIESkip.New(), e)
+							return pe.Join(ErrDealIESkip, e)
 						}
 					}
 					{
@@ -634,7 +640,7 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...dealFMp4) (cu int, err error) {
 								t.buf.Reset()
 								haveKeyframe = false
 								cu = m[0].i
-								return pe.Join(ErrDealIESkip.New(), e)
+								return pe.Join(ErrDealIESkip, e)
 							}
 						}
 						switch handlerType {
@@ -651,7 +657,7 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...dealFMp4) (cu int, err error) {
 							cu = m[0].i
 							return errors.New("skip")
 						}); e != nil {
-							return pe.Join(ErrDealIESkip.New(), e)
+							return pe.Join(ErrDealIESkip, e)
 						}
 					}
 
@@ -660,7 +666,7 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...dealFMp4) (cu int, err error) {
 						t.AVTDiff = 0.1
 					}
 					if diff := math.Abs(video.getT() - audio.getT()); diff > t.AVTDiff {
-						return pe.Join(ErrDealIEBreak.New(), fmt.Errorf("时间戳不匹配 %v %v (或许应调整fmp4音视频时间戳容差s>%.2f)", video.timeStamp, audio.timeStamp, diff))
+						return pe.Join(ErrDealIEBreak, fmt.Errorf("时间戳不匹配 %v %v (或许应调整fmp4音视频时间戳容差s>%.2f)", video.timeStamp, audio.timeStamp, diff))
 						// copy(video.data, F.Itob64(int64(audio.getT()*float64(video.timescale))))
 					}
 
@@ -681,7 +687,7 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...dealFMp4) (cu int, err error) {
 					}
 					if haveKeyframe {
 						if e := t.buf.Append(buf[m[0].i:m[10].e]); e != nil {
-							return pe.Join(ErrDealIEBreak.New(), e)
+							return pe.Join(ErrDealIEBreak, e)
 						}
 					}
 					return nil
@@ -816,9 +822,9 @@ func (t *Fmp4Decoder) GenFastSeed(reader io.Reader, save func(seedTo time.Durati
 				if firstFT == -1 {
 					firstFT = t
 				}
-				return save(time.Second*time.Duration(t-firstFT), int64(totalRead-buff.Size()+index))
+				return pe.Join(ActionGenFastSeedFmp4, save(time.Second*time.Duration(t-firstFT), int64(totalRead-buff.Size()+index)))
 			}); e != nil {
-				return pe.New(e.Error(), ActionOneFFmp4)
+				return pe.Join(ActionGenFastSeedFmp4, ActionOneFFmp4, e)
 			} else {
 				if dropOffset != 0 {
 					_ = buff.RemoveFront(dropOffset)
@@ -878,7 +884,7 @@ var (
 func decode(buf []byte, reSyncboxName string) (m []ie, err error) {
 	var cu int
 
-	for cu < len(buf)-3 {
+	for cu < len(buf)-fmp4BoxLenSize-fmp4BoxNameSize {
 		boxName, i, e, E := searchBox(buf, &cu)
 		if E != nil {
 			if errors.Is(E, io.EOF) {
@@ -913,8 +919,8 @@ var (
 
 func searchBox(buf []byte, cu *int) (boxName string, i int, e int, err error) {
 	i = *cu
-	e = i + int(F.Btoi(buf, *cu, 4))
-	boxName = string(buf[*cu+4 : *cu+8])
+	e = i + int(F.Btoi(buf, *cu, fmp4BoxLenSize))
+	boxName = string(buf[*cu+fmp4BoxLenSize : *cu+fmp4BoxLenSize+fmp4BoxNameSize])
 	isPureBoxOrNeedSkip, ok := boxs[boxName]
 	if !ok {
 		err = ErrUnkownBox.WithReason("未知包: " + boxName)

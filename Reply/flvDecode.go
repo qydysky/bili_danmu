@@ -36,10 +36,11 @@ var (
 	ErrTagSize          = errors.New("ErrTagSize")
 	ErrSignLost         = errors.New("ErrSignLost")
 
-	ActionInitFlv     perrors.Action = `InitFlv`
-	ActionGetIndexFlv perrors.Action = `GetIndexFlv`
-	ActionSeekFlv     perrors.Action = `SeekFlv`
-	ActionOneFFlv     perrors.Action = `OneFFlv`
+	ActionInitFlv        perrors.Action = `InitFlv`
+	ActionGetIndexFlv    perrors.Action = `GetIndexFlv`
+	ActionGenFastSeedFlv perrors.Action = `GenFastSeedFlv`
+	ActionSeekFlv        perrors.Action = `SeekFlv`
+	ActionOneFFlv        perrors.Action = `OneFFlv`
 )
 
 type FlvDecoder struct {
@@ -397,9 +398,9 @@ func (t *FlvDecoder) GenFastSeed(reader io.Reader, save func(seedTo time.Duratio
 				if firstFT == -1 {
 					firstFT = t
 				}
-				return save(time.Millisecond*time.Duration(t-firstFT), int64(totalRead-buff.Size()+index))
+				return perrors.Join(ActionGenFastSeedFlv, save(time.Millisecond*time.Duration(t-firstFT), int64(totalRead-buff.Size()+index)))
 			}); e != nil {
-				return perrors.New(e.Error(), ActionOneFFlv)
+				return perrors.Join(ActionGenFastSeedFlv, ActionOneFFlv, e)
 			} else {
 				if dropOffset != 0 {
 					_ = buff.RemoveFront(dropOffset)
