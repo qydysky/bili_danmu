@@ -74,6 +74,8 @@
 ### 说明
 本项目使用github action自动构建，构建过程详见[yml](https://github.com/qydysky/bili_danmu/blob/master/.github/workflows/go.yml)
 
+关于离线构建，详见章节`运行`及其`注意事项`
+
 #### 环境变量覆盖配置项
 添加配置项`从环境变量覆盖`(>v0.14.26)。将在配置文件都加载后，用环境变量覆盖配置项。
 
@@ -1111,10 +1113,16 @@ go build .
 * 当`-r`,`-ckv`为空时，将尝试从环境变量中获取，分别对应键值`r`,`ckv`(>v0.14.21)
 * 法1，2，3建议使用最新提交
 * 程序受主机时区配置影响，注意正确配置主机时区
-* 弹幕及礼物会记录于danmu.log中
+* 弹幕及礼物默认会记录于danmu.log中
 * 部分功能(如签到、发送弹幕、获取原画等)**需要在`cookie路径`下对应位置放置有效`cookie.txt`才可用** 或 **运行时按提示使用扫码登录成功后才可用(登录信息会保存在`cookie路径`中)**(`cookie路径`(>v0.14.26)默认为程序目录下的`cookie.txt`)
 * 在golang1.20+，由于某些[原因](https://github.com/golang/go/issues/57328#issuecomment-1353413399)，你可能需要在构建时添加`CGO_ENABLED=0`
 * 由于通常是发现功能不正常时，才会检查b站是否更新，又因日常录播并不会使用到全部功能，所以并不能确保全部功能都能正常运行
+* 离线编译：release版本将包含`vendor`压缩文件(>v0.15.7)。下载源代码及vendor压缩文件，解压后将`vendor`文件夹放置在`go.mod`同级目录时，你可以在`demo`文件夹使用`go build -mod=vendor -v .`进行离线构建
+
+  源代码链接: `https://github.com/qydysky/bili_danmu/archive/refs/tags/{version}.zip`
+
+  vendor链接: `https://github.com/qydysky/bili_danmu/releases/download/{version}/vendor.zip`
+
 
 #### 关于更新版本v0.{y}.{z}
 * 当bilibili停止服务时，将会发布v1版本。
