@@ -97,7 +97,7 @@ func get(ctx context.Context, savepath string) (*Paf, error) {
 		// }
 		// 从0.json获取信息
 		{
-			json0 := file.New(savepath+string(os.PathSeparator)+"0.json", 0, true)
+			json0 := file.New(savepath+string(os.PathSeparator)+"0.json", 0, true).CheckRoot(savepath)
 			if !json0.IsExist() {
 				return &d, os.ErrNotExist
 			}
