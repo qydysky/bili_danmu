@@ -824,7 +824,7 @@ func init() {
 				w.Header().Set("Content-Type", "text/html")
 			}
 
-			f := file.New("html/streamList/"+p, 0, true)
+			f := file.New("html/streamList/"+p, 0, true).CheckRoot("html/streamList/")
 			if !f.IsExist() || f.IsDir() {
 				w.WriteHeader(http.StatusNotFound)
 				return
@@ -859,6 +859,7 @@ func init() {
 				w.Header().Set("Content-Type", "application/json")
 				_, _ = w.Write([]byte("[]"))
 			} else {
+				replyFunc.DanmuCountPerMin.CheckRoot(v)
 				rpath := "/" + qref + "/"
 				if strings.HasSuffix(v, "/") || strings.HasSuffix(v, "\\") {
 					v += rpath[1:]
@@ -950,13 +951,17 @@ func init() {
 					})
 					skip, _ := strconv.Atoi(r.URL.Query().Get("skip"))
 					size, _ := strconv.Atoi(r.URL.Query().Get("size"))
-					for i, n := skip, len(fs); i < n && (size == 0 || len(filePaths) < size); i++ {
+					for i, n := 0, len(fs); i < n && (size == 0 || len(filePaths) < size); i++ {
 						if filePath, e := videoInfo.Get.Run(context.Background(), fs[i]); e != nil {
 							if !errors.Is(e, os.ErrNotExist) {
 								flog.L(`W: `, fs[i], e)
 							}
 							continue
 						} else {
+							skip -= 1
+							if skip >= 0 {
+								continue
+							}
 							if t, e := time.Parse("2006_01_02-15_04_05", filePath.StartT); e == nil {
 								filePath.StartT = t.Format(time.DateTime)
 							}
@@ -983,7 +988,7 @@ func init() {
 				return
 			}
 
-			f := file.New("emots/"+strings.TrimPrefix(r.URL.Path, spath+"emots/"), 0, true)
+			f := file.New("emots/"+strings.TrimPrefix(r.URL.Path, spath+"emots/"), 0, true).CheckRoot("emots/")
 			if !f.IsExist() {
 				w.WriteHeader(http.StatusNotFound)
 				return
@@ -1010,9 +1015,12 @@ func init() {
 				p = "index.html"
 			}
 
+			var s string
 			if strings.HasPrefix(p, "emots/") {
+				s = "emots/"
 				p = replyFunc.DanmuEmotes.Hashr(p)
 			} else {
+				s = "html/artPlayer/"
 				p = "html/artPlayer/" + p
 			}
 
@@ -1024,7 +1032,7 @@ func init() {
 				w.Header().Set("content-type", "text/html")
 			}
 
-			f := file.New(p, 0, true)
+			f := file.New(p, 0, true).CheckRoot(s)
 			if !f.IsExist() {
 				w.WriteHeader(http.StatusNotFound)
 				return
@@ -1114,16 +1122,17 @@ func init() {
 			rpath = "/" + qref + "/"
 
 			if rpath != `/now/` {
-				if v, ok := c.C.K_v.LoadV(`直播流保存位置`).(string); !ok || v == "" {
+				if s, ok := c.C.K_v.LoadV(`直播流保存位置`).(string); !ok || s == "" {
 					w.Header().Set("Retry-After", "1")
 					w.WriteHeader(http.StatusServiceUnavailable)
 					flog.L(`W: `, `直播流保存位置无效`)
 					return
 				} else {
-					if strings.HasSuffix(v, "/") || strings.HasSuffix(v, "\\") {
-						v += rpath[1:]
+					var v string
+					if strings.HasSuffix(s, "/") || strings.HasSuffix(s, "\\") {
+						v = s + rpath[1:]
 					} else {
-						v += rpath
+						v = s + rpath
 					}
 					if rawPath, e := url.PathUnescape(v); e != nil {
 						w.WriteHeader(http.StatusServiceUnavailable)
@@ -1132,10 +1141,10 @@ func init() {
 					} else {
 						v = rawPath
 					}
-					if file.New(v+"0.flv", 0, true).IsExist() {
+					if file.New(v+"0.flv", 0, true).CheckRoot(s).IsExist() {
 						v += "0.flv"
 						w.Header().Set("Content-Type", "flv-application/octet-stream")
-					} else if file.New(v+"0.mp4", 0, true).IsExist() {
+					} else if file.New(v+"0.mp4", 0, true).CheckRoot(s).IsExist() {
 						v += "0.mp4"
 						w.Header().Set("Content-Type", "video/mp4")
 					} else {
@@ -1176,7 +1185,7 @@ func init() {
 						}
 					}
 
-					f := file.New(v, 0, false)
+					f := file.New(v, 0, false).CheckRoot(s)
 					defer f.Close()
 
 					// 设置当前返回区间，并拷贝
@@ -1202,7 +1211,7 @@ func init() {
 								flvDecoder.Diff = v
 							}
 							// fastSeed
-							if fastSeedF := file.New(v+".fastSeed", 0, true); fastSeedF.IsExist() {
+							if fastSeedF := file.New(v+".fastSeed", 0, true).CheckRoot(s); fastSeedF.IsExist() {
 								if gf, e := replyFunc.VideoFastSeed.InitGet(v + ".fastSeed"); e != nil {
 									flog.L(`E: `, e)
 								} else if e := flvDecoder.CutSeed(f, startT, duration, res, f, gf); e != nil && !errors.Is(e, io.EOF) {
@@ -1224,7 +1233,7 @@ func init() {
 								fmp4Decoder.AVTDiff = v
 							}
 							// fastSeed
-							if fastSeedF := file.New(v+".fastSeed", 0, true); fastSeedF.IsExist() {
+							if fastSeedF := file.New(v+".fastSeed", 0, true).CheckRoot(s); fastSeedF.IsExist() {
 								if gf, e := replyFunc.VideoFastSeed.InitGet(v + ".fastSeed"); e != nil {
 									flog.L(`E: `, e)
 								} else if e := fmp4Decoder.CutSeed(f, startT, duration, res, f, gf); e != nil && !errors.Is(e, io.EOF) {
@@ -1314,17 +1323,18 @@ func init() {
 				return
 			}
 			if rpath != `/now/` {
-				if v, ok := c.C.K_v.LoadV(`直播流保存位置`).(string); ok && v != "" {
-					if strings.HasSuffix(v, "/") || strings.HasSuffix(v, "\\") {
-						v += rpath[1:]
+				if s, ok := c.C.K_v.LoadV(`直播流保存位置`).(string); ok && s != "" {
+					var v string
+					if strings.HasSuffix(s, "/") || strings.HasSuffix(s, "\\") {
+						v = s + rpath[1:]
 					} else {
-						v += rpath
+						v = s + rpath
 					}
 
-					if !file.New(v+"0.csv", 0, true).IsExist() {
+					if !file.New(v+"0.csv", 0, true).CheckRoot(s).IsExist() {
 						w.WriteHeader(http.StatusNotFound)
 						return
-					} else if !file.New(v+"0.xml", 0, true).IsExist() {
+					} else if !file.New(v+"0.xml", 0, true).CheckRoot(s).IsExist() {
 						if _, e := danmuXml.DanmuXml.Run(context.Background(), &v); e != nil {
 							flog.L(`E: `, e)
 						}
@@ -1395,19 +1405,20 @@ func init() {
 				return
 			}
 
-			if v, ok := c.C.K_v.LoadV(`直播流保存位置`).(string); !ok || v == "" {
+			if s, ok := c.C.K_v.LoadV(`直播流保存位置`).(string); !ok || s == "" {
 				w.Header().Set("Retry-After", "1")
 				w.WriteHeader(http.StatusServiceUnavailable)
 				flog.L(`W: `, `直播流保存位置无效`)
 			} else {
-				if strings.HasSuffix(v, "/") || strings.HasSuffix(v, "\\") {
-					v += rpath[1:]
+				var v string
+				if strings.HasSuffix(s, "/") || strings.HasSuffix(s, "\\") {
+					v = s + rpath[1:]
 				} else {
-					v += rpath
+					v = s + rpath
 				}
 
-				if !file.New(v+"0.xml", 0, true).IsExist() {
-					if !file.New(v+"0.csv", 0, true).IsExist() {
+				if !file.New(v+"0.xml", 0, true).CheckRoot(s).IsExist() {
+					if !file.New(v+"0.csv", 0, true).CheckRoot(s).IsExist() {
 						w.WriteHeader(http.StatusNotFound)
 						return
 					}
@@ -1416,7 +1427,7 @@ func init() {
 					}
 				}
 
-				if e := file.New(v+"0.xml", 0, true).CopyToIoWriter(w, pio.CopyConfig{}); e != nil {
+				if e := file.New(v+"0.xml", 0, true).CheckRoot(s).CopyToIoWriter(w, pio.CopyConfig{}); e != nil {
 					flog.L(`W: `, e)
 				}
 			}

@@ -14,11 +14,11 @@ on:
 
 jobs:
   buildtest:
-    name: test_ubuntu_go${{ matrix.go }}
+    name: test_ubuntu_go
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go: [ '1.23' ]
+        go: [ '1.24' ]
     steps:
     - name: Set up Go${{ matrix.go }}
       uses: actions/setup-go@v5
@@ -44,6 +44,7 @@ jobs:
         sudo apt-get update
         sudo apt-get install libgtk-3-dev libcairo2-dev libglib2.0-dev
         go get .
+        go mod vendor
         CGO_ENABLED=0 go test -v --cover -coverprofile=coverage ./...
 
     - name: Codecov
@@ -51,14 +52,23 @@ jobs:
       with:
         token: ${{secrets.CODECOV_TOKEN}}
         file: coverage
+      
+    - name: zip
+      run: zip -q -r vendor.zip vendor
+      
+    - name: Upload a Build Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: vendor.zip
+        path: ./vendor.zip
 
   u-build:
-    name: build_ubuntu_go${{ matrix.go }}
+    name: build_ubuntu_go
     needs: [buildtest]
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go: [ '1.23' ]
+        go: [ '1.24' ]
     steps:
     - name: Set up Go${{ matrix.go }}
       uses: actions/setup-go@v5
@@ -93,12 +103,12 @@ jobs:
         path: ./ubuntu_go${{ matrix.go }}.zip
         
   w-build:
-    name: build_windows_go${{ matrix.go }}
+    name: build_windows_go
     needs: [buildtest]
     runs-on: windows-latest
     strategy:
       matrix:
-        go: [ '1.23' ]
+        go: [ '1.24' ]
     steps:
     - name: Set up Go${{ matrix.go }}
       uses: actions/setup-go@v5
@@ -132,12 +142,12 @@ jobs:
         path: ./windows_go${{ matrix.go }}.zip
        
   mac-build:
-    name: build_macos_go${{ matrix.go }}
+    name: build_macos_go
     needs: [buildtest]
     runs-on: macos-latest
     strategy:
       matrix:
-        go: [ '1.23' ]
+        go: [ '1.24' ]
     steps:
     - name: Set up Go${{ matrix.go }}
       uses: actions/setup-go@v5

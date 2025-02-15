@@ -19,6 +19,7 @@ import (
 type TargetInterface interface {
 	// will WriteHeader
 	GetRec(savePath string, r *http.Request, w http.ResponseWriter) error
+	CheckRoot(dir string)
 	Rec(ctx context.Context, roomid int, savePath string) func(any)
 	Do(roomid int, msg string, uid string)
 }
@@ -42,12 +43,16 @@ type mi struct {
 }
 
 type danmuCountPerMin struct {
-	m *msgq.MsgType[mi]
+	root string
+	m    *msgq.MsgType[mi]
+}
+
+func (t *danmuCountPerMin) CheckRoot(dir string) {
+	t.root = dir
 }
 
 func (t *danmuCountPerMin) GetRec(savePath string, r *http.Request, w http.ResponseWriter) error {
-	f := file.New(savePath+filename, 0, true)
-
+	f := file.New(savePath+filename, 0, true).CheckRoot(t.root)
 	if f.IsDir() || !f.IsExist() {
 		if pweb.NotModified(r, w, noFoundModT) {
 			return nil
