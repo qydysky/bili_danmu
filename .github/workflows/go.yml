@@ -9,7 +9,7 @@ on:
 
 jobs:
   buildtest:
-    name: test_ubuntu_go${{ matrix.go }}
+    name: test_ubuntu_go
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -62,7 +62,7 @@ jobs:
         gh release upload draft vendor.zip
 
   u-build:
-    name: build_ubuntu_go${{ matrix.go }}
+    name: build_ubuntu_go
     needs: [buildtest]
     runs-on: ubuntu-latest
     strategy:
@@ -101,7 +101,7 @@ jobs:
         gh release upload draft ubuntu_go${{ matrix.go }}.zip
 
   w-build:
-    name: build_windows_go${{ matrix.go }}
+    name: build_windows_go
     needs: [buildtest]
     runs-on: windows-latest
     strategy:
@@ -140,7 +140,7 @@ jobs:
         gh release upload draft windows_go${{ matrix.go }}.zip
 
   m-build:
-    name: build_macos_go${{ matrix.go }}
+    name: build_macos_go
     needs: [buildtest]
     runs-on: macos-latest
     strategy:
