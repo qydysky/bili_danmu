@@ -822,7 +822,10 @@ func (t *Fmp4Decoder) GenFastSeed(reader io.Reader, save func(seedTo time.Durati
 				if firstFT == -1 {
 					firstFT = t
 				}
-				return pe.Join(ActionGenFastSeedFmp4, save(time.Second*time.Duration(t-firstFT), int64(totalRead-buff.Size()+index)))
+				if e := save(time.Second*time.Duration(t-firstFT), int64(totalRead-buff.Size()+index)); e != nil {
+					return pe.Join(ActionGenFastSeedFmp4, e)
+				}
+				return nil
 			}); e != nil {
 				return pe.Join(ActionGenFastSeedFmp4, ActionOneFFmp4, e)
 			} else {

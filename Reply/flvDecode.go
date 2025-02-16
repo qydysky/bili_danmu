@@ -398,7 +398,10 @@ func (t *FlvDecoder) GenFastSeed(reader io.Reader, save func(seedTo time.Duratio
 				if firstFT == -1 {
 					firstFT = t
 				}
-				return perrors.Join(ActionGenFastSeedFlv, save(time.Millisecond*time.Duration(t-firstFT), int64(totalRead-buff.Size()+index)))
+				if e := save(time.Millisecond*time.Duration(t-firstFT), int64(totalRead-buff.Size()+index)); e != nil {
+					return perrors.Join(ActionGenFastSeedFlv, e)
+				}
+				return nil
 			}); e != nil {
 				return perrors.Join(ActionGenFastSeedFlv, ActionOneFFlv, e)
 			} else {
