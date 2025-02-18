@@ -81,11 +81,11 @@ func Start() {
 		//获取cookie
 		F.Get(c.C).Get(`Cookie`)
 		//获取LIVE_BUVID
+		//获取uid
 		F.Get(c.C).Get(`LIVE_BUVID`)
 		//命令行操作 切换房间 发送弹幕
 		go Cmd.Cmd()
-		//获取uid
-		F.Get(c.C).Get(`Uid`)
+		// F.Get(c.C).Get(`Uid`)
 		//兑换硬币
 		F.Get(c.C).Silver_2_coin()
 		//每日签到
@@ -205,7 +205,7 @@ func Start() {
 				cancel1()
 				cancel()
 			} else {
-				fmt.Print("房间号: ", strconv.Itoa(c.C.Roomid), "\n")
+				danmulog.L(`T: `, "房间号: ", strconv.Itoa(c.C.Roomid))
 			}
 
 			if exitSign {
@@ -216,6 +216,10 @@ func Start() {
 
 			//如果连接中断，则等待
 			F.KeepConnect()
+			//获取cookie，检查是否登陆失效
+			F.Get(c.C).Get(`Cookie`)
+			//获取LIVE_BUVID
+			F.Get(c.C).Get(`LIVE_BUVID`)
 
 			// 获取房间实际id
 			c.C.Roomid = F.GetRoomRealId(c.C.Roomid)
