@@ -50,9 +50,9 @@ var (
 		`Cookie`: { //Cookie
 			(*GetFunc).Get_cookie,
 		},
-		`Uid`: { //用戶uid
-			(*GetFunc).GetUid,
-		},
+		// `Uid`: { //用戶uid
+		// 	(*GetFunc).GetUid,
+		// },
 		`UpUid`: { //主播uid
 			(*GetFunc).getRoomBaseInfo,
 			(*GetFunc).getInfoByRoom,
@@ -140,9 +140,9 @@ var (
 	}
 
 	checkValid = map[string]func(*GetFunc) (valid bool){
-		`Uid`: func(t *GetFunc) bool { //用戶uid
-			return t.Uid != 0
-		},
+		// `Uid`: func(t *GetFunc) bool { //用戶uid
+		// 	return t.Uid != 0
+		// },
 		`UpUid`: func(t *GetFunc) bool { //主播uid
 			return t.UpUid != 0
 		},
@@ -792,9 +792,9 @@ func Get_face_src(uid string) string {
 }
 
 func (t *GetFunc) getPopularAnchorRank() (missKey []string) {
-	if t.Uid == 0 {
-		missKey = append(missKey, `Uid`)
-	}
+	// if t.Uid == 0 {
+	// 	missKey = append(missKey, `Cookie`)
+	// }
 	if t.UpUid == 0 {
 		missKey = append(missKey, `UpUid`)
 	}
@@ -940,6 +940,13 @@ func (t *GetFunc) Get_cookie() (missKey []string) {
 				if e, res := biliApi.GetNav(); e != nil {
 					apilog.L(`E: `, e)
 				} else if res.IsLogin {
+					// uid
+					if uid, ok := t.Cookie.LoadV(`DedeUserID`).(string); ok { //cookie中无DedeUserID
+						if uid, e := strconv.Atoi(uid); e == nil {
+							t.Uid = uid
+						}
+					}
+
 					apilog.L(`I: `, `已登录`)
 					return
 				}
@@ -947,9 +954,14 @@ func (t *GetFunc) Get_cookie() (missKey []string) {
 		}
 	}
 
+	t.Uid = 0
+	apilog.L(`I: `, `未登录`)
+
 	if v, ok := t.K_v.LoadV(`扫码登录`).(bool); !ok || !v {
 		apilog.L(`W: `, `配置文件已禁止扫码登录，如需登录，修改配置文件"扫码登录"为true`)
 		return
+	} else {
+		apilog.L(`I: `, `"扫码登录"为true，开始登录`)
 	}
 
 	//获取id
@@ -989,7 +1001,7 @@ func (t *GetFunc) Get_cookie() (missKey []string) {
 			if t.K_v.LoadV(`扫码登录自动打开标签页`).(bool) {
 				_ = open.Run(`http://127.0.0.1:` + t.Stream_url.Port() + scanPath)
 			}
-			apilog.L(`W: `, `或打开链接扫码登录：`+t.Stream_url.String()+scanPath)
+			apilog.L(`W: `, `扫描命令行二维码或打开链接扫码登录：`+t.Stream_url.String()+scanPath)
 		}
 
 		c := qrterminal.Config{
@@ -1041,6 +1053,11 @@ func (t *GetFunc) Get_cookie() (missKey []string) {
 					if err := save_cookie(cookies, t.Common); err != nil {
 						apilog.L(`E: `, err)
 						return
+					}
+					if uid, ok := t.Cookie.LoadV(`DedeUserID`).(string); ok { //cookie中无DedeUserID
+						if uid, e := strconv.Atoi(uid); e == nil {
+							t.Uid = uid
+						}
 					}
 					apilog.L(`I: `, `登录,并保存了cookie`)
 					return
