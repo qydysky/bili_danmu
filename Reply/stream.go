@@ -1427,17 +1427,15 @@ func (t *M4SStream) Start() bool {
 					//保存弹幕
 					go StartRecDanmu(contextC, ms.GetSavePath())
 
-					//ass
-					if enc, ok := ms.common.K_v.LoadV("Ass编码").(string); ms.common.IsOn(`生成Ass弹幕`) && ms.common.IsOn(`仅保存当前直播间流`) && ok {
-						go replyFunc.Ass.Ass_f(contextC, enc, ms.GetSavePath(), time.Now())
-					}
-
 					path := ms.GetSavePath() + `0.` + ms.GetStreamType()
 					startT := time.Now()
 					if e := ms.PusherToFile(contextC, path, startf, stopf); e != nil {
 						l.L(`E: `, e)
 					}
 					duration := time.Since(startT)
+
+					// Ass
+					replyFunc.Ass.ToAss(ms.GetSavePath())
 
 					//PusherToFile fin genFastSeed
 					if disableFastSeed, ok := ms.common.K_v.LoadV("禁用快速索引生成").(bool); !ok || !disableFastSeed {

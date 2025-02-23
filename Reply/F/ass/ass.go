@@ -1,110 +1,195 @@
 package ass
 
 import (
-	"context"
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"iter"
 	"math"
 	"strconv"
 	"time"
+	"unicode/utf8"
 
-	p "github.com/qydysky/part"
+	"github.com/dustin/go-humanize"
 	comp "github.com/qydysky/part/component2"
-	pctx "github.com/qydysky/part/ctx"
 	file "github.com/qydysky/part/file"
-	encoder "golang.org/x/text/encoding"
-	"golang.org/x/text/encoding/simplifiedchinese"
+)
+
+var (
+	playResX = 1280 //字幕宽度
+	playResY = 720  //字幕高度
 )
 
 type i interface {
-	Assf(s string) error
-	Ass_f(ctx context.Context, enc, savePath string, st time.Time)
+	ToAss(savePath string)
+	Init(cfg any)
 }
 
 func init() {
-	if e := comp.Register[i]("ass", &Ass{header: Ass_header}); e != nil {
+	if e := comp.Register[i]("ass", &Ass{
+		fontsize: 40,
+		showSec:  10,
+		area:     1.0,
+		alpha:    0,
+		header: `[Script Info]
+Title: Default Ass file
+ScriptType: v4.00+
+WrapStyle: 0
+ScaledBorderAndShadow: yes
+PlayResX: ` + strconv.Itoa(playResX) + `
+PlayResY: ` + strconv.Itoa(playResY) + `
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Default,,40,&H40FFFFFF,&H000017FF,&H80000000,&H40000000,0,0,0,0,100,100,0,0,1,1,0,7,20,20,50,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+`,
+	}); e != nil {
 		panic(e)
 	}
 }
 
-var (
-	Ass_height = 720  //字幕高度
-	Ass_width  = 1280 //字幕宽度
-	Ass_font   = 50   //字幕字体大小
-	Ass_T      = 7    //单条字幕显示时间
-	Ass_loc    = 7    //字幕位置 小键盘对应的位置
-	accept     = map[string]encoder.Encoding{
-		``:        simplifiedchinese.GB18030,
-		`GB18030`: simplifiedchinese.GB18030,
-		`utf-8`:   nil,
-	}
-	Ass_header = `[Script Info]
-	Title: Default Ass file
-	ScriptType: v4.00+
-	WrapStyle: 0
-	ScaledBorderAndShadow: yes
-	PlayResX: ` + strconv.Itoa(Ass_height) + `
-	PlayResY: ` + strconv.Itoa(Ass_width) + `
-	
-	[V4+ Styles]
-	Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-	Style: Default,,` + strconv.Itoa(Ass_font) + `,&H40FFFFFF,&H000017FF,&H80000000,&H40000000,0,0,0,0,100,100,0,0,1,4,4,` + strconv.Itoa(Ass_loc) + `,20,20,50,1
-	
-	[Events]
-	Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
-	`
-)
-
 // Ass 弹幕转字幕
 type Ass struct {
-	savePath string           //弹幕ass文件名
-	startT   time.Time        //开始记录的基准时间
-	header   string           //ass开头
-	wrap     encoder.Encoding //编码
+	showSec, fontsize int
+	area              float64
+	alpha             int
+	header            string //ass开头
 }
 
-func (t *Ass) Assf(s string) error {
-	if t.savePath == "" || s == "" {
-		return nil
+func (t *Ass) Init(cfg any) {
+	if c, ok := cfg.(map[string]any); !ok {
+		return
+	} else {
+		fontname := c[`fontname`].(string)
+		if tmp, ok := c[`fontsize`].(float64); ok && tmp > 0 {
+			t.fontsize = int(tmp)
+		}
+		if tmp, ok := c[`showSec`].(float64); ok && tmp > 0 {
+			t.showSec = int(tmp)
+		}
+		if tmp, ok := c[`area`].(float64); ok && tmp >= 0 {
+			t.area = tmp
+		}
+		if tmp, ok := c[`alpha`].(float64); ok && tmp >= 0 {
+			t.alpha = int(tmp * 255)
+		}
+		t.header = `[Script Info]
+Title: Default Ass file
+ScriptType: v4.00+
+WrapStyle: 0
+ScaledBorderAndShadow: yes
+PlayResX: ` + strconv.Itoa(playResX) + `
+PlayResY: ` + strconv.Itoa(playResY) + `
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Default,` + fontname + `,` + strconv.Itoa(t.fontsize) + `,&H40FFFFFF,&H000017FF,&H80000000,&H40000000,0,0,0,0,100,100,0,0,1,1,0,7,20,20,50,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+`
 	}
-
-	st := time.Since(t.startT) + time.Duration(p.Rand().MixRandom(0, 2000))*time.Millisecond
-	et := st + time.Duration(Ass_T)*time.Second
-
-	var b string
-	// b += "Comment: " + strconv.Itoa(loc) + " "+ Dtos(showedt) + "\n"
-	b += `Dialogue: 0,`
-	b += dtos(st) + `,` + dtos(et)
-	b += `,Default,,0,0,0,,{\fad(200,500)\blur3}` + s + "\n"
-
-	f := file.New(t.savePath+"0.ass", -1, true)
-	f.Config.Coder = t.wrap
-	if _, e := f.Write([]byte(b), true); e != nil {
-		return e
-	}
-	return nil
 }
 
-func (t *Ass) Ass_f(ctx context.Context, enc, savePath string, st time.Time) {
-	if v1, ok := accept[enc]; ok {
-		t.wrap = v1
+func (t *Ass) ToAss(savePath string) {
+	f := file.New(savePath+"0.ass", 0, false)
+	defer f.Close()
+	if f.IsExist() {
+		f.Delete()
 	}
 
-	t.savePath = savePath
-	f := &file.File{
-		Config: file.Config{
-			FilePath:  t.savePath + "0.ass",
-			AutoClose: true,
-			Coder:     t.wrap,
-		},
+	lsSize := int(float64(playResY) * t.area / float64(t.fontsize))
+	var lsd = make([]float64, lsSize)
+	var lso = make([]float64, lsSize)
+
+	var write bool
+	for line := range loadCsv(savePath) {
+		if !write {
+			_, _ = f.Write([]byte(t.header), true)
+			write = true
+		}
+
+		danmul := utf8.RuneCountInString(line.Text)
+		danmuSec := (float64(t.showSec*t.fontsize*danmul) / float64(t.fontsize*danmul+playResX))
+
+		c := -1
+
+		for i := 0; i < lsSize; i++ {
+			if lsd[i] > line.Time+float64(t.showSec)-danmuSec {
+				continue
+			}
+			if lso[i] > line.Time {
+				continue
+			}
+			{
+				lsd[i] = line.Time + float64(t.showSec) //line.Time + (float64(showSec*fontsize*danmul) / float64(fontsize*danmul+playResX))
+				lso[i] = line.Time + +danmuSec
+				c = i
+				break
+			}
+		}
+
+		if c == -1 {
+			continue
+		}
+
+		_, _ = f.Write([]byte(
+			`Dialogue: 0,`+
+				stos(line.Time)+`,`+stos(line.Time+float64(t.showSec))+
+				`,Default,,0,0,0,,{`+
+				`\c&H`+line.Style.Color[5:7]+line.Style.Color[3:5]+line.Style.Color[1:3]+`&`+
+				`\alpha&H`+fmt.Sprintf("%02x", t.alpha)+`&`+
+				`\move(`+strconv.Itoa(playResX)+`,`+strconv.Itoa(c*t.fontsize)+`,-`+strconv.Itoa(t.fontsize*danmul)+`,`+strconv.Itoa(c*t.fontsize)+`)`+
+				`}`+line.Text+"\n"), true)
 	}
-	_, _ = f.Write([]byte(t.header), true)
-	t.startT = st
+}
 
-	ctx, done := pctx.WaitCtx(ctx)
-	defer done()
-	<-ctx.Done()
+func loadCsv(savePath string) iter.Seq[Data] {
+	return func(yield func(Data) bool) {
+		csvf := file.New(savePath+"0.csv", 0, false)
+		defer csvf.Close()
 
-	t.savePath = ""
+		if !csvf.IsExist() {
+			return
+		}
+
+		var data = Data{}
+		for i := 0; true; i += 1 {
+			if line, e := csvf.ReadUntil([]byte{'\n'}, humanize.KByte, humanize.MByte); len(line) != 0 {
+				lined := bytes.SplitN(line, []byte{','}, 3)
+				if len(lined) == 3 {
+					if t, e := strconv.ParseFloat(string(lined[0]), 64); e == nil {
+						if e := json.Unmarshal(lined[2], &data); e == nil {
+							data.Time = t
+							if data.Style.Color == "" {
+								data.Style.Color = "#FFFFFF"
+							}
+							if !yield(data) {
+								return
+							}
+						}
+					}
+				}
+			} else if e != nil {
+				break
+			}
+		}
+	}
+}
+
+type DataStyle struct {
+	Color  string `json:"color"`
+	Border bool   `json:"border"`
+	Mode   int    `json:"mode"`
+}
+
+type Data struct {
+	Text  string    `json:"text"`
+	Style DataStyle `json:"style"`
+	Time  float64   `json:"time"`
 }
 
 // 时间转化为0:00:00.00规格字符串
@@ -114,4 +199,13 @@ func dtos(t time.Duration) string {
 	Ns := t.Nanoseconds() / int64(time.Millisecond) % 1000 / 10
 
 	return fmt.Sprintf("%d:%02d:%02d.%02d", int(math.Floor(t.Hours())), M, S, Ns)
+}
+
+func stos(sec float64) string {
+	H := int(math.Floor(sec)) / 3600
+	M := int(math.Floor(sec)) % 3600 / 60
+	S := int(math.Floor(sec)) % 60
+	Ns := int(sec*1000) % 1000 / 10
+
+	return fmt.Sprintf("%d:%02d:%02d.%02d", H, M, S, Ns)
 }

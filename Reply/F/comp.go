@@ -25,8 +25,8 @@ var DanmuCountPerMin = comp.Get[interface {
 }](`danmuCountPerMin`)
 
 var Ass = comp.Get[interface {
-	Assf(s string) error
-	Ass_f(ctx context.Context, enc, savePath string, st time.Time)
+	ToAss(savePath string)
+	Init(cfg any)
 }](`ass`)
 
 var Danmuji = comp.Get[interface {

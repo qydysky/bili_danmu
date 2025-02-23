@@ -679,10 +679,37 @@ I: 2022/09/15 02:23:23 Msg [qydysky丶 : 赞]
 
 当所选类型在当前直播中不可用时，会按以下顺序[`fmp4`,`flv`]尝试。
 
-ass编码GB18030支持中文
+~~ass编码GB18030支持中文~~
 
-- `GB18030`(默认)
-- `utf-8`
+~~- `GB18030`(默认)~~
+~~- `utf-8`~~
+
+Ass默认`utf-8`编码，在录播结束时生成，可以配合`指定房间录制回调`生成硬编码弹幕的视频，配置项如下(>v0.15.9)
+
+```json
+{
+  "指定房间录制回调":[
+    {
+      "roomid-help":"0替换为指定的房间号",
+      "roomid":0,
+      "durationS":10,
+      "after":["ffmpeg","-i","0.{type}","-y","-vf","ass=0.ass","1.{type}"]
+    }
+  ],
+  "Ass": {
+    "fontname-help":"指定字体",
+    "fontname":"",
+    "fontsize-help":"字体大小int",
+    "fontsize":40,
+    "showSec-help":"弹幕显示时长int,秒",
+    "showSec":10,
+    "area-help":"弹幕显示区域,float64,0-1(全屏)",
+    "area":1.0,
+    "alpha-help":"弹幕透明度,float64,0(不透明)-1(透明)",
+    "alpha":1.0
+  }
+}
+```
 
 弹幕回放(仅直播流Web服务)
 

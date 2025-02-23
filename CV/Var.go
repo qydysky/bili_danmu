@@ -50,6 +50,7 @@ type Common struct {
 	PID               int            `json:"-"`                //进程id
 	Version           string         `json:"-"`                //版本
 	Uid               int            `json:"-"`                //client uid
+	Login             bool           `json:"login"`            //登陆
 	Live              []*LiveQn      `json:"live"`             //直播流链接
 	Live_qn           int            `json:"liveQn"`           //当前直播流质量
 	Live_want_qn      int            `json:"-"`                //期望直播流质量
@@ -104,6 +105,7 @@ func (t *Common) MarshalJSON() ([]byte, error) {
 		ParentAreaID  int
 		AreaID        int
 		Locked        bool
+		Login         bool
 		Note          string
 		LiveStartTime string
 		Liveing       bool
@@ -120,6 +122,7 @@ func (t *Common) MarshalJSON() ([]byte, error) {
 		ParentAreaID:  t.ParentAreaID,
 		AreaID:        t.AreaID,
 		Locked:        t.Locked,
+		Login:         t.Login,
 		Note:          t.Note,
 		LiveStartTime: t.Live_Start_Time.Format(time.DateTime),
 		Liveing:       t.Liveing,
@@ -196,6 +199,7 @@ func (t *Common) IsOn(key string) bool {
 
 func (t *Common) Copy() *Common {
 	var c = Common{
+		Login:             t.Login,
 		InIdle:            t.InIdle,
 		PID:               t.PID,
 		Version:           t.Version,
