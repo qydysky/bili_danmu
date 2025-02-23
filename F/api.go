@@ -947,6 +947,7 @@ func (t *GetFunc) Get_cookie() (missKey []string) {
 						}
 					}
 
+					t.Login = true
 					apilog.L(`I: `, `已登录`)
 					return
 				}
@@ -954,6 +955,7 @@ func (t *GetFunc) Get_cookie() (missKey []string) {
 		}
 	}
 
+	t.Login = false
 	t.Uid = 0
 	apilog.L(`I: `, `未登录`)
 

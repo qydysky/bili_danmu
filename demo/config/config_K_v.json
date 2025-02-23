@@ -178,9 +178,19 @@
             "max":-1
         }
     ],
-    "ass-help": "只有保存直播流时才考虑生成ass，ass编码默认GB18030(可选utf-8)",
-    "生成Ass弹幕": true,
-    "Ass编码": "GB18030",
+    "ass-help": "只有保存直播流时才考虑生成ass，ass编码默认utf-8",
+    "Ass": {
+        "fontname-help":"指定字体",
+        "fontname":"",
+        "fontsize-help":"字体大小int",
+        "fontsize":40,
+        "showSec-help":"弹幕显示时长int,秒",
+        "showSec":10,
+        "area-help":"弹幕显示区域,float64,0-1(全屏)",
+        "area":1.0,
+        "alpha-help":"弹幕透明度,float64,0(不透明)-1(透明)",
+        "alpha":0.5
+    },
     "弹幕处理": "",
     "弹幕表情": true,
     "弹幕合并": true,

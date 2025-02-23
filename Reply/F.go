@@ -1334,10 +1334,6 @@ func init() {
 					if !file.New(v+"0.csv", 0, true).CheckRoot(s).IsExist() {
 						w.WriteHeader(http.StatusNotFound)
 						return
-					} else if !file.New(v+"0.xml", 0, true).CheckRoot(s).IsExist() {
-						if _, e := danmuXml.DanmuXml.Run(context.Background(), &v); e != nil {
-							flog.L(`E: `, e)
-						}
 					}
 
 					if s, closeF := PlayRecDanmu(v + "0.csv"); s == nil {

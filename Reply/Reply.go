@@ -346,9 +346,6 @@ func (t replyF) anchor_lot_start(s string) {
 		sh = append(sh, J.Data.AwardName, "开始")
 	}
 
-	{ //额外 ass
-		_ = replyFunc.Ass.Assf(fmt.Sprintln("天选之人", J.Data.AwardName, "开始"))
-	}
 	fmt.Println(sh...)
 	Gui_show(Itos(sh), `0tianxuan`)
 
@@ -380,9 +377,6 @@ func (t replyF) anchor_lot_award(s string) {
 		}
 	}
 	sh = append(sh, "]")
-	{ //额外 ass
-		_ = replyFunc.Ass.Assf(fmt.Sprintln("天选之人", J.Data.AwardName, "结束"))
-	}
 	fmt.Println(sh...)
 	Gui_show(Itos(sh), `0tianxuan`)
 
@@ -461,7 +455,6 @@ func (t replyF) user_toast_msg(s string) {
 		})
 	}
 	{ //额外 ass 私信
-		_ = replyFunc.Ass.Assf(fmt.Sprintln(sh...))
 		t.Common.Danmu_Main_mq.Push_tag(`guard_update`, nil) //使用连续付费的新舰长无法区分，刷新舰长数
 		if msg := t.Common.K_v.LoadV(`上舰私信`).(string); uid != 0 && msg != "" {
 			t.Common.Danmu_Main_mq.Push_tag(`pm`, send.Pm_item{
@@ -891,9 +884,6 @@ func (t replyF) send_gift(s string) {
 			},
 		})
 	}
-	{ //额外
-		_ = replyFunc.Ass.Assf(fmt.Sprintln(sh...))
-	}
 	fmt.Println("\n====")
 	fmt.Println(sh...)
 	fmt.Print("====\n\n")
@@ -1051,7 +1041,6 @@ func (t replyF) super_chat_message(s string) {
 	fmt.Print("====\n")
 
 	{ //额外
-		_ = replyFunc.Ass.Assf(fmt.Sprintln(sh...))
 		Gui_show(Itos(sh), "0superchat")
 		//直播流服务弹幕
 		SendStreamWs(Danmu_item{
@@ -1408,8 +1397,6 @@ func Msg_showdanmu(item Danmu_item) {
 	}
 	//展示
 	{
-		//ass
-		_ = replyFunc.Ass.Assf(item.msg)
 		//直播流服务弹幕
 		SendStreamWs(item)
 

@@ -94,6 +94,8 @@ func Start() {
 		reply.SaveToJson.Init()
 		// 附加功能 保持牌子点亮
 		reply.KeepMedalLight(mainCtx, c.C)
+		//ass初始化
+		replyFunc.Ass.Init(c.C.K_v.LoadV("Ass"))
 		// 指定房间录制区间
 		if _, err := recStartEnd.InitF.Run(mainCtx, c.C); err != nil {
 			danmulog.Base("功能", "指定房间录制区间").L(`E: `, err)
