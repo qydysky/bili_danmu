@@ -7,7 +7,6 @@ import (
 	"iter"
 	"math"
 	"strconv"
-	"time"
 	"unicode/utf8"
 
 	"github.com/dustin/go-humanize"
@@ -98,7 +97,7 @@ func (t *Ass) ToAss(savePath string) {
 	f := file.New(savePath+"0.ass", 0, false)
 	defer f.Close()
 	if f.IsExist() {
-		f.Delete()
+		_ = f.Delete()
 	}
 
 	lsSize := int(float64(playResY) * t.area / float64(t.fontsize))
@@ -190,15 +189,6 @@ type Data struct {
 	Text  string    `json:"text"`
 	Style DataStyle `json:"style"`
 	Time  float64   `json:"time"`
-}
-
-// 时间转化为0:00:00.00规格字符串
-func dtos(t time.Duration) string {
-	M := int(math.Floor(t.Minutes())) % 60
-	S := int(math.Floor(t.Seconds())) % 60
-	Ns := t.Nanoseconds() / int64(time.Millisecond) % 1000 / 10
-
-	return fmt.Sprintf("%d:%02d:%02d.%02d", int(math.Floor(t.Hours())), M, S, Ns)
 }
 
 func stos(sec float64) string {
