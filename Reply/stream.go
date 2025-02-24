@@ -1434,9 +1434,6 @@ func (t *M4SStream) Start() bool {
 					}
 					duration := time.Since(startT)
 
-					// Ass
-					replyFunc.Ass.ToAss(ms.GetSavePath())
-
 					//PusherToFile fin genFastSeed
 					if disableFastSeed, ok := ms.common.K_v.LoadV("禁用快速索引生成").(bool); !ok || !disableFastSeed {
 						type deal interface {

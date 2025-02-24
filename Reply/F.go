@@ -1461,6 +1461,9 @@ func StartRecDanmu(ctx context.Context, filePath string) {
 		msglog.L(`E: `, e)
 	}
 
+	// Ass
+	replyFunc.Ass.ToAss(filePath)
+
 	Recoder.Stop()
 }
 
