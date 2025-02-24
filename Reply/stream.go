@@ -1378,9 +1378,11 @@ func (t *M4SStream) Start() bool {
 						return false
 					}
 
-					// 当cut时，取消上次录制
-					contextC, cancel := context.WithCancel(mainCtx)
+					ctx, cancel := context.WithCancel(mainCtx)
 					fc.FlashWithCallback(cancel)
+
+					// 当cut时，取消上次录制
+					ctx1, done := pctx.WithWait(ctx, 3, time.Second*30)
 
 					// 分段时长min
 					if l, ok := ms.common.K_v.LoadV("分段时长min").(float64); ok && l > 0 {
@@ -1406,7 +1408,7 @@ func (t *M4SStream) Start() bool {
 					startf := func(_ *M4SStream) error {
 						l.L(`T: `, `开始`)
 						//弹幕分值统计
-						replyFunc.DanmuCountPerMin.Rec(contextC, ms.common.Roomid, ms.GetSavePath())(ms.common.K_v.LoadV("弹幕分值"))
+						replyFunc.DanmuCountPerMin.Rec(ctx1, ms.common.Roomid, ms.GetSavePath())(ms.common.K_v.LoadV("弹幕分值"))
 						return nil
 					}
 					stopf := func(_ *M4SStream) error {
@@ -1420,19 +1422,24 @@ func (t *M4SStream) Start() bool {
 					}
 
 					// savestate
-					if e, _ := videoInfo.Save.Run(contextC, ms); e != nil {
+					if e, _ := videoInfo.Save.Run(ctx1, ms); e != nil {
 						l.L(`E: `, e)
 					}
 
 					//保存弹幕
-					go StartRecDanmu(contextC, ms.GetSavePath())
+					go StartRecDanmu(ctx1, ms.GetSavePath())
 
 					path := ms.GetSavePath() + `0.` + ms.GetStreamType()
 					startT := time.Now()
-					if e := ms.PusherToFile(contextC, path, startf, stopf); e != nil {
+					if e := ms.PusherToFile(ctx1, path, startf, stopf); e != nil {
 						l.L(`E: `, e)
 					}
 					duration := time.Since(startT)
+
+					// wait all goroutine exit
+					if e := done(); e != nil {
+						l.L(`E: `, e)
+					}
 
 					//PusherToFile fin genFastSeed
 					if disableFastSeed, ok := ms.common.K_v.LoadV("禁用快速索引生成").(bool); !ok || !disableFastSeed {
