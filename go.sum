@@ -46,8 +46,8 @@ github.com/qydysky/biliApi v0.0.0-20240725184407-15076dddb6fb h1:dtSpNF9hLQa09TU
 github.com/qydysky/biliApi v0.0.0-20240725184407-15076dddb6fb/go.mod h1:om024vfxALQ5vxsbaGoMm8IS0esLYBnEOpJI8FsGoDg=
 github.com/qydysky/brotli v0.0.0-20240828134800-e9913a6e7ed9 h1:k451T+bpsLr+Dq9Ujo+Qtx0iomRA1XXS5ttlEojvfuQ=
 github.com/qydysky/brotli v0.0.0-20240828134800-e9913a6e7ed9/go.mod h1:cI8/gy/wjy2Eb+p2IUj2ZuDnC8R5Vrx3O0VMPvMvphA=
-github.com/qydysky/part v0.28.20250225073648 h1:ENQ88oKNklW2nxreONQDjyO70zCeVy3wuuDMW9GCjBs=
-github.com/qydysky/part v0.28.20250225073648/go.mod h1:MsSAiZMiWQ5pGP5BCEB3OBsoAPaGykNB7vbeY3mKF2w=
+github.com/qydysky/part v0.28.20250225161111 h1:34x3k9NeHpP2rfMaq6d5sm3Lru9QdxI3zcXT5JbgUOg=
+github.com/qydysky/part v0.28.20250225161111/go.mod h1:MsSAiZMiWQ5pGP5BCEB3OBsoAPaGykNB7vbeY3mKF2w=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec h1:W09IVJc94icq4NjY3clb7Lk8O1qJ8BdBEF8z0ibU0rE=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec/go.mod h1:qqbHyh8v60DhA7CoWK5oRCqLrMHRGoxYCSS9EjAz6Eo=
 github.com/shirou/gopsutil v3.21.11+incompatible h1:+1+c1VGhc88SSonWP6foOcLhvnKlUeu/erjjvaPEYiI=
