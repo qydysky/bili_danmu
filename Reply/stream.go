@@ -1378,11 +1378,9 @@ func (t *M4SStream) Start() bool {
 						return false
 					}
 
-					ctx, cancel := context.WithCancel(mainCtx)
-					fc.FlashWithCallback(cancel)
-
 					// 当cut时，取消上次录制
-					ctx1, done := pctx.WithWait(ctx, 3, time.Second*30)
+					ctx1, done := pctx.WithWait(mainCtx, 3, time.Second*30)
+					fc.FlashWithCallback(func() { _ = done() })
 
 					// 分段时长min
 					if l, ok := ms.common.K_v.LoadV("分段时长min").(float64); ok && l > 0 {
@@ -1437,7 +1435,7 @@ func (t *M4SStream) Start() bool {
 					duration := time.Since(startT)
 
 					// wait all goroutine exit
-					if e := done(); e != nil {
+					if e := done(); e != nil && !errors.Is(e, pctx.ErrDoneCalled) {
 						l.L(`E: `, e)
 					}
 
