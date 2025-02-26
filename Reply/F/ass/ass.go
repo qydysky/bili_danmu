@@ -104,12 +104,8 @@ func (t *Ass) ToAss(savePath string) {
 	var lsd = make([]float64, lsSize)
 	var lso = make([]float64, lsSize)
 
-	var write bool
+	_, _ = f.Write([]byte(t.header), true)
 	for line := range loadCsv(savePath) {
-		if !write {
-			_, _ = f.Write([]byte(t.header), true)
-			write = true
-		}
 
 		danmul := utf8.RuneCountInString(line.Text)
 		danmuSec := (float64(t.showSec*t.fontsize*danmul) / float64(t.fontsize*danmul+playResX))
