@@ -25,7 +25,7 @@ var DanmuCountPerMin = comp.Get[interface {
 }](`danmuCountPerMin`)
 
 var Ass = comp.Get[interface {
-	ToAss(savePath string)
+	ToAss(savePath string, filename ...string)
 	Init(cfg any)
 }](`ass`)
 

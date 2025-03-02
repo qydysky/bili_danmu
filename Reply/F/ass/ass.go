@@ -7,6 +7,7 @@ import (
 	"iter"
 	"math"
 	"strconv"
+	"strings"
 	"unicode/utf8"
 
 	"github.com/dustin/go-humanize"
@@ -20,7 +21,7 @@ var (
 )
 
 type i interface {
-	ToAss(savePath string)
+	ToAss(savePath string, filename ...string)
 	Init(cfg any)
 }
 
@@ -93,8 +94,8 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 	}
 }
 
-func (t *Ass) ToAss(savePath string) {
-	f := file.New(savePath+"0.ass", 0, false)
+func (t *Ass) ToAss(savePath string, filename ...string) {
+	f := file.New(savePath+append(filename, "0.ass")[0], 0, false)
 	defer f.Close()
 	if f.IsExist() {
 		_ = f.Delete()
@@ -104,8 +105,12 @@ func (t *Ass) ToAss(savePath string) {
 	var lsd = make([]float64, lsSize)
 	var lso = make([]float64, lsSize)
 
-	_, _ = f.Write([]byte(t.header), true)
-	for line := range loadCsv(savePath) {
+	var write bool
+	for line := range loadCsv(savePath, strings.Split(append(filename, "0.ass")[0], `.`)[0]+".csv") {
+		if !write {
+			_, _ = f.Write([]byte(t.header), true)
+			write = true
+		}
 
 		danmul := utf8.RuneCountInString(line.Text)
 		danmuSec := (float64(t.showSec*t.fontsize*danmul) / float64(t.fontsize*danmul+playResX))
@@ -142,9 +147,9 @@ func (t *Ass) ToAss(savePath string) {
 	}
 }
 
-func loadCsv(savePath string) iter.Seq[Data] {
+func loadCsv(savePath string, filename ...string) iter.Seq[Data] {
 	return func(yield func(Data) bool) {
-		csvf := file.New(savePath+"0.csv", 0, false)
+		csvf := file.New(savePath+append(filename, "0.csv")[0], 0, false)
 		defer csvf.Close()
 
 		if !csvf.IsExist() {
