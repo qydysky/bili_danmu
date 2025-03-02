@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"syscall"
 	"time"
 
 	c "github.com/qydysky/bili_danmu/CV"
@@ -60,8 +61,8 @@ func Start() {
 	//ctrl+c退出
 	go func() {
 		var interrupt = make(chan os.Signal, 2)
-		//捕获ctrl+c退出
-		signal.Notify(interrupt, os.Interrupt)
+		//捕获ctrl+c、容器退出
+		signal.Notify(interrupt, syscall.SIGINT, syscall.SIGTERM)
 		danmulog.L(`I: `, "3s内2次ctrl+c退出")
 		for {
 			<-interrupt
