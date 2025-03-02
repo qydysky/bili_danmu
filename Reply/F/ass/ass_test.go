@@ -8,10 +8,10 @@ import (
 
 func TestMain(t *testing.T) {
 	var ass = comp.Get[interface {
-		ToAss(savePath string)
+		ToAss(savePath string, filename ...string)
 		Init(cfg any)
 	}](`ass`)
-	ass.ToAss("./testdata/")
+	ass.ToAss("./testdata/", "1.ass")
 }
 
 func TestStos(t *testing.T) {
