@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -475,10 +476,13 @@ func (t *Common) Init() *Common {
 					if err := r.Reqf(rval); err == nil {
 						rval.Method = http.MethodGet
 						for i := int(waitStop); i > 0; i-- {
-							fmt.Printf("停止服务: %s %3ds\r", rval.Url, i)
-							if err := r.Reqf(rval); err != nil {
+							fmt.Printf("\r停止服务: %s %3ds", rval.Url, i)
+							_ = r.Reqf(rval)
+							if conn, err := net.Dial("tcp", serUrl.Host); err != nil {
 								stopPath = ""
 								break
+							} else {
+								conn.Close()
 							}
 							time.Sleep(time.Second)
 						}
