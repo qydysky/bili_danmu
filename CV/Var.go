@@ -1,7 +1,6 @@
 package cv
 
 import (
-	"context"
 	"database/sql"
 	_ "embed"
 	"encoding/json"
@@ -13,12 +12,10 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"os/signal"
 	"runtime"
 	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 	"testing"
 	"time"
 
@@ -457,7 +454,6 @@ func (t *Common) Init() *Common {
 
 		{
 			r := reqf.New()
-			ctx, clean := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 			showIpOnBoot, _ := t.K_v.LoadV("启动时显示ip").(bool)
 			stopPath, _ := t.K_v.LoadV("stop路径").(string)
 			waitStop, _ := t.K_v.LoadV("停止其他服务超时").(float64)
@@ -470,7 +466,7 @@ func (t *Common) Init() *Common {
 				}
 				// 停止同配置其他服务
 				if stopPath != "" {
-					var rval = reqf.Rval{Method: http.MethodOptions, Ctx: ctx}
+					var rval = reqf.Rval{Method: http.MethodOptions, Timeout: 500}
 					if ip.To4() != nil {
 						rval.Url = fmt.Sprintf("http://%s:%s%s", ip.String(), port, stopPath)
 					} else {
@@ -480,15 +476,11 @@ func (t *Common) Init() *Common {
 						rval.Method = http.MethodGet
 						for i := int(waitStop); i > 0; i-- {
 							fmt.Printf("停止服务: %s %3ds\r", rval.Url, i)
-							select {
-							case <-ctx.Done():
-								os.Exit(0)
-							case <-time.After(time.Second):
-							}
-							if err := r.Reqf(rval); err != nil && strings.HasSuffix(err.Error(), "connect: connection refused") {
+							if err := r.Reqf(rval); err != nil {
 								stopPath = ""
 								break
 							}
+							time.Sleep(time.Second)
 						}
 						if stopPath == "" {
 							fmt.Printf("\n停止服务: 成功\n")
@@ -507,8 +499,6 @@ func (t *Common) Init() *Common {
 					}
 				}
 			}
-
-			clean()
 
 			if *stop {
 				os.Exit(0)
