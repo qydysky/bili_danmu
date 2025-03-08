@@ -16,6 +16,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"testing"
 	"time"
 
@@ -452,9 +453,44 @@ func (t *Common) Init() *Common {
 		}
 
 		{
-			// 启动时显示ip
+			r := reqf.New()
 			showIpOnBoot, _ := t.K_v.LoadV("启动时显示ip").(bool)
+			pidPath, _ := t.K_v.LoadV("pid路径").(string)
+			waitStop, _ := t.K_v.LoadV("停止其他服务超时").(float64)
+			if waitStop <= 0 {
+				waitStop = 100
+			}
 			for ip := range sys.GetIpByCidr() {
+				// 停止同配置其他服务
+				if pidPath != "" {
+					var rval = reqf.Rval{}
+					if ip.To4() != nil {
+						rval.Url = fmt.Sprintf("http://%s:%s%s", ip.String(), port, pidPath)
+					} else {
+						rval.Url = fmt.Sprintf("http://[%s]:%s%s", ip.String(), port, pidPath)
+					}
+					if err := r.Reqf(rval); err == nil {
+						if pid, err := strconv.Atoi(string(r.Respon)); err == nil && pid != 0 {
+							if err := syscall.Kill(pid, syscall.SIGTERM); err == nil {
+								for i := int(waitStop); i > 0; i-- {
+									fmt.Printf("\r停止其他服务PID: %d %ds", pid, i)
+									time.Sleep(time.Second)
+									if err := r.Reqf(rval); strings.HasSuffix(err.Error(), "connect: connection refused") {
+										i = 0
+										pidPath = ""
+									}
+								}
+								if pidPath == "" {
+									fmt.Printf("\n停止其他服务PID: %d ok\n", pid)
+								} else {
+									fmt.Printf("\n停止其他服务PID: %d 超时\n", pid)
+								}
+							}
+						}
+					}
+				}
+
+				// 启动时显示ip
 				if showIpOnBoot {
 					if ip.To4() != nil {
 						fmt.Printf("当前地址 http://%s:%s\n", ip.String(), port)
@@ -502,6 +538,17 @@ func (t *Common) Init() *Common {
 					}
 				}
 			}
+		}
+
+		if val, ok := t.K_v.LoadV("pid路径").(string); ok && val != "" {
+			t.SerF.Store(val, func(w http.ResponseWriter, r *http.Request) {
+				if DefaultHttpFunc(t, w, r, http.MethodGet) {
+					return
+				}
+				if _, e := w.Write([]byte(strconv.Itoa(t.PID))); e != nil {
+					return
+				}
+			})
 		}
 
 		if val, ok := t.K_v.LoadV("ip路径").(string); ok && val != "" {
