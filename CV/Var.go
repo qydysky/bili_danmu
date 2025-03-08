@@ -16,7 +16,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 	"testing"
 	"time"
 
@@ -456,43 +455,43 @@ func (t *Common) Init() *Common {
 		{
 			r := reqf.New()
 			showIpOnBoot, _ := t.K_v.LoadV("启动时显示ip").(bool)
-			pidPath, _ := t.K_v.LoadV("pid路径").(string)
+			stopPath, _ := t.K_v.LoadV("stop路径").(string)
 			waitStop, _ := t.K_v.LoadV("停止其他服务超时").(float64)
 			if waitStop <= 0 {
 				waitStop = 100
 			}
 			for ip := range sys.GetIpByCidr() {
+				if ip.IsLinkLocalUnicast() {
+					continue
+				}
 				// 停止同配置其他服务
-				if pidPath != "" {
-					var rval = reqf.Rval{}
+				if stopPath != "" {
+					var rval = reqf.Rval{Method: http.MethodOptions}
 					if ip.To4() != nil {
-						rval.Url = fmt.Sprintf("http://%s:%s%s", ip.String(), port, pidPath)
+						rval.Url = fmt.Sprintf("http://%s:%s%s", ip.String(), port, stopPath)
 					} else {
-						rval.Url = fmt.Sprintf("http://[%s]:%s%s", ip.String(), port, pidPath)
+						rval.Url = fmt.Sprintf("http://[%s]:%s%s", ip.String(), port, stopPath)
 					}
 					if err := r.Reqf(rval); err == nil {
-						if pid, err := strconv.Atoi(string(r.Respon)); err == nil && pid != 0 {
-							if err := syscall.Kill(pid, syscall.SIGTERM); err == nil {
-								for i := int(waitStop); i > 0; i-- {
-									fmt.Printf("\r停止服务PID: %d %ds", pid, i)
-									time.Sleep(time.Second)
-									if err := r.Reqf(rval); strings.HasSuffix(err.Error(), "connect: connection refused") {
-										i = 0
-										pidPath = ""
-									}
-								}
-								if pidPath == "" {
-									fmt.Printf("\n停止服务PID: %d ok\n", pid)
-								} else {
-									fmt.Printf("\n停止服务PID: %d 超时\n", pid)
-								}
+						rval.Method = http.MethodGet
+						for i := int(waitStop); i > 0; i-- {
+							fmt.Printf("\r停止服务: %s %3ds", rval.Url, i)
+							time.Sleep(time.Second)
+							if err := r.Reqf(rval); err != nil && strings.HasSuffix(err.Error(), "connect: connection refused") {
+								stopPath = ""
+								break
 							}
+						}
+						if stopPath == "" {
+							fmt.Printf("\n停止服务: 成功\n")
+						} else {
+							fmt.Printf("\n停止服务: 超时\n")
 						}
 					}
 				}
 
 				// 启动时显示ip
-				if showIpOnBoot {
+				if !*stop && showIpOnBoot {
 					if ip.To4() != nil {
 						fmt.Printf("当前地址 http://%s:%s\n", ip.String(), port)
 					} else {
@@ -545,14 +544,16 @@ func (t *Common) Init() *Common {
 			}
 		}
 
-		if val, ok := t.K_v.LoadV("pid路径").(string); ok && val != "" {
+		if val, ok := t.K_v.LoadV("stop路径").(string); ok && val != "" {
 			t.SerF.Store(val, func(w http.ResponseWriter, r *http.Request) {
-				if DefaultHttpFunc(t, w, r, http.MethodGet) {
+				if DefaultHttpFunc(t, w, r, http.MethodGet, http.MethodOptions) {
 					return
 				}
-				if _, e := w.Write([]byte(strconv.Itoa(t.PID))); e != nil {
+				if r.Method == http.MethodOptions {
+					w.Header().Set("Allow", "GET")
 					return
 				}
+				t.Danmu_Main_mq.Push_tag(`interrupt`, nil)
 			})
 		}
 
