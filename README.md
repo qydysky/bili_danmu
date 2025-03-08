@@ -76,6 +76,33 @@
 
 关于离线构建，详见章节`运行`及其`注意事项`
 
+#### 等待同配置其他服务停止
+添加配置项`stop路径`、`停止其他服务超时`(>v0.16.3)。
+
+当配置了`Web服务地址`及`stop路径`之后，将在启动时，检测是否存在同`Web服务地址`+`stop路径`的服务，并先尝试停止它。
+
+1. 这可以在容器启动时，优雅的停止同配置其他服务。
+
+2. 添加命令行参数`-stop`(>v0.16.3)，用于停止服务。
+
+    以下是k8s在退出时，优雅的停止服务示例[k8s pod-termination 文档](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination):
+
+``` yml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: lifecycle-demo
+spec:
+  containers:
+  - name: lifecycle-demo-container
+    image: bili
+    lifecycle:
+      preStop:
+        exec:
+          command: ["/bin/sh","-c","main -stop"]
+
+```
+
 #### 环境变量覆盖配置项
 添加配置项`从环境变量覆盖`(>v0.14.26)。将在配置文件都加载后，用环境变量覆盖配置项。
 
@@ -1105,8 +1132,8 @@ windows: set CGO_ENABLED=0;go build .
 
 clone/下载本项目。进入`demo`目录(文件夹)，运行：
 ```
-linux: CGO_ENABLED=0 go run . [-r 房间ID] [-ckv 自定义config_K_v.json] [-genKey]
-windows: set CGO_ENABLED=0;go run . [-r 房间ID] [-ckv 自定义config_K_v.json] [-genKey]
+linux: CGO_ENABLED=0 go run . [-r 房间ID] [-ckv 自定义config_K_v.json] [-genKey] [-stop]
+windows: set CGO_ENABLED=0;go run . [-r 房间ID] [-ckv 自定义config_K_v.json] [-genKey] [-stop]
 ```
 
 3. docker部署
@@ -1133,8 +1160,8 @@ go build .
 
 前往[releases](https://github.com/qydysky/bili_danmu/releases)页下载对应系统版本。解压后进入`demo`目录(文件夹)，运行`main`(`main.exe`)。
 ```
-./main [-r 房间ID] [-ckv 自定义config_K_v.json] [-genKey]
-./main.exe [-r 房间ID] [-ckv 自定义config_K_v.json] [-genKey]
+./main [-r 房间ID] [-ckv 自定义config_K_v.json] [-genKey] [-stop]
+./main.exe [-r 房间ID] [-ckv 自定义config_K_v.json] [-genKey] [-stop]
 ```
 
 #### 注意事项

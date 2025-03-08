@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -381,6 +382,7 @@ func (t *Common) Init() *Common {
 		ckv     = flag.String("ckv", "", "自定义配置KV文件，将会覆盖config_K_v配置")
 		roomIdP = flag.Int("r", 0, "roomid")
 		genKey  = flag.Bool("genKey", false, "生成cookie加密公私钥")
+		stop    = flag.Bool("stop", false, "向当前配置发送退出信号")
 	)
 	testing.Init()
 	flag.Parse()
@@ -452,16 +454,58 @@ func (t *Common) Init() *Common {
 		}
 
 		{
-			// 启动时显示ip
+			r := reqf.New()
 			showIpOnBoot, _ := t.K_v.LoadV("启动时显示ip").(bool)
+			stopPath, _ := t.K_v.LoadV("stop路径").(string)
+			waitStop, _ := t.K_v.LoadV("停止其他服务超时").(float64)
+			if waitStop <= 0 {
+				waitStop = 100
+			}
 			for ip := range sys.GetIpByCidr() {
-				if showIpOnBoot {
+				if ip.IsLinkLocalUnicast() {
+					continue
+				}
+				// 停止同配置其他服务
+				if stopPath != "" {
+					var rval = reqf.Rval{Method: http.MethodOptions, Timeout: 500}
+					if ip.To4() != nil {
+						rval.Url = fmt.Sprintf("http://%s:%s%s", ip.String(), port, stopPath)
+					} else {
+						rval.Url = fmt.Sprintf("http://[%s]:%s%s", ip.String(), port, stopPath)
+					}
+					if err := r.Reqf(rval); err == nil {
+						rval.Method = http.MethodGet
+						for i := int(waitStop); i > 0; i-- {
+							fmt.Printf("\r停止服务: %s %3ds", rval.Url, i)
+							_ = r.Reqf(rval)
+							if conn, err := net.Dial("tcp", serUrl.Host); err != nil {
+								stopPath = ""
+								break
+							} else {
+								conn.Close()
+							}
+							time.Sleep(time.Second)
+						}
+						if stopPath == "" {
+							fmt.Printf("\n停止服务: 成功\n")
+						} else {
+							fmt.Printf("\n停止服务: 超时\n")
+						}
+					}
+				}
+
+				// 启动时显示ip
+				if !*stop && showIpOnBoot {
 					if ip.To4() != nil {
 						fmt.Printf("当前地址 http://%s:%s\n", ip.String(), port)
 					} else {
 						fmt.Printf("当前地址 http://[%s]:%s\n", ip.String(), port)
 					}
 				}
+			}
+
+			if *stop {
+				os.Exit(0)
 			}
 		}
 
@@ -502,6 +546,19 @@ func (t *Common) Init() *Common {
 					}
 				}
 			}
+		}
+
+		if val, ok := t.K_v.LoadV("stop路径").(string); ok && val != "" {
+			t.SerF.Store(val, func(w http.ResponseWriter, r *http.Request) {
+				if DefaultHttpFunc(t, w, r, http.MethodGet, http.MethodOptions) {
+					return
+				}
+				if r.Method == http.MethodOptions {
+					w.Header().Set("Allow", "GET")
+					return
+				}
+				t.Danmu_Main_mq.Push_tag(`interrupt`, nil)
+			})
 		}
 
 		if val, ok := t.K_v.LoadV("ip路径").(string); ok && val != "" {
