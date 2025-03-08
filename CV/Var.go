@@ -382,6 +382,7 @@ func (t *Common) Init() *Common {
 		ckv     = flag.String("ckv", "", "自定义配置KV文件，将会覆盖config_K_v配置")
 		roomIdP = flag.Int("r", 0, "roomid")
 		genKey  = flag.Bool("genKey", false, "生成cookie加密公私钥")
+		stop    = flag.Bool("stop", false, "向当前配置发送退出信号")
 	)
 	testing.Init()
 	flag.Parse()
@@ -473,7 +474,7 @@ func (t *Common) Init() *Common {
 						if pid, err := strconv.Atoi(string(r.Respon)); err == nil && pid != 0 {
 							if err := syscall.Kill(pid, syscall.SIGTERM); err == nil {
 								for i := int(waitStop); i > 0; i-- {
-									fmt.Printf("\r停止其他服务PID: %d %ds", pid, i)
+									fmt.Printf("\r停止服务PID: %d %ds", pid, i)
 									time.Sleep(time.Second)
 									if err := r.Reqf(rval); strings.HasSuffix(err.Error(), "connect: connection refused") {
 										i = 0
@@ -481,9 +482,9 @@ func (t *Common) Init() *Common {
 									}
 								}
 								if pidPath == "" {
-									fmt.Printf("\n停止其他服务PID: %d ok\n", pid)
+									fmt.Printf("\n停止服务PID: %d ok\n", pid)
 								} else {
-									fmt.Printf("\n停止其他服务PID: %d 超时\n", pid)
+									fmt.Printf("\n停止服务PID: %d 超时\n", pid)
 								}
 							}
 						}
@@ -498,6 +499,10 @@ func (t *Common) Init() *Common {
 						fmt.Printf("当前地址 http://[%s]:%s\n", ip.String(), port)
 					}
 				}
+			}
+
+			if *stop {
+				os.Exit(0)
 			}
 		}
 
