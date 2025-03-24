@@ -25,6 +25,7 @@ var (
 	ActionGenFastSeedFmp4 pe.Action = `GenFastSeedFmp4`
 	ActionSeekFmp4        pe.Action = `SeekFmp4`
 	ActionOneFFmp4        pe.Action = `OneFFmp4`
+	ActionCheckTFail      pe.Action = `CheckTFail`
 )
 
 var boxs map[string]bool
@@ -232,31 +233,37 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 		}
 
 		//is t error?
-		check_set_maxT = func(ts timeStamp, equal func(ts timeStamp) error, larger func(ts timeStamp) error) (err error) {
+		checkAndSetMaxT = func(ts timeStamp) (err error) {
 			switch ts.handlerType {
 			case 'v':
 				if maxVT == 0 {
 					maxVT = ts.getT()
-				} else if maxVT == ts.getT() && equal != nil {
-					err = equal(ts)
-				} else if maxVT > ts.getT() && larger != nil {
-					err = larger(ts)
+				} else if maxVT == ts.getT() {
+					err = ActionCheckTFail.New("equal VT detect")
+				} else if maxVT > ts.getT() {
+					err = ActionCheckTFail.New("lower VT detect")
 				} else {
 					maxVT = ts.getT()
 				}
 			case 'a':
 				if maxAT == 0 {
 					maxAT = ts.getT()
-				} else if maxAT == ts.getT() && equal != nil {
-					err = equal(ts)
-				} else if maxAT > ts.getT() && larger != nil {
-					err = larger(ts)
+				} else if maxAT == ts.getT() {
+					err = ActionCheckTFail.New("equal AT detect")
+				} else if maxAT > ts.getT() {
+					err = ActionCheckTFail.New("lower AT detect")
 				} else {
 					maxAT = ts.getT()
 				}
 			default:
 			}
 			return
+		}
+
+		dropKeyFrame = func(index int) {
+			t.buf.Reset()
+			haveKeyframe = false
+			cu = index
 		}
 	)
 
@@ -280,20 +287,12 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 						if ts.handlerType == 'v' {
 							if e := checkSampleEntries(m[5].i, m[6].i); e != nil {
 								//skip
-								t.buf.Reset()
-								haveKeyframe = false
-								cu = m[0].i
+								dropKeyFrame(m[0].e)
 								return pe.Join(ErrDealIESkip, e)
 							}
 						}
-						if e := check_set_maxT(ts, func(_ timeStamp) error {
-							return errors.New("skip")
-						}, func(_ timeStamp) error {
-							t.buf.Reset()
-							haveKeyframe = false
-							cu = m[0].i
-							return errors.New("skip")
-						}); e != nil {
+						if e := checkAndSetMaxT(ts); e != nil {
+							dropKeyFrame(m[0].e)
 							return pe.Join(ErrDealIESkip, e)
 						}
 					}
@@ -306,8 +305,7 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 							if e := t.buf.AppendTo(keyframe); e != nil {
 								return pe.Join(ErrDealIEBreak, e)
 							}
-							cu = m[0].i
-							t.buf.Reset()
+							dropKeyFrame(m[0].i)
 						}
 						haveKeyframe = true
 					} else if !haveKeyframe {
@@ -338,9 +336,7 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 						if handlerType == 'v' {
 							if e := checkSampleEntries(m[5].i, m[6].i); e != nil {
 								//skip
-								t.buf.Reset()
-								haveKeyframe = false
-								cu = m[0].i
+								dropKeyFrame(m[0].e)
 								return pe.Join(ErrDealIESkip, e)
 							}
 						}
@@ -350,14 +346,8 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 						case 's':
 							audio = ts
 						}
-						if e := check_set_maxT(ts, func(_ timeStamp) error {
-							return errors.New("skip")
-						}, func(_ timeStamp) error {
-							t.buf.Reset()
-							haveKeyframe = false
-							cu = m[0].i
-							return errors.New("skip")
-						}); e != nil {
+						if e := checkAndSetMaxT(ts); e != nil {
+							dropKeyFrame(m[0].e)
 							return pe.Join(ErrDealIESkip, e)
 						}
 					}
@@ -366,9 +356,7 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 						if handlerType == 'v' {
 							if e := checkSampleEntries(m[9].i, m[10].i); e != nil {
 								//skip
-								t.buf.Reset()
-								haveKeyframe = false
-								cu = m[0].i
+								dropKeyFrame(m[0].e)
 								return pe.Join(ErrDealIESkip, e)
 							}
 						}
@@ -378,14 +366,8 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 						case 's':
 							audio = ts
 						}
-						if e := check_set_maxT(ts, func(_ timeStamp) error {
-							return errors.New("skip")
-						}, func(_ timeStamp) error {
-							t.buf.Reset()
-							haveKeyframe = false
-							cu = m[0].i
-							return errors.New("skip")
-						}); e != nil {
+						if e := checkAndSetMaxT(ts); e != nil {
+							dropKeyFrame(m[0].e)
 							return pe.Join(ErrDealIESkip, e)
 						}
 					}
@@ -405,8 +387,7 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 							if e := t.buf.AppendTo(keyframe); e != nil {
 								return pe.Join(ErrDealIEBreak, e)
 							}
-							cu = m[0].i
-							t.buf.Reset()
+							dropKeyFrame(m[0].i)
 						}
 						haveKeyframe = true
 					} else if !haveKeyframe {
@@ -497,31 +478,37 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...dealFMp4) (cu int, err error) {
 		}
 
 		//is t error?
-		check_set_maxT = func(ts timeStamp, equal func(ts timeStamp) error, larger func(ts timeStamp) error) (err error) {
+		checkAndSetMaxT = func(ts timeStamp) (err error) {
 			switch ts.handlerType {
 			case 'v':
 				if maxVT == 0 {
 					maxVT = ts.getT()
-				} else if maxVT == ts.getT() && equal != nil {
-					err = equal(ts)
-				} else if maxVT > ts.getT() && larger != nil {
-					err = larger(ts)
+				} else if maxVT == ts.getT() {
+					err = ActionCheckTFail.New("equal VT detect")
+				} else if maxVT > ts.getT() {
+					err = ActionCheckTFail.New("lower VT detect")
 				} else {
 					maxVT = ts.getT()
 				}
 			case 'a':
 				if maxAT == 0 {
 					maxAT = ts.getT()
-				} else if maxAT == ts.getT() && equal != nil {
-					err = equal(ts)
-				} else if maxAT > ts.getT() && larger != nil {
-					err = larger(ts)
+				} else if maxAT == ts.getT() {
+					err = ActionCheckTFail.New("equal AT detect")
+				} else if maxAT > ts.getT() {
+					err = ActionCheckTFail.New("lower AT detect")
 				} else {
 					maxAT = ts.getT()
 				}
 			default:
 			}
 			return
+		}
+
+		dropKeyFrame = func(index int) {
+			t.buf.Reset()
+			haveKeyframe = false
+			cu = index
 		}
 	)
 
@@ -530,7 +517,7 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...dealFMp4) (cu int, err error) {
 		return 0, e
 	}
 
-	var ErrNormal = pe.New("ErrNormal", "ErrNormal")
+	var ErrNormal pe.Action = "ErrNormal"
 
 	err = deals(ies,
 		[]dealIE{
@@ -548,24 +535,16 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...dealFMp4) (cu int, err error) {
 						if ts.handlerType == 'v' {
 							if e := checkSampleEntries(m[5].i, m[6].i); e != nil {
 								//skip
-								t.buf.Reset()
-								haveKeyframe = false
-								cu = m[0].i
+								dropKeyFrame(m[0].e)
 								return pe.Join(ErrDealIESkip.New(), e)
 							}
 						}
 						if handlerType == 'v' {
 							video = ts
 						}
-						if e := check_set_maxT(ts, func(_ timeStamp) error {
-							return errors.New("skip")
-						}, func(_ timeStamp) error {
-							t.buf.Reset()
-							haveKeyframe = false
-							cu = m[0].i
-							return errors.New("skip")
-						}); e != nil {
-							return pe.Join(ErrDealIESkip.New(), e)
+						if e := checkAndSetMaxT(ts); e != nil {
+							dropKeyFrame(m[0].e)
+							return pe.Join(ErrDealIESkip, e)
 						}
 					}
 
@@ -574,13 +553,12 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...dealFMp4) (cu int, err error) {
 					//deal frame
 					if keyframeMoof {
 						if v, e := t.buf.HadModified(bufModified); e == nil && v && !t.buf.IsEmpty() {
-							cu = m[0].i
 							if haveKeyframe && len(w) > 0 {
 								err = w[0](video.getT(), cu, t.buf)
-								t.buf.Reset()
+								dropKeyFrame(m[0].i)
 								return ErrNormal
 							}
-							t.buf.Reset()
+							dropKeyFrame(m[0].i)
 						}
 						haveKeyframe = true
 					} else if !haveKeyframe {
@@ -609,9 +587,7 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...dealFMp4) (cu int, err error) {
 						if handlerType == 'v' {
 							if e := checkSampleEntries(m[5].i, m[6].i); e != nil {
 								//skip
-								t.buf.Reset()
-								haveKeyframe = false
-								cu = m[0].i
+								dropKeyFrame(m[0].e)
 								return pe.Join(ErrDealIESkip, e)
 							}
 						}
@@ -621,14 +597,8 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...dealFMp4) (cu int, err error) {
 						case 's':
 							audio = ts
 						}
-						if e := check_set_maxT(ts, func(_ timeStamp) error {
-							return errors.New("skip")
-						}, func(_ timeStamp) error {
-							t.buf.Reset()
-							haveKeyframe = false
-							cu = m[0].i
-							return errors.New("skip")
-						}); e != nil {
+						if e := checkAndSetMaxT(ts); e != nil {
+							dropKeyFrame(m[0].e)
 							return pe.Join(ErrDealIESkip, e)
 						}
 					}
@@ -637,9 +607,7 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...dealFMp4) (cu int, err error) {
 						if handlerType == 'v' {
 							if e := checkSampleEntries(m[9].i, m[10].i); e != nil {
 								//skip
-								t.buf.Reset()
-								haveKeyframe = false
-								cu = m[0].i
+								dropKeyFrame(m[0].e)
 								return pe.Join(ErrDealIESkip, e)
 							}
 						}
@@ -649,14 +617,8 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...dealFMp4) (cu int, err error) {
 						case 's':
 							audio = ts
 						}
-						if e := check_set_maxT(ts, func(_ timeStamp) error {
-							return errors.New("skip")
-						}, func(_ timeStamp) error {
-							t.buf.Reset()
-							haveKeyframe = false
-							cu = m[0].i
-							return errors.New("skip")
-						}); e != nil {
+						if e := checkAndSetMaxT(ts); e != nil {
+							dropKeyFrame(m[0].e)
 							return pe.Join(ErrDealIESkip, e)
 						}
 					}
@@ -673,13 +635,12 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...dealFMp4) (cu int, err error) {
 					//deal frame
 					if keyframeMoof {
 						if v, e := t.buf.HadModified(bufModified); e == nil && v && !t.buf.IsEmpty() {
-							cu = m[0].i
 							if haveKeyframe && len(w) > 0 {
 								err = w[0](video.getT(), cu, t.buf)
-								t.buf.Reset()
+								dropKeyFrame(m[0].i)
 								return ErrNormal
 							}
-							t.buf.Reset()
+							dropKeyFrame(m[0].i)
 						}
 						haveKeyframe = true
 					} else if !haveKeyframe {
