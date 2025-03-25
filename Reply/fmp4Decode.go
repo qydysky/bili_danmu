@@ -288,12 +288,12 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 							if e := checkSampleEntries(m[5].i, m[6].i); e != nil {
 								//skip
 								dropKeyFrame(m[0].e)
-								return pe.Join(ErrDealIESkip, e)
+								return pe.Join(ErrDecode, e)
 							}
 						}
 						if e := checkAndSetMaxT(ts); e != nil {
 							dropKeyFrame(m[0].e)
-							return pe.Join(ErrDealIESkip, e)
+							return pe.Join(ErrDecode, e)
 						}
 					}
 
@@ -303,7 +303,7 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 					if keyframeMoof {
 						if v, e := t.buf.HadModified(bufModified); e == nil && v && !t.buf.IsEmpty() {
 							if e := t.buf.AppendTo(keyframe); e != nil {
-								return pe.Join(ErrDealIEBreak, e)
+								return e
 							}
 							dropKeyFrame(m[0].i)
 						}
@@ -313,7 +313,7 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 					}
 					if haveKeyframe {
 						if e := t.buf.Append(buf[m[0].i:m[6].e]); e != nil {
-							return pe.Join(ErrDealIEBreak, e)
+							return e
 						}
 					}
 					return nil
@@ -337,7 +337,7 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 							if e := checkSampleEntries(m[5].i, m[6].i); e != nil {
 								//skip
 								dropKeyFrame(m[0].e)
-								return pe.Join(ErrDealIESkip, e)
+								return pe.Join(ErrDecode, e)
 							}
 						}
 						switch handlerType {
@@ -348,7 +348,7 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 						}
 						if e := checkAndSetMaxT(ts); e != nil {
 							dropKeyFrame(m[0].e)
-							return pe.Join(ErrDealIESkip, e)
+							return pe.Join(ErrDecode, e)
 						}
 					}
 					{
@@ -357,7 +357,7 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 							if e := checkSampleEntries(m[9].i, m[10].i); e != nil {
 								//skip
 								dropKeyFrame(m[0].e)
-								return pe.Join(ErrDealIESkip, e)
+								return pe.Join(ErrDecode, e)
 							}
 						}
 						switch handlerType {
@@ -368,7 +368,7 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 						}
 						if e := checkAndSetMaxT(ts); e != nil {
 							dropKeyFrame(m[0].e)
-							return pe.Join(ErrDealIESkip, e)
+							return pe.Join(ErrDecode, e)
 						}
 					}
 
@@ -377,7 +377,7 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 						t.AVTDiff = 0.1
 					}
 					if diff := math.Abs(video.getT() - audio.getT()); diff > t.AVTDiff {
-						return pe.Join(ErrDealIEBreak, fmt.Errorf("时间戳不匹配 %v %v (或许应调整fmp4音视频时间戳容差s>%.2f)", video.timeStamp, audio.timeStamp, diff))
+						return pe.Join(ErrDecode, fmt.Errorf("时间戳不匹配 %v %v (或许应调整fmp4音视频时间戳容差s>%.2f)", video.timeStamp, audio.timeStamp, diff))
 						// copy(video.data, F.Itob64(int64(audio.getT()*float64(video.timescale))))
 					}
 
@@ -385,7 +385,7 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 					if keyframeMoof {
 						if v, e := t.buf.HadModified(bufModified); e == nil && v && !t.buf.IsEmpty() {
 							if e := t.buf.AppendTo(keyframe); e != nil {
-								return pe.Join(ErrDealIEBreak, e)
+								return e
 							}
 							dropKeyFrame(m[0].i)
 						}
@@ -395,7 +395,7 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 					}
 					if haveKeyframe {
 						if e := t.buf.Append(buf[m[0].i:m[10].e]); e != nil {
-							return pe.Join(ErrDealIEBreak, e)
+							return e
 						}
 					}
 					return nil
@@ -536,7 +536,7 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...dealFMp4) (cu int, err error) {
 							if e := checkSampleEntries(m[5].i, m[6].i); e != nil {
 								//skip
 								dropKeyFrame(m[0].e)
-								return pe.Join(ErrDealIESkip.New(), e)
+								return pe.Join(ErrDecode, e)
 							}
 						}
 						if handlerType == 'v' {
@@ -544,7 +544,7 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...dealFMp4) (cu int, err error) {
 						}
 						if e := checkAndSetMaxT(ts); e != nil {
 							dropKeyFrame(m[0].e)
-							return pe.Join(ErrDealIESkip, e)
+							return pe.Join(ErrDecode, e)
 						}
 					}
 
@@ -566,7 +566,7 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...dealFMp4) (cu int, err error) {
 					}
 					if haveKeyframe {
 						if e := t.buf.Append(buf[m[0].i:m[6].e]); e != nil {
-							return pe.Join(ErrDealIEBreak.New(), e)
+							return e
 						}
 					}
 					return nil
@@ -588,7 +588,7 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...dealFMp4) (cu int, err error) {
 							if e := checkSampleEntries(m[5].i, m[6].i); e != nil {
 								//skip
 								dropKeyFrame(m[0].e)
-								return pe.Join(ErrDealIESkip, e)
+								return pe.Join(ErrDecode, e)
 							}
 						}
 						switch handlerType {
@@ -599,7 +599,7 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...dealFMp4) (cu int, err error) {
 						}
 						if e := checkAndSetMaxT(ts); e != nil {
 							dropKeyFrame(m[0].e)
-							return pe.Join(ErrDealIESkip, e)
+							return pe.Join(ErrDecode, e)
 						}
 					}
 					{
@@ -608,7 +608,7 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...dealFMp4) (cu int, err error) {
 							if e := checkSampleEntries(m[9].i, m[10].i); e != nil {
 								//skip
 								dropKeyFrame(m[0].e)
-								return pe.Join(ErrDealIESkip, e)
+								return pe.Join(ErrDecode, e)
 							}
 						}
 						switch handlerType {
@@ -619,7 +619,7 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...dealFMp4) (cu int, err error) {
 						}
 						if e := checkAndSetMaxT(ts); e != nil {
 							dropKeyFrame(m[0].e)
-							return pe.Join(ErrDealIESkip, e)
+							return pe.Join(ErrDecode, e)
 						}
 					}
 
@@ -628,7 +628,7 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...dealFMp4) (cu int, err error) {
 						t.AVTDiff = 0.1
 					}
 					if diff := math.Abs(video.getT() - audio.getT()); diff > t.AVTDiff {
-						return pe.Join(ErrDealIEBreak, fmt.Errorf("时间戳不匹配 %v %v (或许应调整fmp4音视频时间戳容差s>%.2f)", video.timeStamp, audio.timeStamp, diff))
+						return pe.Join(ErrDecode, fmt.Errorf("时间戳不匹配 %v %v (或许应调整fmp4音视频时间戳容差s>%.2f)", video.timeStamp, audio.timeStamp, diff))
 						// copy(video.data, F.Itob64(int64(audio.getT()*float64(video.timescale))))
 					}
 
@@ -648,7 +648,7 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...dealFMp4) (cu int, err error) {
 					}
 					if haveKeyframe {
 						if e := t.buf.Append(buf[m[0].i:m[10].e]); e != nil {
-							return pe.Join(ErrDealIEBreak, e)
+							return e
 						}
 					}
 					return nil
@@ -801,11 +801,6 @@ func (t *Fmp4Decoder) GenFastSeed(reader io.Reader, save func(seedTo time.Durati
 	return
 }
 
-var (
-	ErrDealIEBreak = pe.Action(`ErrDealIEBreak`)
-	ErrDealIESkip  = pe.Action(`ErrDealIESkip`)
-)
-
 type dealIE struct {
 	matchCounts int
 	boxNames    []string
@@ -832,7 +827,7 @@ func deal(ies []ie, dealIEf dealIE) (err error) {
 func deals(ies []ie, dealIEs []dealIE) (err error) {
 	for cu := 0; cu < len(ies) && len(dealIEs) != 0; cu++ {
 		for i := 0; i < len(dealIEs); i++ {
-			if e := dealIEs[i].deal(ies, cu); e != nil && !pe.Catch(e, ErrDealIESkip) {
+			if e := dealIEs[i].deal(ies, cu); e != nil {
 				return e
 			}
 		}

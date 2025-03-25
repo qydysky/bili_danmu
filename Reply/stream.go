@@ -675,6 +675,8 @@ func (t *M4SStream) getSavepath() {
 	}
 }
 
+var ErrDecode = perrors.Action("ErrDecode")
+
 func (t *M4SStream) saveStream() (e error) {
 	// 清除初始值
 	t.first_buf = nil
@@ -1204,16 +1206,14 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 
 			if err != nil && !errors.Is(err, io.EOF) {
 				t.log.L(`E: `, err)
-				//丢弃所有数据
-				buf.Reset()
-				e = err
-				if skipErrFrame {
+				if perrors.Catch(err, ErrDecode) && skipErrFrame {
 					// 将此切片服务器设置停用
 					// if u, e := url.Parse(cu.Url); e == nil {
 					t.common.DisableLiveAutoByUuid(cu.SerUuid)
 					// t.common.DisableLiveAuto(u.Host)
 					// }
 				} else {
+					e = err
 					return
 				}
 			}
@@ -1426,6 +1426,45 @@ func (t *M4SStream) Start() bool {
 
 					//保存弹幕
 					go StartRecDanmu(ctx1, ms.GetSavePath())
+
+					//指定房间录制回调
+					if v, ok := ms.common.K_v.LoadV("指定房间录制回调").([]any); ok && len(v) > 0 {
+						l := l.Base(`录制回调`)
+						for i := 0; i < len(v); i++ {
+							if vm, ok := v[i].(map[string]any); ok {
+								if roomid, ok := vm["roomid"].(float64); ok && int(roomid) == ms.common.Roomid {
+									var (
+										durationS, _ = vm["durationS"].(float64)
+										start, _     = vm["start"].([]any)
+									)
+									if len(start) >= 2 && durationS >= 0 {
+										go func() {
+											ctx2, done2 := pctx.WaitCtx(ctx1)
+											defer done2()
+											select {
+											case <-ctx2.Done():
+											case <-time.After(time.Second * time.Duration(durationS)):
+												var cmds []string
+												for i := 0; i < len(start); i++ {
+													if cmd, ok := start[i].(string); ok && cmd != "" {
+														cmds = append(cmds, strings.ReplaceAll(cmd, "{type}", ms.GetStreamType()))
+													}
+												}
+
+												cmd := exec.Command(cmds[0], cmds[1:]...)
+												cmd.Dir = ms.GetSavePath()
+												l.L(`I: `, "启动", cmd.Args)
+												if e := cmd.Run(); e != nil {
+													l.L(`E: `, e)
+												}
+												l.L(`I: `, "结束")
+											}
+										}()
+									}
+								}
+							}
+						}
+					}
 
 					path := ms.GetSavePath() + `0.` + ms.GetStreamType()
 					startT := time.Now()

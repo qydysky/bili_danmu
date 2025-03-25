@@ -5,7 +5,6 @@ import (
 	"compress/zlib"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -28,7 +27,6 @@ import (
 )
 
 var reply_log = c.C.Log.Base(`Reply`)
-var ErrDecode = errors.New(`ErrDecode`)
 
 // brotliDecoder
 type brotliDecoder struct {
