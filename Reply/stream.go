@@ -1214,6 +1214,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 					// }
 				} else {
 					e = err
+					download_seq = download_seq[:0]
 					_ = pctx.CallCancel(t.Status)
 					break
 				}
