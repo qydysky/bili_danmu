@@ -1214,7 +1214,8 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 					// }
 				} else {
 					e = err
-					return
+					_ = pctx.CallCancel(t.Status)
+					break
 				}
 			}
 
