@@ -141,7 +141,7 @@ func (t *m4s_link_item) getNo() (int, error) {
 }
 
 var (
-	AEFDCTO perrors.Action = `ActionErrFmp4DownloadCareTO`
+	ActionErrFmp4DownloadCareTO perrors.Action = `ActionErrFmp4DownloadCareTO`
 )
 
 func (link *m4s_link_item) download(reqPool *pool.Buf[reqf.Req], reqConfig reqf.Rval) (err error) {
@@ -164,7 +164,7 @@ func (link *m4s_link_item) download(reqPool *pool.Buf[reqf.Req], reqConfig reqf.
 		return e
 	} else {
 		if int64(reqConfig.Timeout) < r.UsedTime.Milliseconds()+3000 {
-			err = perrors.New(fmt.Sprintf("fmp4切片下载超时s(%d)或许应该大于%d", reqConfig.Timeout/1000, (r.UsedTime.Milliseconds()+4000)/1000), AEFDCTO)
+			err = ActionErrFmp4DownloadCareTO.New(fmt.Sprintf("fmp4切片下载超时s(%d)或许应该大于%d", reqConfig.Timeout/1000, (r.UsedTime.Milliseconds()+4000)/1000))
 		}
 		link.status = 2 // 设置切片状态为下载完成
 		return
@@ -1136,7 +1136,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 							`Connection`: `close`,
 						},
 					})
-					if perrors.Catch(e, AEFDCTO) {
+					if ActionErrFmp4DownloadCareTO.Catch(e) {
 						t.log.L(`W: `, e.Error())
 					} else if e != nil {
 						downErr.Store(true)
@@ -1205,8 +1205,8 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 			unlock()
 
 			if err != nil && !errors.Is(err, io.EOF) {
-				t.log.L(`E: `, err)
-				if perrors.Catch(err, ErrDecode) && skipErrFrame {
+				if ErrDecode.Catch(err) && skipErrFrame {
+					t.log.L(`W: `, err)
 					// 将此切片服务器设置停用
 					// if u, e := url.Parse(cu.Url); e == nil {
 					t.common.DisableLiveAutoByUuid(cu.SerUuid)
