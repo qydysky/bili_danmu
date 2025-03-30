@@ -1,9 +1,11 @@
 package main
 
 import (
+	"context"
+
 	q "github.com/qydysky/bili_danmu"
 )
 
 func main() {
-	q.Start()
+	q.Start(context.Background())
 }

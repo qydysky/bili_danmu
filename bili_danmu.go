@@ -30,7 +30,7 @@ import (
 	ws "github.com/qydysky/part/websocket"
 )
 
-func Start() {
+func Start(ctx context.Context) {
 	danmulog := c.C.Log.Base(`bilidanmu`)
 	danmulog.L(`I: `, `当前PID:`, c.C.PID)
 	danmulog.L(`I: `, "version: ", c.C.Version)
@@ -64,6 +64,10 @@ func Start() {
 		//捕获ctrl+c、容器退出
 		signal.Notify(interrupt, syscall.SIGINT, syscall.SIGTERM)
 		danmulog.L(`I: `, "3s内2次ctrl+c退出")
+		go func() {
+			<-ctx.Done()
+			interrupt <- os.Interrupt
+		}()
 		for {
 			<-interrupt
 			c.C.Danmu_Main_mq.Push_tag(`interrupt`, nil)
@@ -97,6 +101,10 @@ func Start() {
 		reply.KeepMedalLight(mainCtx, c.C)
 		//ass初始化
 		replyFunc.Ass.Init(c.C.K_v.LoadV("Ass"))
+		//rev初始化
+		if c.C.IsOn(`统计营收`) {
+			replyFunc.Rev.Init(danmulog)
+		}
 		// 指定房间录制区间
 		if _, err := recStartEnd.InitF.Run(mainCtx, c.C); err != nil {
 			danmulog.Base("功能", "指定房间录制区间").L(`E: `, err)
@@ -149,6 +157,8 @@ func Start() {
 						common, ok := c.Commons.LoadV(c.C.Roomid).(*c.Common)
 						if ok {
 							common.Rev += rev.Rev
+							// 显示营收
+							replyFunc.Rev.ShowRev(common.Roomid, common.Rev)
 						}
 					}
 					return false

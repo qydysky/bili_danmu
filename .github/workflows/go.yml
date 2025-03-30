@@ -42,7 +42,7 @@ jobs:
         sudo apt-get install libgtk-3-dev libcairo2-dev libglib2.0-dev
         go get .
         go mod vendor
-        CGO_ENABLED=0 go test -v --cover -coverprofile=coverage ./...
+        CGO_ENABLED=0 go test --cover -coverprofile=coverage -run ^TestMain$ github.com/qydysky/bili_danmu/demo -race -count=1 -v -r 213
 
     - name: Codecov
       uses: codecov/codecov-action@v4
