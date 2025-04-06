@@ -187,7 +187,7 @@ func (t *danmuEmotes) PackEmotes(dir string) error {
 				if w == nil {
 					f := file.Open(dir + "emotes.zip")
 					if f.IsExist() {
-						f.Delete()
+						_ = f.Delete()
 					}
 					w = zip.NewWriter(f.File())
 					defer w.Close()
