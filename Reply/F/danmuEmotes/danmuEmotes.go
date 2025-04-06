@@ -177,18 +177,21 @@ func (t *danmuEmotes) Hashr(s string) (r string) {
 }
 
 func (t *danmuEmotes) PackEmotes(dir string) error {
-	f := file.Open(dir + "emotes.zip")
-	if f.IsExist() {
-		f.Delete()
-	}
-	w := zip.NewWriter(f.File())
-	defer w.Close()
+	var w *zip.Writer
 
 	for line := range loadCsv(dir, "0.csv") {
 		r, _ := regexp.Compile(`\[.*?\]`)
 		for _, v := range r.FindAllString(line.Text, -1) {
 			f := file.New(t.Dir+t.Hashr(v)+".png", 0, false)
 			if f.IsExist() {
+				if w == nil {
+					f := file.Open(dir + "emotes.zip")
+					if f.IsExist() {
+						f.Delete()
+					}
+					w = zip.NewWriter(f.File())
+					defer w.Close()
+				}
 				if iw, e := w.Create(t.Hashr(v) + ".png"); e != nil {
 					return e
 				} else if _, e := io.Copy(iw, f); e != nil {
