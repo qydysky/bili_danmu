@@ -127,33 +127,6 @@ func selfcross2(a []string) (float32, string) {
 
 // 功能区
 
-// 显示营收
-func init() {
-	if !IsOn("统计营收") {
-		return
-	}
-	go func() {
-		var ShowRev = make(map[int]float64)
-
-		clog := c.C.Log.Base_add(`营收`)
-		for {
-			if _, ok := ShowRev[c.C.Roomid]; !ok && c.C.Roomid != 0 {
-				ShowRev[c.C.Roomid] = 0
-			}
-			for room, rev := range ShowRev {
-				if c.C.Roomid != room {
-					clog.L(`I: `, fmt.Sprintf("%d ￥%.2f", room, c.C.Rev))
-					delete(ShowRev, room)
-				} else if c.C.Rev != rev {
-					ShowRev[room] = c.C.Rev
-					clog.L(`I: `, fmt.Sprintf("%d ￥%.2f", room, c.C.Rev))
-				}
-			}
-			time.Sleep(time.Minute)
-		}
-	}()
-}
-
 // 获取实例的Common
 func StreamOCommon(roomid int) (array []*c.Common) {
 	if roomid != -1 { //返回特定房间

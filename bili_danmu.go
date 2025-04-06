@@ -30,7 +30,7 @@ import (
 	ws "github.com/qydysky/part/websocket"
 )
 
-func Start() {
+func Start(rootCtx context.Context) {
 	danmulog := c.C.Log.Base(`bilidanmu`)
 	danmulog.L(`I: `, `当前PID:`, c.C.PID)
 	danmulog.L(`I: `, "version: ", c.C.Version)
@@ -97,6 +97,10 @@ func Start() {
 		reply.KeepMedalLight(mainCtx, c.C)
 		//ass初始化
 		replyFunc.Ass.Init(c.C.K_v.LoadV("Ass"))
+		//rev初始化
+		if c.C.IsOn(`统计营收`) {
+			replyFunc.Rev.Init(danmulog)
+		}
 		// 指定房间录制区间
 		if _, err := recStartEnd.InitF.Run(mainCtx, c.C); err != nil {
 			danmulog.Base("功能", "指定房间录制区间").L(`E: `, err)
@@ -149,6 +153,8 @@ func Start() {
 						common, ok := c.Commons.LoadV(c.C.Roomid).(*c.Common)
 						if ok {
 							common.Rev += rev.Rev
+							// 显示营收
+							replyFunc.Rev.ShowRev(common.Roomid, common.Rev)
 						}
 					}
 					return false
@@ -234,7 +240,7 @@ func Start() {
 				common.Rev = 0.0 // 营收
 			}
 
-			exitSign = entryRoom(mainCtx, danmulog.BaseAdd(common.Roomid), common)
+			exitSign = entryRoom(rootCtx, mainCtx, danmulog.BaseAdd(common.Roomid), common)
 
 			common.InIdle = true
 
@@ -248,7 +254,7 @@ func Start() {
 	}
 }
 
-func entryRoom(mainCtx context.Context, danmulog *part.Log_interface, common *c.Common) (exitSign bool) {
+func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, common *c.Common) (exitSign bool) {
 	//附加功能 自动发送即将过期礼物
 	go reply.AutoSend_silver_gift(common)
 	//获取热门榜
@@ -381,14 +387,14 @@ func entryRoom(mainCtx context.Context, danmulog *part.Log_interface, common *c.
 			replyFunc.Danmuji.Danmuji_auto(mainCtx, c.C.K_v.LoadV(`自动弹幕机_内容`).([]any), c.C.K_v.LoadV(`自动弹幕机_发送间隔s`).(float64), reply.Msg_senddanmu)
 		}
 		{ //附加功能 进房间发送弹幕 直播流保存 每日签到
+			F.RoomEntryAction(common.Roomid)
 			// go F.Dosign()
-			go reply.Entry_danmu(common)
+			reply.Entry_danmu(common)
 			if _, e := recStartEnd.RecStartCheck.Run(mainCtx, common); e == nil {
-				go reply.StreamOStart(common, common.Roomid)
+				reply.StreamOStart(common, common.Roomid)
 			} else {
 				danmulog.Base("功能", "指定房间录制区间").L(`I: `, common.Roomid, e)
 			}
-			go F.RoomEntryAction(common.Roomid)
 		}
 
 		//当前ws
@@ -443,9 +449,16 @@ func entryRoom(mainCtx context.Context, danmulog *part.Log_interface, common *c.
 				},
 			})
 
+			danmulog.L(`T: `, "启动完成", common.Uname, `(`, common.Roomid, `)`)
+
 			{
 				cancel, c := wsmsg.Pull_tag_chan(`exit`, 1, mainCtx)
-				<-c
+				select {
+				case <-c:
+				case <-rootCtx.Done():
+					common.Danmu_Main_mq.Push_tag(`interrupt`, nil)
+					<-c
+				}
 				cancel()
 			}
 

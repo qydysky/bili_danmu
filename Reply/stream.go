@@ -43,6 +43,7 @@ import (
 	pstring "github.com/qydysky/part/strings"
 	pu "github.com/qydysky/part/util"
 	pweb "github.com/qydysky/part/web"
+	"slices"
 )
 
 const (
@@ -141,7 +142,7 @@ func (t *m4s_link_item) getNo() (int, error) {
 }
 
 var (
-	AEFDCTO perrors.Action = `ActionErrFmp4DownloadCareTO`
+	ActionErrFmp4DownloadCareTO perrors.Action = `ActionErrFmp4DownloadCareTO`
 )
 
 func (link *m4s_link_item) download(reqPool *pool.Buf[reqf.Req], reqConfig reqf.Rval) (err error) {
@@ -164,7 +165,7 @@ func (link *m4s_link_item) download(reqPool *pool.Buf[reqf.Req], reqConfig reqf.
 		return e
 	} else {
 		if int64(reqConfig.Timeout) < r.UsedTime.Milliseconds()+3000 {
-			err = perrors.New(fmt.Sprintf("fmp4切片下载超时s(%d)或许应该大于%d", reqConfig.Timeout/1000, (r.UsedTime.Milliseconds()+4000)/1000), AEFDCTO)
+			err = ActionErrFmp4DownloadCareTO.New(fmt.Sprintf("fmp4切片下载超时s(%d)或许应该大于%d", reqConfig.Timeout/1000, (r.UsedTime.Milliseconds()+4000)/1000))
 		}
 		link.status = 2 // 设置切片状态为下载完成
 		return
@@ -675,6 +676,8 @@ func (t *M4SStream) getSavepath() {
 	}
 }
 
+var ErrDecode = perrors.Action("ErrDecode")
+
 func (t *M4SStream) saveStream() (e error) {
 	// 清除初始值
 	t.first_buf = nil
@@ -1134,7 +1137,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 							`Connection`: `close`,
 						},
 					})
-					if perrors.Catch(e, AEFDCTO) {
+					if ActionErrFmp4DownloadCareTO.Catch(e) {
 						t.log.L(`W: `, e.Error())
 					} else if e != nil {
 						downErr.Store(true)
@@ -1181,12 +1184,12 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 					}
 				}
 				t.putM4s(cu)
-				download_seq = append(download_seq[:k], download_seq[k+1:]...)
+				download_seq = slices.Delete(download_seq, k, k+1)
 				k -= 1
 				continue
 			} else if t.first_buf == nil {
 				t.putM4s(cu)
-				download_seq = append(download_seq[:k], download_seq[k+1:]...)
+				download_seq = slices.Delete(download_seq, k, k+1)
 				k -= 1
 				continue
 			}
@@ -1195,7 +1198,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 				t.log.L(`E: `, e)
 			}
 			t.putM4s(cu)
-			download_seq = append(download_seq[:k], download_seq[k+1:]...)
+			download_seq = slices.Delete(download_seq, k, k+1)
 			k -= 1
 
 			buff, unlock := buf.GetPureBufRLock()
@@ -1203,18 +1206,18 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 			unlock()
 
 			if err != nil && !errors.Is(err, io.EOF) {
-				t.log.L(`E: `, err)
-				//丢弃所有数据
-				buf.Reset()
-				e = err
-				if skipErrFrame {
+				if ErrDecode.Catch(err) && skipErrFrame {
+					t.log.L(`W: `, err)
 					// 将此切片服务器设置停用
 					// if u, e := url.Parse(cu.Url); e == nil {
 					t.common.DisableLiveAutoByUuid(cu.SerUuid)
 					// t.common.DisableLiveAuto(u.Host)
 					// }
 				} else {
-					return
+					e = err
+					download_seq = download_seq[:0]
+					_ = pctx.CallCancel(t.Status)
+					break
 				}
 			}
 
@@ -1426,6 +1429,45 @@ func (t *M4SStream) Start() bool {
 
 					//保存弹幕
 					go StartRecDanmu(ctx1, ms.GetSavePath())
+
+					//指定房间录制回调
+					if v, ok := ms.common.K_v.LoadV("指定房间录制回调").([]any); ok && len(v) > 0 {
+						l := l.Base(`录制回调`)
+						for i := 0; i < len(v); i++ {
+							if vm, ok := v[i].(map[string]any); ok {
+								if roomid, ok := vm["roomid"].(float64); ok && int(roomid) == ms.common.Roomid {
+									var (
+										durationS, _ = vm["durationS"].(float64)
+										start, _     = vm["start"].([]any)
+									)
+									if len(start) >= 2 && durationS >= 0 {
+										go func() {
+											ctx2, done2 := pctx.WaitCtx(ctx1)
+											defer done2()
+											select {
+											case <-ctx2.Done():
+											case <-time.After(time.Second * time.Duration(durationS)):
+												var cmds []string
+												for i := 0; i < len(start); i++ {
+													if cmd, ok := start[i].(string); ok && cmd != "" {
+														cmds = append(cmds, strings.ReplaceAll(cmd, "{type}", ms.GetStreamType()))
+													}
+												}
+
+												cmd := exec.Command(cmds[0], cmds[1:]...)
+												cmd.Dir = ms.GetSavePath()
+												l.L(`I: `, "启动", cmd.Args)
+												if e := cmd.Run(); e != nil {
+													l.L(`E: `, e)
+												}
+												l.L(`I: `, "结束")
+											}
+										}()
+									}
+								}
+							}
+						}
+					}
 
 					path := ms.GetSavePath() + `0.` + ms.GetStreamType()
 					startT := time.Now()

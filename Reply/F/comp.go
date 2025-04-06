@@ -11,10 +11,16 @@ import (
 	_ "github.com/qydysky/bili_danmu/Reply/F/danmuEmotes"
 	_ "github.com/qydysky/bili_danmu/Reply/F/danmuji"
 	_ "github.com/qydysky/bili_danmu/Reply/F/parseM3u8"
+	_ "github.com/qydysky/bili_danmu/Reply/F/rev"
 	_ "github.com/qydysky/bili_danmu/Reply/F/videoFastSeed"
 	comp "github.com/qydysky/part/component2"
 	log "github.com/qydysky/part/log"
 )
+
+var Rev = comp.Get[interface {
+	Init(l *log.Log_interface)
+	ShowRev(roomid int, rev float64)
+}](`rev`)
 
 var DanmuCountPerMin = comp.Get[interface {
 	// will WriteHeader
