@@ -967,7 +967,11 @@ func init() {
 				ref = u.Query().Get("ref")
 				if ref != "now" {
 					if s, ok := c.C.K_v.LoadV(`直播流保存位置`).(string); ok && s != "" {
-						ref = s + "/" + ref + "/"
+						if strings.HasSuffix(s, "/") || strings.HasSuffix(s, "\\") {
+							ref = s + ref + "/"
+						} else {
+							ref = s + "/" + ref + "/"
+						}
 					}
 				} else {
 					ref = ""
