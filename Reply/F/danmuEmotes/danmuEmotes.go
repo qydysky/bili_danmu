@@ -1,11 +1,19 @@
 package danmuemotes
 
 import (
+	"archive/zip"
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
+	"io/fs"
+	"iter"
+	"regexp"
+	"strconv"
 	"strings"
 
+	"github.com/dustin/go-humanize"
 	c "github.com/qydysky/bili_danmu/CV"
 	comp "github.com/qydysky/part/component2"
 	file "github.com/qydysky/part/file"
@@ -23,6 +31,8 @@ type TargetInterface interface {
 	Hashr(s string) (r string)
 	SetLayerN(n int)
 	IsErrNoEmote(e error) bool
+	PackEmotes(dir string) error
+	GetEmotesDir(dir string) fs.FS
 }
 
 func init() {
@@ -164,4 +174,82 @@ func (t *danmuEmotes) Hashr(s string) (r string) {
 		}
 	}
 	return string(rr)
+}
+
+func (t *danmuEmotes) PackEmotes(dir string) error {
+	f := file.Open(dir + "emotes.zip")
+	if f.IsExist() {
+		f.Delete()
+	}
+	w := zip.NewWriter(f.File())
+	defer w.Close()
+
+	for line := range loadCsv(dir, "0.csv") {
+		r, _ := regexp.Compile(`\[.*?\]`)
+		for _, v := range r.FindAllString(line.Text, -1) {
+			f := file.New(t.Dir+t.Hashr(v)+".png", 0, false)
+			if f.IsExist() {
+				if iw, e := w.Create(t.Hashr(v) + ".png"); e != nil {
+					return e
+				} else if _, e := io.Copy(iw, f); e != nil {
+					return e
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func (t *danmuEmotes) GetEmotesDir(dir string) fs.FS {
+	if dir != "" && file.IsExist(dir+"emotes.zip") {
+		if rc, e := zip.OpenReader(dir + "emotes.zip"); e == nil {
+			return rc
+		}
+	}
+	return file.DirFS(t.Dir)
+}
+
+func loadCsv(savePath string, filename ...string) iter.Seq[Data] {
+	return func(yield func(Data) bool) {
+		csvf := file.New(savePath+append(filename, "0.csv")[0], 0, false)
+		defer csvf.Close()
+
+		if !csvf.IsExist() {
+			return
+		}
+
+		var data = Data{}
+		for i := 0; true; i += 1 {
+			if line, e := csvf.ReadUntil([]byte{'\n'}, humanize.KByte, humanize.MByte); len(line) != 0 {
+				lined := bytes.SplitN(line, []byte{','}, 3)
+				if len(lined) == 3 {
+					if t, e := strconv.ParseFloat(string(lined[0]), 64); e == nil {
+						if e := json.Unmarshal(lined[2], &data); e == nil {
+							data.Time = t
+							if data.Style.Color == "" {
+								data.Style.Color = "#FFFFFF"
+							}
+							if !yield(data) {
+								return
+							}
+						}
+					}
+				}
+			} else if e != nil {
+				break
+			}
+		}
+	}
+}
+
+type DataStyle struct {
+	Color  string `json:"color"`
+	Border bool   `json:"border"`
+	Mode   int    `json:"mode"`
+}
+
+type Data struct {
+	Text  string    `json:"text"`
+	Style DataStyle `json:"style"`
+	Time  float64   `json:"time"`
 }

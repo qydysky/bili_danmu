@@ -2,6 +2,7 @@ package f
 
 import (
 	"context"
+	"io/fs"
 	"iter"
 	"net/http"
 	"time"
@@ -68,4 +69,6 @@ var DanmuEmotes = comp.Get[interface {
 	Hashr(s string) (r string)
 	SetLayerN(n int)
 	IsErrNoEmote(e error) bool
+	PackEmotes(dir string) error
+	GetEmotesDir(dir string) fs.FS
 }](`danmuEmotes`)
