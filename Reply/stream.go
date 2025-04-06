@@ -43,6 +43,7 @@ import (
 	pstring "github.com/qydysky/part/strings"
 	pu "github.com/qydysky/part/util"
 	pweb "github.com/qydysky/part/web"
+	"slices"
 )
 
 const (
@@ -1183,12 +1184,12 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 					}
 				}
 				t.putM4s(cu)
-				download_seq = append(download_seq[:k], download_seq[k+1:]...)
+				download_seq = slices.Delete(download_seq, k, k+1)
 				k -= 1
 				continue
 			} else if t.first_buf == nil {
 				t.putM4s(cu)
-				download_seq = append(download_seq[:k], download_seq[k+1:]...)
+				download_seq = slices.Delete(download_seq, k, k+1)
 				k -= 1
 				continue
 			}
@@ -1197,7 +1198,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 				t.log.L(`E: `, e)
 			}
 			t.putM4s(cu)
-			download_seq = append(download_seq[:k], download_seq[k+1:]...)
+			download_seq = slices.Delete(download_seq, k, k+1)
 			k -= 1
 
 			buff, unlock := buf.GetPureBufRLock()
