@@ -27,6 +27,8 @@ import (
 	c "github.com/qydysky/bili_danmu/CV"
 	F "github.com/qydysky/bili_danmu/F"
 
+	"slices"
+
 	replyFunc "github.com/qydysky/bili_danmu/Reply/F"
 	videoInfo "github.com/qydysky/bili_danmu/Reply/F/videoInfo"
 	pctx "github.com/qydysky/part/ctx"
@@ -43,7 +45,6 @@ import (
 	pstring "github.com/qydysky/part/strings"
 	pu "github.com/qydysky/part/util"
 	pweb "github.com/qydysky/part/web"
-	"slices"
 )
 
 const (
@@ -1431,43 +1432,43 @@ func (t *M4SStream) Start() bool {
 					go StartRecDanmu(ctx1, ms.GetSavePath())
 
 					//指定房间录制回调
-					if v, ok := ms.common.K_v.LoadV("指定房间录制回调").([]any); ok && len(v) > 0 {
-						l := l.Base(`录制回调`)
-						for i := 0; i < len(v); i++ {
-							if vm, ok := v[i].(map[string]any); ok {
-								if roomid, ok := vm["roomid"].(float64); ok && int(roomid) == ms.common.Roomid {
-									var (
-										durationS, _ = vm["durationS"].(float64)
-										start, _     = vm["start"].([]any)
-									)
-									if len(start) >= 2 && durationS >= 0 {
-										go func() {
-											ctx2, done2 := pctx.WaitCtx(ctx1)
-											defer done2()
-											select {
-											case <-ctx2.Done():
-											case <-time.After(time.Second * time.Duration(durationS)):
-												var cmds []string
-												for i := 0; i < len(start); i++ {
-													if cmd, ok := start[i].(string); ok && cmd != "" {
-														cmds = append(cmds, strings.ReplaceAll(cmd, "{type}", ms.GetStreamType()))
-													}
-												}
+					// if v, ok := ms.common.K_v.LoadV("指定房间录制回调").([]any); ok && len(v) > 0 {
+					// 	l := l.Base(`录制回调`)
+					// 	for i := 0; i < len(v); i++ {
+					// 		if vm, ok := v[i].(map[string]any); ok {
+					// 			if roomid, ok := vm["roomid"].(float64); ok && int(roomid) == ms.common.Roomid {
+					// 				var (
+					// 					durationS, _ = vm["durationS"].(float64)
+					// 					start, _     = vm["start"].([]any)
+					// 				)
+					// 				if len(start) >= 2 && durationS >= 0 {
+					// 					go func() {
+					// 						ctx2, done2 := pctx.WaitCtx(ctx1)
+					// 						defer done2()
+					// 						select {
+					// 						case <-ctx2.Done():
+					// 						case <-time.After(time.Second * time.Duration(durationS)):
+					// 							var cmds []string
+					// 							for i := 0; i < len(start); i++ {
+					// 								if cmd, ok := start[i].(string); ok && cmd != "" {
+					// 									cmds = append(cmds, strings.ReplaceAll(cmd, "{type}", ms.GetStreamType()))
+					// 								}
+					// 							}
 
-												cmd := exec.Command(cmds[0], cmds[1:]...)
-												cmd.Dir = ms.GetSavePath()
-												l.L(`I: `, "启动", cmd.Args)
-												if e := cmd.Run(); e != nil {
-													l.L(`E: `, e)
-												}
-												l.L(`I: `, "结束")
-											}
-										}()
-									}
-								}
-							}
-						}
-					}
+					// 							cmd := exec.Command(cmds[0], cmds[1:]...)
+					// 							cmd.Dir = ms.GetSavePath()
+					// 							l.L(`I: `, "启动", cmd.Args)
+					// 							if e := cmd.Run(); e != nil {
+					// 								l.L(`E: `, e)
+					// 							}
+					// 							l.L(`I: `, "结束")
+					// 						}
+					// 					}()
+					// 				}
+					// 			}
+					// 		}
+					// 	}
+					// }
 
 					path := ms.GetSavePath() + `0.` + ms.GetStreamType()
 					startT := time.Now()
