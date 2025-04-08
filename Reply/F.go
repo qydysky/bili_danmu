@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"net"
 	"net/http"
 	"net/http/pprof"
@@ -961,19 +962,34 @@ func init() {
 				return
 			}
 
-			f := file.New("emots/"+strings.TrimPrefix(r.URL.Path, spath+"emots/"), 0, true).CheckRoot("emots/")
-			if !f.IsExist() {
+			ref := ""
+			if u, e := url.Parse(r.Header.Get("Referer")); e == nil {
+				ref = u.Query().Get("ref")
+				if ref != "now" {
+					if s, ok := c.C.K_v.LoadV(`直播流保存位置`).(string); ok && s != "" {
+						if strings.HasSuffix(s, "/") || strings.HasSuffix(s, "\\") {
+							ref = s + ref + "/"
+						} else {
+							ref = s + "/" + ref + "/"
+						}
+					}
+				} else {
+					ref = ""
+				}
+			}
+			emoteDir := replyFunc.DanmuEmotes.GetEmotesDir(ref)
+
+			if f, e := emoteDir.Open(strings.TrimPrefix(r.URL.Path, spath+"emots/")); e != nil {
+				if errors.Is(e, fs.ErrNotExist) {
+					w.WriteHeader(http.StatusNotFound)
+				} else {
+					w.WriteHeader(http.StatusBadRequest)
+				}
+			} else if info, e := f.Stat(); e != nil {
 				w.WriteHeader(http.StatusNotFound)
-				return
+			} else if !pweb.NotModified(r, w, info.ModTime()) {
+				_, _ = io.Copy(w, f)
 			}
-
-			// mod
-			if info, e := f.Stat(); e == nil && pweb.NotModified(r, w, info.ModTime()) {
-				return
-			}
-
-			b, _ := f.ReadAll(humanize.KByte, humanize.MByte)
-			_, _ = w.Write(b)
 		})
 
 		// 直播流播放器
@@ -1436,6 +1452,11 @@ func StartRecDanmu(ctx context.Context, filePath string) {
 
 	// Ass
 	replyFunc.Ass.ToAss(filePath)
+
+	// emots
+	if e := replyFunc.DanmuEmotes.PackEmotes(filePath); e != nil {
+		msglog.L(`E: `, e)
+	}
 
 	Recoder.Stop()
 }
