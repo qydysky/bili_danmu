@@ -256,7 +256,7 @@ func Start(rootCtx context.Context) {
 
 func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, common *c.Common) (exitSign bool) {
 	//附加功能 自动发送即将过期礼物
-	go reply.AutoSend_silver_gift(common)
+	reply.AutoSend_silver_gift(common)
 	//获取热门榜
 	F.Get(common).Get(`Note`)
 
