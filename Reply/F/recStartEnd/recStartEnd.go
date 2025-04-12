@@ -108,7 +108,7 @@ type StreamCtl struct {
 	C       *c.Common
 	Commons *psync.Map
 	State   func(int) bool
-	Start   func(*c.Common, int)
+	Start   func(int)
 	End     func(int)
 	Cut     func(int)
 }
@@ -155,7 +155,7 @@ func setNextFunc() {
 							streamCtl.Cut(roomId)
 						} else {
 							logg.L(`T: `, "开始", roomId)
-							streamCtl.Start(common, roomId)
+							streamCtl.Start(roomId)
 						}
 						time.Sleep(time.Second * 5)
 						break

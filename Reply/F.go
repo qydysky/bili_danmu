@@ -150,11 +150,16 @@ func StreamOStatus(roomid int) (Islive bool) {
 }
 
 // 开始实例
-func StreamOStart(common *c.Common, roomid int) {
+func StreamOStart(roomid int) {
 	if StreamOStatus(roomid) {
 		flog.L(`W: `, `已录制 `+strconv.Itoa(roomid)+` 不能重复录制`)
 		return
 	}
+
+	common, _ := c.CommonsLoadOrInit.LoadOrInitPThen(roomid)(func(actual *c.Common, loaded bool) (*c.Common, bool) {
+		actual.Roomid = roomid
+		return actual, loaded
+	})
 
 	if tmp, e := NewM4SStream(common); e != nil {
 		flog.L(`E: `, e)

@@ -894,16 +894,14 @@ var C = new(Common).Init()
 // https://datatracker.ietf.org/doc/html/draft-pantos-http-live-streaming
 var StreamO = new(sync.Map)
 var Commons = new(syncmap.Map)
-var CommonsLoadOrStore = syncmap.LoadOrStoreFunc[Common]{
-	Init: func() *Common {
-		return C.Copy()
-	},
-}
+var CommonsLoadOrInit = syncmap.NewLoadOrInitFunc[Common](Commons).SetInit(func() *Common {
+	return C.Copy()
+})
 
 // 消息队列
 type Danmu_Main_mq_item struct {
 	Class string
-	Data  interface{}
+	Data  any
 }
 
 // Web服务响应格式
