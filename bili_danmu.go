@@ -233,12 +233,22 @@ func Start(rootCtx context.Context) {
 			// 获取房间实际id
 			c.C.Roomid = F.GetRoomRealId(c.C.Roomid)
 
-			common, loaded := c.CommonsLoadOrStore.LoadOrStoreP(c.Commons, c.C.Roomid)
+			common, _ := c.CommonsLoadOrInit.LoadOrInitPThen(c.C.Roomid)(func(actual *c.Common, loaded bool) (*c.Common, bool) {
+				if loaded {
+					actual.InIdle = false
+					actual.Rev = 0.0 // 营收
+				} else {
+					actual.Roomid = c.C.Roomid
+				}
+				return actual, loaded
+			})
 
-			if loaded {
-				common.InIdle = false
-				common.Rev = 0.0 // 营收
-			}
+			// if loaded {
+			// 	common.InIdle = false
+			// 	common.Rev = 0.0 // 营收
+			// } else {
+			// 	common.Roomid = c.C.Roomid
+			// }
 
 			exitSign = entryRoom(rootCtx, mainCtx, danmulog.BaseAdd(common.Roomid), common)
 
@@ -391,7 +401,7 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, c
 			// go F.Dosign()
 			reply.Entry_danmu(common)
 			if _, e := recStartEnd.RecStartCheck.Run(mainCtx, common); e == nil {
-				reply.StreamOStart(common, common.Roomid)
+				reply.StreamOStart(common.Roomid)
 			} else {
 				danmulog.Base("功能", "指定房间录制区间").L(`I: `, common.Roomid, e)
 			}

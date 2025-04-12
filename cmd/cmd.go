@@ -76,8 +76,7 @@ func Cmd() {
 						if reply.StreamOStatus(room) {
 							reply.StreamOStop(room)
 						} else {
-							common, _ := c.CommonsLoadOrStore.LoadOrStoreP(c.Commons, room)
-							reply.StreamOStart(common, room)
+							reply.StreamOStart(room)
 						}
 						continue
 					}
@@ -88,8 +87,7 @@ func Cmd() {
 					if reply.StreamOStatus(c.C.Roomid) {
 						reply.StreamOStop(c.C.Roomid)
 					} else {
-						common, _ := c.Commons.LoadV(c.C.Roomid).(*c.Common)
-						reply.StreamOStart(common, c.C.Roomid)
+						reply.StreamOStart(c.C.Roomid)
 					}
 				}
 				continue
@@ -103,7 +101,7 @@ func Cmd() {
 
 				fmt.Print("\n")
 				if room, ok := liveList[inputs]; ok {
-					c.C.Roomid = room
+					// c.C.Roomid = room
 					c.C.Danmu_Main_mq.Push_tag(`change_room`, room)
 					continue
 				} else {
@@ -220,7 +218,7 @@ func Cmd() {
 			}
 			//直接进入房间
 			if room, err := strconv.Atoi(inputs[1:]); err == nil {
-				c.C.Roomid = room
+				// c.C.Roomid = room
 				cmdlog.L(`I: `, "进入房间", room)
 				c.C.Danmu_Main_mq.Push_tag(`change_room`, room)
 				continue
