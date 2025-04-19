@@ -29,6 +29,7 @@ var Msg_map = map[string]func(replyF, string){
 	`REVENUE_RANK_CHANGED`:                 nil,
 	`CHG_RANK_REFRESH`:                     nil,
 	`RANK_CHANGED`:                         replyF.rank_changed, //热门榜变动
+	`RANK_CHANGED_V2`:                      replyF.rank_changed, //热门榜变动V2
 	`LIVE_MULTI_VIEW_NEW_INFO`:             nil,
 	`POPULARITY_RANK_TAB_CHG`:              nil,
 	`POPULAR_RANK_GUIDE_CARD`:              nil, //投喂一个人气票帮助主播打榜
