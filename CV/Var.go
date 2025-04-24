@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	_ "embed"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"flag"
 	"fmt"
@@ -23,7 +24,7 @@ import (
 	"github.com/dustin/go-humanize"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/jackc/pgx/v5/stdlib"
-	crypto "github.com/qydysky/part/crypto"
+	pca "github.com/qydysky/part/crypto/asymmetric"
 	pctx "github.com/qydysky/part/ctx"
 	file "github.com/qydysky/part/file"
 	log "github.com/qydysky/part/log"
@@ -388,13 +389,13 @@ func (t *Common) Init() *Common {
 	flag.Parse()
 
 	if *genKey {
-		if pri, pub, e := crypto.NewKey(); e != nil {
+		if pri, pub, e := pca.MlkemF.NewKey(); e != nil {
 			panic(e)
 		} else {
 			fmt.Println("公钥：")
-			fmt.Println(string(pub))
+			fmt.Println(string(pem.EncodeToMemory(pub)))
 			fmt.Println("私钥：")
-			fmt.Println(string(pri))
+			fmt.Println(string(pem.EncodeToMemory(pri)))
 			fmt.Println("请复制以上公私钥并另存为文件,可以在cookie加密公钥、cookie解密私钥中使用")
 			os.Exit(0)
 		}
