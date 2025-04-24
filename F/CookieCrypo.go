@@ -18,6 +18,7 @@ var (
 	clog       = c.C.Log.Base(`cookie加密`)
 	pub        []byte
 	pri        []byte
+	cookie     []byte
 	cookieLock sync.RWMutex
 	sym        = pcs.Chacha20poly1305F
 )
@@ -27,6 +28,13 @@ func CookieGet(path string) []byte {
 
 	cookieLock.RLock()
 	defer cookieLock.RUnlock()
+
+	if len(cookie) > 0 {
+		clog.L(`T: `, `从内存中获取cookie`)
+		return cookie
+	} else {
+		clog.L(`T: `, `从文件中获取cookie`)
+	}
 
 	if len(pri) == 0 {
 		if priS, ok := c.C.K_v.LoadV(`cookie解密私钥`).(string); ok && priS != `` {
@@ -92,6 +100,9 @@ func CookieSet(path string, source []byte) {
 
 	cookieLock.Lock()
 	defer cookieLock.Unlock()
+
+	cookie = source
+	clog.L(`T: `, `保存cookie到文件`)
 
 	if len(pub) == 0 {
 		if pubS, ok := c.C.K_v.LoadV(`cookie加密公钥`).(string); ok && pubS != `` {
