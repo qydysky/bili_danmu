@@ -1,13 +1,15 @@
 package F
 
 import (
+	"encoding/pem"
 	"fmt"
 	"io"
 	"os"
 	"sync"
 
 	c "github.com/qydysky/bili_danmu/CV"
-	crypto "github.com/qydysky/part/crypto"
+	pca "github.com/qydysky/part/crypto/asymmetric"
+	pcs "github.com/qydysky/part/crypto/symmetric"
 	file "github.com/qydysky/part/file"
 )
 
@@ -16,7 +18,9 @@ var (
 	clog       = c.C.Log.Base(`cookie加密`)
 	pub        []byte
 	pri        []byte
+	cookie     []byte
 	cookieLock sync.RWMutex
+	sym        = pcs.Chacha20poly1305F
 )
 
 func CookieGet(path string) []byte {
@@ -24,6 +28,13 @@ func CookieGet(path string) []byte {
 
 	cookieLock.RLock()
 	defer cookieLock.RUnlock()
+
+	if len(cookie) > 0 {
+		clog.L(`T: `, `从内存中获取cookie`)
+		return cookie
+	} else {
+		clog.L(`T: `, `从文件中获取cookie`)
+	}
 
 	if len(pri) == 0 {
 		if priS, ok := c.C.K_v.LoadV(`cookie解密私钥`).(string); ok && priS != `` {
@@ -65,18 +76,18 @@ func CookieGet(path string) []byte {
 		clog.L(`E: `, e, `cookie保存格式`)
 		return []byte{}
 	} else if string(d[:6]) == `t=pem;` {
-		if s, e := crypto.Decrypt(d[6:], pri); e != nil {
+		priKey, _ := pem.Decode(pri)
+		if dec, e := pca.ChoseAsymmetricByPem(priKey).Decrypt(priKey); e != nil {
 			clog.L(`E: `, e)
 			return []byte{}
 		} else {
-			return s
-		}
-	} else if string(d[:3]) == `pem` {
-		if s, e := crypto.Decrypt(d[3:], pri); e != nil {
-			clog.L(`E: `, e)
-			return []byte{}
-		} else {
-			return s
+			b, ext := pca.Unpack(d[6:])
+			if s, e := dec(sym, b, ext); e != nil {
+				clog.L(`E: `, e)
+				return []byte{}
+			} else {
+				return s
+			}
 		}
 	} else {
 		clog.L(`E: `, e, `cookie保存格式:`, string(d[:6]))
@@ -89,6 +100,9 @@ func CookieSet(path string, source []byte) {
 
 	cookieLock.Lock()
 	defer cookieLock.Unlock()
+
+	cookie = append(cookie[:0], source...)
+	clog.L(`T: `, `保存cookie到文件`)
 
 	if len(pub) == 0 {
 		if pubS, ok := c.C.K_v.LoadV(`cookie加密公钥`).(string); ok && pubS != `` {
@@ -105,13 +119,19 @@ func CookieSet(path string, source []byte) {
 			return
 		}
 	}
-	if source, e := crypto.Encrypt(source, pub); e != nil {
+	pubKey, _ := pem.Decode(pub)
+	if enc, e := pca.ChoseAsymmetricByPem(pubKey).Encrypt(pubKey); e != nil {
 		clog.L(`E: `, e)
 		return
 	} else {
-		f := file.New(path, 0, true)
-		_ = f.Delete()
-		_, _ = f.Write(append([]byte("t=pem;"), source...), true)
+		if b, ext, e := enc(sym, source); e != nil {
+			clog.L(`E: `, e)
+			return
+		} else {
+			f := file.New(path, 0, true)
+			_ = f.Delete()
+			_, _ = f.Write(append([]byte("t=pem;"), pca.Pack(b, ext)...), true)
+		}
 	}
 }
 

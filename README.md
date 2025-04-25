@@ -987,6 +987,17 @@ Asaki大人 开心鸭鸭杀 直播中
 还支持登录、搜索主播直播间、查看历史记录、查看关注的直播间、保存直播流等功能
 
 #### cookie加密
+在(>0.16.9)，添加对于`mlkem`的算法支持，`-genKey`默认将产生`mlkem`算法公私钥。保留对`X25519`算法(<=0.16.9)产生的cookie加解密的支持，`demo/`下的(public.pem)(private.pem)默认更新为`mlkem`格式。
+
+如需更新密钥（如从`X25519`转换到`mlkem`），而不重新登陆，参考如下步骤：
+
+- 在非正式环境，使用`-genKey`命令行参数生成新密钥。注：此命令行参数仅需要主程序(如`main`/`main.exe`)，无需其他资源文件即可生成
+- 拷贝步骤1命令行打印的新公钥到正式环境的`cookie加密公钥`文件
+- 确保你正式环境的主程序版本已大于>0.16.9
+- 启动正式环境程序，这将使用旧私钥读取cookie并用新公钥加密cookie
+- 拷贝步骤1命令行打印的新私钥到正式环境的`cookie解密私钥`文件
+- 更新完成
+
 *使用X25519和chacha20poly1305*(>v0.14.15) 保护cookie.txt
 
 在`demo/config/config_K_v.json`中可找到配置项
@@ -1006,14 +1017,47 @@ Asaki大人 开心鸭鸭杀 直播中
 main(main.exe) -genKey
 
 公钥：
------BEGIN ECDH PUBLIC KEY-----
-tvdVdbI7DTlRcyE44va7zXhi5rewxcm44/Dmp8DMnGY=
------END ECDH PUBLIC KEY-----
+-----BEGIN MLKEM PUBLIC KEY-----
+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
+-----END MLKEM PUBLIC KEY-----
 
 私钥：
------BEGIN ECDH PRIVATE KEY-----
-xrWweTO5upvzDha6WrEBQKkToUYLyMCI7An2btRqop0=
------END ECDH PRIVATE KEY-----
+-----BEGIN MLKEM PRIVATE KEY-----
+6lJ+OzINP4QmpqKFtlCi5lFHaYneWpfjBkU6xlnrlmMCFBRn1tlYQVf91HT9IOEh
+kuDE/k1SerQNHYP7oBVRsw==
+-----END MLKEM PRIVATE KEY-----
 
 请复制以上公私钥并另存为文件,可以在cookie加密公钥、cookie解密私钥中使用
 ```
