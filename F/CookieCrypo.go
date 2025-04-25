@@ -101,7 +101,7 @@ func CookieSet(path string, source []byte) {
 	cookieLock.Lock()
 	defer cookieLock.Unlock()
 
-	cookie = source
+	cookie = append(cookie[:0], source...)
 	clog.L(`T: `, `保存cookie到文件`)
 
 	if len(pub) == 0 {
