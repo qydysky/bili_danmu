@@ -17,17 +17,17 @@ import (
 var (
 	clog       = c.C.Log.Base(`cookie加密`)
 	pub        []byte
-	pri        []byte
 	cookie     []byte
 	cookieLock sync.RWMutex
 	sym        = pcs.Chacha20poly1305F
 )
 
+// 需要先判断path存在cookie文件
 func CookieGet(path string) []byte {
 	clog := clog.Base_add(`获取`)
 
-	cookieLock.RLock()
-	defer cookieLock.RUnlock()
+	cookieLock.Lock()
+	defer cookieLock.Unlock()
 
 	if len(cookie) > 0 {
 		clog.L(`T: `, `从内存中获取cookie`)
@@ -36,62 +36,69 @@ func CookieGet(path string) []byte {
 		clog.L(`T: `, `从文件中获取cookie`)
 	}
 
-	if len(pri) == 0 {
-		if priS, ok := c.C.K_v.LoadV(`cookie解密私钥`).(string); ok && priS != `` {
-			if d, e := FileLoad(priS); e != nil {
-				clog.L(`E: `, e)
-				return []byte{}
-			} else {
-				pri = d
-			}
-		} else if pubS, ok := c.C.K_v.LoadV(`cookie加密公钥`).(string); ok && pubS != `` {
-			priS := ``
-			fmt.Printf("cookie密钥路径: ")
-			_, err := fmt.Scanln(&priS)
-			if err != nil {
-				clog.L(`E: `, "输入错误", err)
-				return []byte{}
-			}
-			if d, e := FileLoad(priS); e != nil {
-				clog.L(`E: `, e)
-				return []byte{}
-			} else {
-				pri = d
-			}
-		} else {
-			if d, e := FileLoad(path); e != nil {
-				clog.L(`E: `, e, `cookie保存格式`)
-				return []byte{}
-			} else if string(d[:6]) == `t=nol;` {
-				return d[6:]
-			} else if string(d[:3]) == `nol` {
-				return d[3:]
-			} else {
-				clog.L(`E: `, e, `cookie保存格式:`, string(d[:6]))
-				return []byte{}
-			}
+	var cookieB []byte
+	defer clear(cookieB)
+
+	if d, e := FileLoad(path); e != nil {
+		clog.L(`E: `, `cookie读取错误`, e)
+		return []byte{}
+	} else {
+		switch string(d[:6]) {
+		case `t=nol;`:
+			cookie = d[6:]
+			return d[6:]
+		case `t=pem;`:
+			cookieB = d[6:]
+		default:
+			clog.L(`E: `, `未知的cookie保存格式:`, string(d[:6]))
+			return []byte{}
 		}
 	}
-	if d, e := FileLoad(path); e != nil {
-		clog.L(`E: `, e, `cookie保存格式`)
-		return []byte{}
-	} else if string(d[:6]) == `t=pem;` {
-		priKey, _ := pem.Decode(pri)
-		if dec, e := pca.ChoseAsymmetricByPem(priKey).Decrypt(priKey); e != nil {
-			clog.L(`E: `, e)
+
+	var pri []byte
+	defer clear(pri)
+
+	if priS, ok := c.C.K_v.LoadV(`cookie解密私钥`).(string); ok && priS != `` {
+		if d, e := FileLoad(priS); e != nil {
+			clog.L(`E: `, `cookie私钥读取错误`, e)
 			return []byte{}
 		} else {
-			b, ext := pca.Unpack(d[6:])
-			if s, e := dec(sym, b, ext); e != nil {
-				clog.L(`E: `, e)
-				return []byte{}
-			} else {
-				return s
-			}
+			pri = d
 		}
 	} else {
-		clog.L(`E: `, e, `cookie保存格式:`, string(d[:6]))
+		priS = ``
+		fmt.Printf("cookie密钥路径: ")
+		_, err := fmt.Scanln(&priS)
+		if err != nil {
+			clog.L(`E: `, "输入错误", err)
+			return []byte{}
+		}
+		if d, e := FileLoad(priS); e != nil {
+			clog.L(`E: `, `cookie私钥读取错误`, e)
+			return []byte{}
+		} else {
+			pri = d
+		}
+	}
+
+	priKey, _ := pem.Decode(pri)
+	defer clear(priKey.Bytes)
+
+	if dec, e := pca.ChoseAsymmetricByPem(priKey).Decrypt(priKey); e != nil {
+		clog.L(`E: `, `cookie私钥错误`, e)
 		return []byte{}
+	} else {
+		b, ext := pca.Unpack(cookieB)
+		defer clear(b)
+		defer clear(ext)
+
+		if s, e := dec(sym, b, ext); e != nil {
+			clog.L(`E: `, `cookie私钥解密错误`, e)
+			return []byte{}
+		} else {
+			cookie = s
+			return s
+		}
 	}
 }
 

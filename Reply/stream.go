@@ -285,8 +285,12 @@ func (t *M4SStream) fetchCheckStream() bool {
 	if v, ok := t.common.K_v.LoadV("直播流仅清晰度").(bool); ok && v {
 		if _, ok := t.common.Qn[t.config.want_qn]; ok {
 			if t.config.want_qn != t.common.Live_qn {
-				_log.L(`W: `, `仅清晰度true,当前清晰度`, t.common.Qn[t.common.Live_qn])
-				return false
+				if t.common.Login {
+					_log.L(`W: `, `仅清晰度true,当前清晰度`, t.common.Qn[t.common.Live_qn])
+					return false
+				} else {
+					_log.L(`W: `, `未登陆,忽略仅清晰度true,当前清晰度`, t.common.Qn[t.common.Live_qn])
+				}
 			}
 		}
 	}
