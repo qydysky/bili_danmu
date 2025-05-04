@@ -17,6 +17,7 @@ var msglog = c.C.Log.Base(`Msg`)
 
 // Msg类型数据处理方法map
 var Msg_map = map[string]func(replyF, string){
+	`RECALL_DANMU_MSG`:                     nil,
 	`master_qn_strategy_chg`:               nil,
 	`COMMON_ANIMATION`:                     nil,
 	`UNIVERSAL_EVENT_GIFT`:                 nil,
