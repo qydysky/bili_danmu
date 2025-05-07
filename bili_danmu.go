@@ -409,7 +409,8 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, c
 		}); len(missKey) == 0 && reply.IsOn("自动弹幕机") {
 			//附加功能 弹幕机 无cookie无法发送弹幕
 			replyFunc.Danmuji.Danmuji_auto(ctx, c.C.K_v.LoadV(`自动弹幕机_内容`).([]any), c.C.K_v.LoadV(`自动弹幕机_发送间隔s`).(float64), reply.Msg_senddanmu)
-			// 附加功能 保持牌子点亮
+		}
+		{ //附加功能 进房间发送弹幕 直播流保存 每日签到
 			F.RoomEntryAction(common.Roomid)
 			// go F.Dosign()
 			reply.Entry_danmu(common)
