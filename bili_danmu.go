@@ -305,6 +305,7 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, c
 		danmulog.L(`T: `, "连接 "+v)
 		u, _ := url.Parse(v)
 		ws_c, err := ws.New_client(&ws.Client{
+			BufSize:           50,
 			Url:               v,
 			TO:                (heartinterval + 5) * 1000,
 			Proxy:             common.Proxy,
@@ -343,13 +344,18 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, c
 		// auth
 		{
 			wsmsg.PushLock_tag(`send`, &ws.WsMsg{
-				Msg: F.HelloGen(common.Roomid, common.Token),
+				Msg: func(f func([]byte) error) error {
+					return f(F.HelloGen(common.Roomid, common.Token))
+				},
 			})
 			waitCheckAuth, cancel := context.WithTimeout(ctx, 5*time.Second)
 			doneAuth := wsmsg.Pull_tag_only(`rec`, func(wm *ws.WsMsg) (disable bool) {
-				if F.HelloChe(wm.Msg) {
+				_ = wm.Msg(func(b []byte) error {
+					if F.HelloChe(b) {
 					cancel()
 				}
+					return nil
+				})
 				return true
 			})
 			<-waitCheckAuth.Done()
@@ -378,7 +384,12 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, c
 		// 处理ws消息
 		var cancelDeal = wsmsg.Pull_tag(map[string]func(*ws.WsMsg) (disable bool){
 			`rec`: func(wm *ws.WsMsg) (disable bool) {
-				go reply.Reply(common, wm.Msg)
+				go func() {
+					_ = wm.Msg(func(b []byte) error {
+						reply.Reply(common, b)
+						return nil
+					})
+				}()
 				return false
 			},
 			`close`: func(_ *ws.WsMsg) (disable bool) {
@@ -391,7 +402,9 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, c
 			danmulog.L(`T: `, "获取人气")
 			for !ws_c.Isclose() {
 				wsmsg.Push_tag(`send`, &ws.WsMsg{
-					Msg: heartbeatmsg,
+					Msg: func(f func([]byte) error) error {
+						return f(heartbeatmsg)
+					},
 				})
 				time.Sleep(time.Millisecond * time.Duration(heartinterval*1000))
 			}

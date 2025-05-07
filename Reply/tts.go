@@ -373,51 +373,56 @@ func init() {
 			var buf []byte
 			wait, cancel := context.WithCancel(context.Background())
 
+			var someErr = errors.New(`someErr`)
 			wsc.Pull_tag_only(`rec`, func(wm *ws.WsMsg) (disable bool) {
-				if len(wm.Msg) == 0 {
-					cancel()
-					return true
-				}
-
-				var partS struct {
-					Code    int    `json:"code"`
-					Message string `json:"message"`
-					Sid     string `json:"sid"`
-					Data    struct {
-						Audio  string `json:"audio"`
-						Ced    string `json:"ced"`
-						Status int    `json:"status"`
-					} `json:"data"`
-				}
-				if e := json.Unmarshal(wm.Msg, &partS); e != nil {
-					tts_log.L(`E: `, "错误", e, wm.Msg)
-					xfwsClient.Close()
-					return
-				} else {
-					if partS.Code != 0 {
-						tts_log.L(`W: `, fmt.Sprintf("code:%d msg:%s", partS.Code, partS.Message))
+				return wm.Msg(func(b []byte) error {
+					if len(b) == 0 {
 						cancel()
-						return true
+						return someErr
 					}
-					if partS.Data.Audio != "" {
-						if part, e := base64.StdEncoding.DecodeString(partS.Data.Audio); e != nil {
-							tts_log.L(`E: `, "错误", e)
+
+					var partS struct {
+						Code    int    `json:"code"`
+						Message string `json:"message"`
+						Sid     string `json:"sid"`
+						Data    struct {
+							Audio  string `json:"audio"`
+							Ced    string `json:"ced"`
+							Status int    `json:"status"`
+						} `json:"data"`
+					}
+					if e := json.Unmarshal(b, &partS); e != nil {
+						tts_log.L(`E: `, "错误", e, b)
+						xfwsClient.Close()
+						return nil
+					} else {
+						if partS.Code != 0 {
+							tts_log.L(`W: `, fmt.Sprintf("code:%d msg:%s", partS.Code, partS.Message))
 							cancel()
-							return true
-						} else {
-							buf = append(buf, part...)
+							return someErr
+						}
+						if partS.Data.Audio != "" {
+							if part, e := base64.StdEncoding.DecodeString(partS.Data.Audio); e != nil {
+								tts_log.L(`E: `, "错误", e)
+								cancel()
+								return someErr
+							} else {
+								buf = append(buf, part...)
+							}
+						}
+						if partS.Data.Status == 2 {
+							cancel()
+							return someErr
 						}
 					}
-					if partS.Data.Status == 2 {
-						cancel()
-						return true
-					}
-				}
-				return false
+					return nil
+				}) != nil
 			})
 
 			wsc.Push_tag(`send`, &ws.WsMsg{
-				Msg: b,
+				Msg: func(f func([]byte) error) error {
+					return f(b)
+				},
 			})
 
 			<-wait.Done()
