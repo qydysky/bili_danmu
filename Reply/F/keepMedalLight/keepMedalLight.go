@@ -66,8 +66,8 @@ func (t *keepMedalLight) Do(prefer ...string) {
 
 	if len(prefer) > 0 {
 		waitToSend = prefer[0]
-	} else if d, ok := t.hisPointTime.Value.(time.Time); ok && time.Since(d) < time.Hour*24*3 {
-		// 环中最后一个时间在3天内
+	} else if d, ok := t.hisPointTime.Value.(time.Time); ok && time.Since(d) < time.Hour*24 {
+		// 环中最后一个时间在1天内
 		return
 	} else if d, ok := t.hisPointTime.Prev().Value.(time.Time); ok && time.Since(d) < time.Second*100 {
 		// 100s最多发一次
