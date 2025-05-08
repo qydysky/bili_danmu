@@ -11,12 +11,19 @@ import (
 	_ "github.com/qydysky/bili_danmu/Reply/F/danmuCountPerMin"
 	_ "github.com/qydysky/bili_danmu/Reply/F/danmuEmotes"
 	_ "github.com/qydysky/bili_danmu/Reply/F/danmuji"
+	_ "github.com/qydysky/bili_danmu/Reply/F/keepMedalLight"
 	_ "github.com/qydysky/bili_danmu/Reply/F/parseM3u8"
 	_ "github.com/qydysky/bili_danmu/Reply/F/rev"
 	_ "github.com/qydysky/bili_danmu/Reply/F/videoFastSeed"
 	comp "github.com/qydysky/part/component2"
 	log "github.com/qydysky/part/log"
 )
+
+var KeepMedalLight = comp.Get[interface {
+	Init(L *log.Log_interface, Roomid int, SendDanmu func(danmu string, RoomID int) error, PreferDanmu any)
+	Clear()
+	Do(prefer ...string)
+}](`keepMedalLight`)
 
 var Rev = comp.Get[interface {
 	Init(l *log.Log_interface)

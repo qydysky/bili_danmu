@@ -23,6 +23,7 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
+	p "github.com/qydysky/part"
 	psql "github.com/qydysky/part/sql"
 	_ "modernc.org/sqlite"
 
@@ -31,11 +32,9 @@ import (
 	F "github.com/qydysky/bili_danmu/F"
 	replyFunc "github.com/qydysky/bili_danmu/Reply/F"
 	"github.com/qydysky/bili_danmu/Reply/F/danmuXml"
-	"github.com/qydysky/bili_danmu/Reply/F/keepMedalLight"
 	videoInfo "github.com/qydysky/bili_danmu/Reply/F/videoInfo"
 	send "github.com/qydysky/bili_danmu/Send"
 
-	p "github.com/qydysky/part"
 	compress "github.com/qydysky/part/compress"
 	pctx "github.com/qydysky/part/ctx"
 	file "github.com/qydysky/part/file"
@@ -602,62 +601,9 @@ func Entry_danmu(common *c.Common) {
 			return
 		}
 	}
-	if array, ok := common.K_v.LoadV(`进房弹幕_内容`).([]interface{}); ok && len(array) != 0 {
+	if array, ok := common.K_v.LoadV(`进房弹幕_内容`).([]any); ok && len(array) != 0 {
 		rand := p.Rand().MixRandom(0, int64(len(array)-1))
-		_ = send.Danmu_s(array[rand].(string), common.Roomid)
-	}
-}
-
-// 保持所有牌子点亮
-func KeepMedalLight(ctx context.Context, common *c.Common) {
-	if v, _ := common.K_v.LoadV(`保持牌子亮着`).(bool); !v {
-		return
-	}
-
-	v, _ := common.K_v.LoadV(`保持牌子亮着_指定时间`).(string)
-	if v == "" {
-		v = "00:00:00"
-	}
-
-	flog := flog.Base_add(`保持亮牌`)
-	if tt, e := time.Parse(time.TimeOnly, v); e != nil {
-		flog.L(`E: `, e)
-	} else {
-		flog.L(`I: `, "将在", v, "启动")
-		sec := tt.Hour()*3600 + tt.Minute()*60 + tt.Second()
-		go func() {
-			ctx, done := pctx.WaitCtx(ctx)
-			defer done()
-
-			for {
-				h, m, s := time.Now().Clock()
-				now := h*3600 + m*60 + s
-				if sec >= now {
-					select {
-					case <-time.After(time.Second * time.Duration(sec-now)):
-					case <-ctx.Done():
-						return
-					}
-				} else {
-					select {
-					case <-time.After(time.Hour*24 + time.Second*time.Duration(sec-now)):
-					case <-ctx.Done():
-						return
-					}
-				}
-
-				if _, e := keepMedalLight.Main.Run(ctx, keepMedalLight.Func{
-					Uid:         common.Uid,
-					Logg:        flog,
-					BiliApi:     F.GetBiliApi(),
-					SendDanmu:   send.Danmu_s,
-					PreferDanmu: common.K_v.LoadV(`进房弹幕_内容`).([]any),
-				}); e != nil {
-					flog.L(`E: `, e)
-					return
-				}
-			}
-		}()
+		replyFunc.KeepMedalLight.Do(array[rand].(string))
 	}
 }
 

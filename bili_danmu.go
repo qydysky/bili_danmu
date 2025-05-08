@@ -94,8 +94,6 @@ func Start(rootCtx context.Context) {
 		// F.Dosign()
 		// 附加功能 savetojson
 		reply.SaveToJson.Init()
-		// 附加功能 保持牌子点亮
-		reply.KeepMedalLight(mainCtx, c.C)
 		//ass初始化
 		replyFunc.Ass.Init(c.C.K_v.LoadV("Ass"))
 		//rev初始化
@@ -282,6 +280,14 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, c
 	// 检查与切换粉丝牌，只在cookie存在时启用
 	F.Get(common).Get(`CheckSwitch_FansMedal`)
 
+	// 无粉丝牌
+	if common.Wearing_FansMedal == 0 {
+		// 附加功能 保持牌子点亮
+		replyFunc.KeepMedalLight.Clear()
+	} else {
+		replyFunc.KeepMedalLight.Init(danmulog.Base("保持牌子点亮"), common.Roomid, send.Danmu_s, c.C.K_v.LoadV(`进房弹幕_内容`))
+	}
+
 	// 对每个弹幕服务器尝试
 	F.Get(common).Get(`WSURL`)
 	aliveT := time.Now().Add(3 * time.Hour)
@@ -352,8 +358,8 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, c
 			doneAuth := wsmsg.Pull_tag_only(`rec`, func(wm *ws.WsMsg) (disable bool) {
 				_ = wm.Msg(func(b []byte) error {
 					if F.HelloChe(b) {
-					cancel()
-				}
+						cancel()
+					}
 					return nil
 				})
 				return true
@@ -425,8 +431,8 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, c
 		}
 		{ //附加功能 进房间发送弹幕 直播流保存 每日签到
 			F.RoomEntryAction(common.Roomid)
-			// go F.Dosign()
 			reply.Entry_danmu(common)
+			// go F.Dosign()
 			if _, e := recStartEnd.RecStartCheck.Run(ctx, common); e == nil {
 				reply.StreamOStart(common.Roomid)
 			} else {
@@ -476,6 +482,9 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, c
 					if time.Now().After(aliveT) {
 						common.Danmu_Main_mq.Push_tag(`flash_room`, nil)
 						return false
+					}
+					if v, ok := common.K_v.LoadV("保持牌子亮着-开播时也发送").(bool); !common.Liveing || (ok && v) {
+						replyFunc.KeepMedalLight.Do()
 					}
 					if v, ok := common.K_v.LoadV("下播后不记录人气观看人数").(bool); ok && v && !common.Liveing {
 						return false
