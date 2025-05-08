@@ -22,6 +22,7 @@ import (
 	send "github.com/qydysky/bili_danmu/Send"
 	Cmd "github.com/qydysky/bili_danmu/cmd"
 	pctx "github.com/qydysky/part/ctx"
+	fc "github.com/qydysky/part/funcCtrl"
 	part "github.com/qydysky/part/log"
 	sys "github.com/qydysky/part/sys"
 
@@ -285,12 +286,26 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, c
 	F.Get(common).Get(`WSURL`)
 	aliveT := time.Now().Add(3 * time.Hour)
 	heartbeatmsg, heartinterval := F.Heartbeat()
-	for i, exitloop := 0, false; !exitloop && i < len(common.WSURL) && time.Now().Before(aliveT); {
+
+	var (
+		exitloop                        = false
+		i                               = 0
+		rangeSource fc.RangeSource[any] = func(yield func(any) bool) {
+			for !exitloop && i < len(common.WSURL) && time.Now().Before(aliveT) {
+				if !yield(nil) {
+					return
+				}
+			}
+		}
+	)
+
+	for ctx := range rangeSource.RangeCtx(mainCtx) {
 		v := common.WSURL[i]
 		//ws启动
 		danmulog.L(`T: `, "连接 "+v)
 		u, _ := url.Parse(v)
 		ws_c, err := ws.New_client(&ws.Client{
+			BufSize:           50,
 			Url:               v,
 			TO:                (heartinterval + 5) * 1000,
 			Proxy:             common.Proxy,
@@ -329,13 +344,18 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, c
 		// auth
 		{
 			wsmsg.PushLock_tag(`send`, &ws.WsMsg{
-				Msg: F.HelloGen(common.Roomid, common.Token),
+				Msg: func(f func([]byte) error) error {
+					return f(F.HelloGen(common.Roomid, common.Token))
+				},
 			})
-			waitCheckAuth, cancel := context.WithTimeout(mainCtx, 5*time.Second)
+			waitCheckAuth, cancel := context.WithTimeout(ctx, 5*time.Second)
 			doneAuth := wsmsg.Pull_tag_only(`rec`, func(wm *ws.WsMsg) (disable bool) {
-				if F.HelloChe(wm.Msg) {
+				_ = wm.Msg(func(b []byte) error {
+					if F.HelloChe(b) {
 					cancel()
 				}
+					return nil
+				})
 				return true
 			})
 			<-waitCheckAuth.Done()
@@ -364,7 +384,12 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, c
 		// 处理ws消息
 		var cancelDeal = wsmsg.Pull_tag(map[string]func(*ws.WsMsg) (disable bool){
 			`rec`: func(wm *ws.WsMsg) (disable bool) {
-				go reply.Reply(common, wm.Msg)
+				go func() {
+					_ = wm.Msg(func(b []byte) error {
+						reply.Reply(common, b)
+						return nil
+					})
+				}()
 				return false
 			},
 			`close`: func(_ *ws.WsMsg) (disable bool) {
@@ -377,7 +402,9 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, c
 			danmulog.L(`T: `, "获取人气")
 			for !ws_c.Isclose() {
 				wsmsg.Push_tag(`send`, &ws.WsMsg{
-					Msg: heartbeatmsg,
+					Msg: func(f func([]byte) error) error {
+						return f(heartbeatmsg)
+					},
 				})
 				time.Sleep(time.Millisecond * time.Duration(heartinterval*1000))
 			}
@@ -394,13 +421,13 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, c
 			`LIVE_BUVID`,
 		}); len(missKey) == 0 && reply.IsOn("自动弹幕机") {
 			//附加功能 弹幕机 无cookie无法发送弹幕
-			replyFunc.Danmuji.Danmuji_auto(mainCtx, c.C.K_v.LoadV(`自动弹幕机_内容`).([]any), c.C.K_v.LoadV(`自动弹幕机_发送间隔s`).(float64), reply.Msg_senddanmu)
+			replyFunc.Danmuji.Danmuji_auto(ctx, c.C.K_v.LoadV(`自动弹幕机_内容`).([]any), c.C.K_v.LoadV(`自动弹幕机_发送间隔s`).(float64), reply.Msg_senddanmu)
 		}
 		{ //附加功能 进房间发送弹幕 直播流保存 每日签到
 			F.RoomEntryAction(common.Roomid)
 			// go F.Dosign()
 			reply.Entry_danmu(common)
-			if _, e := recStartEnd.RecStartCheck.Run(mainCtx, common); e == nil {
+			if _, e := recStartEnd.RecStartCheck.Run(ctx, common); e == nil {
 				reply.StreamOStart(common.Roomid)
 			} else {
 				danmulog.Base("功能", "指定房间录制区间").L(`I: `, common.Roomid, e)
@@ -462,7 +489,7 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, c
 			danmulog.L(`T: `, "启动完成", common.Uname, `(`, common.Roomid, `)`)
 
 			{
-				cancel, c := wsmsg.Pull_tag_chan(`exit`, 1, mainCtx)
+				cancel, c := wsmsg.Pull_tag_chan(`exit`, 1, ctx)
 				select {
 				case <-c:
 				case <-rootCtx.Done():
