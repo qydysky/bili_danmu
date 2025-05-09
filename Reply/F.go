@@ -58,28 +58,28 @@ func IsOn(s string) bool {
 
 // 字符重复度检查
 // a在buf中出现的字符占a的百分数
-func cross(a string, buf []string) float32 {
-	var s float32
-	var matched bool
-	for _, v1 := range a {
-		for _, v2 := range buf {
-			for _, v3 := range v2 {
-				if v3 == v1 {
-					matched = true
-					break
-				}
-			}
-			if matched {
-				break
-			}
-		}
-		if matched {
-			s += 1
-		}
-		matched = false
-	}
-	return s / float32(len([]rune(a)))
-}
+// func cross(a string, buf []string) float32 {
+// 	var s float32
+// 	var matched bool
+// 	for _, v1 := range a {
+// 		for _, v2 := range buf {
+// 			for _, v3 := range v2 {
+// 				if v3 == v1 {
+// 					matched = true
+// 					break
+// 				}
+// 			}
+// 			if matched {
+// 				break
+// 			}
+// 		}
+// 		if matched {
+// 			s += 1
+// 		}
+// 		matched = false
+// 	}
+// 	return s / float32(len([]rune(a)))
+// }
 
 // 在a中仅出现一次出现的字符占a的百分数
 // func selfcross(a string) float32 {
