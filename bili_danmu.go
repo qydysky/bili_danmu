@@ -27,7 +27,6 @@ import (
 	sys "github.com/qydysky/part/sys"
 
 	msgq "github.com/qydysky/part/msgq"
-	reqf "github.com/qydysky/part/reqf"
 	ws "github.com/qydysky/part/websocket"
 )
 
@@ -96,6 +95,12 @@ func Start(rootCtx context.Context) {
 		reply.SaveToJson.Init()
 		//ass初始化
 		replyFunc.Ass.Init(c.C.K_v.LoadV("Ass"))
+		//
+		if reply.IsOn(`相似弹幕忽略`) {
+			if max_num, ok := c.C.K_v.LoadV(`每秒显示弹幕数`).(float64); ok && int(max_num) >= 1 {
+				replyFunc.LessDanmu.Init(int(max_num))
+			}
+		}
 		//rev初始化
 		if c.C.IsOn(`统计营收`) {
 			replyFunc.Rev.Init(danmulog)
@@ -221,14 +226,6 @@ func Start(rootCtx context.Context) {
 			}
 
 			danmulog.L(`T: `, "准备")
-
-			//如果连接中断，则等待
-			F.KeepConnect()
-			//获取cookie，检查是否登陆失效
-			F.Get(c.C).Get(`Cookie`)
-			//获取LIVE_BUVID
-			F.Get(c.C).Get(`LIVE_BUVID`)
-
 			// 获取房间实际id
 			c.C.Roomid = F.GetRoomRealId(c.C.Roomid)
 
@@ -241,13 +238,6 @@ func Start(rootCtx context.Context) {
 				}
 				return actual, loaded
 			})
-
-			// if loaded {
-			// 	common.InIdle = false
-			// 	common.Rev = 0.0 // 营收
-			// } else {
-			// 	common.Roomid = c.C.Roomid
-			// }
 
 			exitSign = entryRoom(rootCtx, mainCtx, danmulog.BaseAdd(common.Roomid), common)
 
@@ -264,22 +254,6 @@ func Start(rootCtx context.Context) {
 }
 
 func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, common *c.Common) (exitSign bool) {
-	//附加功能 自动发送即将过期礼物
-	reply.AutoSend_silver_gift(common)
-	//获取热门榜
-	F.Get(common).Get(`Note`)
-
-	danmulog.L(`I: `, "连接到房间", common.Roomid)
-
-	Cookie := make(map[string]string)
-	common.Cookie.Range(func(k, v any) bool {
-		Cookie[k.(string)] = v.(string)
-		return true
-	})
-
-	// 检查与切换粉丝牌，只在cookie存在时启用
-	F.Get(common).Get(`CheckSwitch_FansMedal`)
-
 	// 无粉丝牌
 	if common.Wearing_FansMedal == 0 {
 		// 附加功能 保持牌子点亮
@@ -287,18 +261,37 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, c
 	} else {
 		replyFunc.KeepMedalLight.Init(danmulog.Base("保持牌子点亮"), common.Roomid, send.Danmu_s, c.C.K_v.LoadV(`进房弹幕_内容`))
 	}
-
-	// 对每个弹幕服务器尝试
-	F.Get(common).Get(`WSURL`)
-	aliveT := time.Now().Add(3 * time.Hour)
-	heartbeatmsg, heartinterval := F.Heartbeat()
-
+	if reply.IsOn(`相似弹幕忽略`) {
+		replyFunc.LessDanmu.InitRoom(common.Roomid)
+	} else {
+		replyFunc.LessDanmu.Unset()
+	}
 	var (
-		exitloop                        = false
-		i                               = 0
-		rangeSource fc.RangeSource[any] = func(yield func(any) bool) {
-			for !exitloop && i < len(common.WSURL) && time.Now().Before(aliveT) {
-				if !yield(nil) {
+		aliveT                                          = time.Now().Add(3 * time.Hour)
+		heartbeatmsg, heartinterval                     = F.Heartbeat()
+		exitloop                                        = false
+		i                                               = 0
+		rangeSource                 fc.RangeSource[any] = func(yield func(any) bool) {
+			for !exitloop {
+				//如果连接中断，则等待
+				F.KeepConnect()
+				//获取cookie，检查是否登陆失效
+				F.Get(common).Get(`Cookie`)
+				//获取LIVE_BUVID
+				F.Get(common).Get(`LIVE_BUVID`)
+				//附加功能 自动发送即将过期礼物
+				reply.AutoSend_silver_gift(common)
+				//获取热门榜
+				F.Get(common).Get(`Note`)
+				// 检查与切换粉丝牌，只在cookie存在时启用
+				F.Get(common).Get(`CheckSwitch_FansMedal`)
+				danmulog.L(`I: `, "连接到房间", common.Roomid)
+				// 获取弹幕服务器
+				F.Get(common).Get(`WSURL`)
+
+				aliveT = time.Now().Add(3 * time.Hour)
+
+				if len(common.WSURL) == 0 || !yield(nil) {
 					return
 				}
 			}
@@ -318,7 +311,7 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, c
 			Func_abort_close:  func() { danmulog.L(`I: `, `服务器连接中断`) },
 			Func_normal_close: func() { danmulog.L(`I: `, `服务器连接关闭`) },
 			Header: map[string]string{
-				`Cookie`:          reqf.Map_2_Cookies_String(Cookie),
+				`Cookie`:          common.GenReqCookie(),
 				`Host`:            u.Hostname(),
 				`User-Agent`:      c.UA,
 				`Accept`:          `*/*`,
@@ -420,13 +413,8 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, c
 		F.Get(common).Get(`GuardNum`)
 		// 在线人数
 		F.Get(common).Get(`getOnlineGoldRank`)
-		//验证cookie
-		if missKey := F.CookieCheck([]string{
-			`bili_jct`,
-			`DedeUserID`,
-			`LIVE_BUVID`,
-		}); len(missKey) == 0 && reply.IsOn("自动弹幕机") {
-			//附加功能 弹幕机 无cookie无法发送弹幕
+		//附加功能 弹幕机 无cookie无法发送弹幕
+		if common.IsLogin() && reply.IsOn("自动弹幕机") {
 			replyFunc.Danmuji.Danmuji_auto(ctx, c.C.K_v.LoadV(`自动弹幕机_内容`).([]any), c.C.K_v.LoadV(`自动弹幕机_发送间隔s`).(float64), reply.Msg_senddanmu)
 		}
 		{ //附加功能 进房间发送弹幕 直播流保存 每日签到
@@ -437,6 +425,12 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, c
 				reply.StreamOStart(common.Roomid)
 			} else {
 				danmulog.Base("功能", "指定房间录制区间").L(`I: `, common.Roomid, e)
+			}
+			//弹幕合并
+			if reply.IsOn("弹幕合并") {
+				replyFunc.DanmuMerge.Init(ctx, common.Roomid)
+			} else {
+				replyFunc.DanmuMerge.Unset()
 			}
 		}
 

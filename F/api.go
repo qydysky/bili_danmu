@@ -26,6 +26,7 @@ import (
 	pio "github.com/qydysky/part/io"
 	limit "github.com/qydysky/part/limit"
 	reqf "github.com/qydysky/part/reqf"
+	psync "github.com/qydysky/part/sync"
 
 	"github.com/mdp/qrterminal/v3"
 	qr "github.com/skip2/go-qrcode"
@@ -41,6 +42,15 @@ var biliApi = cmp.Get(id, cmp.PreFuncCu[BiliApiInter]{
 		ba.SetLocation(c.C.SerLocation)
 		ba.SetProxy(c.C.Proxy)
 		ba.SetReqPool(c.C.ReqPool)
+
+		savepath := "./cookie.txt"
+		if tmp, ok := c.C.K_v.LoadV("cookie路径").(string); ok && tmp != "" {
+			savepath = tmp
+		}
+		ba.SetCookiesCallback(func(cookies []*http.Cookie) {
+			CookieSet(savepath, []byte(reqf.Cookies_List_2_String(cookies))) //cookie 存入文件
+			psync.StoreAll(c.C.Cookie, reqf.Cookies_List_2_Map(cookies))     //cookie 存入全局变量
+		})
 		return ba
 	},
 })
@@ -765,6 +775,8 @@ func (t *GetFunc) getDanmuInfo() (missKey []string) {
 
 	//GetDanmuInfo
 	if err, res := biliApi.GetDanmuInfo(t.Roomid); err != nil {
+		t.Token = ""
+		t.WSURL = t.WSURL[:0]
 		apilog.L(`E: `, err)
 		return
 	} else {
@@ -843,105 +855,34 @@ func (t *GetFunc) Get_guardNum() (missKey []string) {
 	return
 }
 
-// func (t *GetFunc) Info(UpUid int) (J.Info, error) {
-// 	fkey := `Info`
-
-// 	if v, ok := t.Cache.LoadV(fkey).(cacheItem); ok && v.exceeded.After(time.Now()) {
-// 		return (v.data).(J.Info), nil
-// 	}
-
-// 	// 超额请求阻塞，超时将取消
-// 	apilog := apilog.Base_add(`Info`)
-// 	if api_limit.TO() {
-// 		return J.Info{}, os.ErrDeadlineExceeded
-// 	}
-
-// 	query := fmt.Sprintf("mid=%d&token=&platform=web&web_location=1550101", UpUid)
-// 	// wbi
-// 	if e, queryE := biliApi.Wbi(query); e != nil {
-// 		return J.Info{}, e
-// 	} else {
-// 		query = queryE
-// 	}
-
-// 	// html
-// 	{
-// 		Cookie := make(map[string]string)
-// 		t.Cookie.Range(func(k, v interface{}) bool {
-// 			Cookie[k.(string)] = v.(string)
-// 			return true
-// 		})
-// 		req := t.ReqPool.Get()
-// 		defer t.ReqPool.Put(req)
-
-// 		if err := req.Reqf(reqf.Rval{
-// 			Url:     `https://api.bilibili.com/x/space/wbi/acc/info?` + query,
-// 			Proxy:   t.Proxy,
-// 			Timeout: 10 * 1000,
-// 			Retry:   2,
-// 			Header: map[string]string{
-// 				`Accept`: "application/json, text/plain, */*",
-// 				`Cookie`: reqf.Map_2_Cookies_String(Cookie),
-// 			},
-// 		}); err != nil {
-// 			apilog.L(`E: `, err)
-// 			return J.Info{}, err
-// 		}
-
-// 		var info J.Info
-
-// 		//Info
-// 		if e := json.Unmarshal(req.Respon, &info); e != nil {
-// 			apilog.L(`E: `, e)
-// 			return J.Info{}, e
-// 		}
-
-// 		t.Cache.Store(fkey, cacheItem{
-// 			data:     info,
-// 			exceeded: time.Now().Add(time.Hour),
-// 		})
-// 		return info, nil
-// 	}
-// }
-
 // 调用记录
 var boot_Get_cookie funcCtrl.FlashFunc //新的替代旧的
 
 // 扫码登录
 func (t *GetFunc) Get_cookie() (missKey []string) {
 	apilog := apilog.Base_add(`获取Cookie`)
-	//获取其他Cookie
-	defer func() {
-		if err := biliApi.GetOtherCookies(); err != nil {
-			apilog.L(`E: `, err)
-		} else if cookies := biliApi.GetCookies(); len(cookies) != 0 {
-			if err := save_cookie(cookies, t.Common); err != nil && !errors.Is(err, ErrNoCookiesSave) {
-				apilog.L(`E: `, err)
-			}
-		}
-	}()
 
 	savepath := "./cookie.txt"
 	if tmp, ok := t.K_v.LoadV("cookie路径").(string); ok && tmp != "" {
 		savepath = tmp
 	}
 
+	//获取其他Cookie
+	defer func() {
+		if err := biliApi.GetOtherCookies(); err != nil {
+			apilog.L(`E: `, err)
+		}
+	}()
+
 	if file.New(savepath, 0, true).IsExist() { //读取cookie文件
 		if cookieString := string(CookieGet(savepath)); cookieString != `` {
-			for k, v := range reqf.Cookies_String_2_Map(cookieString) { //cookie存入全局变量syncmap
-				t.Cookie.Store(k, v)
-			}
-
-			if miss := CookieCheck([]string{
-				`bili_jct`,
-				`DedeUserID`,
-			}); len(miss) == 0 {
-				biliApi.SetCookies(reqf.Cookies_String_2_List(cookieString))
+			biliApi.SetCookies(reqf.Cookies_String_2_List(cookieString)) //cookie 存入biliApi
+			if biliApi.IsLogin() {
 				if e, res := biliApi.GetNav(); e != nil {
 					apilog.L(`E: `, e)
 				} else if res.IsLogin {
 					// uid
-					if uid, ok := t.Cookie.LoadV(`DedeUserID`).(string); ok { //cookie中无DedeUserID
+					if e, uid := biliApi.GetCookie(`DedeUserID`); e == nil { //cookie中无DedeUserID
 						if uid, e := strconv.Atoi(uid); e == nil {
 							t.Uid = uid
 						}
@@ -1030,12 +971,6 @@ func (t *GetFunc) Get_cookie() (missKey []string) {
 	}
 
 	{ //循环查看是否通过
-		Cookie := make(map[string]string)
-		t.Cookie.Range(func(k, v interface{}) bool {
-			Cookie[k.(string)] = v.(string)
-			return true
-		})
-
 		r := t.ReqPool.Get()
 		defer t.ReqPool.Put(r)
 		for pollC := 10; pollC > 0; pollC-- {
@@ -1052,11 +987,7 @@ func (t *GetFunc) Get_cookie() (missKey []string) {
 				return
 			} else if code == 0 {
 				if cookies := biliApi.GetCookies(); len(cookies) != 0 {
-					if err := save_cookie(cookies, t.Common); err != nil {
-						apilog.L(`E: `, err)
-						return
-					}
-					if uid, ok := t.Cookie.LoadV(`DedeUserID`).(string); ok { //cookie中无DedeUserID
+					if e, uid := biliApi.GetCookie(`DedeUserID`); e == nil { //cookie中无DedeUserID
 						if uid, e := strconv.Atoi(uid); e == nil {
 							t.Uid = uid
 						}
@@ -1071,93 +1002,21 @@ func (t *GetFunc) Get_cookie() (missKey []string) {
 	return
 }
 
-// 获取其他Cookie
-// func (t *GetFunc) Get_other_cookie() {
-// 	apilog := apilog.Base_add(`获取其他Cookie`)
-
-// 	r := c.ReqPool.Get()
-// 	defer c.ReqPool.Put(r)
-
-// 	Cookie := make(map[string]string)
-// 	c.Cookie.Range(func(k, v interface{}) bool {
-// 		Cookie[k.(string)] = v.(string)
-// 		return true
-// 	})
-
-// 	if e := r.Reqf(reqf.Rval{
-// 		Url: `https://www.bilibili.com/`,
-// 		Header: map[string]string{
-// 			`Cookie`: reqf.Map_2_Cookies_String(Cookie),
-// 		},
-// 		Proxy:   c.Proxy,
-// 		Timeout: 10 * 1000,
-// 		Retry:   2,
-// 	}); e != nil {
-// 		apilog.L(`E: `, e)
-// 		return
-// 	}
-
-// 	if e := save_cookie(r.Response.Cookies()); e != nil && !errors.Is(e, ErrNoCookiesSave) {
-// 		apilog.L(`E: `, e)
-// 	}
-// }
-
 // 短信登录
 func Get_cookie_by_msg() {
 	/*https://passport.bilibili.com/x/passport-login/web/sms/send*/
 }
-
-// 牌子字段
-// 获取牌子信息
-// func GetListInRoom(RoomID, TargetID int) (array []struct {
-// 	Uid       int
-// 	TodayFeed int
-// 	TargetID  int
-// 	IsLighted int
-// 	MedalID   int
-// 	RoomID    int
-// }) {
-// 	apilog := apilog.Base_add(`获取牌子`)
-// 	//验证cookie
-// 	if missKey := CookieCheck([]string{
-// 		`bili_jct`,
-// 		`DedeUserID`,
-// 		`LIVE_BUVID`,
-// 	}); len(missKey) != 0 {
-// 		apilog.L(`T: `, `Cookie无Key:`, missKey)
-// 		return
-// 	}
-
-// 	//getHotRank
-// 	if err, res := biliApi.GetFansMedal(RoomID, TargetID); err != nil {
-// 		apilog.L(`E: `, err)
-// 	} else {
-// 		return res
-// 	}
-
-// 	return
-// }
 
 func GetBiliApi() BiliApiInter {
 	return biliApi
 }
 
 // 获取当前佩戴的牌子
-func Get_weared_medal(uid, upUid int) (item J.GetWearedMedal_Data) {
-
+func Get_weared_medal(uid, upUid int) (item J.GetWearedMedal_Data, e error) {
 	apilog := apilog.Base_add(`获取佩戴牌子`)
-	//验证cookie
-	if missKey := CookieCheck([]string{
-		`bili_jct`,
-		`DedeUserID`,
-		`LIVE_BUVID`,
-	}); len(missKey) != 0 {
-		apilog.L(`T: `, `Cookie无Key:`, missKey)
-		return
-	}
-
 	if err, res := biliApi.GetWearedMedal(uid, upUid); err != nil {
 		apilog.L(`E: `, err)
+		e = err
 	} else {
 		item.Roominfo.RoomID = res.RoomID
 		item.TargetID = res.TargetID
@@ -1179,23 +1038,15 @@ func (t *GetFunc) CheckSwitch_FansMedal() (missKey []string) {
 	}
 
 	apilog := apilog.Base_add(`切换粉丝牌`)
-	//验证cookie
-	if missCookie := CookieCheck([]string{
-		`bili_jct`,
-		`DedeUserID`,
-		`LIVE_BUVID`,
-	}); len(missCookie) != 0 {
-		apilog.L(`T: `, `Cookie无Key:`, missCookie)
+
+	//验证登陆
+	if !biliApi.IsLogin() {
+		apilog.L(`T: `, `未登陆`)
 		return
 	}
 
-	Cookie := make(map[string]string)
-	t.Cookie.Range(func(k, v interface{}) bool {
-		Cookie[k.(string)] = v.(string)
-		return true
-	})
 	{ //获取当前牌子，验证是否本直播间牌子
-		res := Get_weared_medal(t.Uid, t.UpUid)
+		res, _ := Get_weared_medal(t.Uid, t.UpUid)
 
 		t.Wearing_FansMedal = res.Roominfo.RoomID //更新佩戴信息
 		if res.TargetID == t.UpUid {
@@ -1243,13 +1094,10 @@ func (t *GetFunc) CheckSwitch_FansMedal() (missKey []string) {
 // 签到活动已下线
 func Dosign() {
 	apilog := apilog.Base_add(`签到`).L(`T: `, `签到`)
-	//验证cookie
-	if missKey := CookieCheck([]string{
-		`bili_jct`,
-		`DedeUserID`,
-		`LIVE_BUVID`,
-	}); len(missKey) != 0 {
-		apilog.L(`T: `, `Cookie无Key:`, missKey)
+
+	//验证登陆
+	if !biliApi.IsLogin() {
+		apilog.L(`T: `, `未登陆`)
 		return
 	}
 
@@ -1301,17 +1149,8 @@ func (t *GetFunc) Get_LIVE_BUVID() (missKey []string) {
 			apilog.L(`E: `, err)
 			return
 		}
-		cookies := biliApi.GetCookies()
-
-		//cookie
-		_ = save_cookie(cookies, t.Common)
-		var has bool
-		for k := range reqf.Cookies_List_2_Map(cookies) {
-			if k == `LIVE_BUVID` {
-				has = true
-			}
-		}
-		if has {
+		psync.StoreAll(t.Cookie, reqf.Cookies_List_2_Map(biliApi.GetCookies()))
+		if e, _ := biliApi.GetCookie(`LIVE_BUVID`); e == nil {
 			apilog.L(`I: `, `获取到LIVE_BUVID，保存cookie`)
 			break
 		} else {
@@ -1334,15 +1173,6 @@ func Gift_list() (list []struct {
 	Expire_at int
 }) {
 	apilog := apilog.Base_add(`礼物列表`)
-	//验证cookie
-	if missKey := CookieCheck([]string{
-		`bili_jct`,
-		`DedeUserID`,
-		`LIVE_BUVID`,
-	}); len(missKey) != 0 {
-		apilog.L(`T: `, `Cookie无Key:`, missKey)
-		return
-	}
 	if c.C.Roomid == 0 {
 		apilog.L(`E: `, `失败！无Roomid`)
 		return
@@ -1372,13 +1202,9 @@ func (t *GetFunc) Silver_2_coin() (missKey []string) {
 		return
 	}
 
-	//验证cookie
-	if miss := CookieCheck([]string{
-		`bili_jct`,
-		`DedeUserID`,
-		`LIVE_BUVID`,
-	}); len(miss) != 0 {
-		apilog.L(`T: `, `Cookie无Key:`, miss)
+	//验证登陆
+	if !biliApi.IsLogin() {
+		apilog.L(`T: `, `未登陆`)
 		return
 	}
 
@@ -1408,41 +1234,13 @@ func (t *GetFunc) Silver_2_coin() (missKey []string) {
 	//交换
 	if e, msg := biliApi.Silver2coin(); e != nil {
 		apilog.L(`E: `, e)
-		return
 	} else {
 		apilog.L(`I: `, msg)
-		if cookies := biliApi.GetCookies(); len(cookies) != 0 {
-			_ = save_cookie(cookies, t.Common)
-		}
 	}
 	return
 }
 
 var ErrNoCookiesSave = errors.New("ErrNoCookiesSave")
-
-func save_cookie(Cookies []*http.Cookie, cs *c.Common) error {
-	if len(Cookies) == 0 {
-		return ErrNoCookiesSave
-	}
-
-	for k, v := range reqf.Cookies_List_2_Map(Cookies) {
-		c.C.Cookie.Store(k, v)
-	}
-
-	Cookie := make(map[string]string)
-	c.C.Cookie.Range(func(k, v interface{}) bool {
-		Cookie[k.(string)] = v.(string)
-		return true
-	})
-
-	savepath := "./cookie.txt"
-	if tmp, ok := cs.K_v.LoadV("cookie路径").(string); ok && tmp != "" {
-		savepath = tmp
-	}
-	CookieSet(savepath, []byte(reqf.Map_2_Cookies_String(Cookie)))
-	biliApi.SetCookies(Cookies)
-	return nil
-}
 
 // 正在直播主播
 type UpItem struct {
@@ -1461,13 +1259,9 @@ func GetHisStream() (Uplist []struct {
 }) {
 	apilog := apilog.Base_add(`历史直播主播`).L(`T: `, `获取中`)
 	defer apilog.L(`T: `, `完成`)
-	//验证cookie
-	if missKey := CookieCheck([]string{
-		`bili_jct`,
-		`DedeUserID`,
-		`LIVE_BUVID`,
-	}); len(missKey) != 0 {
-		apilog.L(`T: `, `Cookie无Key:`, missKey)
+	//验证登陆
+	if !biliApi.IsLogin() {
+		apilog.L(`T: `, `未登陆`)
 		return
 	}
 	if api_limit.TO() {
@@ -1487,13 +1281,9 @@ func GetHisStream() (Uplist []struct {
 // 进入房间
 func RoomEntryAction(roomId int) {
 	apilog := apilog.Base_add(`进入房间`)
-	//验证cookie
-	if missKey := CookieCheck([]string{
-		`bili_jct`,
-		`DedeUserID`,
-		`LIVE_BUVID`,
-	}); len(missKey) != 0 {
-		apilog.L(`T: `, `Cookie无Key:`, missKey)
+	//验证登陆
+	if !biliApi.IsLogin() {
+		apilog.L(`T: `, `未登陆`)
 		return
 	}
 	if api_limit.TO() {
@@ -1543,13 +1333,9 @@ func Feed_list() (Uplist []struct {
 }) {
 	apilog := apilog.Base_add(`正在直播主播`).L(`T: `, `获取中`)
 	defer apilog.L(`T: `, `完成`)
-	//验证cookie
-	if missKey := CookieCheck([]string{
-		`bili_jct`,
-		`DedeUserID`,
-		`LIVE_BUVID`,
-	}); len(missKey) != 0 {
-		apilog.L(`T: `, `Cookie无Key:`, missKey)
+	//验证登陆
+	if !biliApi.IsLogin() {
+		apilog.L(`T: `, `未登陆`)
 		return
 	}
 	if api_limit.TO() {

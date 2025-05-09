@@ -40,9 +40,7 @@ import (
 	file "github.com/qydysky/part/file"
 	fctrl "github.com/qydysky/part/funcCtrl"
 	pio "github.com/qydysky/part/io"
-	limit "github.com/qydysky/part/limit"
 	msgq "github.com/qydysky/part/msgq"
-	slice "github.com/qydysky/part/slice"
 	psync "github.com/qydysky/part/sync"
 	pweb "github.com/qydysky/part/web"
 	websocket "github.com/qydysky/part/websocket"
@@ -228,162 +226,6 @@ func StreamOCut(roomid int) (setTitle func(title ...string)) {
 		}
 	}
 	return func(s ...string) {}
-}
-
-type Autoskip struct {
-	roomid int
-	buf    map[string]Autoskip_item
-	sync.Mutex
-	now    uint
-	ticker *time.Ticker
-}
-
-type Autoskip_item struct {
-	Exprie uint
-	Num    uint
-}
-
-var autoskip = Autoskip{
-	buf:    make(map[string]Autoskip_item),
-	ticker: time.NewTicker(time.Duration(2) * time.Second),
-}
-
-func init() {
-	go func() {
-		for {
-			<-autoskip.ticker.C
-			autoskip.Lock()
-			if len(autoskip.buf) == 0 {
-				autoskip.Unlock()
-				continue
-			}
-			autoskip.now += 1
-			if autoskip.roomid != c.C.Roomid {
-				autoskip.buf = make(map[string]Autoskip_item)
-				autoskip.roomid = c.C.Roomid
-				flog.Base_add(`弹幕合并`).L(`T: `, `房间更新:`, autoskip.roomid)
-				autoskip.Unlock()
-				continue
-			}
-			for k, v := range autoskip.buf {
-				if v.Exprie <= autoskip.now {
-					delete(autoskip.buf, k)
-					{ //超时显示
-						if v.Num > 3 {
-							c.C.Danmu_Main_mq.Push_tag(`tts`, Danmu_mq_t{ //传入消息队列
-								uid: `0multi`,
-								m: map[string]string{
-									`{num}`: strconv.Itoa(int(v.Num)),
-									`{msg}`: k,
-								},
-							})
-							Msg_showdanmu(Danmu_item{
-								msg:    strconv.Itoa(int(v.Num)) + " x " + k,
-								uid:    `0multi`,
-								roomid: autoskip.roomid,
-							})
-						} else if v.Num > 1 {
-							Msg_showdanmu(Danmu_item{
-								msg:    strconv.Itoa(int(v.Num)) + " x " + k,
-								uid:    `0default`,
-								roomid: autoskip.roomid,
-							})
-						}
-					}
-				}
-			}
-			{ //copy map
-				tmp := make(map[string]Autoskip_item)
-				for k, v := range autoskip.buf {
-					tmp[k] = v
-				}
-				autoskip.buf = tmp
-			}
-			autoskip.Unlock()
-		}
-	}()
-}
-
-func Autoskipf(s string) uint {
-	if !IsOn("弹幕合并") || s == "" {
-		return 0
-	}
-	autoskip.Lock()
-	defer autoskip.Unlock()
-	if autoskip.roomid != c.C.Roomid {
-		autoskip.buf = make(map[string]Autoskip_item)
-		autoskip.roomid = c.C.Roomid
-		flog.Base_add(`弹幕合并`).L(`T: `, `房间更新:`, autoskip.roomid)
-		return 0
-	}
-	{ //验证是否已经存在
-		if v, ok := autoskip.buf[s]; ok && autoskip.now < v.Exprie {
-			autoskip.buf[s] = Autoskip_item{
-				Exprie: v.Exprie,
-				Num:    v.Num + 1,
-			}
-			return v.Num
-		}
-	}
-	{ //设置
-		autoskip.buf[s] = Autoskip_item{
-			Exprie: autoskip.now + 8,
-			Num:    1,
-		}
-	}
-	return 0
-}
-
-type Lessdanmu struct {
-	roomid    int
-	buf       []string
-	limit     *limit.Limit
-	max_num   int
-	threshold float32
-}
-
-var lessdanmu = Lessdanmu{
-	threshold: 0.7,
-}
-
-func init() {
-	if max_num, ok := c.C.K_v.LoadV(`每秒显示弹幕数`).(float64); ok && int(max_num) >= 1 {
-		flog.Base_add(`更少弹幕`).L(`T: `, `每秒弹幕数:`, int(max_num))
-		lessdanmu.max_num = int(max_num)
-		lessdanmu.limit = limit.New(int(max_num), "1s", "0s") //timeout right now
-	}
-}
-
-func Lessdanmuf(s string) (show bool) {
-	if !IsOn("相似弹幕忽略") {
-		return true
-	}
-	if lessdanmu.roomid != c.C.Roomid {
-		lessdanmu.buf = nil
-		lessdanmu.roomid = c.C.Roomid
-		lessdanmu.threshold = 0.7
-		flog.Base_add(`更少弹幕`).L(`T: `, `房间更新:`, lessdanmu.roomid)
-		return true
-	}
-	if len(lessdanmu.buf) < 20 {
-		lessdanmu.buf = append(lessdanmu.buf, s)
-		return true
-	}
-
-	o := cross(s, lessdanmu.buf)
-	if o == 1 {
-		return false
-	} //完全无用
-
-	Jiezouf(lessdanmu.buf)
-	slice.DelFront(&lessdanmu.buf, 1)
-
-	show = o < lessdanmu.threshold
-
-	if show && lessdanmu.max_num > 0 {
-		return !lessdanmu.limit.TO()
-	}
-	return
 }
 
 /*
@@ -595,7 +437,7 @@ func Entry_danmu(common *c.Common) {
 		return
 	}
 	if v, _ := common.K_v.LoadV(`进房弹幕_仅发首日弹幕`).(bool); v {
-		res := F.Get_weared_medal(common.Uid, common.UpUid)
+		res, _ := F.Get_weared_medal(common.Uid, common.UpUid)
 		if res.TodayIntimacy > 0 {
 			flog.L(`T: `, `今日已发弹幕`)
 			return
@@ -824,7 +666,7 @@ func init() {
 
 			// 获取当前房间的
 			var currentStreamO *M4SStream
-			c.StreamO.Range(func(key, value interface{}) bool {
+			c.StreamO.Range(func(key, value any) bool {
 				if key != nil && c.C.Roomid == key.(int) {
 					currentStreamO = value.(*M4SStream)
 					return false

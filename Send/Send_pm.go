@@ -50,12 +50,6 @@ func Send_pm(uid int, msg string) error {
 
 	var send_str = `msg[sender_uid]=` + strconv.Itoa(c.C.Uid) + `&msg[receiver_id]=` + strconv.Itoa(uid) + `&msg[receiver_type]=1&msg[msg_type]=1&msg[msg_status]=0&msg[content]={"content":"` + msg + `"}&msg[timestamp]=` + strconv.Itoa(int(sys.Sys().GetSTime())) + `&msg[new_face_version]=0&msg[dev_id]=` + strings.ToUpper(uuid.New().String()) + `&from_firework=0&build=0&mobi_app=web&csrf_token=` + csrf + `&csrf=` + csrf
 
-	Cookie := make(map[string]string)
-	c.C.Cookie.Range(func(k, v interface{}) bool {
-		Cookie[k.(string)] = v.(string)
-		return true
-	})
-
 	req := c.C.ReqPool.Get()
 	defer c.C.ReqPool.Put(req)
 	if e := req.Reqf(reqf.Rval{
@@ -75,7 +69,7 @@ func Send_pm(uid int, msg string) error {
 			`Pragma`:          `no-cache`,
 			`Cache-Control`:   `no-cache`,
 			`Referer`:         "https://message.bilibili.com",
-			`Cookie`:          reqf.Map_2_Cookies_String(Cookie),
+			`Cookie`:          c.C.GenReqCookie(),
 		},
 	}); e != nil {
 		log.L(`E: `, e)

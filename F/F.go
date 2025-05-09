@@ -126,20 +126,6 @@ func Heartbeat() ([]byte, int) {
 	buffer.Write([]byte(obj))
 
 	return buffer.Bytes(), heartBeatInterval
-
-}
-
-// cookie检查
-func CookieCheck(key []string) (missKey []string) {
-	for _, tk := range key {
-		if tk == `` {
-			continue
-		}
-		if _, ok := c.C.Cookie.Load(tk); !ok {
-			missKey = append(missKey, tk)
-		}
-	}
-	return
 }
 
 // just faster, use in right way
