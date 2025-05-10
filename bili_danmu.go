@@ -77,20 +77,8 @@ func Start(rootCtx context.Context) {
 	}()
 
 	{
-		//如果连接中断，则等待
-		F.KeepConnect()
-		//获取cookie
-		F.Get(c.C).Get(`Cookie`)
-		//获取LIVE_BUVID
-		//获取uid
-		F.Get(c.C).Get(`LIVE_BUVID`)
 		//命令行操作 切换房间 发送弹幕
 		go Cmd.Cmd()
-		// F.Get(c.C).Get(`Uid`)
-		//兑换硬币
-		F.Get(c.C).Silver_2_coin()
-		//每日签到
-		// F.Dosign()
 		// 附加功能 savetojson
 		reply.SaveToJson.Init()
 		//ass初始化
@@ -134,21 +122,52 @@ func Start(rootCtx context.Context) {
 			}
 		}
 
-		//使用带tag的消息队列在功能间传递消息
-		{
+		var (
+			exitSign                     = false
+			rs       fc.RangeSource[any] = func(yield func(any) bool) {
+				for !exitSign {
+
+					if !yield(nil) {
+						break
+					}
+				}
+			}
+		)
+
+		for ctx := range rs.RangeCtx(mainCtx) {
+			if c.C.Roomid == 0 {
+				fmt.Println("回车查看指令")
+				cancel1, ch := c.C.Danmu_Main_mq.Pull_tag_chan(`change_room`, 1, ctx)
+				select {
+				case roomid := <-ch:
+					c.C.Roomid = roomid.(int)
+				case <-interrupt_chan:
+					exitSign = true
+				}
+				cancel1()
+			} else {
+				danmulog.L(`T: `, "房间号: ", strconv.Itoa(c.C.Roomid))
+			}
+
+			if exitSign {
+				break
+			}
+
+			danmulog.L(`T: `, "准备")
+
+			//如果连接中断，则等待
+			F.KeepConnect()
+			//获取cookie
+			F.Get(c.C).Get(`Cookie`)
+			//获取LIVE_BUVID
+			F.Get(c.C).Get(`LIVE_BUVID`)
+			//兑换硬币
+			F.Get(c.C).Silver_2_coin()
+			// 获取房间实际id
+			c.C.Roomid = F.GetRoomRealId(c.C.Roomid)
+
+			//使用带tag的消息队列在功能间传递消息
 			var cancelfunc = c.C.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
-				// `change_room`: func(_ any) bool { //房间改变
-				// 	c.C.Rev = 0.0     // 营收
-				// 	c.C.Renqi = 1     // 人气置1
-				// 	c.C.Watched = 0   // 观看人数
-				// 	c.C.OnlineNum = 0 // 在线人数
-				// 	c.C.GuardNum = 0  // 舰长数
-				// 	c.C.Note = ``     // 分区排行
-				// 	c.C.Uname = ``    // 主播id
-				// 	c.C.Title = ``
-				// 	c.C.Wearing_FansMedal = 0
-				// 	return false
-				// },
 				`c.Rev_add`: func(data any) bool { //收入
 					if rev, ok := data.(struct {
 						Roomid int
@@ -189,8 +208,6 @@ func Start(rootCtx context.Context) {
 				},
 				`new day`: func(_ any) bool { //日期更换
 					go func() {
-						//每日签到
-						// F.Dosign()
 						//每日兑换硬币
 						F.Get(c.C).Silver_2_coin()
 						//附加功能 每日发送弹幕
@@ -201,33 +218,6 @@ func Start(rootCtx context.Context) {
 					return false
 				},
 			})
-			defer cancelfunc()
-		}
-
-		for exitSign := false; !exitSign; {
-			if c.C.Roomid == 0 {
-				fmt.Println("回车查看指令")
-				ctx, cancel := context.WithCancel(mainCtx)
-				cancel1, ch := c.C.Danmu_Main_mq.Pull_tag_chan(`change_room`, 1, ctx)
-				select {
-				case roomid := <-ch:
-					c.C.Roomid = roomid.(int)
-				case <-interrupt_chan:
-					exitSign = true
-				}
-				cancel1()
-				cancel()
-			} else {
-				danmulog.L(`T: `, "房间号: ", strconv.Itoa(c.C.Roomid))
-			}
-
-			if exitSign {
-				break
-			}
-
-			danmulog.L(`T: `, "准备")
-			// 获取房间实际id
-			c.C.Roomid = F.GetRoomRealId(c.C.Roomid)
 
 			common, _ := c.CommonsLoadOrInit.LoadOrInitPThen(c.C.Roomid)(func(actual *c.Common, loaded bool) (*c.Common, bool) {
 				if loaded {
@@ -239,10 +229,10 @@ func Start(rootCtx context.Context) {
 				return actual, loaded
 			})
 
-			exitSign = entryRoom(rootCtx, mainCtx, danmulog.BaseAdd(common.Roomid), common)
+			exitSign = entryRoom(rootCtx, ctx, danmulog.BaseAdd(common.Roomid), common)
 
+			cancelfunc()
 			common.InIdle = true
-
 			time.Sleep(time.Second)
 		}
 
