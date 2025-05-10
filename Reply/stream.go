@@ -346,13 +346,6 @@ func (t *M4SStream) fetchCheckStream() bool {
 		t.stream_type = "flv"
 	}
 
-	// 检查是否可以获取
-	CookieM := make(map[string]string)
-	t.common.Cookie.Range(func(k, v interface{}) bool {
-		CookieM[k.(string)] = v.(string)
-		return true
-	})
-
 	var (
 		noSer  []*regexp.Regexp
 		noSerF = func(url string) (ban bool) {
@@ -404,7 +397,7 @@ func (t *M4SStream) fetchCheckStream() bool {
 				`Pragma`:          `no-cache`,
 				`Cache-Control`:   `no-cache`,
 				`Referer`:         "https://live.bilibili.com/",
-				`Cookie`:          reqf.Map_2_Cookies_String(CookieM),
+				`Cookie`:          t.common.GenReqCookie(),
 				`Connection`:      `close`,
 			},
 			Timeout:          5 * 1000,
@@ -794,7 +787,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 				`Pragma`:          `no-cache`,
 				`Cache-Control`:   `no-cache`,
 				`Referer`:         "https://live.bilibili.com/",
-				`Cookie`:          reqf.Map_2_Cookies_String(CookieM),
+				`Cookie`:          t.common.GenReqCookie(),
 			},
 		}); e != nil && reqf.IsTimeout(e) {
 			v.DisableAuto()
@@ -942,7 +935,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 					`Pragma`:          `no-cache`,
 					`Cache-Control`:   `no-cache`,
 					`Referer`:         "https://live.bilibili.com/",
-					`Cookie`:          reqf.Map_2_Cookies_String(CookieM),
+					`Cookie`:         t.common.GenReqCookie(),
 				},
 			})
 			if err := r.Wait(); err != nil && !errors.Is(err, io.EOF) {

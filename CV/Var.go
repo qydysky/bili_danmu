@@ -57,7 +57,7 @@ type Common struct {
 	Live_qn           int            `json:"liveQn"`           //当前直播流质量
 	Live_want_qn      int            `json:"-"`                //期望直播流质量
 	Roomid            int            `json:"-"`                //房间ID
-	Cookie            syncmap.Map    `json:"-"`                //Cookie
+	Cookie            *syncmap.Map   `json:"-"`                //Cookie
 	Title             string         `json:"title"`            //直播标题
 	Uname             string         `json:"uname"`            //主播名
 	UpUid             int            `json:"upUid"`            //主播uid
@@ -194,6 +194,24 @@ func (t *LiveQn) Disable(reUpTime time.Time) {
 	t.ReUpTime = reUpTime
 }
 
+func (t *Common) GenReqCookie() string {
+	return reqf.Iter_2_Cookies_String(func(yield func(string, string) bool) {
+		t.Cookie.Range(func(k, v any) bool {
+			yield(k.(string), v.(string))
+			return true
+		})
+	})
+}
+
+func (t *Common) IsLogin() bool {
+	for _, n := range []string{`bili_jct`, `DedeUserID`, `LIVE_BUVID`} {
+		if _, ok := t.Cookie.Load(n); !ok {
+			return false
+		}
+	}
+	return true
+}
+
 func (t *Common) IsOn(key string) bool {
 	v, ok := t.K_v.LoadV(key).(bool)
 	return ok && v
@@ -210,7 +228,7 @@ func (t *Common) Copy() *Common {
 		Live_qn:           t.Live_qn,
 		Live_want_qn:      t.Live_want_qn,
 		Roomid:            t.Roomid,
-		Cookie:            t.Cookie.Copy(),
+		Cookie:            t.Cookie,
 		Title:             t.Title,
 		Uname:             t.Uname,
 		UpUid:             t.UpUid,
@@ -306,6 +324,7 @@ func (t *Common) Init() *Common {
 	t.PID = os.Getpid()
 	t.Version = strings.TrimSpace(version)
 	t.StartT = time.Now()
+	t.Cookie = &syncmap.Map{}
 
 	t.AllStreamType = map[string]StreamType{
 		`fmp4`: {

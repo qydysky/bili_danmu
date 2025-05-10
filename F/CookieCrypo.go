@@ -23,6 +23,8 @@ var (
 )
 
 // 需要先判断path存在cookie文件
+//
+// 从文件获取cookie到缓存
 func CookieGet(path string) []byte {
 	clog := clog.Base_add(`获取`)
 
@@ -102,6 +104,7 @@ func CookieGet(path string) []byte {
 	}
 }
 
+// 保存到cookie到缓存及文件
 func CookieSet(path string, source []byte) {
 	clog := clog.Base_add(`设置`)
 

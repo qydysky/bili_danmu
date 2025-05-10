@@ -42,12 +42,12 @@ github.com/ncruces/go-strftime v0.1.9 h1:bY0MQC28UADQmHmaF5dgpLmImcShSi2kHU9XLdh
 github.com/ncruces/go-strftime v0.1.9/go.mod h1:Fwc5htZGVVkseilnfgOVb9mKy6w1naJmn9CehxcKcls=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/qydysky/biliApi v0.0.0-20250506170139-ecbeaf602c40 h1:QtROBClET9rmSkWgfsC+M9BAkPJQ9y1CcxAYuAkvDdM=
-github.com/qydysky/biliApi v0.0.0-20250506170139-ecbeaf602c40/go.mod h1:1FbgCj+aOwIvuRRuX/l5uTLb3JIwWyJSa0uEfwpYV/8=
+github.com/qydysky/biliApi v0.0.0-20250509210314-8407d638b123 h1:YXqqrwvzFwfs8LoierhEIKRdPQnTNwmqT91yZ6exvbA=
+github.com/qydysky/biliApi v0.0.0-20250509210314-8407d638b123/go.mod h1:1FbgCj+aOwIvuRRuX/l5uTLb3JIwWyJSa0uEfwpYV/8=
 github.com/qydysky/brotli v0.0.0-20240828134800-e9913a6e7ed9 h1:k451T+bpsLr+Dq9Ujo+Qtx0iomRA1XXS5ttlEojvfuQ=
 github.com/qydysky/brotli v0.0.0-20240828134800-e9913a6e7ed9/go.mod h1:cI8/gy/wjy2Eb+p2IUj2ZuDnC8R5Vrx3O0VMPvMvphA=
-github.com/qydysky/part v0.28.20250508122622 h1:D7+SQiUE8MANSTHTYNHH+MEgrhceX3hG9FFrpXvDSd8=
-github.com/qydysky/part v0.28.20250508122622/go.mod h1:wp71PQdKYcg9jn9yDDvqC4shS/kzejyvFqbfUxuHocY=
+github.com/qydysky/part v0.28.20250509205808 h1:vyv+TA9uK9IV4n0J5nuACqrARESX2HphoLgslecubyw=
+github.com/qydysky/part v0.28.20250509205808/go.mod h1:wp71PQdKYcg9jn9yDDvqC4shS/kzejyvFqbfUxuHocY=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec h1:W09IVJc94icq4NjY3clb7Lk8O1qJ8BdBEF8z0ibU0rE=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec/go.mod h1:qqbHyh8v60DhA7CoWK5oRCqLrMHRGoxYCSS9EjAz6Eo=
 github.com/shirou/gopsutil v3.21.11+incompatible h1:+1+c1VGhc88SSonWP6foOcLhvnKlUeu/erjjvaPEYiI=

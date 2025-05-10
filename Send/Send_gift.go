@@ -58,12 +58,6 @@ func Send_gift(common *c.Common, gift_id, bag_id, gift_num int) {
 			`csrf=` + csrf + `&` +
 			`visit_id=`
 
-		Cookie := make(map[string]string)
-		common.Cookie.Range(func(k, v interface{}) bool {
-			Cookie[k.(string)] = v.(string)
-			return true
-		})
-
 		req := common.ReqPool.Get()
 		defer common.ReqPool.Put(req)
 		if e := req.Reqf(reqf.Rval{
@@ -83,7 +77,7 @@ func Send_gift(common *c.Common, gift_id, bag_id, gift_num int) {
 				`Pragma`:          `no-cache`,
 				`Cache-Control`:   `no-cache`,
 				`Referer`:         "https://message.bilibili.com",
-				`Cookie`:          reqf.Map_2_Cookies_String(Cookie),
+				`Cookie`:          common.GenReqCookie(),
 			},
 		}); e != nil {
 			log.L(`E: `, e)

@@ -23,6 +23,7 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
+	p "github.com/qydysky/part"
 	psql "github.com/qydysky/part/sql"
 	_ "modernc.org/sqlite"
 
@@ -31,19 +32,15 @@ import (
 	F "github.com/qydysky/bili_danmu/F"
 	replyFunc "github.com/qydysky/bili_danmu/Reply/F"
 	"github.com/qydysky/bili_danmu/Reply/F/danmuXml"
-	"github.com/qydysky/bili_danmu/Reply/F/keepMedalLight"
 	videoInfo "github.com/qydysky/bili_danmu/Reply/F/videoInfo"
 	send "github.com/qydysky/bili_danmu/Send"
 
-	p "github.com/qydysky/part"
 	compress "github.com/qydysky/part/compress"
 	pctx "github.com/qydysky/part/ctx"
 	file "github.com/qydysky/part/file"
 	fctrl "github.com/qydysky/part/funcCtrl"
 	pio "github.com/qydysky/part/io"
-	limit "github.com/qydysky/part/limit"
 	msgq "github.com/qydysky/part/msgq"
-	slice "github.com/qydysky/part/slice"
 	psync "github.com/qydysky/part/sync"
 	pweb "github.com/qydysky/part/web"
 	websocket "github.com/qydysky/part/websocket"
@@ -61,28 +58,28 @@ func IsOn(s string) bool {
 
 // 字符重复度检查
 // a在buf中出现的字符占a的百分数
-func cross(a string, buf []string) float32 {
-	var s float32
-	var matched bool
-	for _, v1 := range a {
-		for _, v2 := range buf {
-			for _, v3 := range v2 {
-				if v3 == v1 {
-					matched = true
-					break
-				}
-			}
-			if matched {
-				break
-			}
-		}
-		if matched {
-			s += 1
-		}
-		matched = false
-	}
-	return s / float32(len([]rune(a)))
-}
+// func cross(a string, buf []string) float32 {
+// 	var s float32
+// 	var matched bool
+// 	for _, v1 := range a {
+// 		for _, v2 := range buf {
+// 			for _, v3 := range v2 {
+// 				if v3 == v1 {
+// 					matched = true
+// 					break
+// 				}
+// 			}
+// 			if matched {
+// 				break
+// 			}
+// 		}
+// 		if matched {
+// 			s += 1
+// 		}
+// 		matched = false
+// 	}
+// 	return s / float32(len([]rune(a)))
+// }
 
 // 在a中仅出现一次出现的字符占a的百分数
 // func selfcross(a string) float32 {
@@ -229,162 +226,6 @@ func StreamOCut(roomid int) (setTitle func(title ...string)) {
 		}
 	}
 	return func(s ...string) {}
-}
-
-type Autoskip struct {
-	roomid int
-	buf    map[string]Autoskip_item
-	sync.Mutex
-	now    uint
-	ticker *time.Ticker
-}
-
-type Autoskip_item struct {
-	Exprie uint
-	Num    uint
-}
-
-var autoskip = Autoskip{
-	buf:    make(map[string]Autoskip_item),
-	ticker: time.NewTicker(time.Duration(2) * time.Second),
-}
-
-func init() {
-	go func() {
-		for {
-			<-autoskip.ticker.C
-			autoskip.Lock()
-			if len(autoskip.buf) == 0 {
-				autoskip.Unlock()
-				continue
-			}
-			autoskip.now += 1
-			if autoskip.roomid != c.C.Roomid {
-				autoskip.buf = make(map[string]Autoskip_item)
-				autoskip.roomid = c.C.Roomid
-				flog.Base_add(`弹幕合并`).L(`T: `, `房间更新:`, autoskip.roomid)
-				autoskip.Unlock()
-				continue
-			}
-			for k, v := range autoskip.buf {
-				if v.Exprie <= autoskip.now {
-					delete(autoskip.buf, k)
-					{ //超时显示
-						if v.Num > 3 {
-							c.C.Danmu_Main_mq.Push_tag(`tts`, Danmu_mq_t{ //传入消息队列
-								uid: `0multi`,
-								m: map[string]string{
-									`{num}`: strconv.Itoa(int(v.Num)),
-									`{msg}`: k,
-								},
-							})
-							Msg_showdanmu(Danmu_item{
-								msg:    strconv.Itoa(int(v.Num)) + " x " + k,
-								uid:    `0multi`,
-								roomid: autoskip.roomid,
-							})
-						} else if v.Num > 1 {
-							Msg_showdanmu(Danmu_item{
-								msg:    strconv.Itoa(int(v.Num)) + " x " + k,
-								uid:    `0default`,
-								roomid: autoskip.roomid,
-							})
-						}
-					}
-				}
-			}
-			{ //copy map
-				tmp := make(map[string]Autoskip_item)
-				for k, v := range autoskip.buf {
-					tmp[k] = v
-				}
-				autoskip.buf = tmp
-			}
-			autoskip.Unlock()
-		}
-	}()
-}
-
-func Autoskipf(s string) uint {
-	if !IsOn("弹幕合并") || s == "" {
-		return 0
-	}
-	autoskip.Lock()
-	defer autoskip.Unlock()
-	if autoskip.roomid != c.C.Roomid {
-		autoskip.buf = make(map[string]Autoskip_item)
-		autoskip.roomid = c.C.Roomid
-		flog.Base_add(`弹幕合并`).L(`T: `, `房间更新:`, autoskip.roomid)
-		return 0
-	}
-	{ //验证是否已经存在
-		if v, ok := autoskip.buf[s]; ok && autoskip.now < v.Exprie {
-			autoskip.buf[s] = Autoskip_item{
-				Exprie: v.Exprie,
-				Num:    v.Num + 1,
-			}
-			return v.Num
-		}
-	}
-	{ //设置
-		autoskip.buf[s] = Autoskip_item{
-			Exprie: autoskip.now + 8,
-			Num:    1,
-		}
-	}
-	return 0
-}
-
-type Lessdanmu struct {
-	roomid    int
-	buf       []string
-	limit     *limit.Limit
-	max_num   int
-	threshold float32
-}
-
-var lessdanmu = Lessdanmu{
-	threshold: 0.7,
-}
-
-func init() {
-	if max_num, ok := c.C.K_v.LoadV(`每秒显示弹幕数`).(float64); ok && int(max_num) >= 1 {
-		flog.Base_add(`更少弹幕`).L(`T: `, `每秒弹幕数:`, int(max_num))
-		lessdanmu.max_num = int(max_num)
-		lessdanmu.limit = limit.New(int(max_num), "1s", "0s") //timeout right now
-	}
-}
-
-func Lessdanmuf(s string) (show bool) {
-	if !IsOn("相似弹幕忽略") {
-		return true
-	}
-	if lessdanmu.roomid != c.C.Roomid {
-		lessdanmu.buf = nil
-		lessdanmu.roomid = c.C.Roomid
-		lessdanmu.threshold = 0.7
-		flog.Base_add(`更少弹幕`).L(`T: `, `房间更新:`, lessdanmu.roomid)
-		return true
-	}
-	if len(lessdanmu.buf) < 20 {
-		lessdanmu.buf = append(lessdanmu.buf, s)
-		return true
-	}
-
-	o := cross(s, lessdanmu.buf)
-	if o == 1 {
-		return false
-	} //完全无用
-
-	Jiezouf(lessdanmu.buf)
-	slice.DelFront(&lessdanmu.buf, 1)
-
-	show = o < lessdanmu.threshold
-
-	if show && lessdanmu.max_num > 0 {
-		return !lessdanmu.limit.TO()
-	}
-	return
 }
 
 /*
@@ -596,68 +437,15 @@ func Entry_danmu(common *c.Common) {
 		return
 	}
 	if v, _ := common.K_v.LoadV(`进房弹幕_仅发首日弹幕`).(bool); v {
-		res := F.Get_weared_medal(common.Uid, common.UpUid)
+		res, _ := F.Get_weared_medal(common.Uid, common.UpUid)
 		if res.TodayIntimacy > 0 {
 			flog.L(`T: `, `今日已发弹幕`)
 			return
 		}
 	}
-	if array, ok := common.K_v.LoadV(`进房弹幕_内容`).([]interface{}); ok && len(array) != 0 {
+	if array, ok := common.K_v.LoadV(`进房弹幕_内容`).([]any); ok && len(array) != 0 {
 		rand := p.Rand().MixRandom(0, int64(len(array)-1))
-		_ = send.Danmu_s(array[rand].(string), common.Roomid)
-	}
-}
-
-// 保持所有牌子点亮
-func KeepMedalLight(ctx context.Context, common *c.Common) {
-	if v, _ := common.K_v.LoadV(`保持牌子亮着`).(bool); !v {
-		return
-	}
-
-	v, _ := common.K_v.LoadV(`保持牌子亮着_指定时间`).(string)
-	if v == "" {
-		v = "00:00:00"
-	}
-
-	flog := flog.Base_add(`保持亮牌`)
-	if tt, e := time.Parse(time.TimeOnly, v); e != nil {
-		flog.L(`E: `, e)
-	} else {
-		flog.L(`I: `, "将在", v, "启动")
-		sec := tt.Hour()*3600 + tt.Minute()*60 + tt.Second()
-		go func() {
-			ctx, done := pctx.WaitCtx(ctx)
-			defer done()
-
-			for {
-				h, m, s := time.Now().Clock()
-				now := h*3600 + m*60 + s
-				if sec >= now {
-					select {
-					case <-time.After(time.Second * time.Duration(sec-now)):
-					case <-ctx.Done():
-						return
-					}
-				} else {
-					select {
-					case <-time.After(time.Hour*24 + time.Second*time.Duration(sec-now)):
-					case <-ctx.Done():
-						return
-					}
-				}
-
-				if _, e := keepMedalLight.Main.Run(ctx, keepMedalLight.Func{
-					Uid:         common.Uid,
-					Logg:        flog,
-					BiliApi:     F.GetBiliApi(),
-					SendDanmu:   send.Danmu_s,
-					PreferDanmu: common.K_v.LoadV(`进房弹幕_内容`).([]any),
-				}); e != nil {
-					flog.L(`E: `, e)
-					return
-				}
-			}
-		}()
+		replyFunc.KeepMedalLight.Do(array[rand].(string))
 	}
 }
 
@@ -878,7 +666,7 @@ func init() {
 
 			// 获取当前房间的
 			var currentStreamO *M4SStream
-			c.StreamO.Range(func(key, value interface{}) bool {
+			c.StreamO.Range(func(key, value any) bool {
 				if key != nil && c.C.Roomid == key.(int) {
 					currentStreamO = value.(*M4SStream)
 					return false

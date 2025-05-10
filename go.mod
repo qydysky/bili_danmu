@@ -5,7 +5,7 @@ go 1.24
 require (
 	github.com/gotk3/gotk3 v0.6.4
 	github.com/mdp/qrterminal/v3 v3.2.0
-	github.com/qydysky/part v0.28.20250508122622
+	github.com/qydysky/part v0.28.20250509205808
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966
 	golang.org/x/text v0.24.0 // indirect
@@ -13,7 +13,7 @@ require (
 
 require (
 	github.com/google/uuid v1.6.0
-	github.com/qydysky/biliApi v0.0.0-20250506170139-ecbeaf602c40
+	github.com/qydysky/biliApi v0.0.0-20250509210314-8407d638b123
 	github.com/qydysky/brotli v0.0.0-20240828134800-e9913a6e7ed9
 	golang.org/x/exp v0.0.0-20250215185904-eff6e970281f
 )

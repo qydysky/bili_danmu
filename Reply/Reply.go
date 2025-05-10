@@ -1347,12 +1347,12 @@ func (t replyF) danmu(s string) {
 		if IsOn("反射弹幕机") {
 			go replyFunc.Danmuji.Danmujif(item.msg, Msg_senddanmu)
 		}
-		if i := Autoskipf(item.msg); i > 0 {
+		if i := replyFunc.DanmuMerge.Do(item.msg); i > 0 {
 			danmulog.L(`I: `, item.auth, ":", item.msg)
 			return
 		}
 		//附加功能 更少弹幕
-		if !Lessdanmuf(item.msg) {
+		if !replyFunc.LessDanmu.Do(item.msg) {
 			danmulog.L(`I: `, item.auth, ":", item.msg)
 			return
 		}
@@ -1375,12 +1375,8 @@ func (t replyF) danmu(s string) {
 // 传入字符串即可发送
 // 需要cookie
 func Msg_senddanmu(msg string) {
-	if missKey := F.CookieCheck([]string{
-		`bili_jct`,
-		`DedeUserID`,
-		`LIVE_BUVID`,
-	}); len(missKey) != 0 || c.C.Roomid == 0 {
-		msglog.L(`E: `, `c.Roomid == 0 || Cookie无Key:`, missKey)
+	if !c.C.IsLogin() || c.C.Roomid == 0 {
+		msglog.L(`E: `, `未登陆`)
 		return
 	}
 	_ = send.Danmu_s(msg, c.C.Roomid)
@@ -1447,3 +1443,27 @@ func Itos(i []interface{}) string {
 	}
 	return r
 }
+
+// 弹幕合并
+var _ = replyFunc.DanmuMerge.InitSend(func(roomid int, num uint, msg string) {
+	if num > 3 {
+		c.C.Danmu_Main_mq.Push_tag(`tts`, Danmu_mq_t{ //传入消息队列
+			uid: `0multi`,
+			m: map[string]string{
+				`{num}`: strconv.Itoa(int(num)),
+				`{msg}`: msg,
+			},
+		})
+		Msg_showdanmu(Danmu_item{
+			msg:    strconv.Itoa(int(num)) + " x " + msg,
+			uid:    `0multi`,
+			roomid: roomid,
+		})
+	} else if num > 1 {
+		Msg_showdanmu(Danmu_item{
+			msg:    strconv.Itoa(int(num)) + " x " + msg,
+			uid:    `0default`,
+			roomid: roomid,
+		})
+	}
+})

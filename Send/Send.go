@@ -104,12 +104,6 @@ func Danmu_s2(data map[string]string) error {
 	data[`csrf`] = csrf
 	data[`csrf_token`] = csrf
 
-	Cookie := make(map[string]string)
-	c.C.Cookie.Range(func(k, v interface{}) bool {
-		Cookie[k.(string)] = v.(string)
-		return true
-	})
-
 	postStr, contentType := reqf.ToForm(data)
 	l.L(`I: `, "发送", data[`msg`], "至", data[`roomid`])
 
@@ -133,7 +127,7 @@ func Danmu_s2(data map[string]string) error {
 			`Pragma`:          `no-cache`,
 			`Cache-Control`:   `no-cache`,
 			`Referer`:         "https://live.bilibili.com/" + data[`roomid`],
-			`Cookie`:          reqf.Map_2_Cookies_String(Cookie),
+			`Cookie`:          c.C.GenReqCookie(),
 		},
 	})
 	if err != nil {

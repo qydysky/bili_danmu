@@ -1,91 +1,102 @@
 package keepMedalLight
 
 import (
-	"context"
-	"sync/atomic"
+	"container/ring"
+	"sync"
 	"time"
 
-	"github.com/qydysky/bili_danmu/F"
 	p "github.com/qydysky/part"
 
-	comp "github.com/qydysky/part/component"
+	comp2 "github.com/qydysky/part/component2"
 
 	log "github.com/qydysky/part/log"
 )
 
-var (
-	Main = comp.NewComp(main)
-	rand = p.Rand()
-	skip atomic.Bool
-)
+// 点赞30次、发送弹幕10条，可点亮勋章3天
+// 点赞 = 1P ； 弹幕 = 3P
 
-type Func struct {
-	Uid         int
-	Logg        *log.Log_interface
-	BiliApi     F.BiliApiInter
-	SendDanmu   func(danmu string, RoomID int) error
-	PreferDanmu []any
+func init() {
+	comp2.RegisterOrPanic[interface {
+		Init(L *log.Log_interface, Roomid int, SendDanmu func(danmu string, RoomID int) error, PreferDanmu any)
+		Clear()
+		// 在所有可以发送点赞/弹幕的地方都加上，会评估是否需要点赞/弹幕，当prefer存在时，必然发送一条
+		Do(prefer ...string)
+	}](`keepMedalLight`, &keepMedalLight{})
 }
 
-func main(ctx context.Context, ptr Func) (ret any, err error) {
-	if !skip.CompareAndSwap(false, true) {
+type keepMedalLight struct {
+	roomid       int
+	log          *log.Log_interface
+	sendDanmu    func(danmu string, RoomID int) error
+	preferDanmu  []any
+	hisPointTime *ring.Ring
+	l            sync.RWMutex
+}
+
+func (t *keepMedalLight) Init(L *log.Log_interface, Roomid int, SendDanmu func(danmu string, RoomID int) error, PreferDanmu any) {
+	t.l.Lock()
+	defer t.l.Unlock()
+
+	t.roomid = Roomid
+	t.log = L
+	t.sendDanmu = SendDanmu
+	t.hisPointTime = ring.New(30)
+	if ds, ok := PreferDanmu.([]any); ok {
+		t.preferDanmu = append(t.preferDanmu, ds...)
+	}
+}
+
+func (t *keepMedalLight) Clear() {
+	t.l.Lock()
+	defer t.l.Unlock()
+
+	t.roomid = 0
+}
+
+// 发送的时机
+func (t *keepMedalLight) Do(prefer ...string) {
+	t.l.Lock()
+	defer t.l.Unlock()
+
+	if t.roomid == 0 || t.sendDanmu == nil {
 		return
 	}
 
-	ptr.Logg.L(`T: `, `开始`)
-	t := time.NewTicker(time.Second * 5)
+	var waitToSend string
 
-	defer func() {
-		t.Stop()
-		ptr.Logg.L(`I: `, `完成`)
-		skip.Store(false)
-	}()
-
-	if e, list := ptr.BiliApi.GetFansMedal(0, 0); e != nil {
-		ptr.Logg.L(`E: `, e)
-	} else {
-		for _, i := range list {
-
-			select {
-			case <-ctx.Done():
-				return
-			case <-t.C:
-			}
-
-			if len(ptr.PreferDanmu) > 0 {
-				if s, ok := ptr.PreferDanmu[rand.MixRandom(0, int64(len(ptr.PreferDanmu)-1))].(string); ok {
-					if e := ptr.SendDanmu(s, i.RoomID); e != nil {
-						ptr.Logg.L(`E: `, e)
-					}
-				}
-			} else if e := ptr.SendDanmu(`点赞`, i.RoomID); e != nil {
-				ptr.Logg.L(`E: `, e)
-			}
+	if len(prefer) > 0 {
+		waitToSend = prefer[0]
+	} else if d, ok := t.hisPointTime.Value.(time.Time); ok && time.Since(d) < time.Hour*24 {
+		// 环中最后一个时间在1天内
+		return
+	} else if d, ok := t.hisPointTime.Prev().Value.(time.Time); ok && time.Since(d) < time.Second*100 {
+		// 100s最多发一次
+		return
+	} else if len(t.preferDanmu) > 0 {
+		if s, ok := t.preferDanmu[p.Rand().MixRandom(0, int64(len(t.preferDanmu)-1))].(string); ok {
+			waitToSend = s
 		}
 	}
 
-	if e, list := ptr.BiliApi.GetFansMedal(0, 0); e != nil {
-		ptr.Logg.L(`E: `, e)
-	} else {
-		for _, i := range list {
-
-			select {
-			case <-ctx.Done():
-				return
-			case <-t.C:
-			}
-
-			if i.IsLighted == 0 {
-				if e, his := ptr.BiliApi.GetHisDanmu(i.RoomID); e != nil {
-					ptr.Logg.L(`E: `, e)
-				} else if len(his) > 0 {
-					if e := ptr.SendDanmu(his[0], i.RoomID); e != nil {
-						ptr.Logg.L(`E: `, e)
-					}
-				}
-			}
-		}
+	if waitToSend == `` {
+		waitToSend = `点赞`
 	}
 
-	return
+	if waitToSend == `点赞` {
+		t.getPoint(1)
+	} else {
+		t.getPoint(3)
+	}
+
+	t.log.L(`T: `, `保持亮牌`)
+	if e := t.sendDanmu(waitToSend, t.roomid); e != nil {
+		t.log.L(`E: `, e)
+	}
+}
+
+func (t *keepMedalLight) getPoint(n int) {
+	for range n {
+		t.hisPointTime.Value = time.Now()
+		t.hisPointTime = t.hisPointTime.Next()
+	}
 }
