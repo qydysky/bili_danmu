@@ -62,12 +62,12 @@ func (t *danmuMerge) Init(ctx context.Context, roomid int) {
 		for {
 			select {
 			case <-t.ticker.C:
-				t.now += 1
 			case <-ctx.Done():
 				return
 			}
 
 			t.Lock()
+			t.now += 1
 			if len(t.buf) != 0 {
 				for k, v := range t.buf {
 					if v.Exprie <= t.now {
@@ -84,8 +84,8 @@ func (t *danmuMerge) Init(ctx context.Context, roomid int) {
 
 // Do implements TargetInterface.
 func (t *danmuMerge) Do(s string) uint {
-	t.RLock()
-	defer t.RUnlock()
+	t.Lock()
+	defer t.Unlock()
 
 	if t.roomid == 0 || t.f == nil {
 		return 0
