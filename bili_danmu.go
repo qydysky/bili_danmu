@@ -254,18 +254,6 @@ func Start(rootCtx context.Context) {
 }
 
 func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, common *c.Common) (exitSign bool) {
-	// 无粉丝牌
-	if common.Wearing_FansMedal == 0 {
-		// 附加功能 保持牌子点亮
-		replyFunc.KeepMedalLight.Clear()
-	} else {
-		replyFunc.KeepMedalLight.Init(danmulog.Base("保持牌子点亮"), common.Roomid, send.Danmu_s, c.C.K_v.LoadV(`进房弹幕_内容`))
-	}
-	if reply.IsOn(`相似弹幕忽略`) {
-		replyFunc.LessDanmu.InitRoom(common.Roomid)
-	} else {
-		replyFunc.LessDanmu.Unset()
-	}
 	var (
 		aliveT                                          = time.Now().Add(3 * time.Hour)
 		heartbeatmsg, heartinterval                     = F.Heartbeat()
@@ -285,6 +273,17 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, c
 				F.Get(common).Get(`Note`)
 				// 检查与切换粉丝牌，只在cookie存在时启用
 				F.Get(common).Get(`CheckSwitch_FansMedal`)
+				// 附加功能 保持牌子点亮
+				if reply.IsOn(`保持牌子亮着`) && common.Wearing_FansMedal != 0 {
+					replyFunc.KeepMedalLight.Init(danmulog.Base("保持牌子点亮"), common.Roomid, send.Danmu_s, c.C.K_v.LoadV(`进房弹幕_内容`))
+				} else {
+					replyFunc.KeepMedalLight.Clear()
+				}
+				if reply.IsOn(`相似弹幕忽略`) {
+					replyFunc.LessDanmu.InitRoom(common.Roomid)
+				} else {
+					replyFunc.LessDanmu.Unset()
+				}
 				danmulog.L(`I: `, "连接到房间", common.Roomid)
 				// 获取弹幕服务器
 				F.Get(common).Get(`WSURL`)

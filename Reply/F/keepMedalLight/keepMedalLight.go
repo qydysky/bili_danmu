@@ -58,7 +58,7 @@ func (t *keepMedalLight) Do(prefer ...string) {
 	t.l.Lock()
 	defer t.l.Unlock()
 
-	if t.roomid == 0 {
+	if t.roomid == 0 || t.sendDanmu == nil {
 		return
 	}
 
