@@ -106,7 +106,8 @@ func NewFmp4Decoder() *Fmp4Decoder {
 func (t *Fmp4Decoder) Init_fmp4(buf []byte) (b []byte, err error) {
 	var ftypI, ftypE, moovI, moovE int
 
-	ies, e := decode(buf, "ftyp")
+	ies, recycle, e := decode(buf, "ftyp")
+	defer recycle(ies)
 	if e != nil {
 		return
 	}
@@ -267,7 +268,8 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 		}
 	)
 
-	ies, e := decode(buf, "moof")
+	ies, recycle, e := decode(buf, "moof")
+	defer recycle(ies)
 	if e != nil {
 		return 0, e
 	}
@@ -512,7 +514,8 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...dealFMp4) (cu int, err error) {
 		}
 	)
 
-	ies, e := decode(buf, "moof")
+	ies, recycle, e := decode(buf, "moof")
+	defer recycle(ies)
 	if e != nil {
 		return 0, e
 	}
@@ -838,10 +841,17 @@ func deals(ies []ie, dealIEs []dealIE) (err error) {
 var (
 	ErrMisBox     = pe.New("decode", "ErrMisBox")
 	ErrCantResync = pe.New("decode")
+	iesPool       = slice.NewFlexBlocks[ie](5)
 )
 
-func decode(buf []byte, reSyncboxName string) (m []ie, err error) {
+func decode(buf []byte, reSyncboxName string) (m []ie, recycle func([]ie), err error) {
 	var cu int
+
+	m, recycle, err = iesPool.Get()
+	if err != nil {
+		return
+	}
+	m = m[:0]
 
 	for cu < len(buf)-fmp4BoxLenSize-fmp4BoxNameSize {
 		boxName, i, e, E := searchBox(buf, &cu)
@@ -862,11 +872,18 @@ func decode(buf []byte, reSyncboxName string) (m []ie, err error) {
 			return
 		}
 
-		m = append(m, ie{
-			n: boxName,
-			i: i,
-			e: e,
-		})
+		if cu := len(m); cu < cap(m) {
+			m = m[:cu+1]
+			m[cu].n = boxName
+			m[cu].i = i
+			m[cu].e = e
+		} else {
+			m = append(m, ie{
+				n: boxName,
+				i: i,
+				e: e,
+			})
+		}
 	}
 
 	return
