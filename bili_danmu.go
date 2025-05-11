@@ -430,8 +430,8 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, c
 				`interrupt`: func(_ any) (disable bool) {
 					exitloop = true
 					exitSign = true
-					ws_c.Close()
 					danmulog.L(`I: `, "停止，等待服务器断开连接")
+					ws_c.Close()
 					reply.StreamOStopAll() //停止录制
 					return true
 				},
