@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"sync"
 	"time"
 
 	"github.com/dustin/go-humanize"
@@ -89,8 +90,9 @@ func (t *timeStamp) getT() float64 {
 }
 
 type Fmp4Decoder struct {
-	traks map[int]*trak
-	buf   *slice.Buf[byte]
+	traks   map[int]*trak
+	buf     *slice.Buf[byte]
+	buflock sync.Mutex
 
 	AVTDiff float64 // 音视频时间戳容差
 	Debug   bool
@@ -168,6 +170,10 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 	if len(t.traks) == 0 {
 		return 0, ErrMisTraks
 	}
+
+	t.buflock.Lock()
+	defer t.buflock.Unlock()
+
 	t.buf.Reset()
 	keyframe.Reset()
 
@@ -416,6 +422,10 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...dealFMp4) (cu int, err error) {
 	if len(t.traks) == 0 {
 		return 0, ErrMisTraks
 	}
+
+	t.buflock.Lock()
+	defer t.buflock.Unlock()
+
 	t.buf.Reset()
 
 	defer func() {
@@ -667,6 +677,248 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...dealFMp4) (cu int, err error) {
 	return
 }
 
+func (t *Fmp4Decoder) oneFNoBuf(buf []byte, w ...dealFMp4) (cu int, err error) {
+	if len(buf) > humanize.MByte*100 {
+		return 0, ErrBufTooLarge
+	}
+	if len(t.traks) == 0 {
+		return 0, ErrMisTraks
+	}
+
+	defer func() {
+		if err != nil {
+			cu = 0
+		}
+	}()
+
+	var (
+		haveKeyframe bool
+		// bufModified  bool
+		// maxSequenceNumber int //有时并不是单调增加
+		maxVT float64
+		maxAT float64
+
+		//get timeStamp
+		get_timeStamp = func(tfdt int) (ts timeStamp) {
+			switch buf[tfdt+8] {
+			case 0:
+				ts.data = buf[tfdt+16 : tfdt+20]
+				ts.timeStamp = int(F.Btoi32(buf, tfdt+16))
+			case 1:
+				ts.data = buf[tfdt+12 : tfdt+20]
+				ts.timeStamp = int(F.Btoi64(buf, tfdt+12))
+			}
+			return
+		}
+
+		//get track type
+		get_track_type = func(tfhd, tfdt int) (ts timeStamp, handlerType byte) {
+			track, ok := t.traks[int(F.Btoi(buf, tfhd+12, 4))]
+			if ok {
+				ts := get_timeStamp(tfdt)
+				// if track.firstTimeStamp == -1 {
+				// 	track.firstTimeStamp = ts.timeStamp
+				// }
+
+				// ts.firstTimeStamp = track.firstTimeStamp
+				ts.handlerType = track.handlerType
+				ts.timescale = track.timescale
+
+				// if ts.timeStamp > track.lastTimeStamp {
+				// 	track.lastTimeStamp = ts.timeStamp
+				// 	ts.resetTs()
+				// }
+
+				return ts, track.handlerType
+			}
+			return
+		}
+
+		//is SampleEntries error?
+		checkSampleEntries = func(trun, mdat int) error {
+			if buf[trun+11] == 'b' {
+				for i := trun + 24; i < mdat; i += 12 {
+					if F.Btoi(buf, i+4, 4) < 1000 {
+						return errors.New("find sample size less then 1000")
+					}
+				}
+			}
+			return nil
+		}
+
+		//is t error?
+		checkAndSetMaxT = func(ts timeStamp) (err error) {
+			switch ts.handlerType {
+			case 'v':
+				if maxVT == 0 {
+					maxVT = ts.getT()
+				} else if maxVT == ts.getT() {
+					err = ActionCheckTFail.New("equal VT detect")
+				} else if maxVT > ts.getT() {
+					err = ActionCheckTFail.New("lower VT detect")
+				} else {
+					maxVT = ts.getT()
+				}
+			case 'a':
+				if maxAT == 0 {
+					maxAT = ts.getT()
+				} else if maxAT == ts.getT() {
+					err = ActionCheckTFail.New("equal AT detect")
+				} else if maxAT > ts.getT() {
+					err = ActionCheckTFail.New("lower AT detect")
+				} else {
+					maxAT = ts.getT()
+				}
+			default:
+			}
+			return
+		}
+
+		dropKeyFrame = func(index int) {
+			haveKeyframe = false
+			cu = index
+		}
+	)
+
+	ies, recycle, e := decode(buf, "moof")
+	defer recycle(ies)
+	if e != nil {
+		return 0, e
+	}
+
+	var ErrNormal pe.Action = "ErrNormal"
+
+	err = deals(ies,
+		[]dealIE{
+			{
+				boxNames: []string{"moof", "mfhd", "traf", "tfhd", "tfdt", "trun", "mdat"},
+				fs: func(m []ie) error {
+					var (
+						keyframeMoof = buf[m[5].i+20] == byte(0x02)
+						// moofSN       = int(F.Btoi(buf, m[1].i+12, 4))
+						video timeStamp
+					)
+
+					{
+						ts, handlerType := get_track_type(m[3].i, m[4].i)
+						if ts.handlerType == 'v' {
+							if e := checkSampleEntries(m[5].i, m[6].i); e != nil {
+								//skip
+								dropKeyFrame(m[0].e)
+								return pe.Join(ErrDecode, e)
+							}
+						}
+						if handlerType == 'v' {
+							video = ts
+						}
+						if e := checkAndSetMaxT(ts); e != nil {
+							dropKeyFrame(m[0].e)
+							return pe.Join(ErrDecode, e)
+						}
+					}
+
+					// fmt.Println(ts.getT(), "frame0", keyframeMoof, t.buf.size(), m[0].i, m[6].n, m[6].e)
+
+					//deal frame
+					if keyframeMoof {
+						if haveKeyframe && len(w) > 0 {
+							err = w[0](video.getT(), cu, nil)
+							dropKeyFrame(m[0].i)
+							return ErrNormal
+						}
+						dropKeyFrame(m[0].i)
+						haveKeyframe = true
+					} else if !haveKeyframe {
+						cu = m[6].e
+					}
+					return nil
+				},
+			},
+			{
+				boxNames: []string{"moof", "mfhd", "traf", "tfhd", "tfdt", "trun", "traf", "tfhd", "tfdt", "trun", "mdat"},
+				fs: func(m []ie) error {
+					var (
+						keyframeMoof = buf[m[5].i+20] == byte(0x02) || buf[m[9].i+20] == byte(0x02)
+						// moofSN       = int(F.Btoi(buf, m[1].i+12, 4))
+						video timeStamp
+						audio timeStamp
+					)
+
+					{
+						ts, handlerType := get_track_type(m[3].i, m[4].i)
+						if handlerType == 'v' {
+							if e := checkSampleEntries(m[5].i, m[6].i); e != nil {
+								//skip
+								dropKeyFrame(m[0].e)
+								return pe.Join(ErrDecode, e)
+							}
+						}
+						switch handlerType {
+						case 'v':
+							video = ts
+						case 's':
+							audio = ts
+						}
+						if e := checkAndSetMaxT(ts); e != nil {
+							dropKeyFrame(m[0].e)
+							return pe.Join(ErrDecode, e)
+						}
+					}
+					{
+						ts, handlerType := get_track_type(m[7].i, m[8].i)
+						if handlerType == 'v' {
+							if e := checkSampleEntries(m[9].i, m[10].i); e != nil {
+								//skip
+								dropKeyFrame(m[0].e)
+								return pe.Join(ErrDecode, e)
+							}
+						}
+						switch handlerType {
+						case 'v':
+							video = ts
+						case 's':
+							audio = ts
+						}
+						if e := checkAndSetMaxT(ts); e != nil {
+							dropKeyFrame(m[0].e)
+							return pe.Join(ErrDecode, e)
+						}
+					}
+
+					//sync audio timeStamp
+					if t.AVTDiff <= 0.1 {
+						t.AVTDiff = 0.1
+					}
+					if diff := math.Abs(video.getT() - audio.getT()); diff > t.AVTDiff {
+						return pe.Join(ErrDecode, fmt.Errorf("时间戳不匹配 %v %v (或许应调整fmp4音视频时间戳容差s>%.2f)", video.timeStamp, audio.timeStamp, diff))
+						// copy(video.data, F.Itob64(int64(audio.getT()*float64(video.timescale))))
+					}
+
+					//deal frame
+					if keyframeMoof {
+						if haveKeyframe && len(w) > 0 {
+							err = w[0](video.getT(), cu, nil)
+							dropKeyFrame(m[0].i)
+							return ErrNormal
+						}
+						dropKeyFrame(m[0].i)
+						haveKeyframe = true
+					} else if !haveKeyframe {
+						cu = m[10].e
+					}
+					return nil
+				},
+			},
+		},
+	)
+
+	if errors.Is(err, ErrNormal) {
+		err = nil
+	}
+
+	return
+}
+
 // Deprecated: 效率低于GenFastSeed+CutSeed
 func (t *Fmp4Decoder) Cut(reader io.Reader, startT, duration time.Duration, w io.Writer) (err error) {
 	return t.CutSeed(reader, startT, duration, w, nil, nil)
@@ -751,6 +1003,9 @@ func (t *Fmp4Decoder) CutSeed(reader io.Reader, startT, duration time.Duration, 
 }
 
 func (t *Fmp4Decoder) GenFastSeed(reader io.Reader, save func(seedTo time.Duration, cuIndex int64) error) (err error) {
+	t.buflock.Lock()
+	defer t.buflock.Unlock()
+
 	t.buf.Reset()
 
 	bufSize := humanize.KByte * 1100
@@ -783,7 +1038,7 @@ func (t *Fmp4Decoder) GenFastSeed(reader io.Reader, save func(seedTo time.Durati
 				}
 			}
 		} else {
-			if dropOffset, e := t.oneF(t.buf.GetPureBuf(), func(ts float64, index int, buf *slice.Buf[byte]) error {
+			if dropOffset, e := t.oneFNoBuf(t.buf.GetPureBuf(), func(ts float64, index int, _ *slice.Buf[byte]) error {
 				if firstFT == -1 {
 					firstFT = ts
 				}
