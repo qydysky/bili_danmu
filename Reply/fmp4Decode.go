@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"math"
-	"sync"
 	"time"
 
 	"github.com/dustin/go-humanize"
@@ -751,15 +750,8 @@ func (t *Fmp4Decoder) CutSeed(reader io.Reader, startT, duration time.Duration, 
 	return
 }
 
-var (
-	genfastSeedLock sync.Mutex
-	genfastSeedBuf  = slice.New[byte]()
-)
-
 func (t *Fmp4Decoder) GenFastSeed(reader io.Reader, save func(seedTo time.Duration, cuIndex int64) error) (err error) {
-	genfastSeedLock.Lock()
-	defer genfastSeedLock.Unlock()
-	genfastSeedBuf.Clear()
+	t.buf.Reset()
 
 	bufSize := humanize.KByte * 1100
 	totalRead := 0
@@ -769,18 +761,18 @@ func (t *Fmp4Decoder) GenFastSeed(reader io.Reader, save func(seedTo time.Durati
 	firstFT := -1.0
 
 	for c := 0; err == nil && !over; c++ {
-		if genfastSeedBuf.Size() < bufSize {
+		if t.buf.Size() < bufSize {
 			n, e := reader.Read(buf)
 			if n == 0 && errors.Is(e, io.EOF) {
 				return io.EOF
 			}
 			totalRead += n
-			err = genfastSeedBuf.Append(buf[:n])
+			err = t.buf.Append(buf[:n])
 			continue
 		}
 
 		if !init {
-			if frontBuf, e := t.Init_fmp4(genfastSeedBuf.GetPureBuf()); e != nil {
+			if frontBuf, e := t.Init_fmp4(t.buf.GetPureBuf()); e != nil {
 				return pe.New(e.Error(), ActionInitFmp4)
 			} else {
 				if len(frontBuf) == 0 {
@@ -791,11 +783,11 @@ func (t *Fmp4Decoder) GenFastSeed(reader io.Reader, save func(seedTo time.Durati
 				}
 			}
 		} else {
-			if dropOffset, e := t.oneF(genfastSeedBuf.GetPureBuf(), func(t float64, index int, buf *slice.Buf[byte]) error {
+			if dropOffset, e := t.oneF(t.buf.GetPureBuf(), func(ts float64, index int, buf *slice.Buf[byte]) error {
 				if firstFT == -1 {
-					firstFT = t
+					firstFT = ts
 				}
-				if e := save(time.Second*time.Duration(t-firstFT), int64(totalRead-genfastSeedBuf.Size()+index)); e != nil {
+				if e := save(time.Second*time.Duration(ts-firstFT), int64(totalRead-t.buf.Size()+index)); e != nil {
 					return pe.Join(ActionGenFastSeedFmp4, e)
 				}
 				return nil
@@ -803,7 +795,7 @@ func (t *Fmp4Decoder) GenFastSeed(reader io.Reader, save func(seedTo time.Durati
 				return pe.Join(ActionGenFastSeedFmp4, ActionOneFFmp4, e)
 			} else {
 				if dropOffset != 0 {
-					_ = genfastSeedBuf.RemoveFront(dropOffset)
+					_ = t.buf.RemoveFront(dropOffset)
 				} else {
 					bufSize *= 2
 				}
