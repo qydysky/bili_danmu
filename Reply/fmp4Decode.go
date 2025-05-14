@@ -8,6 +8,7 @@ import (
 	"math"
 	"sync"
 	"time"
+	"unique"
 
 	"github.com/dustin/go-humanize"
 	F "github.com/qydysky/bili_danmu/F"
@@ -29,28 +30,28 @@ var (
 	ActionCheckTFail      pe.Action = `CheckTFail`
 )
 
-var boxs map[string]bool
+var boxs map[unique.Handle[string]]bool
 
 func init() {
-	boxs = make(map[string]bool)
+	boxs = make(map[unique.Handle[string]]bool)
 	//isPureBox? || need to skip?
-	boxs["ftyp"] = true
-	boxs["moov"] = false
-	boxs["mvhd"] = true
-	boxs["trak"] = false
-	boxs["tkhd"] = true
-	boxs["mdia"] = false
-	boxs["mdhd"] = true
-	boxs["hdlr"] = true
-	boxs["minf"] = false || true
-	boxs["mvex"] = false || true
-	boxs["moof"] = false
-	boxs["mfhd"] = true
-	boxs["traf"] = false
-	boxs["tfhd"] = true
-	boxs["tfdt"] = true
-	boxs["trun"] = true
-	boxs["mdat"] = true
+	boxs[unique.Make("ftyp")] = true
+	boxs[unique.Make("moov")] = false
+	boxs[unique.Make("mvhd")] = true
+	boxs[unique.Make("trak")] = false
+	boxs[unique.Make("tkhd")] = true
+	boxs[unique.Make("mdia")] = false
+	boxs[unique.Make("mdhd")] = true
+	boxs[unique.Make("hdlr")] = true
+	boxs[unique.Make("minf")] = false || true
+	boxs[unique.Make("mvex")] = false || true
+	boxs[unique.Make("moof")] = false
+	boxs[unique.Make("mfhd")] = true
+	boxs[unique.Make("traf")] = false
+	boxs[unique.Make("tfhd")] = true
+	boxs[unique.Make("tfdt")] = true
+	boxs[unique.Make("trun")] = true
+	boxs[unique.Make("mdat")] = true
 }
 
 type ie struct {
@@ -925,8 +926,7 @@ func (t *Fmp4Decoder) Cut(reader io.Reader, startT, duration time.Duration, w io
 }
 
 func (t *Fmp4Decoder) CutSeed(reader io.Reader, startT, duration time.Duration, w io.Writer, seeker io.Seeker, getIndex func(seedTo time.Duration) (int64, error)) (err error) {
-	bufSize := humanize.KByte * 1100
-	buf := make([]byte, humanize.MByte)
+	buf := make([]byte, humanize.MByte*3)
 	buff := slice.New[byte]()
 	init := false
 	seek := false
@@ -951,21 +951,17 @@ func (t *Fmp4Decoder) CutSeed(reader io.Reader, startT, duration time.Duration, 
 		fmt.Printf("cut startT: %v duration: %v\n", startT, duration)
 	}
 	for c := 0; err == nil && !over; c++ {
-		if buff.Size() < bufSize {
-			n, e := reader.Read(buf)
-			if n == 0 && errors.Is(e, io.EOF) {
-				return io.EOF
-			}
-			err = buff.Append(buf[:n])
-			continue
+		n, e := reader.Read(buf)
+		if n == 0 && errors.Is(e, io.EOF) {
+			return io.EOF
 		}
+		err = buff.Append(buf[:n])
 
 		if !init {
 			if frontBuf, e := t.Init_fmp4(buff.GetPureBuf()); e != nil {
 				return pe.New(e.Error(), ActionInitFmp4)
 			} else {
 				if len(frontBuf) == 0 {
-					bufSize *= 2
 					continue
 				} else {
 					if t.Debug {
@@ -988,13 +984,15 @@ func (t *Fmp4Decoder) CutSeed(reader io.Reader, startT, duration time.Duration, 
 				startTM = 0
 				buff.Clear()
 			}
-			if dropOffset, e := t.oneF(buff.GetPureBuf(), wf); e != nil {
-				return pe.New(e.Error(), ActionOneFFmp4)
-			} else {
-				if dropOffset != 0 {
-					_ = buff.RemoveFront(dropOffset)
+			for {
+				if dropOffset, e := t.oneF(buff.GetPureBuf(), wf); e != nil {
+					return pe.New(e.Error(), ActionOneFFmp4)
 				} else {
-					bufSize *= 2
+					if dropOffset != 0 {
+						_ = buff.RemoveFront(dropOffset)
+					} else {
+						break
+					}
 				}
 			}
 		}
@@ -1008,51 +1006,44 @@ func (t *Fmp4Decoder) GenFastSeed(reader io.Reader, save func(seedTo time.Durati
 
 	t.buf.Reset()
 
-	bufSize := humanize.KByte * 1100
 	totalRead := 0
-	buf := make([]byte, humanize.MByte)
+	buf := make([]byte, humanize.MByte*3)
 	init := false
-	over := false
 	firstFT := -1.0
 
-	for c := 0; err == nil && !over; c++ {
-		if t.buf.Size() < bufSize {
-			n, e := reader.Read(buf)
-			if n == 0 && errors.Is(e, io.EOF) {
-				return io.EOF
-			}
-			totalRead += n
-			err = t.buf.Append(buf[:n])
-			continue
+	for c := 0; err == nil; c++ {
+		n, e := reader.Read(buf)
+		if n == 0 && errors.Is(e, io.EOF) {
+			return io.EOF
 		}
-
+		totalRead += n
+		err = t.buf.Append(buf[:n])
 		if !init {
 			if frontBuf, e := t.Init_fmp4(t.buf.GetPureBuf()); e != nil {
 				return pe.New(e.Error(), ActionInitFmp4)
+			} else if len(frontBuf) == 0 {
+				continue
 			} else {
-				if len(frontBuf) == 0 {
-					bufSize *= 2
-					continue
-				} else {
-					init = true
-				}
+				init = true
 			}
 		} else {
-			if dropOffset, e := t.oneFNoBuf(t.buf.GetPureBuf(), func(ts float64, index int, _ *slice.Buf[byte]) error {
-				if firstFT == -1 {
-					firstFT = ts
-				}
-				if e := save(time.Second*time.Duration(ts-firstFT), int64(totalRead-t.buf.Size()+index)); e != nil {
-					return pe.Join(ActionGenFastSeedFmp4, e)
-				}
-				return nil
-			}); e != nil {
-				return pe.Join(ActionGenFastSeedFmp4, ActionOneFFmp4, e)
-			} else {
-				if dropOffset != 0 {
-					_ = t.buf.RemoveFront(dropOffset)
+			for {
+				if dropOffset, e := t.oneFNoBuf(t.buf.GetPureBuf(), func(ts float64, index int, _ *slice.Buf[byte]) error {
+					if firstFT == -1 {
+						firstFT = ts
+					}
+					if e := save(time.Second*time.Duration(ts-firstFT), int64(totalRead-t.buf.Size()+index)); e != nil {
+						return pe.Join(ActionGenFastSeedFmp4, e)
+					}
+					return nil
+				}); e != nil {
+					return pe.Join(ActionGenFastSeedFmp4, ActionOneFFmp4, e)
 				} else {
-					bufSize *= 2
+					if dropOffset != 0 {
+						_ = t.buf.RemoveFront(dropOffset)
+					} else {
+						break
+					}
 				}
 			}
 		}
@@ -1152,10 +1143,11 @@ var (
 func searchBox(buf []byte, cu *int) (boxName string, i int, e int, err error) {
 	i = *cu
 	e = i + int(F.Btoi(buf, *cu, fmp4BoxLenSize))
-	boxName = string(buf[*cu+fmp4BoxLenSize : *cu+fmp4BoxLenSize+fmp4BoxNameSize])
-	isPureBoxOrNeedSkip, ok := boxs[boxName]
+	boxNameU := unique.Make(string(buf[*cu+fmp4BoxLenSize : *cu+fmp4BoxLenSize+fmp4BoxNameSize]))
+	boxName = boxNameU.Value()
+	isPureBoxOrNeedSkip, ok := boxs[boxNameU]
 	if !ok {
-		err = ErrUnkownBox.WithReason("未知包: " + boxName)
+		err = ErrUnkownBox.WithReason("未知包: " + boxNameU.Value())
 	} else if e > len(buf) {
 		err = io.EOF
 	} else if isPureBoxOrNeedSkip {
