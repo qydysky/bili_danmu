@@ -9,7 +9,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -216,7 +215,6 @@ var (
 type GetFunc struct {
 	*c.Common
 	count atomic.Int32
-	l     sync.RWMutex
 }
 
 // type cacheItem struct {
@@ -229,8 +227,7 @@ func Get(c *c.Common) *GetFunc {
 }
 
 func (t *GetFunc) Get(key string) {
-	t.l.Lock()
-	defer t.l.Unlock()
+	defer t.Lock()()
 
 	t.get(key)
 }
