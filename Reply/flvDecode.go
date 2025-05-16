@@ -288,7 +288,6 @@ func (t *FlvDecoder) Cut(reader io.Reader, startT, duration time.Duration, w io.
 }
 
 func (t *FlvDecoder) CutSeed(reader io.Reader, startT, duration time.Duration, w io.Writer, seeker io.Seeker, getIndex func(seedTo time.Duration) (int64, error)) (err error) {
-	bufSize := humanize.KByte * 1100
 	buf := make([]byte, humanize.KByte*500)
 	buff := slice.New[byte]()
 	over := false
@@ -310,14 +309,11 @@ func (t *FlvDecoder) CutSeed(reader io.Reader, startT, duration time.Duration, w
 	}
 
 	for c := 0; err == nil && !over; c++ {
-		if buff.Size() < bufSize {
-			n, e := reader.Read(buf)
-			if n == 0 && errors.Is(e, io.EOF) {
-				return io.EOF
-			}
-			err = buff.Append(buf[:n])
-			continue
+		n, e := reader.Read(buf)
+		if n == 0 && errors.Is(e, io.EOF) {
+			return io.EOF
 		}
+		err = buff.Append(buf[:n])
 
 		if !t.init {
 			if frontBuf, dropOffset, e := t.InitFlv(buff.GetPureBuf()); e != nil {
@@ -325,8 +321,6 @@ func (t *FlvDecoder) CutSeed(reader io.Reader, startT, duration time.Duration, w
 			} else {
 				if dropOffset != 0 {
 					_ = buff.RemoveFront(dropOffset)
-				} else {
-					bufSize *= 2
 				}
 				if len(frontBuf) == 0 {
 					continue
@@ -347,13 +341,15 @@ func (t *FlvDecoder) CutSeed(reader io.Reader, startT, duration time.Duration, w
 				startTM = 0
 				buff.Clear()
 			}
-			if dropOffset, e := t.oneF(buff.GetPureBuf(), wf); e != nil {
-				return perrors.New(e.Error(), ActionOneFFlv)
-			} else {
-				if dropOffset != 0 {
-					_ = buff.RemoveFront(dropOffset)
+			for {
+				if dropOffset, e := t.oneF(buff.GetPureBuf(), wf); e != nil {
+					return perrors.New(e.Error(), ActionOneFFlv)
 				} else {
-					bufSize *= 2
+					if dropOffset != 0 {
+						_ = buff.RemoveFront(dropOffset)
+					} else {
+						break
+					}
 				}
 			}
 		}
@@ -362,7 +358,6 @@ func (t *FlvDecoder) CutSeed(reader io.Reader, startT, duration time.Duration, w
 }
 
 func (t *FlvDecoder) GenFastSeed(reader io.Reader, save func(seedTo time.Duration, cuIndex int64) error) (err error) {
-	bufSize := humanize.KByte * 1100
 	totalRead := 0
 	buf := make([]byte, humanize.KByte*500)
 	buff := slice.New[byte]()
@@ -370,15 +365,12 @@ func (t *FlvDecoder) GenFastSeed(reader io.Reader, save func(seedTo time.Duratio
 	firstFT := -1
 
 	for c := 0; err == nil && !over; c++ {
-		if buff.Size() < bufSize {
-			n, e := reader.Read(buf)
-			if n == 0 && errors.Is(e, io.EOF) {
-				return io.EOF
-			}
-			totalRead += n
-			err = buff.Append(buf[:n])
-			continue
+		n, e := reader.Read(buf)
+		if n == 0 && errors.Is(e, io.EOF) {
+			return io.EOF
 		}
+		totalRead += n
+		err = buff.Append(buf[:n])
 
 		if !t.init {
 			if frontBuf, dropOffset, e := t.InitFlv(buff.GetPureBuf()); e != nil {
@@ -386,29 +378,29 @@ func (t *FlvDecoder) GenFastSeed(reader io.Reader, save func(seedTo time.Duratio
 			} else {
 				if dropOffset != 0 {
 					_ = buff.RemoveFront(dropOffset)
-				} else {
-					bufSize *= 2
 				}
 				if len(frontBuf) == 0 {
 					continue
 				}
 			}
 		} else {
-			if dropOffset, e := t.oneF(buff.GetPureBuf(), func(t, index int, buf []byte) error {
-				if firstFT == -1 {
-					firstFT = t
-				}
-				if e := save(time.Millisecond*time.Duration(t-firstFT), int64(totalRead-buff.Size()+index)); e != nil {
-					return perrors.Join(ActionGenFastSeedFlv, e)
-				}
-				return nil
-			}); e != nil {
-				return perrors.Join(ActionGenFastSeedFlv, ActionOneFFlv, e)
-			} else {
-				if dropOffset != 0 {
-					_ = buff.RemoveFront(dropOffset)
+			for {
+				if dropOffset, e := t.oneF(buff.GetPureBuf(), func(t, index int, buf []byte) error {
+					if firstFT == -1 {
+						firstFT = t
+					}
+					if e := save(time.Millisecond*time.Duration(t-firstFT), int64(totalRead-buff.Size()+index)); e != nil {
+						return perrors.Join(ActionGenFastSeedFlv, e)
+					}
+					return nil
+				}); e != nil {
+					return perrors.Join(ActionGenFastSeedFlv, ActionOneFFlv, e)
 				} else {
-					bufSize *= 2
+					if dropOffset != 0 {
+						_ = buff.RemoveFront(dropOffset)
+					} else {
+						break
+					}
 				}
 			}
 		}
