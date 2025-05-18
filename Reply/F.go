@@ -154,7 +154,6 @@ func StreamOStart(roomid int) {
 	}
 
 	common, _ := c.CommonsLoadOrInit.LoadOrInitPThen(roomid)(func(actual *c.Common, loaded bool) (*c.Common, bool) {
-		actual.Roomid = roomid
 		return actual, loaded
 	})
 
