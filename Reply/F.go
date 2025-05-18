@@ -161,17 +161,16 @@ func StreamOStart(roomid int) {
 	if tmp, e := NewM4SStream(common); e != nil {
 		flog.L(`E: `, e)
 	} else {
-		tmp.common.Roomid = roomid
 		//实例回调，避免重复录制
 		tmp.Callback_start = func(ms *M4SStream) error {
 			//流服务添加
-			if _, ok := c.StreamO.LoadOrStore(ms.common.Roomid, tmp); ok {
-				return fmt.Errorf("已存在此直播间(%d)录制", ms.common.Roomid)
+			if _, ok := c.StreamO.LoadOrStore(roomid, tmp); ok {
+				return fmt.Errorf("已存在此直播间(%d)录制", roomid)
 			}
 			return nil
 		}
 		tmp.Callback_stop = func(ms *M4SStream) {
-			c.StreamO.Delete(ms.common.Roomid) //流服务去除
+			c.StreamO.Delete(roomid) //流服务去除
 		}
 		tmp.Start()
 	}
