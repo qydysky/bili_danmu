@@ -339,7 +339,7 @@ func (t *FlvDecoder) CutSeed(reader io.Reader, startT, duration time.Duration, w
 				}
 				seek = true
 				startTM = 0
-				buff.Clear()
+				buff.Reset()
 			}
 			for {
 				if dropOffset, e := t.oneF(buff.GetPureBuf(), wf); e != nil {

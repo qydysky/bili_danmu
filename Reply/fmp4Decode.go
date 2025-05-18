@@ -734,7 +734,7 @@ func (t *Fmp4Decoder) CutSeed(reader io.Reader, startT, duration time.Duration, 
 				}
 				seek = true
 				startTM = 0
-				t.buf.Clear()
+				t.buf.Reset()
 			}
 			for {
 				if dropOffset, e := t.oneF(t.buf.GetPureBuf(), wf); e != nil {
