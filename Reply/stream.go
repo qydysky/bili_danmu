@@ -918,13 +918,13 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 			t.log.L(`I: `, `flv下载开始`, F.ParseHost(surl.String()))
 
 			_ = r.Reqf(reqf.Rval{
-				Ctx:         cancelC,
-				Url:         surl.String(),
-				SaveToPipe:  pipe,
-				NoResponse:  true,
-				Async:       true,
-				Proxy:       t.common.Proxy,
-				WriteLoopTO: int(readTO)*1000*2 + 1,
+				Ctx:                 cancelC,
+				Url:                 surl.String(),
+				SaveToPipe:          pipe,
+				NoResponse:          true,
+				Async:               true,
+				Proxy:               t.common.Proxy,
+				CopyResponseTimeout: int(readTO)*1000*2 + 1,
 				Header: map[string]string{
 					`Host`:            surl.Host,
 					`User-Agent`:      c.UA,
@@ -935,7 +935,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 					`Pragma`:          `no-cache`,
 					`Cache-Control`:   `no-cache`,
 					`Referer`:         "https://live.bilibili.com/",
-					`Cookie`:         t.common.GenReqCookie(),
+					`Cookie`:          t.common.GenReqCookie(),
 				},
 			})
 			if err := r.Wait(); err != nil && !errors.Is(err, io.EOF) {
@@ -1128,9 +1128,9 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 					defer done()
 
 					e := link.download(t.reqPool, reqf.Rval{
-						Timeout:     to * 1000,
-						WriteLoopTO: (to + 2) * 1000,
-						Proxy:       t.common.Proxy,
+						Timeout:             to * 1000,
+						CopyResponseTimeout: (to + 2) * 1000,
+						Proxy:               t.common.Proxy,
 						Header: map[string]string{
 							`Connection`: `close`,
 						},
