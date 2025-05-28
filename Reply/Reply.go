@@ -1282,7 +1282,7 @@ func (t replyF) danmu(s string) {
 				_, e := replyFunc.DanmuEmotes.SaveEmote(context.Background(), replyFunc.DanmuEmotesS{Logg: msglog, Info: i, Msg: &item.msg})
 				item.hasEmote = e == nil
 				if e != nil && !replyFunc.DanmuEmotes.IsErrNoEmote(e) {
-					msglog.L(`E: `, e)
+					msglog.Base_add("弹幕表情").L(`E: `, e)
 				}
 			}
 		}
