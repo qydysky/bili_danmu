@@ -775,13 +775,11 @@ func (t *Common) loadConf(customConf string) error {
 			}); e != nil {
 				return errors.New("无法获取自定义配置文件 " + e.Error())
 			}
-			if req.Response == nil {
-				return errors.New("无法获取自定义配置文件 响应为空")
-			} else if req.Response.StatusCode&200 != 200 {
-				return fmt.Errorf("无法获取自定义配置文件 %d", req.Response.StatusCode)
+			if req.ResStatusCode()&200 != 200 {
+				return fmt.Errorf("无法获取自定义配置文件 %d", req.ResStatusCode())
 			} else {
 				var tmp map[string]interface{}
-				_ = json.Unmarshal(req.Respon, &tmp)
+				_ = req.ResponUnmarshal(json.Unmarshal, &tmp)
 				for k, v := range tmp {
 					data[k] = v
 				}

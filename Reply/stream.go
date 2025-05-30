@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"iter"
 	"math"
 	"net"
 	"net/http"
@@ -160,7 +161,7 @@ func (link *m4s_link_item) download(reqPool *pool.Buf[reqf.Req], reqConfig reqf.
 		link.status = 3 // 设置切片状态为下载失败
 		link.err = e
 		return e
-	} else if e = link.data.Append(r.Respon); e != nil {
+	} else if e = r.Respon(link.data.Append); e != nil {
 		link.status = 3 // 设置切片状态为下载失败
 		link.err = e
 		return e
@@ -412,8 +413,8 @@ func (t *M4SStream) fetchCheckStream() bool {
 			_log.L(`W: `, `live响应错误`, F.ParseHost(v.Url))
 			v.DisableAuto()
 			continue
-		} else if r.Response.StatusCode&200 != 200 {
-			_log.L(`W: `, `live响应错误`, F.ParseHost(v.Url), r.Response.Status)
+		} else if r.ResStatusCode()&200 != 200 {
+			_log.L(`W: `, `live响应错误`, F.ParseHost(v.Url), r.ResStatusCode())
 			v.DisableAuto()
 			continue
 		}
@@ -485,13 +486,13 @@ func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo floa
 			continue
 		}
 
-		if r.Response.StatusCode == http.StatusNotModified {
+		if r.ResStatusCode() == http.StatusNotModified {
 			t.log.L(`T: `, `hls未更改`)
 			return
 		}
 
 		// 保存最后m3u8修改时间
-		if last_mod, ok := r.Response.Header[`Last-Modified`]; ok && len(last_mod) > 0 {
+		if last_mod, ok := r.ResHeader()[`Last-Modified`]; ok && len(last_mod) > 0 {
 			if lm, e := time.Parse(time.RFC1123, last_mod[0]); e == nil {
 				t.stream_last_modified = lm
 			}
@@ -504,7 +505,17 @@ func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo floa
 			lastNo, _ = lastM4s.getNo()
 		}
 
-		if rg, redirectUrl, err := replyFunc.ParseM3u8.Parse(r.Respon, lastNo); err != nil {
+		var (
+			rg iter.Seq[interface {
+				IsHeader() bool
+				M4sLink() string
+			}]
+			redirectUrl string
+		)
+		if err := r.Respon(func(b []byte) (err error) {
+			rg, redirectUrl, err = replyFunc.ParseM3u8.Parse(b, lastNo)
+			return
+		}); err != nil {
 			if replyFunc.ParseM3u8.IsErrRedirect(err) {
 				// 指向新连接
 				t.log.L(`I: `, `指向新连接`, v.Host(), "=>", F.ParseHost(redirectUrl))
