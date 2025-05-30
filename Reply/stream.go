@@ -409,7 +409,7 @@ func (t *M4SStream) fetchCheckStream() bool {
 			continue
 		}
 
-		if r.Response == nil {
+		if r.Wait() != nil {
 			_log.L(`W: `, `live响应错误`, F.ParseHost(v.Url))
 			v.DisableAuto()
 			continue
