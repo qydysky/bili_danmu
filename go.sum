@@ -42,12 +42,12 @@ github.com/ncruces/go-strftime v0.1.9 h1:bY0MQC28UADQmHmaF5dgpLmImcShSi2kHU9XLdh
 github.com/ncruces/go-strftime v0.1.9/go.mod h1:Fwc5htZGVVkseilnfgOVb9mKy6w1naJmn9CehxcKcls=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/qydysky/biliApi v0.0.0-20250530180715-16af6aea216e h1:oqyiUg36hNyf4qsxJHpkS25aVFHcrabRjg/34u3DXU8=
-github.com/qydysky/biliApi v0.0.0-20250530180715-16af6aea216e/go.mod h1:U8sqSBRiSVC/ge1hsMpNG1h4jd1Jn2Q8CXfmIooVNy0=
+github.com/qydysky/biliApi v0.0.0-20250531010913-4c11ae850d52 h1:HlxEU1K1SQEn+PM4p77XIJj/Vf7jF4Tgi0RDiN6N9h8=
+github.com/qydysky/biliApi v0.0.0-20250531010913-4c11ae850d52/go.mod h1:1lj/sxOWc9vAwFlZrwj4rkUdhlqveRlF54x4WMWXym8=
 github.com/qydysky/brotli v0.0.0-20240828134800-e9913a6e7ed9 h1:k451T+bpsLr+Dq9Ujo+Qtx0iomRA1XXS5ttlEojvfuQ=
 github.com/qydysky/brotli v0.0.0-20240828134800-e9913a6e7ed9/go.mod h1:cI8/gy/wjy2Eb+p2IUj2ZuDnC8R5Vrx3O0VMPvMvphA=
-github.com/qydysky/part v0.28.20250530180625 h1:AE5JqTpAyG/iBw9hrWDDaE8Gsp16lIuB93cC+JFyk0U=
-github.com/qydysky/part v0.28.20250530180625/go.mod h1:wp71PQdKYcg9jn9yDDvqC4shS/kzejyvFqbfUxuHocY=
+github.com/qydysky/part v0.28.20250531010809 h1:XtyNupH4ZUTv9oqfidNrtuCUenFsbpBMs9mmKcSobPM=
+github.com/qydysky/part v0.28.20250531010809/go.mod h1:wp71PQdKYcg9jn9yDDvqC4shS/kzejyvFqbfUxuHocY=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec h1:W09IVJc94icq4NjY3clb7Lk8O1qJ8BdBEF8z0ibU0rE=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec/go.mod h1:qqbHyh8v60DhA7CoWK5oRCqLrMHRGoxYCSS9EjAz6Eo=
 github.com/shirou/gopsutil v3.21.11+incompatible h1:+1+c1VGhc88SSonWP6foOcLhvnKlUeu/erjjvaPEYiI=
