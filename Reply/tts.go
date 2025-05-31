@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"net/url"
 	"os/exec"
 	"strings"
@@ -258,8 +259,12 @@ func youdao(msg string) error {
 	}); err != nil {
 		return err
 	}
-	if req.Response.Header.Get(`Content-type`) == `application/json` {
-		return errors.New(`错误 ` + req.Response.Status + string(req.Respon))
+	if req.ResHeader().Get(`Content-type`) == `application/json` {
+		return req.Response(func(r *http.Response) error {
+			return req.Respon(func(b []byte) error {
+				return errors.New(`错误 ` + r.Status + string(b))
+			})
+		})
 	}
 	play()
 	return nil

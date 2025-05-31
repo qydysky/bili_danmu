@@ -140,7 +140,7 @@ func Danmu_s2(data map[string]string) error {
 		Message string `json:"message"`
 	}
 
-	if e := json.Unmarshal(r.Respon, &res); e != nil {
+	if e := r.ResponUnmarshal(json.Unmarshal, &res); e != nil {
 		l.L(`E: `, e)
 		return e
 	}

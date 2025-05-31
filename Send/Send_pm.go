@@ -80,9 +80,9 @@ func Send_pm(uid int, msg string) error {
 		Code int `json:"code"`
 	}{}
 
-	if e := json.Unmarshal(req.Respon, &J); e != nil {
-		log.L(`E: `, string(req.Respon))
-		return errors.New(string(req.Respon))
+	if e := req.ResponUnmarshal(json.Unmarshal, &J); e != nil {
+		log.L(`E: `, e)
+		return e
 	}
 
 	log.L(`I: `, `发送私信给`, uid, `:`, msg)
