@@ -86,7 +86,7 @@ func Send_gift(common *c.Common, gift_id, bag_id, gift_num int) {
 
 		var res J.SendBag
 
-		if e := json.Unmarshal(req.Respon, &res); e != nil {
+		if e := req.ResponUnmarshal(json.Unmarshal, &res); e != nil {
 			log.L(`E: `, e)
 			return
 		}
