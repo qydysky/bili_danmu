@@ -106,6 +106,13 @@ func NewFmp4Decoder() *Fmp4Decoder {
 	}
 }
 
+func NewFmp4DecoderWithBufsize(size int) *Fmp4Decoder {
+	return &Fmp4Decoder{
+		traks: make(map[int]*trak),
+		buf:   slice.New[byte](size),
+	}
+}
+
 func (t *Fmp4Decoder) Init_fmp4(buf []byte) (b []byte, err error) {
 	var ftypI, ftypE, moovI, moovE int
 
