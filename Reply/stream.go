@@ -1499,7 +1499,7 @@ func (t *M4SStream) Start() bool {
 
 						switch ms.GetStreamType() {
 						case `mp4`:
-							fmp4Decoder := NewFmp4Decoder()
+							fmp4Decoder := NewFmp4DecoderWithBufsize(humanize.MByte * 100)
 							if v, ok := ms.common.K_v.LoadV(`fmp4音视频时间戳容差s`).(float64); ok && v > 0.1 {
 								fmp4Decoder.AVTDiff = v
 							}
@@ -1516,9 +1516,9 @@ func (t *M4SStream) Start() bool {
 						if dealer != nil {
 							f := file.New(path, 0, false)
 							if sf, e := replyFunc.VideoFastSeed.InitSav(path + ".fastSeed"); e != nil {
-								l.L(`E: `, e)
+								l.L(`E: `, path, e)
 							} else if e := dealer.GenFastSeed(f, sf); e != nil && !errors.Is(e, io.EOF) {
-								l.L(`E: `, e)
+								l.L(`E: `, path, e)
 							}
 							f.Close()
 						}
