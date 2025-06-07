@@ -27,8 +27,6 @@ const (
 var (
 	flvHeaderSign = []byte{0x46, 0x4c, 0x56}
 
-	ErrInit             = errors.New("ErrInit")
-	ErrNoInit           = errors.New("ErrNoInit")
 	ErrNoFoundFlvHeader = errors.New("ErrNoFoundFlvHeader")
 	ErrNoFoundTagHeader = errors.New("ErrNoFoundTagHeader")
 	ErrTagSizeZero      = errors.New("ErrTagSizeZero")
@@ -45,7 +43,6 @@ var (
 
 type FlvDecoder struct {
 	Diff float64
-	init bool
 }
 
 func NewFlvDecoder() *FlvDecoder {
@@ -53,10 +50,6 @@ func NewFlvDecoder() *FlvDecoder {
 }
 
 func (t *FlvDecoder) InitFlv(buf []byte) (frontBuf []byte, dropOffset int, err error) {
-	if t.init {
-		err = ErrInit
-		return
-	}
 
 	var sign = 0x00
 	var tagNum = 0
@@ -124,7 +117,6 @@ func (t *FlvDecoder) InitFlv(buf []byte) (frontBuf []byte, dropOffset int, err e
 			if sign == 0x07 {
 				frontBuf = append(frontBuf, buf[0:bufOffset]...) // copy
 				dropOffset = bufOffset
-				t.init = true
 				return
 			}
 		}
@@ -135,10 +127,6 @@ func (t *FlvDecoder) InitFlv(buf []byte) (frontBuf []byte, dropOffset int, err e
 // this fuction read []byte and return flv header and all complete keyframe if possible.
 // complete keyframe means the video and audio tags between two video key frames tag
 func (t *FlvDecoder) SearchStreamTag(buf []byte, keyframe *slice.Buf[byte]) (dropOffset int, err error) {
-	if !t.init {
-		err = ErrNoInit
-		return
-	}
 
 	keyframe.Reset()
 
@@ -210,11 +198,6 @@ func (t *FlvDecoder) SearchStreamTag(buf []byte, keyframe *slice.Buf[byte]) (dro
 type dealFFlv func(t int, index int, buf []byte) error
 
 func (t *FlvDecoder) oneF(buf []byte, w ...dealFFlv) (dropOffset int, err error) {
-
-	if !t.init {
-		err = ErrNoInit
-		return
-	}
 
 	var (
 		keyframeOp = -1
@@ -292,6 +275,7 @@ func (t *FlvDecoder) CutSeed(reader io.Reader, startT, duration time.Duration, w
 	buff := slice.New[byte]()
 	over := false
 	seek := false
+	init := false
 	startTM := startT.Milliseconds()
 	durationM := duration.Milliseconds()
 	firstFT := -1
@@ -315,7 +299,7 @@ func (t *FlvDecoder) CutSeed(reader io.Reader, startT, duration time.Duration, w
 		}
 		err = buff.Append(buf[:n])
 
-		if !t.init {
+		if !init {
 			if frontBuf, dropOffset, e := t.InitFlv(buff.GetPureBuf()); e != nil {
 				return perrors.New(e.Error(), ActionInitFlv)
 			} else {
@@ -328,6 +312,7 @@ func (t *FlvDecoder) CutSeed(reader io.Reader, startT, duration time.Duration, w
 					_, err = w.Write(frontBuf)
 				}
 			}
+			init = true
 		} else {
 			if !seek && seeker != nil && getIndex != nil {
 				if index, e := getIndex(startT); e != nil {
@@ -363,6 +348,7 @@ func (t *FlvDecoder) GenFastSeed(reader io.Reader, save func(seedTo time.Duratio
 	buff := slice.New[byte]()
 	over := false
 	firstFT := -1
+	init := false
 
 	for c := 0; err == nil && !over; c++ {
 		n, e := reader.Read(buf)
@@ -372,7 +358,7 @@ func (t *FlvDecoder) GenFastSeed(reader io.Reader, save func(seedTo time.Duratio
 		totalRead += n
 		err = buff.Append(buf[:n])
 
-		if !t.init {
+		if !init {
 			if frontBuf, dropOffset, e := t.InitFlv(buff.GetPureBuf()); e != nil {
 				return perrors.New(e.Error(), ActionInitFlv)
 			} else {
@@ -383,6 +369,7 @@ func (t *FlvDecoder) GenFastSeed(reader io.Reader, save func(seedTo time.Duratio
 					continue
 				}
 			}
+			init = true
 		} else {
 			for {
 				if dropOffset, e := t.oneF(buff.GetPureBuf(), func(t, index int, buf []byte) error {
@@ -404,15 +391,6 @@ func (t *FlvDecoder) GenFastSeed(reader io.Reader, save func(seedTo time.Duratio
 				}
 			}
 		}
-	}
-	return
-}
-
-func (t *FlvDecoder) Parse(buf []byte, keyframe *slice.Buf[byte]) (frontBuf []byte, dropOffset int, err error) {
-	if !t.init {
-		frontBuf, dropOffset, err = t.InitFlv(buf)
-	} else {
-		dropOffset, err = t.SearchStreamTag(buf, keyframe)
 	}
 	return
 }

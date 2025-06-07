@@ -858,7 +858,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 					keyframe   = slice.New[byte]()
 					buf        = make([]byte, humanize.KByte)
 					flvDecoder = NewFlvDecoder()
-					bufSize    = humanize.KByte * 1100
+					flvInited  = false
 				)
 
 				if v, ok := c.C.K_v.LoadV(`flv音视频时间戳容差ms`).(float64); ok && v > 100 {
@@ -866,32 +866,38 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 				}
 
 				for {
-					if buff.Size() < bufSize {
-						if n, e := pipe.Read(buf); e != nil {
-							pctx.PutVal(cancelC, &errCtx, e)
-							break
-						} else if e = buff.Append(buf[:n]); e != nil {
-							pctx.PutVal(cancelC, &errCtx, e)
-							break
-						}
-						continue
+					if n, e := pipe.Read(buf); e != nil {
+						pctx.PutVal(cancelC, &errCtx, e)
+						break
+					} else if e = buff.Append(buf[:n]); e != nil {
+						pctx.PutVal(cancelC, &errCtx, e)
+						break
 					}
-
-					if !buff.IsEmpty() {
-						// front_buf
+					if !flvInited {
 						buf, unlock := buff.GetPureBufRLock()
-						frontBuf, dropOffset, e := flvDecoder.Parse(buf, keyframe)
+						frontBuf, dropOffset, err := flvDecoder.InitFlv(buf)
 						unlock()
-						if e != nil {
-							t.log.L(`E: `, e)
-							pctx.PutVal(cancelC, &errCtx, errors.New("[decoder]"+e.Error()))
-							break
-						}
 
 						if len(frontBuf) != 0 {
 							t.first_buf = frontBuf
 							t.msg.Push_tag(`load`, t)
 						}
+
+						if dropOffset > 0 {
+							_ = buff.RemoveFront(dropOffset)
+						}
+
+						if err != nil {
+							t.log.L(`E: `, err)
+							pctx.PutVal(cancelC, &errCtx, errors.New("[decoder]"+err.Error()))
+							break
+						}
+
+						flvInited = true
+					} else {
+						buf, unlock := buff.GetPureBufRLock()
+						dropOffset, err := flvDecoder.SearchStreamTag(buf, keyframe)
+						unlock()
 
 						if keyframe.Size() != 0 {
 							if l := leastReadUnix.Load(); l > 0 && time.Now().Unix()-l > readTO-5 {
@@ -908,17 +914,16 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 							keyframe.Reset()
 							t.frameCount += 1
 							t.msg.Push_tag(`keyFrame`, t)
-						} else {
-							bufSize += humanize.KByte * 50
-							if bufSize > humanize.MByte*10 {
-								t.log.L(`E: `, `缓冲池过大`)
-								pctx.PutVal(cancelC, &errCtx, errors.New("缓冲池过大"))
-								break
-							}
 						}
 
 						if dropOffset > 0 {
 							_ = buff.RemoveFront(dropOffset)
+						}
+
+						if err != nil {
+							t.log.L(`E: `, err)
+							pctx.PutVal(cancelC, &errCtx, errors.New("[decoder]"+err.Error()))
+							break
 						}
 					}
 				}
