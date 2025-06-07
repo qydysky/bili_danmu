@@ -42,16 +42,16 @@ func Test_FLVdeal(t *testing.T) {
 		if !init {
 			_, last_available_offset, e := flvDecoder.InitFlv(buff.GetPureBuf())
 			_ = buff.RemoveFront(last_available_offset)
-		if e != nil {
-			t.Fatal(e)
-		}
+			if e != nil {
+				t.Fatal(e)
+			}
 			init = true
 		} else {
 			last_available_offset, e := flvDecoder.SearchStreamTag(buff.GetPureBuf(), keyframe)
 			if !keyframe.IsEmpty() {
 				keyframe.Reset()
 			}
-		_ = buff.RemoveFront(last_available_offset)
+			_ = buff.RemoveFront(last_available_offset)
 			if e != nil {
 				t.Fatal(e)
 			}
