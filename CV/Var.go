@@ -657,6 +657,7 @@ func (t *Common) Init() *Common {
 						},
 						"mem": map[string]any{
 							"memInUse": humanize.Bytes(memStats.HeapInuse + memStats.StackInuse),
+							"memAlloc": humanize.Bytes(memStats.TotalAlloc),
 						},
 						"gc": map[string]any{
 							"numGC":            memStats.NumGC,
