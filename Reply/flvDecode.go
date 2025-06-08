@@ -83,7 +83,7 @@ func (t *FlvDecoder) InitFlv(buf []byte) (frontBuf []byte, dropOffset int, err e
 			return
 		}
 
-		tagSize := int(F.Btoi32v2(buf[bufOffset+1:bufOffset+3], 0))
+		tagSize := int(F.Btoi32v2(buf[bufOffset+1:bufOffset+4], 0))
 		if tagSize == 0 {
 			err = ErrTagSizeZero
 			return
@@ -151,7 +151,7 @@ func (t *FlvDecoder) SearchStreamTag(buf []byte, keyframe *slice.Buf[byte]) (dro
 			return
 		}
 
-		tagSize := int(F.Btoi32v2(buf[bufOffset+1:bufOffset+3], 0))
+		tagSize := int(F.Btoi32v2(buf[bufOffset+1:bufOffset+4], 0))
 		if tagSize == 0 {
 			err = ErrTagSizeZero
 			return
@@ -220,7 +220,7 @@ func (t *FlvDecoder) oneF(buf []byte, w ...dealFFlv) (dropOffset int, err error)
 			return
 		}
 
-		tagSize := int(F.Btoi32v2(buf[bufOffset+1:bufOffset+3], 0))
+		tagSize := int(F.Btoi32v2(buf[bufOffset+1:bufOffset+4], 0))
 		if tagSize == 0 {
 			err = ErrTagSizeZero
 			return

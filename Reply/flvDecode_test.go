@@ -24,7 +24,6 @@ func Test_FLVdeal(t *testing.T) {
 
 	buf := make([]byte, humanize.MByte)
 	buff := slice.New[byte](10 * humanize.MByte)
-	max := 0
 	init := false
 	flvDecoder := NewFlvDecoder()
 	keyframe := slice.New[byte]()
@@ -36,9 +35,6 @@ func Test_FLVdeal(t *testing.T) {
 			break
 		}
 		_ = buff.Append(buf[:n])
-		if s := buff.Size(); max < s {
-			max = s
-		}
 		if !init {
 			_, last_available_offset, e := flvDecoder.InitFlv(buff.GetPureBuf())
 			_ = buff.RemoveFront(last_available_offset)
@@ -57,7 +53,6 @@ func Test_FLVdeal(t *testing.T) {
 			}
 		}
 	}
-	t.Log("max", humanize.Bytes(uint64(max)))
 }
 
 // 10s-30s 184.852917ms
