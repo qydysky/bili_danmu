@@ -656,8 +656,8 @@ func (t *Common) Init() *Common {
 							"goVersion":    runtime.Version(),
 						},
 						"mem": map[string]any{
-							"memInUse":   humanize.Bytes(memStats.HeapInuse + memStats.StackInuse),
-							"memInAlloc": humanize.Bytes(memStats.HeapAlloc),
+							"memInUse":      humanize.Bytes(memStats.HeapInuse + memStats.StackInuse),
+							"memTotalAlloc": humanize.Bytes(memStats.TotalAlloc),
 						},
 						"gc": map[string]any{
 							"numGC":            memStats.NumGC,
