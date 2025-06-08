@@ -15,9 +15,6 @@ import (
 )
 
 func Test_FLVdeal(t *testing.T) {
-	flog := file.New("0.flv.log", 0, false)
-	_ = flog.Delete()
-	defer flog.Close()
 	f := file.New("testdata/0.flv", 0, false)
 	defer f.Close()
 
@@ -27,7 +24,7 @@ func Test_FLVdeal(t *testing.T) {
 
 	buf := make([]byte, humanize.MByte)
 	buff := slice.New[byte](10 * humanize.MByte)
-	max := 0
+	init := false
 	flvDecoder := NewFlvDecoder()
 	keyframe := slice.New[byte]()
 
@@ -38,18 +35,24 @@ func Test_FLVdeal(t *testing.T) {
 			break
 		}
 		_ = buff.Append(buf[:n])
-		if s := buff.Size(); max < s {
-			max = s
+		if !init {
+			_, last_available_offset, e := flvDecoder.InitFlv(buff.GetPureBuf())
+			_ = buff.RemoveFront(last_available_offset)
+			if e != nil {
+				t.Fatal(e)
+			}
+			init = true
+		} else {
+			last_available_offset, e := flvDecoder.SearchStreamTag(buff.GetPureBuf(), keyframe)
+			if !keyframe.IsEmpty() {
+				keyframe.Reset()
+			}
+			_ = buff.RemoveFront(last_available_offset)
+			if e != nil {
+				t.Fatal(e)
+			}
 		}
-		front_buf, last_available_offset, e := flvDecoder.Parse(buff.GetPureBuf(), keyframe)
-		if e != nil {
-			t.Fatal(e)
-		}
-		_, _ = flog.Write([]byte(fmt.Sprintf("%d %d %d %d\n", c, len(front_buf), keyframe.Size(), last_available_offset)), true)
-		t.Log(c, len(front_buf), keyframe.Size())
-		_ = buff.RemoveFront(last_available_offset)
 	}
-	t.Log("max", humanize.Bytes(uint64(max)))
 }
 
 // 10s-30s 184.852917ms
@@ -96,7 +99,10 @@ func Test_FLVGenFastSeed(t *testing.T) {
 	e = NewFlvDecoder().GenFastSeed(f, func(seedTo time.Duration, cuIndex int64) error {
 		return sf(seedTo, cuIndex)
 	})
-	t.Log(perrors.ErrorFormat(e))
+	if e != nil && !errors.Is(e, io.EOF) {
+		t.Fatal(e)
+	}
+	// t.Log(perrors.ErrorFormat(e))
 }
 
 // 10s-30s 215.815423ms
