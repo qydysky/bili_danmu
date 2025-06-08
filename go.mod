@@ -13,7 +13,7 @@ require (
 
 require (
 	github.com/google/uuid v1.6.0
-	github.com/qydysky/biliApi v0.0.0-20250531145900-53e14d4e3627
+	github.com/qydysky/biliApi v0.0.0-20250608144708-017143294e67
 	github.com/qydysky/brotli v0.0.0-20250531004300-54adcf96cc4a
 	golang.org/x/exp v0.0.0-20250215185904-eff6e970281f
 )
@@ -57,4 +57,4 @@ require (
 
 // replace github.com/qydysky/part => ../part
 
-// replace github.com/qydysky/biliApi => ../biliapi
+// replace github.com/qydysky/biliApi@ => ../biliapi

@@ -62,7 +62,7 @@ func Btoiv2(b []byte, offset int, size int) (r int64) {
 	if size > 8 || size < 0 {
 		panic("wrong size")
 	}
-	b = b[offset:]
+	b = b[offset:min(offset+8, len(b))]
 	size = 8 - size
 	//binary.BigEndian.Uint64
 	for i := 8; i > 0; i-- {
@@ -96,7 +96,7 @@ func Btoui32(b []byte, offset int) uint32 {
 
 // 当len(b)<4时， 将在左侧补0; >4时，从左向右读4位后面忽略
 func Btoui32v2(b []byte, offset int) (r uint32) {
-	b = b[offset:]
+	b = b[offset:min(offset+4, len(b))]
 	//binary.BigEndian.Uint32
 	for i := 4; i > 0; i-- {
 		if len(b) >= i {
@@ -124,7 +124,7 @@ func Btoi32(b []byte, offset int) (r int32) {
 
 // 当len(b)<4时， 将在左侧补0; >4时，从左向右读4位后面忽略
 func Btoi32v2(b []byte, offset int) (r int32) {
-	b = b[offset:]
+	b = b[offset:min(offset+4, len(b))]
 	//binary.BigEndian.Uint32
 	for i := 4; i > 0; i-- {
 		if len(b) >= i {
