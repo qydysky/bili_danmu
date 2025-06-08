@@ -140,12 +140,12 @@ func (t *Fmp4Decoder) Init_fmp4(buf []byte) (b []byte, err error) {
 	err = deal(ies, dealIE{
 		boxNames: []string{"tkhd", "mdia", "mdhd", "hdlr"},
 		fs: func(m []ie) error {
-			tackId := int(F.Btoi(buf, m[0].i+20, 4))
+			tackId := int(F.Btoiv2(buf, m[0].i+20, 4))
 			t.traks[tackId] = &trak{
 				trackID: tackId,
 				// firstTimeStamp: -1,
 				// lastTimeStamp:  -1,
-				timescale:   int(F.Btoi(buf, m[2].i+20, 4)),
+				timescale:   int(F.Btoiv2(buf, m[2].i+20, 4)),
 				handlerType: buf[m[3].i+16],
 			}
 			return nil
@@ -204,7 +204,7 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 			switch buf[tfdt+8] {
 			case 0:
 				ts.data = buf[tfdt+16 : tfdt+20]
-				ts.timeStamp = int(F.Btoi32(buf, tfdt+16))
+				ts.timeStamp = int(F.Btoi32v2(buf, tfdt+16))
 			case 1:
 				ts.data = buf[tfdt+12 : tfdt+20]
 				ts.timeStamp = int(F.Btoi64(buf, tfdt+12))
@@ -214,7 +214,7 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 
 		//get track type
 		get_track_type = func(tfhd, tfdt int) (ts timeStamp, handlerType byte) {
-			track, ok := t.traks[int(F.Btoi(buf, tfhd+12, 4))]
+			track, ok := t.traks[int(F.Btoiv2(buf, tfhd+12, 4))]
 			if ok {
 				ts := get_timeStamp(tfdt)
 				// if track.firstTimeStamp == -1 {
@@ -239,7 +239,7 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 		checkSampleEntries = func(trun, mdat int) error {
 			if buf[trun+11] == 'b' {
 				for i := trun + 24; i < mdat; i += 12 {
-					if F.Btoi(buf, i+4, 4) < 1000 {
+					if F.Btoiv2(buf, i+4, 4) < 1000 {
 						return errors.New("find sample size less then 1000")
 					}
 				}
@@ -295,7 +295,7 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 				fs: func(m []ie) error {
 					var (
 						keyframeMoof = buf[m[5].i+20] == byte(0x02)
-						// moofSN       = int(F.Btoi(buf, m[1].i+12, 4))
+						// moofSN       = int(F.Btoiv2(buf, m[1].i+12, 4))
 					)
 
 					{
@@ -340,7 +340,7 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 				fs: func(m []ie) error {
 					var (
 						keyframeMoof = buf[m[5].i+20] == byte(0x02) || buf[m[9].i+20] == byte(0x02)
-						// moofSN       = int(F.Btoi(buf, m[1].i+12, 4))
+						// moofSN       = int(F.Btoiv2(buf, m[1].i+12, 4))
 						video timeStamp
 						audio timeStamp
 					)
@@ -451,7 +451,7 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...dealFMp4) (cu int, err error) {
 			switch buf[tfdt+8] {
 			case 0:
 				ts.data = buf[tfdt+16 : tfdt+20]
-				ts.timeStamp = int(F.Btoi32(buf, tfdt+16))
+				ts.timeStamp = int(F.Btoi32v2(buf, tfdt+16))
 			case 1:
 				ts.data = buf[tfdt+12 : tfdt+20]
 				ts.timeStamp = int(F.Btoi64(buf, tfdt+12))
@@ -461,7 +461,7 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...dealFMp4) (cu int, err error) {
 
 		//get track type
 		get_track_type = func(tfhd, tfdt int) (ts timeStamp, handlerType byte) {
-			track, ok := t.traks[int(F.Btoi(buf, tfhd+12, 4))]
+			track, ok := t.traks[int(F.Btoiv2(buf, tfhd+12, 4))]
 			if ok {
 				ts := get_timeStamp(tfdt)
 				// if track.firstTimeStamp == -1 {
@@ -486,7 +486,7 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...dealFMp4) (cu int, err error) {
 		checkSampleEntries = func(trun, mdat int) error {
 			if buf[trun+11] == 'b' {
 				for i := trun + 24; i < mdat; i += 12 {
-					if F.Btoi(buf, i+4, 4) < 1000 {
+					if F.Btoiv2(buf, i+4, 4) < 1000 {
 						return errors.New("find sample size less then 1000")
 					}
 				}
@@ -544,7 +544,7 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...dealFMp4) (cu int, err error) {
 				fs: func(m []ie) error {
 					var (
 						keyframeMoof = buf[m[5].i+20] == byte(0x02)
-						// moofSN       = int(F.Btoi(buf, m[1].i+12, 4))
+						// moofSN       = int(F.Btoiv2(buf, m[1].i+12, 4))
 						video timeStamp
 					)
 
@@ -591,7 +591,7 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...dealFMp4) (cu int, err error) {
 				fs: func(m []ie) error {
 					var (
 						keyframeMoof = buf[m[5].i+20] == byte(0x02) || buf[m[9].i+20] == byte(0x02)
-						// moofSN       = int(F.Btoi(buf, m[1].i+12, 4))
+						// moofSN       = int(F.Btoiv2(buf, m[1].i+12, 4))
 						video timeStamp
 						audio timeStamp
 					)
@@ -901,7 +901,7 @@ var (
 
 func searchBox(buf []byte, cu *int) (boxName string, i int, e int, err error) {
 	i = *cu
-	e = i + int(F.Btoi(buf, *cu, fmp4BoxLenSize))
+	e = i + int(F.Btoiv2(buf, *cu, fmp4BoxLenSize))
 	boxNameU := unique.Make(string(buf[*cu+fmp4BoxLenSize : *cu+fmp4BoxLenSize+fmp4BoxNameSize]))
 	boxName = boxNameU.Value()
 	isPureBoxOrNeedSkip, ok := boxs[boxNameU]
@@ -925,7 +925,7 @@ func searchBox(buf []byte, cu *int) (boxName string, i int, e int, err error) {
 // 			"traf", "tfhd", "tfdt", "trun",
 // 			"mdat"},
 // 		func(m []*ie) bool {
-// 			moofSN := int(F.Btoi(buf, m[1].i+12, 4))
+// 			moofSN := int(F.Btoiv2(buf, m[1].i+12, 4))
 // 			keyframeMoof := buf[m[5].i+20] == byte(0x02) || buf[m[9].i+20] == byte(0x02)
 // 			fmt.Println(moofSN, "frame", keyframeMoof, m[0].i, m[10].n, m[10].e)
 // 			return false

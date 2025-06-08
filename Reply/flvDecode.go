@@ -83,7 +83,7 @@ func (t *FlvDecoder) InitFlv(buf []byte) (frontBuf []byte, dropOffset int, err e
 			return
 		}
 
-		tagSize := int(F.Btoi32([]byte{0x00, buf[bufOffset+1], buf[bufOffset+2], buf[bufOffset+3]}, 0))
+		tagSize := int(F.Btoi32v2(buf[bufOffset+1:bufOffset+3], 0))
 		if tagSize == 0 {
 			err = ErrTagSizeZero
 			return
@@ -93,7 +93,7 @@ func (t *FlvDecoder) InitFlv(buf []byte) (frontBuf []byte, dropOffset int, err e
 			return
 		}
 
-		tagSizeCheck := int(F.Btoi32(buf[bufOffset+tagHeaderSize+tagSize:bufOffset+tagHeaderSize+tagSize+previouTagSize], 0))
+		tagSizeCheck := int(F.Btoi32v2(buf[bufOffset+tagHeaderSize+tagSize:bufOffset+tagHeaderSize+tagSize+previouTagSize], 0))
 		if tagNum != 0 && tagSizeCheck != tagSize+tagHeaderSize {
 			err = ErrTagSize
 			return
@@ -151,7 +151,7 @@ func (t *FlvDecoder) SearchStreamTag(buf []byte, keyframe *slice.Buf[byte]) (dro
 			return
 		}
 
-		tagSize := int(F.Btoi32([]byte{0x00, buf[bufOffset+1], buf[bufOffset+2], buf[bufOffset+3]}, 0))
+		tagSize := int(F.Btoi32v2(buf[bufOffset+1:bufOffset+3], 0))
 		if tagSize == 0 {
 			err = ErrTagSizeZero
 			return
@@ -160,13 +160,13 @@ func (t *FlvDecoder) SearchStreamTag(buf []byte, keyframe *slice.Buf[byte]) (dro
 			return
 		}
 
-		tagSizeCheck := int(F.Btoi32(buf[bufOffset+tagHeaderSize+tagSize:bufOffset+tagHeaderSize+tagSize+previouTagSize], 0))
+		tagSizeCheck := int(F.Btoi32v2(buf[bufOffset+tagHeaderSize+tagSize:bufOffset+tagHeaderSize+tagSize+previouTagSize], 0))
 		if tagSizeCheck != tagSize+tagHeaderSize {
 			err = ErrTagSize
 			return
 		}
 
-		timeStamp := int(F.Btoi32([]byte{buf[bufOffset+7], buf[bufOffset+4], buf[bufOffset+5], buf[bufOffset+6]}, 0))
+		timeStamp := int(F.Btoi32v2([]byte{buf[bufOffset+7], buf[bufOffset+4], buf[bufOffset+5], buf[bufOffset+6]}, 0))
 		switch {
 		case buf[bufOffset] == videoTag:
 			lastVT = timeStamp
@@ -220,7 +220,7 @@ func (t *FlvDecoder) oneF(buf []byte, w ...dealFFlv) (dropOffset int, err error)
 			return
 		}
 
-		tagSize := int(F.Btoi32([]byte{0x00, buf[bufOffset+1], buf[bufOffset+2], buf[bufOffset+3]}, 0))
+		tagSize := int(F.Btoi32v2(buf[bufOffset+1:bufOffset+3], 0))
 		if tagSize == 0 {
 			err = ErrTagSizeZero
 			return
@@ -229,13 +229,13 @@ func (t *FlvDecoder) oneF(buf []byte, w ...dealFFlv) (dropOffset int, err error)
 			return
 		}
 
-		tagSizeCheck := int(F.Btoi32(buf[bufOffset+tagHeaderSize+tagSize:bufOffset+tagHeaderSize+tagSize+previouTagSize], 0))
+		tagSizeCheck := int(F.Btoi32v2(buf[bufOffset+tagHeaderSize+tagSize:bufOffset+tagHeaderSize+tagSize+previouTagSize], 0))
 		if tagSizeCheck != tagSize+tagHeaderSize {
 			err = ErrTagSize
 			return
 		}
 
-		timeStamp := int(F.Btoi32([]byte{buf[bufOffset+7], buf[bufOffset+4], buf[bufOffset+5], buf[bufOffset+6]}, 0))
+		timeStamp := int(F.Btoi32v2([]byte{buf[bufOffset+7], buf[bufOffset+4], buf[bufOffset+5], buf[bufOffset+6]}, 0))
 		switch {
 		case buf[bufOffset] == videoTag:
 			lastVT = timeStamp

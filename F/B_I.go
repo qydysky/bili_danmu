@@ -38,6 +38,7 @@ func Itob16(v int16) []byte {
 	return b
 }
 
+// Depercated: use Btoiv2
 func Btoi(b []byte, offset int, size int) int64 {
 	if size > 8 {
 		panic("最大8位")
@@ -57,6 +58,27 @@ func Btoi(b []byte, offset int, size int) int64 {
 		uint64(bu[3])<<32 | uint64(bu[2])<<40 | uint64(bu[1])<<48 | uint64(bu[0])<<56)
 }
 
+func Btoiv2(b []byte, offset int, size int) (r int64) {
+	if size > 8 || size < 0 {
+		panic("wrong size")
+	}
+	b = b[offset:]
+	size = 8 - size
+	//binary.BigEndian.Uint64
+	for i := 8; i > 0; i-- {
+		if i-1-size < 0 {
+			break
+		}
+		if len(b) >= i {
+			r |= int64(b[len(b)-i]) << (8 * (i - 1 - size))
+		} else {
+			size -= 1
+		}
+	}
+	return r
+}
+
+// Depercated: use Btoui32v2
 func Btoui32(b []byte, offset int) uint32 {
 	s := 4
 	bu := make([]byte, s)
@@ -72,7 +94,20 @@ func Btoui32(b []byte, offset int) uint32 {
 	return uint32(bu[3]) | uint32(bu[2])<<8 | uint32(bu[1])<<16 | uint32(bu[0])<<24
 }
 
-func Btoi32(b []byte, offset int) int32 {
+// 当len(b)<4时， 将在左侧补0; >4时，从左向右读4位后面忽略
+func Btoui32v2(b []byte, offset int) (r uint32) {
+	b = b[offset:]
+	//binary.BigEndian.Uint32
+	for i := 4; i > 0; i-- {
+		if len(b) >= i {
+			r |= uint32(b[len(b)-i]) << (8 * (i - 1))
+		}
+	}
+	return r
+}
+
+// Deprecated: uses Btoi32v2
+func Btoi32(b []byte, offset int) (r int32) {
 	s := 4
 	bu := make([]byte, s)
 	l := len(b) - offset
@@ -85,6 +120,18 @@ func Btoi32(b []byte, offset int) int32 {
 
 	//binary.BigEndian.Uint32
 	return int32((uint32(bu[3]) | uint32(bu[2])<<8 | uint32(bu[1])<<16 | uint32(bu[0])<<24))
+}
+
+// 当len(b)<4时， 将在左侧补0; >4时，从左向右读4位后面忽略
+func Btoi32v2(b []byte, offset int) (r int32) {
+	b = b[offset:]
+	//binary.BigEndian.Uint32
+	for i := 4; i > 0; i-- {
+		if len(b) >= i {
+			r |= int32(b[len(b)-i]) << (8 * (i - 1))
+		}
+	}
+	return r
 }
 
 func Btoui16(b []byte, offset int) uint16 {
@@ -117,6 +164,7 @@ func Btoi16(b []byte, offset int) int16 {
 	return int16(uint16(bu[1]) | uint16(bu[0])<<8)
 }
 
+// Depercated: use Btoi64v2
 func Btoi64(b []byte, offset int) int64 {
 	s := 8
 	bu := make([]byte, s)
@@ -131,4 +179,8 @@ func Btoi64(b []byte, offset int) int64 {
 	//binary.BigEndian.Uint64
 	return int64(uint64(bu[7]) | uint64(bu[6])<<8 | uint64(bu[5])<<16 | uint64(bu[4])<<24 |
 		uint64(bu[3])<<32 | uint64(bu[2])<<40 | uint64(bu[1])<<48 | uint64(bu[0])<<56)
+}
+
+func Btoi64v2(b []byte, offset int) int64 {
+	return Btoiv2(b, offset, 8)
 }
