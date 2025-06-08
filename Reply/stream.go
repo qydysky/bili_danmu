@@ -878,52 +878,52 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 						frontBuf, dropOffset, err := flvDecoder.InitFlv(buf)
 						unlock()
 
-						if len(frontBuf) != 0 {
-							t.first_buf = frontBuf
-							t.msg.Push_tag(`load`, t)
-						}
-
-						if dropOffset > 0 {
-							_ = buff.RemoveFront(dropOffset)
-						}
-
 						if err != nil {
 							t.log.L(`E: `, err)
 							pctx.PutVal(cancelC, &errCtx, errors.New("[decoder]"+err.Error()))
 							break
+						} else {
+							if dropOffset > 0 {
+								_ = buff.RemoveFront(dropOffset)
+							}
+							if len(frontBuf) == 0 {
+								continue
+							}
+							flvInited = true
+							t.first_buf = frontBuf
+							t.msg.Push_tag(`load`, t)
 						}
-
-						flvInited = true
 					} else {
 						buf, unlock := buff.GetPureBufRLock()
 						dropOffset, err := flvDecoder.SearchStreamTag(buf, keyframe)
 						unlock()
 
-						if keyframe.Size() != 0 {
-							if l := leastReadUnix.Load(); l > 0 && time.Now().Unix()-l > readTO-5 {
-								t.log.L(`W: `, fmt.Sprintf("flv断流超时s(%d)或许应该大于%d", readTO, (time.Now().Unix()-l+5)))
-							}
-							// 存在有效数据
-							leastReadUnix.Store(time.Now().Unix())
-
-							buf, unlock := keyframe.GetPureBufRLock()
-							t.bootBufPush(buf)
-							t.Stream_msg.PushLock_tag(`data`, buf)
-							unlock()
-
-							keyframe.Reset()
-							t.frameCount += 1
-							t.msg.Push_tag(`keyFrame`, t)
-						}
-
-						if dropOffset > 0 {
-							_ = buff.RemoveFront(dropOffset)
-						}
-
 						if err != nil {
 							t.log.L(`E: `, err)
 							pctx.PutVal(cancelC, &errCtx, errors.New("[decoder]"+err.Error()))
 							break
+						} else {
+							if dropOffset > 0 {
+								_ = buff.RemoveFront(dropOffset)
+							}
+							if keyframe.Size() == 0 {
+								continue
+							} else {
+								if l := leastReadUnix.Load(); l > 0 && time.Now().Unix()-l > readTO-5 {
+									t.log.L(`W: `, fmt.Sprintf("flv断流超时s(%d)或许应该大于%d", readTO, (time.Now().Unix()-l+5)))
+								}
+								// 存在有效数据
+								leastReadUnix.Store(time.Now().Unix())
+
+								buf, unlock := keyframe.GetPureBufRLock()
+								t.bootBufPush(buf)
+								t.Stream_msg.PushLock_tag(`data`, buf)
+								unlock()
+
+								keyframe.Reset()
+								t.frameCount += 1
+								t.msg.Push_tag(`keyFrame`, t)
+							}
 						}
 					}
 				}
