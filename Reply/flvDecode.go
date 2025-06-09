@@ -70,10 +70,10 @@ func (t *FlvDecoder) InitFlv(buf []byte) (frontBuf []byte, dropOffset int, err e
 
 	for bufOffset := flvHeaderSize + previouTagSize; bufOffset >= flvHeaderSize && bufOffset+tagHeaderSize < len(buf); {
 
-		if buf[bufOffset]&0b11000000 != 0 &&
+		if buf[bufOffset]&0b11000000 != 0 ||
 			buf[bufOffset]&0b00011111 != videoTag &&
-			buf[bufOffset]&0b00011111 != audioTag &&
-			buf[bufOffset]&0b00011111 != scriptTag {
+				buf[bufOffset]&0b00011111 != audioTag &&
+				buf[bufOffset]&0b00011111 != scriptTag {
 			err = ErrNoFoundTagHeader
 			return
 		}
@@ -138,10 +138,10 @@ func (t *FlvDecoder) SearchStreamTag(buf []byte, keyframe *slice.Buf[byte]) (dro
 
 	for bufOffset := 0; bufOffset >= 0 && bufOffset+tagHeaderSize < len(buf); {
 
-		if buf[bufOffset]&0b11000000 != 0 &&
+		if buf[bufOffset]&0b11000000 != 0 ||
 			buf[bufOffset]&0b00011111 != videoTag &&
-			buf[bufOffset]&0b00011111 != audioTag &&
-			buf[bufOffset]&0b00011111 != scriptTag {
+				buf[bufOffset]&0b00011111 != audioTag &&
+				buf[bufOffset]&0b00011111 != scriptTag {
 			err = ErrNoFoundTagHeader
 			return
 		}
@@ -207,10 +207,10 @@ func (t *FlvDecoder) oneF(buf []byte, w ...dealFFlv) (dropOffset int, err error)
 
 	for bufOffset := 0; bufOffset >= 0 && bufOffset+tagHeaderSize < len(buf); {
 
-		if buf[bufOffset]&0b11000000 != 0 &&
+		if buf[bufOffset]&0b11000000 != 0 ||
 			buf[bufOffset]&0b00011111 != videoTag &&
-			buf[bufOffset]&0b00011111 != audioTag &&
-			buf[bufOffset]&0b00011111 != scriptTag {
+				buf[bufOffset]&0b00011111 != audioTag &&
+				buf[bufOffset]&0b00011111 != scriptTag {
 			err = ErrNoFoundTagHeader
 			return
 		}

@@ -290,7 +290,7 @@ func (t *M4SStream) fetchCheckStream() bool {
 					_log.L(`W: `, `仅清晰度true,当前清晰度`, t.common.Qn[t.common.Live_qn])
 					return false
 				} else {
-					_log.L(`W: `, `未登陆,忽略仅清晰度true,当前清晰度`, t.common.Qn[t.common.Live_qn])
+					_log.L(`W: `, `未登录,忽略仅清晰度true,当前清晰度`, t.common.Qn[t.common.Live_qn])
 				}
 			}
 		}
@@ -1433,12 +1433,12 @@ func (t *M4SStream) Start() bool {
 
 					// 移除历史流
 					if err := ms.removeStream(); err != nil {
-						l.L(`W: `, err)
+						l.Base_add(`removeStream`).L(`W: `, err)
 					}
 
 					// savestate
 					if e, _ := videoInfo.Save.Run(ctx1, ms); e != nil {
-						l.L(`E: `, e)
+						l.Base_add(`videoInfo`).L(`E: `, e)
 					}
 
 					//保存弹幕
@@ -1486,7 +1486,7 @@ func (t *M4SStream) Start() bool {
 					path := ms.GetSavePath() + `0.` + ms.GetStreamType()
 					startT := time.Now()
 					if e := ms.PusherToFile(ctx1, path, startf, stopf); e != nil {
-						l.L(`E: `, e)
+						l.Base_add(`PusherToFile`).L(`E: `, e)
 					}
 					duration := time.Since(startT)
 
@@ -1521,9 +1521,9 @@ func (t *M4SStream) Start() bool {
 						if dealer != nil {
 							f := file.New(path, 0, false)
 							if sf, e := replyFunc.VideoFastSeed.InitSav(path + ".fastSeed"); e != nil {
-								l.L(`E: `, path, e)
+								l.Base_add(`GenFastSeed`).L(`E: `, path, e)
 							} else if e := dealer.GenFastSeed(f, sf); e != nil && !errors.Is(e, io.EOF) {
-								l.L(`E: `, path, e)
+								l.Base_add(`GenFastSeed`).L(`E: `, path, e)
 							}
 							f.Close()
 						}

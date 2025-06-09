@@ -253,7 +253,7 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, c
 			for !exitloop {
 				//如果连接中断，则等待
 				F.KeepConnect()
-				//获取cookie，检查是否登陆失效
+				//获取cookie，检查是否登录失效
 				F.Get(common).Get(`Cookie`)
 				//获取LIVE_BUVID
 				F.Get(common).Get(`LIVE_BUVID`)

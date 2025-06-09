@@ -1378,7 +1378,7 @@ func (t replyF) danmu(s string) {
 // 需要cookie
 func Msg_senddanmu(msg string) {
 	if !c.C.IsLogin() || c.C.Roomid == 0 {
-		msglog.L(`E: `, `未登陆`)
+		msglog.L(`E: `, `未登录`)
 		return
 	}
 	_ = send.Danmu_s(msg, c.C.Roomid)

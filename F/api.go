@@ -950,10 +950,10 @@ func (t *GetFunc) Get_cookie() (missKey []string) {
 			BlackChar: `  `,
 			WhiteChar: `OO`,
 		}
-		if white, ok := t.K_v.LoadV(`登陆二维码-白`).(string); ok && len(white) != 0 {
+		if white, ok := t.K_v.LoadV(`登录二维码-白`).(string); ok && len(white) != 0 {
 			c.WhiteChar = white
 		}
-		if black, ok := t.K_v.LoadV(`登陆二维码-黑`).(string); ok && len(black) != 0 {
+		if black, ok := t.K_v.LoadV(`登录二维码-黑`).(string); ok && len(black) != 0 {
 			c.BlackChar = black
 		}
 		//show qr code in cmd
@@ -1036,9 +1036,9 @@ func (t *GetFunc) CheckSwitch_FansMedal() (missKey []string) {
 
 	apilog := apilog.Base_add(`切换粉丝牌`)
 
-	//验证登陆
+	//验证登录
 	if !biliApi.IsLogin() {
-		apilog.L(`T: `, `未登陆`)
+		apilog.L(`T: `, `未登录`)
 		return
 	}
 
@@ -1092,9 +1092,9 @@ func (t *GetFunc) CheckSwitch_FansMedal() (missKey []string) {
 func Dosign() {
 	apilog := apilog.Base_add(`签到`).L(`T: `, `签到`)
 
-	//验证登陆
+	//验证登录
 	if !biliApi.IsLogin() {
-		apilog.L(`T: `, `未登陆`)
+		apilog.L(`T: `, `未登录`)
 		return
 	}
 
@@ -1179,6 +1179,10 @@ func Gift_list() (list []struct {
 		return
 	} //超额请求阻塞，超时将取消
 
+	if biliApi.IsLogin() {
+		apilog.L(`W: `, `未登录`)
+		return
+	}
 	if err, res := biliApi.GetBagList(c.C.Roomid); err != nil {
 		apilog.L(`E: `, err)
 		return
@@ -1199,9 +1203,9 @@ func (t *GetFunc) Silver_2_coin() (missKey []string) {
 		return
 	}
 
-	//验证登陆
+	//验证登录
 	if !biliApi.IsLogin() {
-		apilog.L(`T: `, `未登陆`)
+		apilog.L(`T: `, `未登录`)
 		return
 	}
 
@@ -1256,9 +1260,9 @@ func GetHisStream() (Uplist []struct {
 }) {
 	apilog := apilog.Base_add(`历史直播主播`).L(`T: `, `获取中`)
 	defer apilog.L(`T: `, `完成`)
-	//验证登陆
+	//验证登录
 	if !biliApi.IsLogin() {
-		apilog.L(`T: `, `未登陆`)
+		apilog.L(`T: `, `未登录`)
 		return
 	}
 	if api_limit.TO() {
@@ -1278,9 +1282,9 @@ func GetHisStream() (Uplist []struct {
 // 进入房间
 func RoomEntryAction(roomId int) {
 	apilog := apilog.Base_add(`进入房间`)
-	//验证登陆
+	//验证登录
 	if !biliApi.IsLogin() {
-		apilog.L(`T: `, `未登陆`)
+		apilog.L(`T: `, `未登录`)
 		return
 	}
 	if api_limit.TO() {
@@ -1330,9 +1334,9 @@ func Feed_list() (Uplist []struct {
 }) {
 	apilog := apilog.Base_add(`正在直播主播`).L(`T: `, `获取中`)
 	defer apilog.L(`T: `, `完成`)
-	//验证登陆
+	//验证登录
 	if !biliApi.IsLogin() {
-		apilog.L(`T: `, `未登陆`)
+		apilog.L(`T: `, `未登录`)
 		return
 	}
 	if api_limit.TO() {

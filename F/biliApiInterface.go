@@ -16,7 +16,7 @@ type BiliApiInter interface {
 	SetCookiesCallback(func(cookies []*http.Cookie)) // 当有新cookie时，将调用，用于cookie持久化
 	GetCookies() (cookies []*http.Cookie)            // 获取所有cookie，用于其他需要cookie的情况
 	GetCookie(name string) (error, string)           // 获取特定cookie，用于其他需要cookie的情况
-	IsLogin() bool                                   // 通过cookie判断是否登陆
+	IsLogin() bool                                   // 通过cookie判断是否登录
 
 	LikeReport(hitCount, uid, roomid, upUid int) (err error)
 	LoginQrCode() (err error, imgUrl string, QrcodeKey string)
