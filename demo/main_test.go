@@ -16,7 +16,7 @@ import (
 // go test -run ^TestMain$ github.com/qydysky/bili_danmu/demo -race -count=1 -v -r xxx
 func TestMain(m *testing.T) {
 	fl := file.New("danmu.log", 0, false)
-	fl.Delete()
+	_ = fl.Delete()
 
 	ctx, c := context.WithTimeout(context.Background(), time.Second*40)
 	q.Start(ctx)
