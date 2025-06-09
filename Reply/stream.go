@@ -854,9 +854,9 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 				defer cancel()
 
 				var (
-					buff       = slice.New[byte]()
+					buff       = slice.New[byte](humanize.MByte * 100)
 					keyframe   = slice.New[byte]()
-					buf        = make([]byte, humanize.KByte)
+					buf        = make([]byte, humanize.MByte)
 					flvDecoder = NewFlvDecoder()
 					flvInited  = false
 				)
