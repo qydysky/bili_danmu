@@ -1179,7 +1179,7 @@ func Gift_list() (list []struct {
 		return
 	} //超额请求阻塞，超时将取消
 
-	if biliApi.IsLogin() {
+	if !biliApi.IsLogin() {
 		apilog.L(`W: `, `未登录`)
 		return
 	}
