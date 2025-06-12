@@ -663,7 +663,7 @@ func (t *M4SStream) removeStream() (e error) {
 }
 
 // 设置保存路径
-func (t *M4SStream) genSavepath() {
+func (t *M4SStream) genSavepath() string {
 	w := md5.New()
 	_, _ = io.WriteString(w, t.common.Title)
 
@@ -685,6 +685,7 @@ func (t *M4SStream) genSavepath() {
 	} else {
 		t.log.L(`W: `, err)
 	}
+	return t.currentSavePath
 }
 
 var ErrDecode = perrors.Action("ErrDecode")
@@ -1419,13 +1420,14 @@ func (t *M4SStream) Start() bool {
 					})
 					defer cancelMsg()
 
-					ms.genSavepath()
+					savePath := ms.genSavepath()
+					saveType := ms.GetStreamType()
 
 					l := ms.log.Base_add(`文件保存`)
 					startf := func(_ *M4SStream) error {
 						l.L(`T: `, `开始`)
 						//弹幕分值统计
-						replyFunc.DanmuCountPerMin.Rec(ctx1, ms.common.Roomid, ms.GetSavePath())(ms.common.K_v.LoadV("弹幕分值"))
+						replyFunc.DanmuCountPerMin.Rec(ctx1, ms.common.Roomid, savePath)(ms.common.K_v.LoadV("弹幕分值"))
 						return nil
 					}
 					stopf := func(_ *M4SStream) error {
@@ -1444,7 +1446,7 @@ func (t *M4SStream) Start() bool {
 					}
 
 					//保存弹幕
-					go StartRecDanmu(ctx1, ms.GetSavePath())
+					go StartRecDanmu(ctx1, savePath)
 
 					//指定房间录制回调
 					// if v, ok := ms.common.K_v.LoadV("指定房间录制回调").([]any); ok && len(v) > 0 {
@@ -1471,7 +1473,7 @@ func (t *M4SStream) Start() bool {
 					// 							}
 
 					// 							cmd := exec.Command(cmds[0], cmds[1:]...)
-					// 							cmd.Dir = ms.GetSavePath()
+					// 							cmd.Dir = savePath
 					// 							l.L(`I: `, "启动", cmd.Args)
 					// 							if e := cmd.Run(); e != nil {
 					// 								l.L(`E: `, e)
@@ -1485,7 +1487,7 @@ func (t *M4SStream) Start() bool {
 					// 	}
 					// }
 
-					path := ms.GetSavePath() + `0.` + ms.GetStreamType()
+					path := savePath + `0.` + saveType
 					startT := time.Now()
 					if e := ms.PusherToFile(ctx1, path, startf, stopf); e != nil {
 						l.Base_add(`PusherToFile`).L(`E: `, e)
@@ -1504,7 +1506,7 @@ func (t *M4SStream) Start() bool {
 						}
 						var dealer deal
 
-						switch ms.GetStreamType() {
+						switch saveType {
 						case `mp4`:
 							fmp4Decoder := NewFmp4DecoderWithBufsize(humanize.MByte * 100)
 							if v, ok := ms.common.K_v.LoadV(`fmp4音视频时间戳容差s`).(float64); ok && v > 0.1 {
@@ -1545,12 +1547,12 @@ func (t *M4SStream) Start() bool {
 										var cmds []string
 										for i := 0; i < len(after); i++ {
 											if cmd, ok := after[i].(string); ok && cmd != "" {
-												cmds = append(cmds, strings.ReplaceAll(cmd, "{type}", ms.GetStreamType()))
+												cmds = append(cmds, strings.ReplaceAll(cmd, "{type}", saveType))
 											}
 										}
 
 										cmd := exec.Command(cmds[0], cmds[1:]...)
-										cmd.Dir = ms.GetSavePath()
+										cmd.Dir = savePath
 										l.L(`I: `, "启动", cmd.Args)
 										if e := cmd.Run(); e != nil {
 											l.L(`E: `, e)
