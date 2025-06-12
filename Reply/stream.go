@@ -678,7 +678,7 @@ func (t *M4SStream) genSavepath() string {
 
 	// 显示保存位置
 	if rel, err := filepath.Rel(t.config.save_path, t.currentSavePath); err == nil {
-		t.log.L(`I: `, "保存到", rel+`/0.`+t.stream_type)
+		t.log.L(`I: `, "保存到", t.currentSavePath+`/0.`+t.stream_type)
 		f := file.New(rel+"/tmp.create", 0, true)
 		f.Create()
 		_ = f.Delete()
