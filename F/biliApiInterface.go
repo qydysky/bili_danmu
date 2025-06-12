@@ -126,6 +126,7 @@ type BiliApiInter interface {
 		LiveStatus int
 	})
 	RoomEntryAction(Roomid int) (err error)
+	QueryContributionRank(upUid, roomid int) (err error, OnlineNum int)
 	GetOnlineGoldRank(upUid, roomid int) (err error, OnlineNum int)
 	GetFollowing() (err error, res []struct {
 		Roomid     int

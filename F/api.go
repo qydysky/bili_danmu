@@ -144,6 +144,7 @@ var (
 			(*GetFunc).CheckSwitch_FansMedal,
 		},
 		`getOnlineGoldRank`: { //切换粉丝牌
+			(*GetFunc).queryContributionRank,
 			(*GetFunc).getOnlineGoldRank,
 		},
 	}
@@ -1296,6 +1297,34 @@ func RoomEntryAction(roomId int) {
 		apilog.L(`E: `, e)
 		return
 	}
+}
+
+// 获取在线人数
+func (t *GetFunc) queryContributionRank() (misskey []string) {
+	apilog := apilog.Base_add(`获取在线人数`)
+	if t.UpUid == 0 {
+		misskey = append(misskey, `UpUid`)
+		return
+	}
+	if t.Roomid == 0 {
+		misskey = append(misskey, `Roomid`)
+		return
+	}
+
+	if api_limit.TO() {
+		apilog.L(`E: `, `超时！`)
+		return
+	} //超额请求阻塞，超时将取消
+
+	if e, OnlineNum := biliApi.QueryContributionRank(t.UpUid, t.Roomid); e != nil {
+		apilog.L(`E: `, e)
+		return
+	} else {
+		t.OnlineNum = OnlineNum
+		apilog.Log_show_control(false).L(`I: `, `在线人数:`, t.OnlineNum)
+	}
+
+	return
 }
 
 // 获取在线人数

@@ -53,20 +53,21 @@ const (
 )
 
 type M4SStream struct {
-	Status               context.Context       //IsLive()是否运行中
-	exitSign             *signal.Signal        //IsLive()是否等待退出中
-	log                  *log.Log_interface    //日志
-	config               M4SStream_Config      //配置
-	stream_last_modified time.Time             //流地址更新时间
-	stream_type          string                //流类型
-	Stream_msg           *msgq.MsgType[[]byte] //流数据消息 tag:data
-	first_buf            []byte                //m4s起始块 or flv起始块
-	frameCount           uint                  //关键帧数量
-	boot_buf             []byte                //快速启动缓冲
-	boot_buf_locker      sync.RWMutex
-	m4s_pool             *pool.Buf[m4s_link_item] //切片pool
-	common               *c.Common                //通用配置副本
-	Current_save_path    string                   //明确的直播流保存目录
+	Status                context.Context       //IsLive()是否运行中
+	exitSign              *signal.Signal        //IsLive()是否等待退出中
+	log                   *log.Log_interface    //日志
+	config                M4SStream_Config      //配置
+	stream_last_modified  time.Time             //流地址更新时间
+	stream_type           string                //流类型
+	Stream_msg            *msgq.MsgType[[]byte] //流数据消息 tag:data
+	first_buf             []byte                //m4s起始块 or flv起始块
+	frameCount            uint                  //关键帧数量
+	boot_buf              []byte                //快速启动缓冲
+	boot_buf_locker       sync.RWMutex
+	m4s_pool              *pool.Buf[m4s_link_item] //切片pool
+	common                *c.Common                //通用配置副本
+	current_save_path     string                   //明确的直播流保存目录
+	current_save_path_ver atomic.Int32             //当路径修改时+1
 	// 事件周期 start: 开始实例 startRec：开始录制 load：接收到视频头
 	// keyFrame: 接收到关键帧 cut：切 stopRec：结束录制 stop：结束实例
 	msg               *msgq.MsgType[*M4SStream] //实例的各种事件回调
@@ -662,11 +663,12 @@ func (t *M4SStream) removeStream() (e error) {
 }
 
 // 设置保存路径
-func (t *M4SStream) getSavepath() {
+func (t *M4SStream) genSavepath() {
 	w := md5.New()
 	_, _ = io.WriteString(w, t.common.Title)
 
-	t.Current_save_path = fmt.Sprintf("%s/%s-%d-%d-%x-%s/",
+	t.current_save_path_ver.Add(1)
+	t.current_save_path = fmt.Sprintf("%s/%s-%d-%d-%x-%s/",
 		t.config.save_path,
 		time.Now().Format("2006_01_02-15_04_05"),
 		t.common.Roomid,
@@ -675,7 +677,7 @@ func (t *M4SStream) getSavepath() {
 		pstring.Rand(2, 3))
 
 	// 显示保存位置
-	if rel, err := filepath.Rel(t.config.save_path, t.Current_save_path); err == nil {
+	if rel, err := filepath.Rel(t.config.save_path, t.current_save_path); err == nil {
 		t.log.L(`I: `, "保存到", rel+`/0.`+t.stream_type)
 		f := file.New(t.Current_save_path+"tmp.create", 0, true)
 		f.Create()
@@ -1283,7 +1285,7 @@ func (t *M4SStream) GetStreamType() string {
 }
 
 func (t *M4SStream) GetSavePath() string {
-	return t.Current_save_path
+	return t.current_save_path
 }
 
 func (t *M4SStream) Start() bool {
@@ -1417,7 +1419,7 @@ func (t *M4SStream) Start() bool {
 					})
 					defer cancelMsg()
 
-					ms.getSavepath()
+					ms.genSavepath()
 
 					l := ms.log.Base_add(`文件保存`)
 					startf := func(_ *M4SStream) error {
@@ -1529,9 +1531,6 @@ func (t *M4SStream) Start() bool {
 						}
 					}
 
-					// 结束，不发送空值停止直播回放
-					// t.Stream_msg.PushLock_tag(`data`, []byte{})
-
 					//指定房间录制回调
 					if v, ok := ms.common.K_v.LoadV("指定房间录制回调").([]any); ok && len(v) > 0 {
 						l := l.Base(`录制回调`)
@@ -1634,9 +1633,16 @@ func (t *M4SStream) PusherToFile(contextC context.Context, filepath string, star
 		to = tmp
 	}
 
+	current_save_path_ver := t.current_save_path_ver.Load()
+
 	_, _ = f.Write(t.getFirstBuf(), true)
 	cancelRec := t.Stream_msg.Pull_tag(map[string]func([]byte) bool{
 		`data`: func(b []byte) bool {
+			if current_save_path_ver != t.current_save_path_ver.Load() {
+				t.log.L("I: ", "路径改变，停止保存", filepath)
+				return true
+			}
+
 			defer pu.Callback(func(startT time.Time, args ...any) {
 				if dru := time.Since(startT).Seconds(); dru > to {
 					t.log.L("W: ", "磁盘写入超时", dru)
