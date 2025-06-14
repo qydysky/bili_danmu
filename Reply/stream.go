@@ -279,7 +279,7 @@ func (t *M4SStream) fetchCheckStream() bool {
 	_log := t.log.BaseAdd("获取流")
 	// 获取流地址
 	t.common.Live_want_qn = t.config.want_qn
-	if F.Get(t.common).Get(`Live`); len(t.common.Live) == 0 {
+	if F.Api.Get(t.common, `Live`); len(t.common.Live) == 0 {
 		return false
 	}
 
@@ -1298,7 +1298,7 @@ func (t *M4SStream) Start() bool {
 	}
 
 	// 是否在直播
-	F.Get(t.common).Get(`Liveing`)
+	F.Api.Get(t.common, `Liveing`)
 	if !t.common.Liveing {
 		t.log.L(`I: `, `未直播`)
 		return false
@@ -1568,7 +1568,7 @@ func (t *M4SStream) Start() bool {
 		// 主循环
 		for !pctx.Done(t.Status) {
 			// 是否在直播
-			F.Get(t.common).Get(`Liveing`)
+			F.Api.Get(t.common, `Liveing`)
 			if !t.common.Liveing {
 				t.log.L(`I: `, `未直播`)
 				break

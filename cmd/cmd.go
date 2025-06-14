@@ -146,7 +146,7 @@ func Cmd() {
 			//登录
 			if strings.Contains(inputs, ` login`) {
 				//获取cookie
-				F.Get(c.C).Get(`Cookie`)
+				F.Api.Get(c.C, `Cookie`)
 				continue
 			}
 			//搜索主播
@@ -157,7 +157,7 @@ func Cmd() {
 				}
 
 				fmt.Print("\n")
-				for k, v := range F.Get(c.C).SearchUP(inputs[4:]) {
+				for k, v := range F.SearchUP(inputs[4:]) {
 					liveList[` to`+strconv.Itoa(k)] = v.Roomid
 					if v.Is_live {
 						fmt.Printf("%d\t%s\t%s(%d)\n", k, `☁`, v.Uname, v.Roomid)
