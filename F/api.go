@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"sync/atomic"
 	"time"
 
 	c "github.com/qydysky/bili_danmu/CV"
@@ -39,15 +38,6 @@ var biliApi = cmp.Get(id, cmp.PreFuncCu[BiliApiInter]{
 		return ba
 	},
 })
-
-type GetFunc struct {
-	*c.Common
-	count atomic.Int32
-}
-
-func Get(c *c.Common) *GetFunc {
-	return &GetFunc{Common: c}
-}
 
 // 获取当前佩戴的牌子
 func Get_weared_medal(uid, upUid int) (item J.GetWearedMedal_Data, e error) {
