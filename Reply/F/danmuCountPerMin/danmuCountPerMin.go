@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"sync"
 	"time"
 
 	comp "github.com/qydysky/part/component2"
@@ -139,6 +140,7 @@ func (t *danmuCountPerMin) Rec(ctx context.Context, rid int, savePath string) fu
 		}
 		go func() {
 			var cpm []int
+			var cpmLock sync.Mutex
 			var startT = time.Now()
 
 			cancel := t.m.Pull_tag_only(`do`, func(m mi) (disable bool) {
@@ -153,10 +155,12 @@ func (t *danmuCountPerMin) Rec(ctx context.Context, rid int, savePath string) fu
 					}
 				}
 				cu := int(time.Since(startT).Minutes())
+				cpmLock.Lock()
 				if len(cpm) < cu+1 {
 					cpm = append(cpm, make([]int, cu+1-len(cpm))...)
 				}
 				cpm[cu] += point
+				cpmLock.Unlock()
 				return false
 			})
 
@@ -164,6 +168,8 @@ func (t *danmuCountPerMin) Rec(ctx context.Context, rid int, savePath string) fu
 			cancel()
 
 			cu := int(time.Since(startT).Minutes())
+			cpmLock.Lock()
+			defer cpmLock.Unlock()
 			if len(cpm) < cu+1 {
 				cpm = append(cpm, make([]int, cu+1-len(cpm))...)
 			}

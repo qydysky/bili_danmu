@@ -224,6 +224,13 @@ func Start(rootCtx context.Context) {
 					actual.InIdle = false
 					actual.Rev = 0.0 // 营收
 				} else {
+					actual.UpUid = c.C.UpUid
+					actual.Uname = c.C.Uname
+					actual.ParentAreaID = c.C.ParentAreaID
+					actual.AreaID = c.C.AreaID
+					actual.Title = c.C.Title
+					actual.Live_Start_Time = c.C.Live_Start_Time
+					actual.Liveing = c.C.Liveing
 					actual.Roomid = c.C.Roomid
 				}
 				return actual, loaded
