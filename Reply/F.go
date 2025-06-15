@@ -428,7 +428,7 @@ func Entry_danmu(common *c.Common) {
 	flog := flog.Base_add(`进房弹幕`)
 
 	//检查与切换粉丝牌，只在cookie存在时启用
-	F.Get(common).Get(`CheckSwitch_FansMedal`)
+	F.Api.Get(common, `CheckSwitch_FansMedal`)
 
 	if v, _ := common.K_v.LoadV(`进房弹幕_有粉丝牌时才发`).(bool); v && common.Wearing_FansMedal == 0 {
 		flog.L(`T: `, `无粉丝牌`)
@@ -463,7 +463,7 @@ func AutoSend_silver_gift(common *c.Common) {
 	}
 
 	if common.UpUid == 0 {
-		F.Get(common).Get(`UpUid`)
+		F.Api.Get(common, `UpUid`)
 	}
 
 	for _, v := range F.Gift_list() {

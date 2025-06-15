@@ -676,7 +676,7 @@ func (t replyF) room_change(s string) {
 					msglog.Base_add("房").L(`W: `, `指定时长内标题未修改，可能需要调大标题修改检测s`)
 					return
 				case <-time.After(time.Second * 30):
-					F.Get(t.Common).Get(`Title`)
+					F.Api.Get(t.Common, `Title`)
 					if t.Common.Roomid == roomid && t.Common.Title != oldTitle {
 						setTitle(t.Common.Title)
 						var sh = []any{"标题改变", t.Common.Title}
@@ -1378,7 +1378,7 @@ func (t replyF) danmu(s string) {
 // 需要cookie
 func Msg_senddanmu(msg string) {
 	if !c.C.IsLogin() || c.C.Roomid == 0 {
-		msglog.L(`E: `, `未登陆`)
+		msglog.L(`E: `, `未登录`)
 		return
 	}
 	_ = send.Danmu_s(msg, c.C.Roomid)

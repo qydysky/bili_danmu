@@ -66,7 +66,8 @@ type M4SStream struct {
 	boot_buf_locker      sync.RWMutex
 	m4s_pool             *pool.Buf[m4s_link_item] //切片pool
 	common               *c.Common                //通用配置副本
-	Current_save_path    string                   //明确的直播流保存目录
+	currentSavePath      string                   //明确的直播流保存目录
+	currentSavePathVer   atomic.Int32             //当路径修改时+1
 	// 事件周期 start: 开始实例 startRec：开始录制 load：接收到视频头
 	// keyFrame: 接收到关键帧 cut：切 stopRec：结束录制 stop：结束实例
 	msg               *msgq.MsgType[*M4SStream] //实例的各种事件回调
@@ -278,7 +279,7 @@ func (t *M4SStream) fetchCheckStream() bool {
 	_log := t.log.BaseAdd("获取流")
 	// 获取流地址
 	t.common.Live_want_qn = t.config.want_qn
-	if F.Get(t.common).Get(`Live`); len(t.common.Live) == 0 {
+	if F.Api.Get(t.common, `Live`); len(t.common.Live) == 0 {
 		return false
 	}
 
@@ -290,7 +291,7 @@ func (t *M4SStream) fetchCheckStream() bool {
 					_log.L(`W: `, `仅清晰度true,当前清晰度`, t.common.Qn[t.common.Live_qn])
 					return false
 				} else {
-					_log.L(`W: `, `未登陆,忽略仅清晰度true,当前清晰度`, t.common.Qn[t.common.Live_qn])
+					_log.L(`W: `, `未登录,忽略仅清晰度true,当前清晰度`, t.common.Qn[t.common.Live_qn])
 				}
 			}
 		}
@@ -662,11 +663,12 @@ func (t *M4SStream) removeStream() (e error) {
 }
 
 // 设置保存路径
-func (t *M4SStream) getSavepath() {
+func (t *M4SStream) genSavepath() string {
 	w := md5.New()
 	_, _ = io.WriteString(w, t.common.Title)
 
-	t.Current_save_path = fmt.Sprintf("%s/%s-%d-%d-%x-%s/",
+	t.currentSavePathVer.Add(1)
+	t.currentSavePath = fmt.Sprintf("%s/%s-%d-%d-%x-%s/",
 		t.config.save_path,
 		time.Now().Format("2006_01_02-15_04_05"),
 		t.common.Roomid,
@@ -675,14 +677,11 @@ func (t *M4SStream) getSavepath() {
 		pstring.Rand(2, 3))
 
 	// 显示保存位置
-	if rel, err := filepath.Rel(t.config.save_path, t.Current_save_path); err == nil {
-		t.log.L(`I: `, "保存到", rel+`/0.`+t.stream_type)
-		f := file.New(t.Current_save_path+"tmp.create", 0, true)
-		f.Create()
-		_ = f.Delete()
-	} else {
-		t.log.L(`W: `, err)
-	}
+	t.log.L(`I: `, "保存到", t.currentSavePath+`/0.`+t.stream_type)
+	f := file.New(t.currentSavePath+"/tmp.create", 0, true)
+	f.Create()
+	_ = f.Delete()
+	return t.currentSavePath
 }
 
 var ErrDecode = perrors.Action("ErrDecode")
@@ -854,9 +853,9 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 				defer cancel()
 
 				var (
-					buff       = slice.New[byte]()
+					buff       = slice.New[byte](humanize.MByte * 100)
 					keyframe   = slice.New[byte]()
-					buf        = make([]byte, humanize.KByte)
+					buf        = make([]byte, humanize.MByte)
 					flvDecoder = NewFlvDecoder()
 					flvInited  = false
 				)
@@ -1283,7 +1282,7 @@ func (t *M4SStream) GetStreamType() string {
 }
 
 func (t *M4SStream) GetSavePath() string {
-	return t.Current_save_path
+	return t.currentSavePath
 }
 
 func (t *M4SStream) Start() bool {
@@ -1299,7 +1298,7 @@ func (t *M4SStream) Start() bool {
 	}
 
 	// 是否在直播
-	F.Get(t.common).Get(`Liveing`)
+	F.Api.Get(t.common, `Liveing`)
 	if !t.common.Liveing {
 		t.log.L(`I: `, `未直播`)
 		return false
@@ -1417,13 +1416,14 @@ func (t *M4SStream) Start() bool {
 					})
 					defer cancelMsg()
 
-					ms.getSavepath()
+					savePath := ms.genSavepath()
+					saveType := ms.GetStreamType()
 
 					l := ms.log.Base_add(`文件保存`)
 					startf := func(_ *M4SStream) error {
 						l.L(`T: `, `开始`)
 						//弹幕分值统计
-						replyFunc.DanmuCountPerMin.Rec(ctx1, ms.common.Roomid, ms.GetSavePath())(ms.common.K_v.LoadV("弹幕分值"))
+						replyFunc.DanmuCountPerMin.Rec(ctx1, ms.common.Roomid, savePath)(ms.common.K_v.LoadV("弹幕分值"))
 						return nil
 					}
 					stopf := func(_ *M4SStream) error {
@@ -1433,16 +1433,16 @@ func (t *M4SStream) Start() bool {
 
 					// 移除历史流
 					if err := ms.removeStream(); err != nil {
-						l.L(`W: `, err)
+						l.Base_add(`removeStream`).L(`W: `, err)
 					}
 
 					// savestate
 					if e, _ := videoInfo.Save.Run(ctx1, ms); e != nil {
-						l.L(`E: `, e)
+						l.Base_add(`videoInfo`).L(`E: `, e)
 					}
 
 					//保存弹幕
-					go StartRecDanmu(ctx1, ms.GetSavePath())
+					go StartRecDanmu(ctx1, savePath)
 
 					//指定房间录制回调
 					// if v, ok := ms.common.K_v.LoadV("指定房间录制回调").([]any); ok && len(v) > 0 {
@@ -1469,7 +1469,7 @@ func (t *M4SStream) Start() bool {
 					// 							}
 
 					// 							cmd := exec.Command(cmds[0], cmds[1:]...)
-					// 							cmd.Dir = ms.GetSavePath()
+					// 							cmd.Dir = savePath
 					// 							l.L(`I: `, "启动", cmd.Args)
 					// 							if e := cmd.Run(); e != nil {
 					// 								l.L(`E: `, e)
@@ -1483,10 +1483,10 @@ func (t *M4SStream) Start() bool {
 					// 	}
 					// }
 
-					path := ms.GetSavePath() + `0.` + ms.GetStreamType()
+					path := savePath + `0.` + saveType
 					startT := time.Now()
 					if e := ms.PusherToFile(ctx1, path, startf, stopf); e != nil {
-						l.L(`E: `, e)
+						l.Base_add(`PusherToFile`).L(`E: `, e)
 					}
 					duration := time.Since(startT)
 
@@ -1502,7 +1502,7 @@ func (t *M4SStream) Start() bool {
 						}
 						var dealer deal
 
-						switch ms.GetStreamType() {
+						switch saveType {
 						case `mp4`:
 							fmp4Decoder := NewFmp4DecoderWithBufsize(humanize.MByte * 100)
 							if v, ok := ms.common.K_v.LoadV(`fmp4音视频时间戳容差s`).(float64); ok && v > 0.1 {
@@ -1521,16 +1521,13 @@ func (t *M4SStream) Start() bool {
 						if dealer != nil {
 							f := file.New(path, 0, false)
 							if sf, e := replyFunc.VideoFastSeed.InitSav(path + ".fastSeed"); e != nil {
-								l.L(`E: `, path, e)
+								l.Base_add(`GenFastSeed`).L(`E: `, path, e)
 							} else if e := dealer.GenFastSeed(f, sf); e != nil && !errors.Is(e, io.EOF) {
-								l.L(`E: `, path, e)
+								l.Base_add(`GenFastSeed`).L(`E: `, path, e)
 							}
 							f.Close()
 						}
 					}
-
-					// 结束，不发送空值停止直播回放
-					// t.Stream_msg.PushLock_tag(`data`, []byte{})
 
 					//指定房间录制回调
 					if v, ok := ms.common.K_v.LoadV("指定房间录制回调").([]any); ok && len(v) > 0 {
@@ -1546,12 +1543,12 @@ func (t *M4SStream) Start() bool {
 										var cmds []string
 										for i := 0; i < len(after); i++ {
 											if cmd, ok := after[i].(string); ok && cmd != "" {
-												cmds = append(cmds, strings.ReplaceAll(cmd, "{type}", ms.GetStreamType()))
+												cmds = append(cmds, strings.ReplaceAll(cmd, "{type}", saveType))
 											}
 										}
 
 										cmd := exec.Command(cmds[0], cmds[1:]...)
-										cmd.Dir = ms.GetSavePath()
+										cmd.Dir = savePath
 										l.L(`I: `, "启动", cmd.Args)
 										if e := cmd.Run(); e != nil {
 											l.L(`E: `, e)
@@ -1571,7 +1568,7 @@ func (t *M4SStream) Start() bool {
 		// 主循环
 		for !pctx.Done(t.Status) {
 			// 是否在直播
-			F.Get(t.common).Get(`Liveing`)
+			F.Api.Get(t.common, `Liveing`)
 			if !t.common.Liveing {
 				t.log.L(`I: `, `未直播`)
 				break
@@ -1634,9 +1631,16 @@ func (t *M4SStream) PusherToFile(contextC context.Context, filepath string, star
 		to = tmp
 	}
 
+	currentSavePathVer := t.currentSavePathVer.Load()
+
 	_, _ = f.Write(t.getFirstBuf(), true)
 	cancelRec := t.Stream_msg.Pull_tag(map[string]func([]byte) bool{
 		`data`: func(b []byte) bool {
+			if currentSavePathVer != t.currentSavePathVer.Load() {
+				t.log.L("I: ", "路径改变，停止保存", filepath)
+				return true
+			}
+
 			defer pu.Callback(func(startT time.Time, args ...any) {
 				if dru := time.Since(startT).Seconds(); dru > to {
 					t.log.L("W: ", "磁盘写入超时", dru)
