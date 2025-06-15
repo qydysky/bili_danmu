@@ -110,7 +110,7 @@ func (t *GetFuncV2) isValid(key string) func() bool {
 		case `LIVE_BUVID`:
 			return t.common.LiveBuvidUpdated.After(time.Now().Add(-time.Hour))
 		}
-		return false
+		return true
 	}
 }
 
