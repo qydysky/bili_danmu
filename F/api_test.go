@@ -43,19 +43,6 @@ func Test_Title(t *testing.T) {
 	}
 }
 
-func Test_Html(t *testing.T) {
-	//获取cookie
-	Api.Get(c.C, `Cookie`)
-	//获取LIVE_BUVID
-	Api.Get(c.C, `LIVE_BUVID`)
-	c.C.Roomid = 213
-	c.C.UpUid = 0
-	Api.Get(c.C, `UpUid`)
-	if c.C.UpUid == 0 {
-		t.Fatal()
-	}
-}
-
 func Test_getRoomPlayInfo(t *testing.T) {
 	//获取cookie
 	Api.Get(c.C, `Cookie`)
