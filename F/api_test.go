@@ -51,7 +51,9 @@ func Test_Html(t *testing.T) {
 	c.C.Roomid = 213
 	c.C.UpUid = 0
 	Api.common = c.C
-	Api.html()
+	if _, e := Api.html(); e != nil {
+		t.Fatal(e)
+	}
 	if c.C.UpUid == 0 {
 		t.Fatal()
 	}
@@ -65,7 +67,9 @@ func Test_getRoomPlayInfo(t *testing.T) {
 	c.C.Roomid = 394988
 	c.C.UpUid = 0
 	Api.common = c.C
-	Api.getRoomPlayInfo()
+	if _, e := Api.getRoomPlayInfo(); e != nil {
+		t.Fatal(e)
+	}
 	if c.C.UpUid == 0 {
 		t.Fatal()
 	}
@@ -79,7 +83,9 @@ func Test_getRoomPlayInfoByQn(t *testing.T) {
 	c.C.Roomid = 394988
 	c.C.UpUid = 0
 	Api.common = c.C
-	Api.getRoomPlayInfoByQn()
+	if _, e := Api.getRoomPlayInfoByQn(); e != nil {
+		t.Fatal(e)
+	}
 	if c.C.UpUid == 0 {
 		t.Fatal()
 	}
