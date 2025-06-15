@@ -52,7 +52,7 @@ type Common struct {
 	PID               int            `json:"-"`            //进程id
 	Version           string         `json:"-"`            //版本
 	Uid               int            `json:"-"`            //client uid
-	Login             bool           `json:"login"`        //登陆
+	Login             bool           `json:"login"`        //登录
 	Live              []*LiveQn      `json:"live"`         //直播流链接
 	Live_qn           int            `json:"liveQn"`       //当前直播流质量
 	Live_want_qn      int            `json:"-"`            //期望直播流质量

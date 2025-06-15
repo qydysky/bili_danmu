@@ -31,7 +31,7 @@ func Cmd() {
 					fmt.Println("查看直播中主播->输入' liv'回车")
 					fmt.Println("查看历史观看主播->输入' his'回车")
 				} else {
-					fmt.Println("登陆->输入' login'回车")
+					fmt.Println("登录->输入' login'回车")
 				}
 				fmt.Println("搜索主播->输入' sea关键词'回车")
 				fmt.Println("其他输出隔断不影响")
@@ -42,7 +42,7 @@ func Cmd() {
 				fmt.Println("发送弹幕->输入'字符串'回车")
 				fmt.Println("查看直播中主播->输入' liv'回车")
 			} else {
-				fmt.Println("登陆->输入' login'回车")
+				fmt.Println("登录->输入' login'回车")
 			}
 			fmt.Println("重载弹幕->输入' reload'回车")
 			fmt.Println("搜索主播->输入' sea关键词'回车")
@@ -112,7 +112,7 @@ func Cmd() {
 			//直播间切换
 			if strings.Contains(inputs, ` liv`) {
 				if _, ok := c.C.Cookie.LoadV(`bili_jct`).(string); !ok {
-					cmdlog.L(`W: `, "尚未登陆，未能获取关注主播")
+					cmdlog.L(`W: `, "尚未登录，未能获取关注主播")
 					continue
 				}
 				fmt.Print("\n")
@@ -127,7 +127,7 @@ func Cmd() {
 			//直播间历史
 			if strings.Contains(inputs, ` his`) {
 				if _, ok := c.C.Cookie.LoadV(`bili_jct`).(string); !ok {
-					cmdlog.L(`W: `, "尚未登陆，未能获取关注主播")
+					cmdlog.L(`W: `, "尚未登录，未能获取关注主播")
 					continue
 				}
 				fmt.Print("\n")
@@ -143,10 +143,10 @@ func Cmd() {
 				fmt.Print("\n")
 				continue
 			}
-			//登陆
+			//登录
 			if strings.Contains(inputs, ` login`) {
 				//获取cookie
-				F.Get(c.C).Get(`Cookie`)
+				F.Api.Get(c.C, `Cookie`)
 				continue
 			}
 			//搜索主播
@@ -157,7 +157,7 @@ func Cmd() {
 				}
 
 				fmt.Print("\n")
-				for k, v := range F.Get(c.C).SearchUP(inputs[4:]) {
+				for k, v := range F.SearchUP(inputs[4:]) {
 					liveList[` to`+strconv.Itoa(k)] = v.Roomid
 					if v.Is_live {
 						fmt.Printf("%d\t%s\t%s(%d)\n", k, `☁`, v.Uname, v.Roomid)

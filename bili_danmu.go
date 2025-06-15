@@ -158,13 +158,13 @@ func Start(rootCtx context.Context) {
 			//如果连接中断，则等待
 			F.KeepConnect()
 			//获取cookie
-			F.Get(c.C).Get(`Cookie`)
+			F.Api.Get(c.C, `Cookie`)
 			//获取LIVE_BUVID
-			F.Get(c.C).Get(`LIVE_BUVID`)
+			F.Api.Get(c.C, `LIVE_BUVID`)
 			//兑换硬币
-			F.Get(c.C).Silver_2_coin()
+			F.Api.Get(c.C, `Silver2Coin`)
 			// 获取房间实际id
-			c.C.Roomid = F.GetRoomRealId(c.C.Roomid)
+			F.Api.Get(c.C, `Roomid`)
 
 			//使用带tag的消息队列在功能间传递消息
 			var cancelfunc = c.C.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
@@ -209,7 +209,7 @@ func Start(rootCtx context.Context) {
 				`new day`: func(_ any) bool { //日期更换
 					go func() {
 						//每日兑换硬币
-						F.Get(c.C).Silver_2_coin()
+						F.Api.Get(c.C, `Silver2Coin`)
 						//附加功能 每日发送弹幕
 						reply.Entry_danmu(c.C)
 						//附加功能 自动发送即将过期礼物
@@ -253,16 +253,16 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, c
 			for !exitloop {
 				//如果连接中断，则等待
 				F.KeepConnect()
-				//获取cookie，检查是否登陆失效
-				F.Get(common).Get(`Cookie`)
+				//获取cookie，检查是否登录失效
+				F.Api.Get(common, `Cookie`)
 				//获取LIVE_BUVID
-				F.Get(common).Get(`LIVE_BUVID`)
+				F.Api.Get(common, `LIVE_BUVID`)
 				//附加功能 自动发送即将过期礼物
 				reply.AutoSend_silver_gift(common)
 				//获取热门榜
-				F.Get(common).Get(`Note`)
+				F.Api.Get(common, `Note`)
 				// 检查与切换粉丝牌，只在cookie存在时启用
-				F.Get(common).Get(`CheckSwitch_FansMedal`)
+				F.Api.Get(common, `CheckSwitch_FansMedal`)
 				// 附加功能 保持牌子点亮
 				if reply.IsOn(`保持牌子亮着`) && common.Wearing_FansMedal != 0 {
 					replyFunc.KeepMedalLight.Init(danmulog.Base("保持牌子点亮"), common.Roomid, send.Danmu_s, c.C.K_v.LoadV(`进房弹幕_内容`))
@@ -276,7 +276,7 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, c
 				}
 				danmulog.L(`I: `, "连接到房间", common.Roomid)
 				// 获取弹幕服务器
-				F.Get(common).Get(`WSURL`)
+				F.Api.Get(common, `WSURL`)
 
 				aliveT = time.Now().Add(3 * time.Hour)
 
@@ -363,7 +363,7 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, c
 		}
 
 		// 直播状态
-		if F.Get(common).Get(`Liveing`); common.Liveing {
+		if F.Api.Get(common, `Liveing`); common.Liveing {
 			danmulog.L(`I: `, "直播中")
 		} else {
 			danmulog.L(`I: `, "未直播")
@@ -399,9 +399,9 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, c
 		}()
 
 		// 刷新舰长数
-		F.Get(common).Get(`GuardNum`)
+		F.Api.Get(common, `GuardNum`)
 		// 在线人数
-		F.Get(common).Get(`getOnlineGoldRank`)
+		F.Api.Get(common, `getOnlineGoldRank`)
 		//附加功能 弹幕机 无cookie无法发送弹幕
 		if common.IsLogin() && reply.IsOn("自动弹幕机") {
 			replyFunc.Danmuji.Danmuji_auto(ctx, c.C.K_v.LoadV(`自动弹幕机_内容`).([]any), c.C.K_v.LoadV(`自动弹幕机_发送间隔s`).(float64), reply.Msg_senddanmu)
@@ -453,12 +453,12 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, c
 					return true
 				},
 				`flash_room`: func(_ any) bool { //重进房时退出当前房间
-					go F.Get(common).Get(`WSURL`)
+					go F.Api.Get(common, `WSURL`)
 					ws_c.Close()
 					return true
 				},
 				`guard_update`: func(_ any) bool { //舰长更新
-					go F.Get(common).Get(`GuardNum`)
+					go F.Api.Get(common, `GuardNum`)
 					return false
 				},
 				`every100s`: func(_ any) bool { //每100s
@@ -473,7 +473,7 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, c
 						return false
 					}
 					// 在线人数
-					go F.Get(common).Get(`getOnlineGoldRank`)
+					go F.Api.Get(common, `getOnlineGoldRank`)
 					return false
 				},
 			})

@@ -9,4 +9,4 @@ type LOG_IN_NOTICE struct {
 	} `json:"data"`
 }
 
-// {"cmd":"LOG_IN_NOTICE","data":{"notice_msg":"为保护用户隐私，未注册登陆用户将无法查看他人昵称","image_web":"http://i0.hdslb.com/bfs/dm/75e7c16b99208df259fe0a93354fd3440cbab412.png","image_app":""}}
+// {"cmd":"LOG_IN_NOTICE","data":{"notice_msg":"为保护用户隐私，未注册登录用户将无法查看他人昵称","image_web":"http://i0.hdslb.com/bfs/dm/75e7c16b99208df259fe0a93354fd3440cbab412.png","image_app":""}}
