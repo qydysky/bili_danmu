@@ -497,7 +497,6 @@ func (t *GetFuncV2) getGuardNum() (missKey string, err error) {
 	}
 
 	//Get_guardNum
-	fmt.Println(t.common.UpUid, t.common.Roomid)
 	if err, GuardNum := biliApi.GetGuardNum(t.common.UpUid, t.common.Roomid); err != nil {
 		apilog.L(`E: `, err)
 	} else {
