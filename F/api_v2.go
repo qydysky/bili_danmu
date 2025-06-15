@@ -735,7 +735,7 @@ func (t *GetFuncV2) checkSwitchFansMedal() (missKey string, err error) {
 				apilog.L(`I: `, `自动切换粉丝牌 id:`, medal_id)
 			}
 			t.common.Wearing_FansMedal = medal_id //更新佩戴信息
-			return "", pkf.ErrNextMethod.NewErr(err)
+			return "", nil
 		}
 	}
 	return
