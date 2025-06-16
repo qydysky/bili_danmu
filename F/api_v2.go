@@ -14,6 +14,7 @@ import (
 	"github.com/mdp/qrterminal/v3"
 	_ "github.com/qydysky/biliApi"
 	c "github.com/qydysky/bili_danmu/CV"
+	pe "github.com/qydysky/part/errors"
 	file "github.com/qydysky/part/file"
 	pio "github.com/qydysky/part/io"
 	pkf "github.com/qydysky/part/keyFunc"
@@ -70,12 +71,14 @@ func (t *GetFuncV2) Get(common *c.Common, key string) {
 	defer common.Lock()()
 
 	t.common = common
-	// for n := range t.api.GetTrace(key).Asc() {
-	// 	fmt.Println(n)
-	// }
-	if e := t.api.Get(key); e != nil {
-		apilog.Base_add(`Get`).L(`E: `, e)
+	for node := range t.api.GetTrace(key).Asc() {
+		if node.Err != nil {
+			apilog.Base_add(`Get`).L(`E: `, node.Key, node.MethodIndex, pe.ErrorFormat(node.Err, pe.ErrActionInLineFunc))
+		}
 	}
+	// if e := t.api.Get(key); e != nil {
+	// 	apilog.Base_add(`Get`).L(`E: `, e)
+	// }
 }
 
 func (t *GetFuncV2) isValid(key string) func() bool {
@@ -494,7 +497,6 @@ func (t *GetFuncV2) getGuardNum() (missKey string, err error) {
 	}
 
 	//Get_guardNum
-	fmt.Println(t.common.UpUid, t.common.Roomid)
 	if err, GuardNum := biliApi.GetGuardNum(t.common.UpUid, t.common.Roomid); err != nil {
 		apilog.L(`E: `, err)
 	} else {
@@ -732,7 +734,7 @@ func (t *GetFuncV2) checkSwitchFansMedal() (missKey string, err error) {
 				apilog.L(`I: `, `自动切换粉丝牌 id:`, medal_id)
 			}
 			t.common.Wearing_FansMedal = medal_id //更新佩戴信息
-			return "", pkf.ErrNextMethod.NewErr(err)
+			return "", nil
 		}
 	}
 	return
