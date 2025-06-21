@@ -177,7 +177,7 @@ func (t *FlvDecoder) SearchStreamTag(buf []byte, keyframe *slice.Buf[byte]) (dro
 		if lastAT != 0 && lastVT != 0 {
 			diff := math.Abs(float64(lastVT - lastAT))
 			if diff > t.Diff {
-				err = fmt.Errorf("时间戳不匹配 %v %v (或许应调整flv音视频时间戳容差ms>%f)", lastVT, lastAT, diff)
+				err = fmt.Errorf("时间戳不匹配 lastVT(%v) lastAT(%v) (或许应调整flv音视频时间戳容差ms>%f)", lastVT, lastAT, diff)
 				return
 			}
 		}
@@ -246,7 +246,7 @@ func (t *FlvDecoder) oneF(buf []byte, w ...dealFFlv) (dropOffset int, err error)
 		if lastAT != 0 && lastVT != 0 {
 			diff := math.Abs(float64(lastVT - lastAT))
 			if diff > t.Diff {
-				err = fmt.Errorf("时间戳不匹配 %v %v (或许应调整flv音视频时间戳容差ms>%f)", lastVT, lastAT, diff)
+				err = fmt.Errorf("时间戳不匹配 lastVT(%v) lastAT(%v) (或许应调整flv音视频时间戳容差ms>%f)", lastVT, lastAT, diff)
 				return
 			}
 		}
