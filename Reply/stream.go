@@ -806,6 +806,8 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 		}
 
 		// flv获取
+		var wg sync.WaitGroup
+		wg.Add(2)
 		cancelC, cancel := context.WithCancel(t.Status)
 		errCtx := pctx.Value[error]{}
 		cancelC = errCtx.LinkCtx(cancelC)
@@ -822,6 +824,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 
 			// read timeout
 			go func() {
+				defer wg.Done()
 				defer cancel()
 
 				timer := time.NewTicker(time.Duration(readTO * int64(time.Second)))
@@ -833,7 +836,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 						return
 					case curT := <-timer.C:
 						if curT.Unix()-leastReadUnix.Load() > readTO {
-							t.log.L(`W: `, fmt.Sprintf("%vs未接收到有效数据", readTO))
+							// t.log.L(`W: `, fmt.Sprintf("%vs未接收到有效数据", readTO))
 							pctx.PutVal(cancelC, &errCtx, fmt.Errorf("%vs未接收到有效数据", readTO))
 							// 时间段内未接收到任何数据
 							return
@@ -851,6 +854,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 
 			// read
 			go func() {
+				defer wg.Done()
 				defer cancel()
 
 				var (
@@ -867,7 +871,9 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 
 				for {
 					if n, e := pipe.Read(buf); e != nil {
-						pctx.PutVal(cancelC, &errCtx, e)
+						if !errors.Is(e, io.ErrClosedPipe) {
+							pctx.PutVal(cancelC, &errCtx, e)
+						}
 						break
 					} else if e = buff.Append(buf[:n]); e != nil {
 						pctx.PutVal(cancelC, &errCtx, e)
@@ -879,7 +885,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 						unlock()
 
 						if err != nil {
-							t.log.L(`E: `, err)
+							// t.log.L(`E: `, err)
 							pctx.PutVal(cancelC, &errCtx, errors.New("[decoder]"+err.Error()))
 							break
 						} else {
@@ -899,7 +905,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 						unlock()
 
 						if err != nil {
-							t.log.L(`E: `, err)
+							// t.log.L(`E: `, err)
 							pctx.PutVal(cancelC, &errCtx, errors.New("[decoder]"+err.Error()))
 							break
 						} else {
@@ -954,26 +960,35 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 					`Cookie`:          t.common.GenReqCookie(),
 				},
 			})
-			if err := r.Wait(); err != nil && !errors.Is(err, io.EOF) {
-				if reqf.IsCancel(err) {
+			if err := r.Wait(); err != nil {
+				if errors.Is(err, io.EOF) {
+					t.log.L(`I: `, `flv下载结束`, F.ParseHost(surl.String()))
+				} else if reqf.IsCancel(err) {
 					t.log.L(`I: `, `flv下载停止`, F.ParseHost(surl.String()))
-					return
-				} else if !reqf.IsTimeout(err) {
+				} else if reqf.IsTimeout(err) {
+					t.log.L(`E: `, `flv下载超时`, F.ParseHost(surl.String()))
+				} else {
 					e = err
 					t.log.L(`E: `, `flv下载失败:`, F.ParseHost(surl.String()), err)
-				} else {
-					t.log.L(`E: `, `flv下载超时`, F.ParseHost(surl.String()))
 				}
-			} else if err := errCtx.Get(); err != nil && strings.HasPrefix(err.Error(), "[decoder]") {
-				e = err
+			}
+			if err := errCtx.Get(); err != nil {
+				t.log.L(`E: `, `flv处理错误`, F.ParseHost(surl.String()), err)
+				e = errors.Join(e, err)
 			}
 		}
 
 		cancel()
 
+		t.log.L(`T: `, `flv等待协程退出`)
+		wg.Wait()
+
 		if v1, ok := t.common.K_v.LoadV(`flv断流续接`).(bool); ok && !v1 {
 			break
+		} else {
+			t.log.L(`W: `, `flv断流续接，时间戳将发生跳动，后续需要修复`)
 		}
+
 		v.DisableAuto()
 	}
 	return
