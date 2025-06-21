@@ -410,7 +410,15 @@ func (t *Common) Init() *Common {
 		genKey  = flag.Bool("genKey", false, "生成cookie加密公私钥")
 		stop    = flag.Bool("stop", false, "向当前配置发送退出信号")
 	)
-	testing.Init()
+
+	// 支持test命令
+	for _, arg := range os.Args[1:] {
+		if strings.HasPrefix(arg, "-test.") {
+			testing.Init()
+			break
+		}
+	}
+
 	flag.Parse()
 
 	if *genKey {
