@@ -167,10 +167,10 @@ func (t *FlvDecoder) SearchStreamTag(buf []byte, keyframe *slice.Buf[byte]) (dro
 		}
 
 		timeStamp := int(F.Btoi32v2([]byte{buf[bufOffset+7], buf[bufOffset+4], buf[bufOffset+5], buf[bufOffset+6]}, 0))
-		switch {
-		case buf[bufOffset] == videoTag:
+		switch  buf[bufOffset]{
+		case videoTag:
 			lastVT = timeStamp
-		case buf[bufOffset] == audioTag:
+		case audioTag:
 			lastAT = timeStamp
 		default:
 		}
@@ -236,10 +236,10 @@ func (t *FlvDecoder) oneF(buf []byte, w ...dealFFlv) (dropOffset int, err error)
 		}
 
 		timeStamp := int(F.Btoi32v2([]byte{buf[bufOffset+7], buf[bufOffset+4], buf[bufOffset+5], buf[bufOffset+6]}, 0))
-		switch {
-		case buf[bufOffset] == videoTag:
+		switch  buf[bufOffset]{
+		case videoTag:
 			lastVT = timeStamp
-		case buf[bufOffset] == audioTag:
+		case audioTag:
 			lastAT = timeStamp
 		default:
 		}
