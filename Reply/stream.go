@@ -1699,13 +1699,7 @@ func (t *M4SStream) PusherToHttp(plog *log.Log_interface, conn net.Conn, w http.
 	//写入头
 	{
 		retry := 5
-		for retry > 0 {
-			select {
-			case <-ctx.Done():
-				break
-			default:
-			}
-
+		for !pctx.Done(ctx) && retry > 0 {
 			if len(t.getFirstBuf()) != 0 {
 				if _, err := w.Write(t.getFirstBuf()); err != nil {
 					return err
