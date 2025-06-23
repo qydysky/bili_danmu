@@ -393,7 +393,7 @@ func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) 
 						t.AVTDiff = 0.1
 					}
 					if diff := math.Abs(video.getT() - audio.getT()); diff > t.AVTDiff {
-						return pe.Join(ErrDecode, fmt.Errorf("时间戳不匹配 %v %v (或许应调整fmp4音视频时间戳容差s>%.2f)", video.timeStamp, audio.timeStamp, diff))
+						return pe.Join(ErrDecode, fmt.Errorf("时间戳不匹配 lastVT(%v) lastAT(%v) (或许应调整fmp4音视频时间戳容差s>%.2f)", video.timeStamp, audio.timeStamp, diff))
 						// copy(video.data, F.Itob64(int64(audio.getT()*float64(video.timescale))))
 					}
 
@@ -642,7 +642,7 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...dealFMp4) (cu int, err error) {
 						t.AVTDiff = 0.1
 					}
 					if diff := math.Abs(video.getT() - audio.getT()); diff > t.AVTDiff {
-						return pe.Join(ErrDecode, fmt.Errorf("时间戳不匹配 %v %v (或许应调整fmp4音视频时间戳容差s>%.2f)", video.timeStamp, audio.timeStamp, diff))
+						return pe.Join(ErrDecode, fmt.Errorf("时间戳不匹配 lastVT(%v) lastAT(%v) (或许应调整fmp4音视频时间戳容差s>%.2f)", video.timeStamp, audio.timeStamp, diff))
 						// copy(video.data, F.Itob64(int64(audio.getT()*float64(video.timescale))))
 					}
 

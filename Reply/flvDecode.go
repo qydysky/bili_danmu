@@ -167,17 +167,17 @@ func (t *FlvDecoder) SearchStreamTag(buf []byte, keyframe *slice.Buf[byte]) (dro
 		}
 
 		timeStamp := int(F.Btoi32v2([]byte{buf[bufOffset+7], buf[bufOffset+4], buf[bufOffset+5], buf[bufOffset+6]}, 0))
-		switch {
-		case buf[bufOffset] == videoTag:
+		switch buf[bufOffset] {
+		case videoTag:
 			lastVT = timeStamp
-		case buf[bufOffset] == audioTag:
+		case audioTag:
 			lastAT = timeStamp
 		default:
 		}
 		if lastAT != 0 && lastVT != 0 {
 			diff := math.Abs(float64(lastVT - lastAT))
 			if diff > t.Diff {
-				err = fmt.Errorf("时间戳不匹配 %v %v (或许应调整flv音视频时间戳容差ms>%f)", lastVT, lastAT, diff)
+				err = fmt.Errorf("时间戳不匹配 lastVT(%v) lastAT(%v) (或许应调整flv音视频时间戳容差ms>%f)", lastVT, lastAT, diff)
 				return
 			}
 		}
@@ -236,17 +236,17 @@ func (t *FlvDecoder) oneF(buf []byte, w ...dealFFlv) (dropOffset int, err error)
 		}
 
 		timeStamp := int(F.Btoi32v2([]byte{buf[bufOffset+7], buf[bufOffset+4], buf[bufOffset+5], buf[bufOffset+6]}, 0))
-		switch {
-		case buf[bufOffset] == videoTag:
+		switch buf[bufOffset] {
+		case videoTag:
 			lastVT = timeStamp
-		case buf[bufOffset] == audioTag:
+		case audioTag:
 			lastAT = timeStamp
 		default:
 		}
 		if lastAT != 0 && lastVT != 0 {
 			diff := math.Abs(float64(lastVT - lastAT))
 			if diff > t.Diff {
-				err = fmt.Errorf("时间戳不匹配 %v %v (或许应调整flv音视频时间戳容差ms>%f)", lastVT, lastAT, diff)
+				err = fmt.Errorf("时间戳不匹配 lastVT(%v) lastAT(%v) (或许应调整flv音视频时间戳容差ms>%f)", lastVT, lastAT, diff)
 				return
 			}
 		}

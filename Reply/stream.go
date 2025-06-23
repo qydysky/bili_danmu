@@ -59,7 +59,7 @@ type M4SStream struct {
 	config               M4SStream_Config      //配置
 	stream_last_modified time.Time             //流地址更新时间
 	stream_type          string                //流类型
-	Stream_msg           *msgq.MsgType[[]byte] //流数据消息 tag:data
+	stream_msg           *msgq.MsgType[[]byte] //流数据消息 tag:data
 	first_buf            []byte                //m4s起始块 or flv起始块
 	frameCount           uint                  //关键帧数量
 	boot_buf             []byte                //快速启动缓冲
@@ -67,7 +67,6 @@ type M4SStream struct {
 	m4s_pool             *pool.Buf[m4s_link_item] //切片pool
 	common               *c.Common                //通用配置副本
 	currentSavePath      string                   //明确的直播流保存目录
-	currentSavePathVer   atomic.Int32             //当路径修改时+1
 	// 事件周期 start: 开始实例 startRec：开始录制 load：接收到视频头
 	// keyFrame: 接收到关键帧 cut：切 stopRec：结束录制 stop：结束实例
 	msg               *msgq.MsgType[*M4SStream] //实例的各种事件回调
@@ -667,7 +666,6 @@ func (t *M4SStream) genSavepath() string {
 	w := md5.New()
 	_, _ = io.WriteString(w, t.common.Title)
 
-	t.currentSavePathVer.Add(1)
 	t.currentSavePath = fmt.Sprintf("%s/%s-%d-%d-%x-%s/",
 		t.config.save_path,
 		time.Now().Format("2006_01_02-15_04_05"),
@@ -706,6 +704,9 @@ func (t *M4SStream) saveStream() (e error) {
 
 	// 保存到文件
 	if t.config.save_to_file {
+		// 停止附加到其他文件
+		t.stream_msg.PushLock_tag(`closefile`, []byte{})
+
 		var startCount uint = defaultStartCount
 		if s, ok := t.common.K_v.LoadV("直播流接收n帧才保存").(float64); ok && s > 0 && uint(s) > startCount {
 			startCount = uint(s)
@@ -916,7 +917,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 
 								buf, unlock := keyframe.GetPureBufRLock()
 								t.bootBufPush(buf)
-								t.Stream_msg.PushLock_tag(`data`, buf)
+								t.stream_msg.PushLock_tag(`data`, buf)
 								unlock()
 
 								keyframe.Reset()
@@ -1241,7 +1242,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 			if !keyframe.IsEmpty() {
 				keyframeBuf, unlock := keyframe.GetPureBufRLock()
 				t.bootBufPush(keyframeBuf)
-				t.Stream_msg.PushLock_tag(`data`, keyframeBuf)
+				t.stream_msg.PushLock_tag(`data`, keyframeBuf)
 				unlock()
 				keyframe.Reset()
 				t.frameCount += 1
@@ -1349,7 +1350,7 @@ func (t *M4SStream) Start() bool {
 		)
 
 		// 初始化切片消息
-		t.Stream_msg = msgq.NewType[[]byte]()
+		t.stream_msg = msgq.NewType[[]byte]()
 
 		// 设置事件
 		// 当录制停止时，取消全部录制
@@ -1631,16 +1632,9 @@ func (t *M4SStream) PusherToFile(contextC context.Context, filepath string, star
 		to = tmp
 	}
 
-	currentSavePathVer := t.currentSavePathVer.Load()
-
 	_, _ = f.Write(t.getFirstBuf(), true)
-	cancelRec := t.Stream_msg.Pull_tag(map[string]func([]byte) bool{
+	cancelRec := t.stream_msg.Pull_tag(map[string]func([]byte) bool{
 		`data`: func(b []byte) bool {
-			if currentSavePathVer != t.currentSavePathVer.Load() {
-				t.log.L("I: ", "路径改变，停止保存", filepath)
-				return true
-			}
-
 			defer pu.Callback(func(startT time.Time, args ...any) {
 				if dru := time.Since(startT).Seconds(); dru > to {
 					t.log.L("W: ", "磁盘写入超时", dru)
@@ -1662,6 +1656,9 @@ func (t *M4SStream) PusherToFile(contextC context.Context, filepath string, star
 			return false
 		},
 		`close`: func(_ []byte) bool {
+			return true
+		},
+		`closefile`: func(_ []byte) bool {
 			return true
 		},
 	})
@@ -1702,13 +1699,7 @@ func (t *M4SStream) PusherToHttp(plog *log.Log_interface, conn net.Conn, w http.
 	//写入头
 	{
 		retry := 5
-		for retry > 0 {
-			select {
-			case <-ctx.Done():
-				break
-			default:
-			}
-
+		for !pctx.Done(ctx) && retry > 0 {
 			if len(t.getFirstBuf()) != 0 {
 				if _, err := w.Write(t.getFirstBuf()); err != nil {
 					return err
@@ -1744,7 +1735,7 @@ func (t *M4SStream) PusherToHttp(plog *log.Log_interface, conn net.Conn, w http.
 
 	w = pweb.WithCache(w, size)
 
-	var cancelRec = t.Stream_msg.Pull_tag(map[string]func([]byte) bool{
+	var cancelRec = t.stream_msg.Pull_tag(map[string]func([]byte) bool{
 		`data`: func(b []byte) bool {
 			select {
 			case <-ctx.Done():
