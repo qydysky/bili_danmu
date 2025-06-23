@@ -113,7 +113,7 @@ func NewFmp4DecoderWithBufsize(size int) *Fmp4Decoder {
 	}
 }
 
-func (t *Fmp4Decoder) Init_fmp4(buf []byte) (b []byte, err error) {
+func (t *Fmp4Decoder) Init(buf []byte) (b []byte, dropOffset int, err error) {
 	var ftypI, ftypE, moovI, moovE int
 
 	ies, recycle, e := decode(buf, "ftyp")
@@ -134,7 +134,7 @@ func (t *Fmp4Decoder) Init_fmp4(buf []byte) (b []byte, err error) {
 	})
 
 	if err != nil {
-		return nil, err
+		return
 	}
 
 	err = deal(ies, dealIE{
@@ -153,17 +153,18 @@ func (t *Fmp4Decoder) Init_fmp4(buf []byte) (b []byte, err error) {
 	})
 
 	if err != nil {
-		return nil, err
+		return
 	}
 
 	if len(t.traks) == 0 {
-		return nil, errors.New("未找到任何trak包")
+		err = errors.New("未找到任何trak包")
+		return
 	}
 
 	b = make([]byte, ftypE-ftypI+moovE-moovI)
 	copy(b[:ftypE-ftypI], buf[ftypI:ftypE])
 	copy(b[ftypE-ftypI:], buf[moovI:moovE])
-	return b, nil
+	return
 }
 
 var (
@@ -171,7 +172,7 @@ var (
 	ErrMisTraks    = errors.New("ErrMisTraks")
 )
 
-func (t *Fmp4Decoder) Search_stream_fmp4(buf []byte, keyframe *slice.Buf[byte]) (cu int, err error) {
+func (t *Fmp4Decoder) SearchStreamFrame(buf []byte, keyframe *slice.Buf[byte]) (cu int, err error) {
 	if len(buf) > humanize.MByte*100 {
 		return 0, ErrBufTooLarge
 	}
@@ -717,7 +718,7 @@ func (t *Fmp4Decoder) CutSeed(reader io.Reader, startT, duration time.Duration, 
 		err = t.buf.Append(buf[:n])
 
 		if !init {
-			if frontBuf, e := t.Init_fmp4(t.buf.GetPureBuf()); e != nil {
+			if frontBuf, _, e := t.Init(t.buf.GetPureBuf()); e != nil {
 				return pe.New(e.Error(), ActionInitFmp4)
 			} else {
 				if len(frontBuf) == 0 {
@@ -778,7 +779,7 @@ func (t *Fmp4Decoder) GenFastSeed(reader io.Reader, save func(seedTo time.Durati
 		totalRead += n
 		err = t.buf.Append(buf[:n])
 		if !init {
-			if frontBuf, e := t.Init_fmp4(t.buf.GetPureBuf()); e != nil {
+			if frontBuf, _, e := t.Init(t.buf.GetPureBuf()); e != nil {
 				return pe.New(e.Error(), ActionInitFmp4)
 			} else if len(frontBuf) == 0 {
 				continue

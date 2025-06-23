@@ -881,7 +881,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 					}
 					if !flvInited {
 						buf, unlock := buff.GetPureBufRLock()
-						frontBuf, dropOffset, err := flvDecoder.InitFlv(buf)
+						frontBuf, dropOffset, err := flvDecoder.Init(buf)
 						unlock()
 
 						if err != nil {
@@ -901,7 +901,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 						}
 					} else {
 						buf, unlock := buff.GetPureBufRLock()
-						dropOffset, err := flvDecoder.SearchStreamTag(buf, keyframe)
+						dropOffset, err := flvDecoder.SearchStreamFrame(buf, keyframe)
 						unlock()
 
 						if err != nil {
@@ -1196,7 +1196,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 			if cu.isInit() {
 				{
 					buf, unlock := cu.data.GetPureBufRLock()
-					front_buf, e := fmp4Decoder.Init_fmp4(buf)
+					front_buf, _, e := fmp4Decoder.Init(buf)
 					unlock()
 					if e != nil {
 						t.log.L(`E: `, e, `重试!`)
@@ -1231,7 +1231,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 			k -= 1
 
 			buff, unlock := buf.GetPureBufRLock()
-			last_available_offset, err := fmp4Decoder.Search_stream_fmp4(buff, keyframe)
+			last_available_offset, err := fmp4Decoder.SearchStreamFrame(buff, keyframe)
 			unlock()
 
 			if err != nil && !errors.Is(err, io.EOF) {
