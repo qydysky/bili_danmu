@@ -76,12 +76,12 @@
 
 关于离线构建，详见章节`运行`及其`注意事项`
 
-#### 实时流预处理
-添加配置项`直播回放后处理`(>v0.18.8)，用于在播放实时流时，返回流前，先进行处理，使用stdin和stdout，下述例子为linux下的仅返回音频流
+#### 实时回放预处理
+添加配置项`实时回放预处理`(>v0.18.8)，用于在播放实时流时，返回流前，先进行处理，使用stdin和stdout，下述例子为linux下的仅返回音频流
 ```json
 {
-  "直播回放后处理-help":"对实时回放流进行处理，当key以_开头时，将不会显示在streamMode接口",
-  "直播回放后处理": {
+  "实时回放预处理-help":"对实时回放流进行处理，当key以_开头时，将不会显示在streamMode接口",
+  "实时回放预处理": {
       "novidio": {
         "mp4":["ffmpeg","-f","mp4","-i","pipe:","-f","lavfi","-i","color=c=black","-map","0:a","-acodec","copy","-map","1:v","-vcodec","h264","-f","ismv","pipe:"],
         "flv":["ffmpeg","-f","flv","-i","pipe:","-f","lavfi","-i","color=c=black","-map","0:a","-acodec","copy","-map","1:v","-vcodec","h264","-f","flv","pipe:"]
