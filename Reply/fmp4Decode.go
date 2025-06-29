@@ -56,7 +56,7 @@ func init() {
 
 type ie struct {
 	n string // box name
-	i int    // start index
+	i int    // start index(box size include)
 	e int    // end index
 }
 
@@ -236,17 +236,17 @@ func (t *Fmp4Decoder) SearchStreamFrame(buf []byte, keyframe *slice.Buf[byte]) (
 			return
 		}
 
-		//is SampleEntries error?
-		checkSampleEntries = func(trun, mdat int) error {
-			if buf[trun+11] == 'b' {
-				for i := trun + 24; i < mdat; i += 12 {
-					if F.Btoiv2(buf, i+4, 4) < 1000 {
-						return errors.New("find sample size less then 1000")
-					}
-				}
-			}
-			return nil
-		}
+		// getSampleEntries = func(trun, mdat int) (sampleChunkI, sampleChunkE int64) {
+		// 	sampleChunkI = F.Btoiv2(buf, trun+16, 4)
+		// 	sampleChunkE = sampleChunkI
+		// 	// https://blog.qydysky.org/post/20221025fmp4/#trun
+		// 	if buf[trun+10]&0x02 == 0x02 {
+		// 		for i := trun + 24; i < mdat; i += 12 {
+		// 			sampleChunkE += F.Btoiv2(buf, i+4, 4)
+		// 		}
+		// 	}
+		// 	return
+		// }
 
 		//is t error?
 		checkAndSetMaxT = func(ts timeStamp) (err error) {
@@ -301,13 +301,13 @@ func (t *Fmp4Decoder) SearchStreamFrame(buf []byte, keyframe *slice.Buf[byte]) (
 
 					{
 						ts, _ := get_track_type(m[3].i, m[4].i)
-						if ts.handlerType == 'v' {
-							if e := checkSampleEntries(m[5].i, m[6].i); e != nil {
-								//skip
-								dropKeyFrame(m[0].e)
-								return pe.Join(ErrDecode, e)
-							}
-						}
+						// if ts.handlerType == 'v' {
+						// 	if e := getSampleEntries(m[5].i, m[6].i); e != nil {
+						// 		//skip
+						// 		dropKeyFrame(m[0].e)
+						// 		return pe.Join(ErrDecode, e)
+						// 	}
+						// }
 						if e := checkAndSetMaxT(ts); e != nil {
 							dropKeyFrame(m[0].e)
 							return pe.Join(ErrDecode, e)
@@ -350,13 +350,13 @@ func (t *Fmp4Decoder) SearchStreamFrame(buf []byte, keyframe *slice.Buf[byte]) (
 
 					{
 						ts, handlerType := get_track_type(m[3].i, m[4].i)
-						if handlerType == 'v' {
-							if e := checkSampleEntries(m[5].i, m[6].i); e != nil {
-								//skip
-								dropKeyFrame(m[0].e)
-								return pe.Join(ErrDecode, e)
-							}
-						}
+						// if handlerType == 'v' {
+						// 	if e := checkSampleEntries(m[5].i, m[6].i); e != nil {
+						// 		//skip
+						// 		dropKeyFrame(m[0].e)
+						// 		return pe.Join(ErrDecode, e)
+						// 	}
+						// }
 						switch handlerType {
 						case 'v':
 							video = ts
@@ -370,13 +370,13 @@ func (t *Fmp4Decoder) SearchStreamFrame(buf []byte, keyframe *slice.Buf[byte]) (
 					}
 					{
 						ts, handlerType := get_track_type(m[7].i, m[8].i)
-						if handlerType == 'v' {
-							if e := checkSampleEntries(m[9].i, m[10].i); e != nil {
-								//skip
-								dropKeyFrame(m[0].e)
-								return pe.Join(ErrDecode, e)
-							}
-						}
+						// if handlerType == 'v' {
+						// 	if e := checkSampleEntries(m[9].i, m[10].i); e != nil {
+						// 		//skip
+						// 		dropKeyFrame(m[0].e)
+						// 		return pe.Join(ErrDecode, e)
+						// 	}
+						// }
 						switch handlerType {
 						case 'v':
 							video = ts

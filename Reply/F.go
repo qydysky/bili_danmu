@@ -645,6 +645,25 @@ func init() {
 			}
 		})
 
+		// 实时回放模式api
+		c.C.SerF.Store(spath+"streamMode", func(w http.ResponseWriter, r *http.Request) {
+			if c.DefaultHttpFunc(c.C, w, r, http.MethodGet) {
+				return
+			}
+			var ms = []string{}
+			if modes, ok := c.C.K_v.LoadV(`实时回放预处理`).(map[string]any); ok && len(modes) != 0 {
+				for k, v := range modes {
+					if len(k) == 0 || k[0] == '_' {
+						continue
+					}
+					if _, ok := v.(map[string]any); ok {
+						ms = append(ms, k)
+					}
+				}
+			}
+			c.ResStruct{Code: 0, Message: "ok", Data: ms}.Write(w)
+		})
+
 		// 直播流文件列表api
 		c.C.SerF.Store(spath+"filePath", func(w http.ResponseWriter, r *http.Request) {
 			if c.DefaultHttpFunc(c.C, w, r, http.MethodGet) {
