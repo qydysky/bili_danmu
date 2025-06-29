@@ -645,6 +645,25 @@ func init() {
 			}
 		})
 
+		// 实时回放模式api
+		c.C.SerF.Store(spath+"streamMode", func(w http.ResponseWriter, r *http.Request) {
+			if c.DefaultHttpFunc(c.C, w, r, http.MethodGet) {
+				return
+			}
+			var ms = []string{}
+			if modes, ok := c.C.K_v.LoadV(`实时回放预处理`).(map[string]any); ok && len(modes) != 0 {
+				for k, v := range modes {
+					if len(k) == 0 || k[0] == '_' {
+						continue
+					}
+					if _, ok := v.(map[string]any); ok {
+						ms = append(ms, k)
+					}
+				}
+			}
+			c.ResStruct{Code: 0, Message: "ok", Data: ms}.Write(w)
+		})
+
 		// 直播流文件列表api
 		c.C.SerF.Store(spath+"filePath", func(w http.ResponseWriter, r *http.Request) {
 			if c.DefaultHttpFunc(c.C, w, r, http.MethodGet) {
@@ -984,24 +1003,20 @@ func init() {
 					if startT+duration != 0 {
 						res := pio.WriterWithConfig(w, pio.CopyConfig{BytePerSec: speed, SkipByte: rangeHeaderNum})
 
+						type decodeCuter interface {
+							CutSeed(reader io.Reader, startT time.Duration, duration time.Duration, w io.Writer, seeker io.Seeker, getIndex func(seedTo time.Duration) (int64, error)) (err error)
+							Cut(reader io.Reader, startT time.Duration, duration time.Duration, w io.Writer) (err error)
+						}
+
+						var cuter decodeCuter
+
 						if strings.HasSuffix(v, "flv") {
 							w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=\"%s.%d.flv\"", qref, time.Now().Unix()))
 							flvDecoder := NewFlvDecoder()
 							if v, ok := c.C.K_v.LoadV(`flv音视频时间戳容差ms`).(float64); ok && v > 100 {
 								flvDecoder.Diff = v
 							}
-							// fastSeed
-							if fastSeedF := file.New(v+".fastSeed", 0, true).CheckRoot(s); fastSeedF.IsExist() {
-								if gf, e := replyFunc.VideoFastSeed.InitGet(v + ".fastSeed"); e != nil {
-									flog.L(`E: `, e)
-								} else if e := flvDecoder.CutSeed(f, startT, duration, res, f, gf); e != nil && !errors.Is(e, io.EOF) {
-									flog.L(`E: `, e)
-								}
-							} else {
-								if e := flvDecoder.Cut(f, startT, duration, res); e != nil && !errors.Is(e, io.EOF) {
-									flog.L(`E: `, e)
-								}
-							}
+							cuter = flvDecoder
 						}
 						if strings.HasSuffix(v, "mp4") {
 							w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=\"%s.%d.mp4\"", qref, time.Now().Unix()))
@@ -1012,19 +1027,22 @@ func init() {
 							if v, ok := c.C.K_v.LoadV(`fmp4音视频时间戳容差s`).(float64); ok && v > 0.1 {
 								fmp4Decoder.AVTDiff = v
 							}
-							// fastSeed
-							if fastSeedF := file.New(v+".fastSeed", 0, true).CheckRoot(s); fastSeedF.IsExist() {
-								if gf, e := replyFunc.VideoFastSeed.InitGet(v + ".fastSeed"); e != nil {
-									flog.L(`E: `, e)
-								} else if e := fmp4Decoder.CutSeed(f, startT, duration, res, f, gf); e != nil && !errors.Is(e, io.EOF) {
-									flog.L(`E: `, e)
-								}
-							} else {
-								if e := fmp4Decoder.Cut(f, startT, duration, res); e != nil && !errors.Is(e, io.EOF) {
-									flog.L(`E: `, e)
-								}
+							cuter = fmp4Decoder
+						}
+
+						// fastSeed
+						if fastSeedF := file.New(v+".fastSeed", 0, true).CheckRoot(s); fastSeedF.IsExist() {
+							if gf, e := replyFunc.VideoFastSeed.InitGet(v + ".fastSeed"); e != nil {
+								flog.L(`E: `, e)
+							} else if e := cuter.CutSeed(f, startT, duration, res, f, gf); e != nil && !errors.Is(e, io.EOF) {
+								flog.L(`E: `, e)
+							}
+						} else {
+							if e := cuter.Cut(f, startT, duration, res); e != nil && !errors.Is(e, io.EOF) {
+								flog.L(`E: `, e)
 							}
 						}
+
 					} else if e := f.CopyToIoWriter(w, pio.CopyConfig{BytePerSec: speed, SkipByte: rangeHeaderNum}); e != nil {
 						flog.L(`E: `, e)
 					}

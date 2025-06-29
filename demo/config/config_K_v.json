@@ -262,5 +262,12 @@
                 "":0
             }
         }
-    ]
+    ],
+    "实时回放预处理-help":"对实时回放流进行处理，当key以_开头时，将不会显示在streamMode接口",
+    "实时回放预处理": {
+        "": {
+            "mp4":["ffmpeg","-f","mp4","-i","pipe:","-f","lavfi","-i","color=c=black","-map","0:a","-acodec","copy","-map","1:v","-f","ismv","pipe:"],
+            "flv":["ffmpeg","-f","flv","-i","pipe:","-f","lavfi","-i","color=c=black","-map","0:a","-acodec","copy","-map","1:v","-vcodec","h264","-f","flv","pipe:"]
+        }
+    }
 }
