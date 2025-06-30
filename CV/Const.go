@@ -23,9 +23,11 @@ const (
 )
 
 const (
-	Protover = 3
-	Platform = "web"
-	Type     = 2
+	Protover   = 3
+	Platform   = "web"
+	Type       = 2
+	Scene      = "room"
+	SupportAck = "true"
 )
 
 const UA = `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.3`
