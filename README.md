@@ -76,6 +76,43 @@
 
 关于离线构建，详见章节`运行`及其`注意事项`
 
+#### 实时回放预处理
+添加配置项`实时回放预处理`(>v0.18.8)，用于在播放实时流时，返回流前，先进行处理，使用stdin和stdout，可能引入播放延迟及cpu占用
+下述为在linux下使用[ffmpeg](https://ffmpeg.org/)进行预处理的例子
+```json
+{
+  "实时回放预处理-help":"对实时回放流进行处理，当key以_开头时，将不会显示在streamMode接口",
+  "实时回放预处理": {
+      "_novidio-help": "仅返回音频流",
+      "novidio": {
+            "mp4":["ffmpeg","-loglevel","error","-f","mp4","-i","pipe:","-f","lavfi","-i","color=c=black","-map","0:a","-acodec","copy","-map","1:v","-vcodec","h264","-g","30","-f","mp4","-movflags","frag_keyframe+empty_moov+default_base_moof","pipe:"],
+            "flv":["ffmpeg","-loglevel","error","-f","flv","-i","pipe:","-f","lavfi","-i","color=c=black","-map","0:a","-acodec","copy","-map","1:v","-vcodec","h264","-g","30","-f","flv","pipe:"]
+      },
+      "_onlykey-help": "仅返回关键帧流",
+      "onlykey": {
+            "mp4":["ffmpeg","-loglevel","error","-f","mp4","-i","pipe:","-bsf:v","noise=drop=not(key)","-c","copy","-f","mp4","-movflags","frag_keyframe+empty_moov+default_base_moof","pipe:"],
+            "flv":["ffmpeg","-loglevel","error","-f","flv","-i","pipe:","-bsf:v","noise=drop=not(key)","-c","copy","-f","flv","pipe:"]
+      }
+  }
+}
+```
+说明：
+- `"-loglevel","error"` 隐藏其他输出
+- `"-g","30"` 每30帧一个关键帧，加快加载
+
+新增接口`http://{Web服务地址}{直播Web服务路径}streamMode`(>v0.18.8)，返回上述`实时回放预处理`中不以`_`开头的键值
+```json
+{
+    "code": 0,
+    "message": "ok",
+    "data": [
+        "novidio",
+        "onlykey"
+    ]
+}
+```
+当请求`http://{Web服务地址}{直播Web服务路径}stream?ref=now&modeq={实时回放预处理键值}`时(>v0.18.8)，将会根据当前流类型，自动调用命令，并通过stdin输入直播流，将stdout输出到返回
+
 #### 等待同配置其他服务停止
 添加配置项`stop路径`、`停止其他服务超时`(>v0.16.3)。
 
@@ -301,10 +338,6 @@ curl -s http://{主机名}:11000/ip/ | awk '/240:?/'
 取消配置项`保持牌子亮着_指定时间`。
 默认只在下播时，发送`进房弹幕_内容`的以保持亮牌，1天内将最多发送10条弹幕/30次点赞，间隔大于100s。
 添加配置项`保持牌子亮着-开播时也发送`默认为false，当为true时，开播时也会发送。
-
-~~配置文件中添加配置项`保持牌子亮着_指定时间`(>v0.14.11)。将会在指定时间启动保持。默认`00:00:00`~~
-
-~~保持期间，可能会频繁发送弹幕（间隔5秒/条），此时可能会影响其他使用。~~
 
 #### 直播回放显示表情
 配置文件中添加配置项`弹幕表情`(>v0.14.9)。默认为true，当为true时，将会保存弹幕中的表情png到emots目录下，并在回放时显示表情。
@@ -712,11 +745,6 @@ I: 2022/09/15 02:23:23 Msg [qydysky丶 : 赞]
 当直播流类型为`fmp4`或`fmp4H`时，默认将下载的切片合并保存为mp4。
 
 当所选类型在当前直播中不可用时，会按以下顺序[`fmp4`,`flv`]尝试。
-
-~~ass编码GB18030支持中文~~
-
-~~- `GB18030`(默认)~~
-~~- `utf-8`~~
 
 Ass默认`utf-8`编码，在录播结束时生成，可以配合`指定房间录制回调`生成硬编码弹幕的视频，配置项如下(>v0.15.9)
 

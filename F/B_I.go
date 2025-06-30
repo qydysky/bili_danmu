@@ -149,6 +149,19 @@ func Btoui16(b []byte, offset int) uint16 {
 	return uint16(bu[1]) | uint16(bu[0])<<8
 }
 
+// 当len(b)<2时， 将在左侧补0; >2时，从左向右读4位后面忽略
+func Btoi16v2(b []byte, offset int) (r int16) {
+	b = b[offset:min(offset+2, len(b))]
+	//binary.BigEndian.Uint32
+	for i := 2; i > 0; i-- {
+		if len(b) >= i {
+			r |= int16(b[len(b)-i]) << (8 * (i - 1))
+		}
+	}
+	return r
+}
+
+// Deprecated: use Btoi16v2
 func Btoi16(b []byte, offset int) int16 {
 	s := 2
 	bu := make([]byte, s)

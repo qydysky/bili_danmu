@@ -45,11 +45,11 @@ func Test_deal(t *testing.T) {
 			break
 		}
 
-		front_buf, e := fmp4Decoder.Init_fmp4(buff.GetCopyBuf())
+		front_buf, _, e := fmp4Decoder.Init(buff.GetCopyBuf())
 		if e != nil {
 			t.Fatal(e)
 		}
-		last_available_offset, e := fmp4Decoder.Search_stream_fmp4(buff.GetPureBuf(), slice.New[byte]())
+		last_available_offset, e := fmp4Decoder.SearchStreamFrame(buff.GetPureBuf(), slice.New[byte]())
 		if e != nil && e.Error() != "未初始化traks" {
 			t.Fatal(e)
 		}

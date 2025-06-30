@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	c "github.com/qydysky/bili_danmu/CV"
+	pstrings "github.com/qydysky/part/strings"
 )
 
 var flog = c.C.Log.Base(`F/F.go`)
@@ -39,11 +40,11 @@ func HeadChe(head []byte) header {
 		return header{}
 	}
 
-	PackL := Btoi32(head, c.WS_PACKAGE_OFFSET)
-	HeadL := Btoi16(head, c.WS_HEADER_OFFSET)
-	BodyV := Btoi16(head, c.WS_VERSION_OFFSET)
-	OpeaT := Btoi32(head, c.WS_OPERATION_OFFSET)
-	Seque := Btoi32(head, c.WS_SEQUENCE_OFFSET)
+	PackL := Btoi32v2(head, c.WS_PACKAGE_OFFSET)
+	HeadL := Btoi16v2(head, c.WS_HEADER_OFFSET)
+	BodyV := Btoi16v2(head, c.WS_VERSION_OFFSET)
+	OpeaT := Btoi32v2(head, c.WS_OPERATION_OFFSET)
+	Seque := Btoi32v2(head, c.WS_SEQUENCE_OFFSET)
 
 	return header{
 		PackL: PackL,
@@ -71,8 +72,10 @@ func HelloGen(roomid int, key string) []byte {
 		obj += `,"buvid":"` + buvid + `"`
 	}
 
-	obj += `,"platform":"` + c.Platform +
-		// `","clientver":"` + c.VERSION + //delete at 2021 4 14
+	obj += `,"support_ack":` + c.SupportAck +
+		`,"queue_uuid":"` + pstrings.Rand(pstrings.LowNumber, 8) +
+		`","scene":"` + c.Scene +
+		`","platform":"` + c.Platform +
 		`","type":` + strconv.Itoa(c.Type) +
 		`,"key":"` + key + `"}`
 
