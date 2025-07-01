@@ -44,10 +44,12 @@ func NewPdDecoder() *PdDecoder {
 }
 func (t *PdDecoder) LoadBase64(buf string) *PdDecoder {
 	t.buf, _ = base64.StdEncoding.DecodeString(buf)
+	t.pos = 0
 	return t
 }
 func (t *PdDecoder) LoadBuf(buf []byte) *PdDecoder {
 	t.buf = buf
+	t.pos = 0
 	return t
 }
 
