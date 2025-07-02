@@ -333,6 +333,41 @@ func (t replyF) interact_word(s string) {
 	msglog.Base_add("房").Log_show_control(false).L(`I`, J.Data.Uname+`关注了直播间`)
 }
 
+// msg-直播间进入信息，此处用来提示关注
+func (t replyF) interact_word_v2(s string) {
+	J := struct {
+		Data struct {
+			Pb string `json:"pb"`
+		} `json:"data"`
+	}{}
+	if e := json.Unmarshal([]byte(s), &J); e != nil {
+		return
+	}
+	var (
+		msgType uint32
+		uname   string
+	)
+	for pd := range F.NewPdDecoder().LoadBase64(J.Data.Pb).Range() {
+		switch pd.Type() {
+		case 5:
+			msgType = pd.Uint32()
+		case 2:
+			uname = string(pd.Bytes())
+		}
+	}
+	if msgType < 2 {
+		return
+	} //关注时为2,进入时为1
+	{ //语言tts
+		t.Common.Danmu_Main_mq.Push_tag(`tts`, Danmu_mq_t{
+			uid: `0follow`,
+			msg: fmt.Sprint(uname + `关注了直播间`),
+		})
+	}
+	Gui_show(uname+`关注了直播间`, `0follow`)
+	msglog.Base_add("房").Log_show_control(false).L(`I`, uname+`关注了直播间`)
+}
+
 // Msg-天选之人开始
 func (t replyF) anchor_lot_start(s string) {
 	J := struct {
