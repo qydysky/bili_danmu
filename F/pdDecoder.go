@@ -76,6 +76,9 @@ func (t *PdDecoder) LoadBuf(buf []byte) *PdDecoder {
 }
 
 func UnmarshalBase64S(data string, v any) error {
+	if data == "" {
+		return nil
+	}
 	return NewPdDecoder().LoadBase64S(data).UnmarshalRaw(v)
 }
 

@@ -313,11 +313,15 @@ func (t replyF) vtr_gift_lottery(s string) {
 func (t replyF) interact_word(s string) {
 	J := struct {
 		Data struct {
-			MsgType int    `json:"msg_type"`
-			Uname   string `json:"uname"`
+			Pb      string `json:"pb"`
+			MsgType int    `json:"msg_type" pd:"5"`
+			Uname   string `json:"uname" pd:"2"`
 		} `json:"data"`
 	}{}
 	if e := json.Unmarshal([]byte(s), &J); e != nil {
+		return
+	}
+	if e := F.UnmarshalBase64S(J.Data.Pb, &(J.Data)); e != nil {
 		return
 	}
 	if J.Data.MsgType < 2 {
@@ -331,36 +335,6 @@ func (t replyF) interact_word(s string) {
 	}
 	Gui_show(J.Data.Uname+`关注了直播间`, `0follow`)
 	msglog.Base_add("房").Log_show_control(false).L(`I`, J.Data.Uname+`关注了直播间`)
-}
-
-// msg-直播间进入信息，此处用来提示关注
-func (t replyF) interact_word_v2(s string) {
-	J := struct {
-		Data struct {
-			Pb string `json:"pb"`
-		} `json:"data"`
-	}{}
-	if e := json.Unmarshal([]byte(s), &J); e != nil {
-		return
-	}
-	J2 := struct {
-		MsgType int    `pd:"5"`
-		Uname   string `pd:"2"`
-	}{}
-	if e := F.UnmarshalBase64S(J.Data.Pb, &J2); e != nil {
-		return
-	}
-	if J2.MsgType < 2 {
-		return
-	} //关注时为2,进入时为1
-	{ //语言tts
-		t.Common.Danmu_Main_mq.Push_tag(`tts`, Danmu_mq_t{
-			uid: `0follow`,
-			msg: fmt.Sprint(J2.Uname + `关注了直播间`),
-		})
-	}
-	Gui_show(J2.Uname+`关注了直播间`, `0follow`)
-	msglog.Base_add("房").Log_show_control(false).L(`I`, J2.Uname+`关注了直播间`)
 }
 
 // Msg-天选之人开始

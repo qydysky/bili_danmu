@@ -89,7 +89,7 @@ var Msg_map = map[string]func(replyF, string){
 	"ANCHOR_LOT_AWARD":                     replyF.anchor_lot_award, //天选之人获奖
 	"COMBO_SEND":                           nil,
 	"INTERACT_WORD":                        replyF.interact_word,    //进入信息，包含直播间关注提示
-	"INTERACT_WORD_V2":                     replyF.interact_word_v2, //进入信息，包含直播间关注提示
+	"INTERACT_WORD_V2":                     replyF.interact_word, //进入信息，包含直播间关注提示
 	"ACTIVITY_BANNER_UPDATE_V2":            nil,
 	"NOTICE_MSG":                           nil,
 	"ROOM_BANNER":                          nil,
