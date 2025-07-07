@@ -313,11 +313,15 @@ func (t replyF) vtr_gift_lottery(s string) {
 func (t replyF) interact_word(s string) {
 	J := struct {
 		Data struct {
-			MsgType int    `json:"msg_type"`
-			Uname   string `json:"uname"`
+			Pb      string `json:"pb"`
+			MsgType int    `json:"msg_type" pd:"5"`
+			Uname   string `json:"uname" pd:"2"`
 		} `json:"data"`
 	}{}
 	if e := json.Unmarshal([]byte(s), &J); e != nil {
+		return
+	}
+	if e := F.UnmarshalBase64S(J.Data.Pb, &(J.Data)); e != nil {
 		return
 	}
 	if J.Data.MsgType < 2 {
@@ -331,41 +335,6 @@ func (t replyF) interact_word(s string) {
 	}
 	Gui_show(J.Data.Uname+`关注了直播间`, `0follow`)
 	msglog.Base_add("房").Log_show_control(false).L(`I`, J.Data.Uname+`关注了直播间`)
-}
-
-// msg-直播间进入信息，此处用来提示关注
-func (t replyF) interact_word_v2(s string) {
-	J := struct {
-		Data struct {
-			Pb string `json:"pb"`
-		} `json:"data"`
-	}{}
-	if e := json.Unmarshal([]byte(s), &J); e != nil {
-		return
-	}
-	var (
-		msgType uint32
-		uname   string
-	)
-	for pd := range F.NewPdDecoder().LoadBase64(J.Data.Pb).Range() {
-		switch pd.Type() {
-		case 5:
-			msgType = pd.Uint32()
-		case 2:
-			uname = string(pd.Bytes())
-		}
-	}
-	if msgType < 2 {
-		return
-	} //关注时为2,进入时为1
-	{ //语言tts
-		t.Common.Danmu_Main_mq.Push_tag(`tts`, Danmu_mq_t{
-			uid: `0follow`,
-			msg: fmt.Sprint(uname + `关注了直播间`),
-		})
-	}
-	Gui_show(uname+`关注了直播间`, `0follow`)
-	msglog.Base_add("房").Log_show_control(false).L(`I`, uname+`关注了直播间`)
 }
 
 // Msg-天选之人开始
@@ -1314,11 +1283,14 @@ func (t replyF) danmu(s string) {
 			item.color = "#" + fmt.Sprintf("%x", F.Itob32(int32(i[3].(float64)))[1:])
 
 			if v, ok := t.Common.K_v.LoadV(`弹幕表情`).(bool); ok && v {
-				_, e := replyFunc.DanmuEmotes.SaveEmote(context.Background(), replyFunc.DanmuEmotesS{Logg: msglog, Info: i, Msg: &item.msg})
-				item.hasEmote = e == nil
-				if e != nil && !replyFunc.DanmuEmotes.IsErrNoEmote(e) {
-					msglog.Base_add("弹幕表情").L(`E: `, e)
-				}
+				_ = replyFunc.DanmuEmotes.Run(func(dei replyFunc.DanmuEmotesI) error {
+					_, e := dei.SaveEmote(context.Background(), replyFunc.DanmuEmotesS{Logg: msglog, Info: i, Msg: &item.msg})
+					item.hasEmote = e == nil
+					if e != nil && !dei.IsErrNoEmote(e) {
+						msglog.Base_add("弹幕表情").L(`E: `, e)
+					}
+					return nil
+				})
 			}
 		}
 		if len(infob) > 1 {
@@ -1342,7 +1314,10 @@ func (t replyF) danmu(s string) {
 
 	{ // 附加功能 弹幕机 封禁 弹幕合并
 		// 弹幕统计
-		replyFunc.DanmuCountPerMin.Do(item.roomid, item.msg, item.uid)
+		_ = replyFunc.DanmuCountPerMin.Run(func(dcpmi replyFunc.DanmuCountPerMinI) error {
+			dcpmi.Do(item.roomid, item.msg, item.uid)
+			return nil
+		})
 		// 保存弹幕至db
 		saveDanmuToDB.init(t.Common)
 		saveDanmuToDB.danmu(item)
@@ -1382,17 +1357,24 @@ func (t replyF) danmu(s string) {
 		}
 		// 反射弹幕机
 		if IsOn("反射弹幕机") {
-			go replyFunc.Danmuji.Danmujif(item.msg, Msg_senddanmu)
+			_ = replyFunc.Danmuji.Run(func(di replyFunc.DanmujiI) error {
+				go di.Danmujif(item.msg, Msg_senddanmu)
+				return nil
+			})
 		}
-		if i := replyFunc.DanmuMerge.Do(item.msg); i > 0 {
-			danmulog.L(`I: `, item.auth, ":", item.msg)
-			return
-		}
+		_ = replyFunc.DanmuMerge.Run(func(dmi replyFunc.DanmuMergeI) error {
+			if i := dmi.Do(item.msg); i > 0 {
+				danmulog.L(`I: `, item.auth, ":", item.msg)
+			}
+			return nil
+		})
 		//附加功能 更少弹幕
-		if !replyFunc.LessDanmu.Do(item.msg) {
-			danmulog.L(`I: `, item.auth, ":", item.msg)
-			return
-		}
+		_ = replyFunc.LessDanmu.Run(func(i replyFunc.LessDanmuI) error {
+			if !i.Do(item.msg) {
+				danmulog.L(`I: `, item.auth, ":", item.msg)
+			}
+			return nil
+		})
 		if !item.hasEmote { // 表情跳过，避免破坏表情代码
 			if _msg := Shortdanmuf(item.msg); _msg == "" {
 				danmulog.L(`I: `, item.auth, ":", item.msg)
@@ -1482,25 +1464,28 @@ func Itos(i []interface{}) string {
 }
 
 // 弹幕合并
-var _ = replyFunc.DanmuMerge.InitSend(func(roomid int, num uint, msg string) {
-	if num > 3 {
-		c.C.Danmu_Main_mq.Push_tag(`tts`, Danmu_mq_t{ //传入消息队列
-			uid: `0multi`,
-			m: map[string]string{
-				`{num}`: strconv.Itoa(int(num)),
-				`{msg}`: msg,
-			},
-		})
-		Msg_showdanmu(Danmu_item{
-			msg:    strconv.Itoa(int(num)) + " x " + msg,
-			uid:    `0multi`,
-			roomid: roomid,
-		})
-	} else if num > 1 {
-		Msg_showdanmu(Danmu_item{
-			msg:    strconv.Itoa(int(num)) + " x " + msg,
-			uid:    `0default`,
-			roomid: roomid,
-		})
-	}
+var _ = replyFunc.DanmuMerge.Run(func(dmi replyFunc.DanmuMergeI) error {
+	dmi.InitSend(func(roomid int, num uint, msg string) {
+		if num > 3 {
+			c.C.Danmu_Main_mq.Push_tag(`tts`, Danmu_mq_t{ //传入消息队列
+				uid: `0multi`,
+				m: map[string]string{
+					`{num}`: strconv.Itoa(int(num)),
+					`{msg}`: msg,
+				},
+			})
+			Msg_showdanmu(Danmu_item{
+				msg:    strconv.Itoa(int(num)) + " x " + msg,
+				uid:    `0multi`,
+				roomid: roomid,
+			})
+		} else if num > 1 {
+			Msg_showdanmu(Danmu_item{
+				msg:    strconv.Itoa(int(num)) + " x " + msg,
+				uid:    `0default`,
+				roomid: roomid,
+			})
+		}
+	})
+	return nil
 })

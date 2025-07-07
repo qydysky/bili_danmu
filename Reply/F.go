@@ -383,24 +383,24 @@ type saveToJson struct {
 func (t *saveToJson) Init() {
 	t.once.Do(func() {
 		if path, ok := c.C.K_v.LoadV(`save_to_json`).(string); ok && path != `` {
-			f := file.New(path, 0, false)
+			f := file.Open(path)
 			_ = f.Delete()
-			_, _ = f.Write([]byte("["), true)
+			_, _ = f.Write([]byte("["))
 			f.Close()
 
 			t.msg = msgq.NewType[[]byte]()
 			t.msg.Pull_tag(map[string]func([]byte) (disable bool){
 				`data`: func(b []byte) (disable bool) {
 					f := file.New(path, -1, false)
-					_, _ = f.Write(b, true)
-					_, _ = f.Write([]byte(","), true)
+					_, _ = f.Write(b)
+					_, _ = f.Write([]byte(","))
 					f.Close()
 					return false
 				},
 				`stop`: func(_ []byte) (disable bool) {
 					f := file.New(path, -1, false)
 					_ = f.SeekIndex(-1, file.AtEnd)
-					_, _ = f.Write([]byte("]"), true)
+					_, _ = f.Write([]byte("]"))
 					f.Close()
 					return true
 				},
@@ -442,8 +442,10 @@ func Entry_danmu(common *c.Common) {
 		}
 	}
 	if array, ok := common.K_v.LoadV(`进房弹幕_内容`).([]any); ok && len(array) != 0 {
-		rand := p.Rand().MixRandom(0, int64(len(array)-1))
-		replyFunc.KeepMedalLight.Do(array[rand].(string))
+		_ = replyFunc.KeepMedalLight.Run(func(kmli replyFunc.KeepMedalLightI) error {
+			kmli.Do(array[p.Rand().MixRandom(0, int64(len(array)-1))].(string))
+			return nil
+		})
 	}
 }
 
@@ -624,7 +626,10 @@ func init() {
 				w.Header().Set("Content-Type", "application/json")
 				_, _ = w.Write([]byte("[]"))
 			} else {
-				replyFunc.DanmuCountPerMin.CheckRoot(v)
+				_ = replyFunc.DanmuCountPerMin.Run(func(dcpmi replyFunc.DanmuCountPerMinI) error {
+					dcpmi.CheckRoot(v)
+					return nil
+				})
 				rpath := "/" + qref + "/"
 				if strings.HasSuffix(v, "/") || strings.HasSuffix(v, "\\") {
 					v += rpath[1:]
@@ -638,10 +643,12 @@ func init() {
 				} else {
 					v = rawPath
 				}
-				if e := replyFunc.DanmuCountPerMin.GetRec(v, r, w); e != nil && !errors.Is(e, os.ErrNotExist) {
-					flog.L(`W: `, "获取弹幕统计", e)
-					return
-				}
+				_ = replyFunc.DanmuCountPerMin.Run(func(dcpmi replyFunc.DanmuCountPerMinI) error {
+					if e := dcpmi.GetRec(v, r, w); e != nil && !errors.Is(e, os.ErrNotExist) {
+						flog.L(`W: `, "获取弹幕统计", e)
+					}
+					return nil
+				})
 			}
 		})
 
@@ -787,18 +794,23 @@ func init() {
 					ref = ""
 				}
 			}
-			emoteDir := replyFunc.DanmuEmotes.GetEmotesDir(ref)
+			if replyFunc.DanmuEmotes.Run(func(dei replyFunc.DanmuEmotesI) error {
+				emoteDir := dei.GetEmotesDir(ref)
 
-			if f, e := emoteDir.Open(strings.TrimPrefix(r.URL.Path, spath+"emots/")); e != nil {
-				if errors.Is(e, fs.ErrNotExist) {
+				if f, e := emoteDir.Open(strings.TrimPrefix(r.URL.Path, spath+"emots/")); e != nil {
+					if errors.Is(e, fs.ErrNotExist) {
+						w.WriteHeader(http.StatusNotFound)
+					} else {
+						w.WriteHeader(http.StatusBadRequest)
+					}
+				} else if info, e := f.Stat(); e != nil {
 					w.WriteHeader(http.StatusNotFound)
-				} else {
-					w.WriteHeader(http.StatusBadRequest)
+				} else if !pweb.NotModified(r, w, info.ModTime()) {
+					_, _ = io.Copy(w, f)
 				}
-			} else if info, e := f.Stat(); e != nil {
+				return nil
+			}) != nil {
 				w.WriteHeader(http.StatusNotFound)
-			} else if !pweb.NotModified(r, w, info.ModTime()) {
-				_, _ = io.Copy(w, f)
 			}
 		})
 
@@ -817,7 +829,10 @@ func init() {
 			var s string
 			if strings.HasPrefix(p, "emots/") {
 				s = "emots/"
-				p = replyFunc.DanmuEmotes.Hashr(p)
+				_ = replyFunc.DanmuEmotes.Run(func(dei replyFunc.DanmuEmotesI) error {
+					p = dei.Hashr(p)
+					return nil
+				})
 			} else {
 				s = "html/artPlayer/"
 				p = "html/artPlayer/" + p
@@ -984,7 +999,7 @@ func init() {
 						}
 					}
 
-					f := file.New(v, 0, false).CheckRoot(s)
+					f := file.Open(v).CheckRoot(s)
 					defer f.Close()
 
 					// 设置当前返回区间，并拷贝
@@ -1031,12 +1046,17 @@ func init() {
 						}
 
 						// fastSeed
-						if fastSeedF := file.New(v+".fastSeed", 0, true).CheckRoot(s); fastSeedF.IsExist() {
-							if gf, e := replyFunc.VideoFastSeed.InitGet(v + ".fastSeed"); e != nil {
+						if fastSeedF := file.New(v+".fastSeed", 0, true).CheckRoot(s); fastSeedF.IsExist() && replyFunc.VideoFastSeed.Run(func(vfsi replyFunc.VideoFastSeedI) error {
+							if gf, e := vfsi.InitGet(v + ".fastSeed"); e != nil {
 								flog.L(`E: `, e)
+								return e
 							} else if e := cuter.CutSeed(f, startT, duration, res, f, gf); e != nil && !errors.Is(e, io.EOF) {
 								flog.L(`E: `, e)
+								return e
 							}
+							return nil
+						}) == nil {
+
 						} else {
 							if e := cuter.Cut(f, startT, duration, res); e != nil && !errors.Is(e, io.EOF) {
 								flog.L(`E: `, e)
@@ -1260,12 +1280,18 @@ func StartRecDanmu(ctx context.Context, filePath string) {
 	}
 
 	// Ass
-	replyFunc.Ass.ToAss(filePath)
+	_ = replyFunc.Ass.Run(func(ai replyFunc.AssI) error {
+		ai.ToAss(filePath)
+		return nil
+	})
 
 	// emots
-	if e := replyFunc.DanmuEmotes.PackEmotes(filePath); e != nil {
-		msglog.L(`E: `, e)
-	}
+	_ = replyFunc.DanmuEmotes.Run(func(dei replyFunc.DanmuEmotesI) error {
+		if e := dei.PackEmotes(filePath); e != nil {
+			msglog.L(`E: `, e)
+		}
+		return nil
+	})
 
 	Recoder.Stop()
 }

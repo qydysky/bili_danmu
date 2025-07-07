@@ -49,7 +49,7 @@ func start(ctx context.Context, file string) (any, error) {
 					pprof.StopCPUProfile()
 					return
 				}
-				pgo := pfile.New(file, 0, false)
+				pgo := pfile.Open(file)
 				if pgo.IsExist() {
 					_ = pgo.Delete()
 				}

@@ -125,7 +125,7 @@ func CookieSet(path string, source []byte) {
 		} else {
 			f := file.New(path, 0, true)
 			_ = f.Delete()
-			_, _ = f.Write(append([]byte("t=nol;"), source...), true)
+			_, _ = f.Write(append([]byte("t=nol;"), source...))
 			return
 		}
 	}
@@ -140,7 +140,7 @@ func CookieSet(path string, source []byte) {
 		} else {
 			f := file.New(path, 0, true)
 			_ = f.Delete()
-			_, _ = f.Write(append([]byte("t=pem;"), pca.Pack(b, ext)...), true)
+			_, _ = f.Write(append([]byte("t=pem;"), pca.Pack(b, ext)...))
 		}
 	}
 }

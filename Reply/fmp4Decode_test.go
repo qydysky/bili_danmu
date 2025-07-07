@@ -15,10 +15,10 @@ import (
 )
 
 func Test_deal(t *testing.T) {
-	flog := file.New("0.mp4.log", 0, false)
+	flog := file.Open("0.mp4.log")
 	_ = flog.Delete()
 	defer flog.Close()
-	f := file.New("testdata/0.mp4", 0, false)
+	f := file.Open("testdata/0.mp4")
 	defer f.Close()
 
 	if f.IsDir() || !f.IsExist() {
@@ -57,7 +57,7 @@ func Test_deal(t *testing.T) {
 			t.Log("front_buf")
 			break
 		}
-		_, _ = flog.Write([]byte(fmt.Sprintf("%d %d\n", c, len(front_buf))), true)
+		_, _ = flog.Write([]byte(fmt.Sprintf("%d %d\n", c, len(front_buf))))
 		t.Log(c, len(front_buf))
 		_ = buff.RemoveFront(last_available_offset)
 	}
@@ -75,11 +75,11 @@ func Test_Mp4Cut(t *testing.T) {
 		}()
 	}
 
-	cutf := file.New("testdata/0.cut.mp4", 0, false)
+	cutf := file.Open("testdata/0.cut.mp4")
 	defer cutf.Close()
 	_ = cutf.Delete()
 
-	f := file.New("testdata/0.mp4", 0, false)
+	f := file.Open("testdata/0.mp4")
 	defer f.Close()
 
 	if f.IsDir() || !f.IsExist() {
@@ -96,7 +96,7 @@ func Test_Mp4GenFastSeed(t *testing.T) {
 		InitSav(fastSeedFilePath string) (savIndex func(seedTo time.Duration, cuIndex int64) error, e error)
 	}](`videoFastSeed`)
 
-	f := file.New("testdata/0.mp4", 0, false)
+	f := file.Open("testdata/0.mp4")
 	defer f.Close()
 	sf, e := VideoFastSeed.InitSav("testdata/0.fastSeed")
 	if e != nil {
@@ -129,11 +129,11 @@ func Test_Mp4CutSeed(t *testing.T) {
 		}()
 	}
 
-	cutf := file.New("testdata/0.cut.mp4", 0, false)
+	cutf := file.Open("testdata/0.cut.mp4")
 	defer cutf.Close()
 	_ = cutf.Delete()
 
-	f := file.New("testdata/0.mp4", 0, false)
+	f := file.Open("testdata/0.mp4")
 	defer f.Close()
 
 	if f.IsDir() || !f.IsExist() {
