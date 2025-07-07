@@ -117,6 +117,6 @@ func BenchmarkXxx(b *testing.B) {
 	d := NewPdDecoder()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		d.UnmarshalBase64S(base64S, &InteractWord{})
+		_ = d.UnmarshalBase64S(base64S, &InteractWord{})
 	}
 }
