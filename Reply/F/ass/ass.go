@@ -108,7 +108,7 @@ func (t *Ass) ToAss(savePath string, filename ...string) {
 	var write bool
 	for line := range loadCsv(savePath, strings.Split(append(filename, "0.ass")[0], `.`)[0]+".csv") {
 		if !write {
-			_, _ = f.Write([]byte(t.header), true)
+			_, _ = f.Write([]byte(t.header))
 			write = true
 		}
 
@@ -137,13 +137,13 @@ func (t *Ass) ToAss(savePath string, filename ...string) {
 		}
 
 		_, _ = f.Write([]byte(
-			`Dialogue: 0,`+
-				stos(line.Time)+`,`+stos(line.Time+float64(t.showSec))+
-				`,Default,,0,0,0,,{`+
-				`\c&H`+line.Style.Color[5:7]+line.Style.Color[3:5]+line.Style.Color[1:3]+`&`+
-				`\alpha&H`+fmt.Sprintf("%02x", t.alpha)+`&`+
-				`\move(`+strconv.Itoa(playResX)+`,`+strconv.Itoa(c*t.fontsize)+`,-`+strconv.Itoa(t.fontsize*danmul)+`,`+strconv.Itoa(c*t.fontsize)+`)`+
-				`}`+line.Text+"\n"), true)
+			`Dialogue: 0,` +
+				stos(line.Time) + `,` + stos(line.Time+float64(t.showSec)) +
+				`,Default,,0,0,0,,{` +
+				`\c&H` + line.Style.Color[5:7] + line.Style.Color[3:5] + line.Style.Color[1:3] + `&` +
+				`\alpha&H` + fmt.Sprintf("%02x", t.alpha) + `&` +
+				`\move(` + strconv.Itoa(playResX) + `,` + strconv.Itoa(c*t.fontsize) + `,-` + strconv.Itoa(t.fontsize*danmul) + `,` + strconv.Itoa(c*t.fontsize) + `)` +
+				`}` + line.Text + "\n"))
 	}
 }
 

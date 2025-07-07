@@ -43,7 +43,7 @@ func init() {
 	if e := comp.Register[TargetInterface]("danmuEmotes", &i); e != nil {
 		panic(e)
 	}
-	_, _ = file.New(i.Dir+"README.md", 0, true).Write([]byte(""), false)
+	_, _ = file.New(i.Dir+"README.md", 0, true).WriteRaw([]byte(""), false)
 }
 
 var errNoEmote = errors.New("errNoEmote")
@@ -192,7 +192,7 @@ func (t *danmuEmotes) PackEmotes(dir string) error {
 				set[key] = struct{}{}
 			}
 
-			f := file.New(t.Dir+key+".png", 0, false)
+			f := file.Open(t.Dir+key+".png")
 			if f.IsExist() {
 				if w == nil {
 					f := file.Open(dir + "emotes.zip")

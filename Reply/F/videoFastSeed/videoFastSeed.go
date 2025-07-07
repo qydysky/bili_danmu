@@ -62,10 +62,10 @@ func (t *videoFastSeed) SavIndex(ms time.Duration, cuIndex int64) error {
 	}
 	f := file.New(t.filepath, -1, false)
 	defer f.Close()
-	if _, e := f.Write(Itob64(ms.Milliseconds()), false); e != nil {
+	if _, e := f.WriteRaw(Itob64(ms.Milliseconds()), false); e != nil {
 		return e
 	}
-	if _, e := f.Write(Itob64(cuIndex), false); e != nil {
+	if _, e := f.WriteRaw(Itob64(cuIndex), false); e != nil {
 		return e
 	}
 	return nil
@@ -75,7 +75,7 @@ func (t *videoFastSeed) GetIndex(seedTo time.Duration) (int64, error) {
 	if !t.initGet {
 		return -1, ErrNoInitGet
 	}
-	f := file.New(t.filepath, 0, false)
+	f := file.Open(t.filepath)
 	defer f.Close()
 	if !f.IsExist() {
 		return -1, os.ErrNotExist

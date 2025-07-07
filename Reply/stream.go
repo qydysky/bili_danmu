@@ -513,10 +513,18 @@ func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo floa
 			redirectUrl string
 		)
 		if err := r.Respon(func(b []byte) (err error) {
-			rg, redirectUrl, err = replyFunc.ParseM3u8.Parse(b, lastNo)
+			_ = replyFunc.ParseM3u8.Run(func(pmi replyFunc.ParseM3u8I) error {
+				rg, redirectUrl, err = pmi.Parse(b, lastNo)
+				return nil
+			})
 			return
 		}); err != nil {
-			if replyFunc.ParseM3u8.IsErrRedirect(err) {
+			var isErrRedirect bool
+			_ = replyFunc.ParseM3u8.Run(func(pmi replyFunc.ParseM3u8I) error {
+				isErrRedirect = pmi.IsErrRedirect(err)
+				return nil
+			})
+			if isErrRedirect {
 				// 指向新连接
 				t.log.L(`I: `, `指向新连接`, v.Host(), "=>", F.ParseHost(redirectUrl))
 				v.SetUrl(redirectUrl)
@@ -1439,7 +1447,10 @@ func (t *M4SStream) Start() bool {
 					startf := func(_ *M4SStream) error {
 						l.L(`T: `, `开始`)
 						//弹幕分值统计
-						replyFunc.DanmuCountPerMin.Rec(ctx1, ms.common.Roomid, savePath)(ms.common.K_v.LoadV("弹幕分值"))
+						_ = replyFunc.DanmuCountPerMin.Run(func(dcpmi replyFunc.DanmuCountPerMinI) error {
+							dcpmi.Rec(ctx1, ms.common.Roomid, savePath)(ms.common.K_v.LoadV("弹幕分值"))
+							return nil
+						})
 						return nil
 					}
 					stopf := func(_ *M4SStream) error {
@@ -1535,13 +1546,16 @@ func (t *M4SStream) Start() bool {
 						}
 
 						if dealer != nil {
-							f := file.New(path, 0, false)
-							if sf, e := replyFunc.VideoFastSeed.InitSav(path + ".fastSeed"); e != nil {
-								l.Base_add(`GenFastSeed`).L(`E: `, path, e)
-							} else if e := dealer.GenFastSeed(f, sf); e != nil && !errors.Is(e, io.EOF) {
-								l.Base_add(`GenFastSeed`).L(`E: `, path, e)
-							}
-							f.Close()
+							_ = replyFunc.VideoFastSeed.Run(func(vfsi replyFunc.VideoFastSeedI) error {
+								f := file.Open(path)
+								if sf, e := vfsi.InitSav(path + ".fastSeed"); e != nil {
+									l.Base_add(`GenFastSeed`).L(`E: `, path, e)
+								} else if e := dealer.GenFastSeed(f, sf); e != nil && !errors.Is(e, io.EOF) {
+									l.Base_add(`GenFastSeed`).L(`E: `, path, e)
+								}
+								f.Close()
+								return nil
+							})
 						}
 					}
 
@@ -1631,7 +1645,7 @@ func (t *M4SStream) Cut() {
 
 // 保存到文件
 func (t *M4SStream) PusherToFile(contextC context.Context, filepath string, startFunc func(*M4SStream) error, stopFunc func(*M4SStream) error) error {
-	f := file.New(filepath, 0, false)
+	f := file.Open(filepath)
 	defer f.Close()
 	_ = f.Delete()
 
@@ -1647,7 +1661,7 @@ func (t *M4SStream) PusherToFile(contextC context.Context, filepath string, star
 		to = tmp
 	}
 
-	_, _ = f.Write(t.getFirstBuf(), true)
+	_, _ = f.Write(t.getFirstBuf())
 	cancelRec := t.stream_msg.Pull_tag(map[string]func([]byte) bool{
 		`data`: func(b []byte) bool {
 			defer pu.Callback(func(startT time.Time, args ...any) {
@@ -1665,7 +1679,7 @@ func (t *M4SStream) PusherToFile(contextC context.Context, filepath string, star
 			if len(b) == 0 {
 				return true
 			}
-			if n, err := f.Write(b, true); err != nil || n == 0 {
+			if n, err := f.Write(b); err != nil || n == 0 {
 				done()
 			}
 			return false

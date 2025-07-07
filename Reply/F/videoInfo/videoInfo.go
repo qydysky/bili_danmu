@@ -124,7 +124,7 @@ func _save(pathInfo *Paf) error {
 	}
 	if pathInfoJson, err := json.Marshal(pathInfo); err != nil {
 		return err
-	} else if _, err := fj.Write(pathInfoJson, true); err != nil {
+	} else if _, err := fj.Write(pathInfoJson); err != nil {
 		return err
 	}
 	return nil

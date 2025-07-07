@@ -432,7 +432,7 @@ func init() {
 
 			<-wait.Done()
 			if len(buf) != 0 {
-				_, _ = file.New(sys.Sys().Cdir()+`/tts.mp3`, 0, true).Write(buf, true)
+				_, _ = file.New(sys.Sys().Cdir()+`/tts.mp3`, 0, true).Write(buf)
 				play()
 			}
 			xfwsClient.Close()
