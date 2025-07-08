@@ -1391,11 +1391,10 @@ func (t *M4SStream) Start() bool {
 		}()
 
 		if t.Callback_stopRec != nil {
-			cancel := t.msg.Pull_tag_only(`stopRec`, func(ms *M4SStream) (disable bool) {
+			defer t.msg.Pull_tag_only(`stopRec`, func(ms *M4SStream) (disable bool) {
 				ms.Callback_stopRec(ms)
 				return false
-			})
-			defer cancel()
+			})()
 		}
 		cancel := t.msg.Pull_tag_only("stop", func(ms *M4SStream) (disable bool) {
 			if ms.Callback_stop != nil {
@@ -1420,7 +1419,7 @@ func (t *M4SStream) Start() bool {
 
 					// 当cut时，取消上次录制
 					ctx1, done := pctx.WithWait(mainCtx, 3, time.Second*30)
-					fc.FlashWithCallback(func() { _ = done() })
+					fc.FlashWithCallback(func() { _ = done(true) })
 
 					// 分段时长min
 					if l, ok := ms.common.K_v.LoadV("分段时长min").(float64); ok && l > 0 {
@@ -1434,11 +1433,10 @@ func (t *M4SStream) Start() bool {
 					}
 
 					// 当stopRec时，取消录制
-					cancelMsg := ms.msg.Pull_tag_only(`stopRec`, func(_ *M4SStream) (disable bool) {
-						cancel()
+					defer ms.msg.Pull_tag_only(`stopRec`, func(_ *M4SStream) (disable bool) {
+						_ = done(true)
 						return true
-					})
-					defer cancelMsg()
+					})()
 
 					savePath := ms.genSavepath()
 					saveType := ms.GetStreamType()
@@ -1518,7 +1516,7 @@ func (t *M4SStream) Start() bool {
 					duration := time.Since(startT)
 
 					// wait all goroutine exit
-					if e := done(); e != nil && !errors.Is(e, pctx.ErrDoneCalled) {
+					if e := done(true); e != nil {
 						l.L(`E: `, e)
 					}
 

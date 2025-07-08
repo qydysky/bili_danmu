@@ -738,7 +738,7 @@ func (t *Common) Init() *Common {
 
 		logmap := make(map[string]struct{})
 		if array, ok := t.K_v.Load(`日志显示`); ok {
-			for _, v := range array.([]interface{}) {
+			for _, v := range array.([]any) {
 				logmap[v.(string)] = log.On
 			}
 		}
@@ -749,7 +749,7 @@ func (t *Common) Init() *Common {
 }
 
 func (t *Common) loadConf(customConf string) error {
-	var data map[string]interface{}
+	var data map[string]any
 
 	// 64k
 	f := file.New("config/config_K_v.json", 0, true)
@@ -787,7 +787,7 @@ func (t *Common) loadConf(customConf string) error {
 			if req.ResStatusCode()&200 != 200 {
 				return fmt.Errorf("无法获取自定义配置文件 %d", req.ResStatusCode())
 			} else {
-				var tmp map[string]interface{}
+				var tmp map[string]any
 				_ = req.ResponUnmarshal(json.Unmarshal, &tmp)
 				for k, v := range tmp {
 					data[k] = v
@@ -797,7 +797,7 @@ func (t *Common) loadConf(customConf string) error {
 			//从文件读取
 			if bb, err := file.New(customConf, 0, true).ReadAll(100, 1<<16); err != nil {
 				if errors.Is(err, io.EOF) {
-					var tmp map[string]interface{}
+					var tmp map[string]any
 					_ = json.Unmarshal(bb, &tmp)
 					for k, v := range tmp {
 						data[k] = v
