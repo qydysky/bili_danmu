@@ -713,7 +713,7 @@ func (t *M4SStream) saveStream() (e error) {
 	// 保存到文件
 	if t.config.save_to_file {
 		// 停止附加到其他文件
-		t.stream_msg.PushLock_tag(`closefile`, []byte{})
+		t.msg.PushLock_tag(`closefile`, t)
 
 		var startCount uint = defaultStartCount
 		if s, ok := t.common.K_v.LoadV("直播流接收n帧才保存").(float64); ok && s > 0 && uint(s) > startCount {
@@ -1432,10 +1432,17 @@ func (t *M4SStream) Start() bool {
 						}).Stop()
 					}
 
-					// 当stopRec时，取消录制
-					defer ms.msg.Pull_tag_only(`stopRec`, func(_ *M4SStream) (disable bool) {
-						_ = done(true)
-						return true
+					defer ms.msg.Pull_tag(map[string]func(*M4SStream) (disable bool){
+						// 当closefile时，取消录制
+						`closefile`: func(ms *M4SStream) (disable bool) {
+							_ = done(true)
+							return true
+						},
+						// 当stopRec时，取消录制
+						`stopRec`: func(ms *M4SStream) (disable bool) {
+							_ = done(true)
+							return true
+						},
 					})()
 
 					savePath := ms.genSavepath()
@@ -1683,9 +1690,6 @@ func (t *M4SStream) PusherToFile(contextC context.Context, filepath string, star
 			return false
 		},
 		`close`: func(_ []byte) bool {
-			return true
-		},
-		`closefile`: func(_ []byte) bool {
 			return true
 		},
 	})
