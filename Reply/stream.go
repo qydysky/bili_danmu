@@ -713,7 +713,7 @@ func (t *M4SStream) saveStream() (e error) {
 	// 保存到文件
 	if t.config.save_to_file {
 		// 停止附加到其他文件
-		t.stream_msg.PushLock_tag(`closefile`, []byte{})
+		t.msg.PushLock_tag(`closefile`, t)
 
 		var startCount uint = defaultStartCount
 		if s, ok := t.common.K_v.LoadV("直播流接收n帧才保存").(float64); ok && s > 0 && uint(s) > startCount {
@@ -1391,11 +1391,10 @@ func (t *M4SStream) Start() bool {
 		}()
 
 		if t.Callback_stopRec != nil {
-			cancel := t.msg.Pull_tag_only(`stopRec`, func(ms *M4SStream) (disable bool) {
+			defer t.msg.Pull_tag_only(`stopRec`, func(ms *M4SStream) (disable bool) {
 				ms.Callback_stopRec(ms)
 				return false
-			})
-			defer cancel()
+			})()
 		}
 		cancel := t.msg.Pull_tag_only("stop", func(ms *M4SStream) (disable bool) {
 			if ms.Callback_stop != nil {
@@ -1420,7 +1419,7 @@ func (t *M4SStream) Start() bool {
 
 					// 当cut时，取消上次录制
 					ctx1, done := pctx.WithWait(mainCtx, 3, time.Second*30)
-					fc.FlashWithCallback(func() { _ = done() })
+					fc.FlashWithCallback(func() { _ = done(true) })
 
 					// 分段时长min
 					if l, ok := ms.common.K_v.LoadV("分段时长min").(float64); ok && l > 0 {
@@ -1433,12 +1432,18 @@ func (t *M4SStream) Start() bool {
 						}).Stop()
 					}
 
-					// 当stopRec时，取消录制
-					cancelMsg := ms.msg.Pull_tag_only(`stopRec`, func(_ *M4SStream) (disable bool) {
-						cancel()
-						return true
-					})
-					defer cancelMsg()
+					defer ms.msg.Pull_tag(map[string]func(*M4SStream) (disable bool){
+						// 当closefile时，取消录制
+						`closefile`: func(ms *M4SStream) (disable bool) {
+							_ = done(true)
+							return true
+						},
+						// 当stopRec时，取消录制
+						`stopRec`: func(ms *M4SStream) (disable bool) {
+							_ = done(true)
+							return true
+						},
+					})()
 
 					savePath := ms.genSavepath()
 					saveType := ms.GetStreamType()
@@ -1518,7 +1523,7 @@ func (t *M4SStream) Start() bool {
 					duration := time.Since(startT)
 
 					// wait all goroutine exit
-					if e := done(); e != nil && !errors.Is(e, pctx.ErrDoneCalled) {
+					if e := done(true); e != nil {
 						l.L(`E: `, e)
 					}
 
@@ -1685,9 +1690,6 @@ func (t *M4SStream) PusherToFile(contextC context.Context, filepath string, star
 			return false
 		},
 		`close`: func(_ []byte) bool {
-			return true
-		},
-		`closefile`: func(_ []byte) bool {
 			return true
 		},
 	})

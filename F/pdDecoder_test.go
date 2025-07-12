@@ -1,6 +1,8 @@
 package F
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"testing"
 )
@@ -99,24 +101,26 @@ func TestU2(t *testing.T) {
 }
 
 func BenchmarkXxx(b *testing.B) {
-	var base64S = `CMCi88gCEhLliKvmrbvlnKjngavmmJ/kuIoiAgMBKAEwxdMFOMPRj8MGQOO56dq2NEooCPZlEBYaBeW4hVBpIMuoaSjLqGkwkrvKAjjLqGlAAWDF0wVoqoLsF2IAeIaW3o3Zo4mnGJoBALIB0wEIwKLzyAISYQoS5Yir5q275Zyo54Gr5pif5LiKEktodHRwczovL2kwLmhkc2xiLmNvbS9iZnMvZmFjZS9kODM4ZjZkYTVkZDE4NTdhYWU3NzkzYTIwM2ZmNTdlYTkwYjNlMGUwLndlYnAaYgoF5biFUGkQFhjLqGkgkrvKAijLqGkwy6hpOPoNSAFQ9mVgqoLsF3oJIzQzQjNFM0NDggEJIzQzQjNFM0NDigEJIzVGQzdGNEZGkgEJI0ZGRkZGRkZGmgEJIzAwMzA4Qzk5IgIIGjIAugEA`
+	base64S, _ := base64.StdEncoding.DecodeString(`CMCi88gCEhLliKvmrbvlnKjngavmmJ/kuIoiAgMBKAEwxdMFOMPRj8MGQOO56dq2NEooCPZlEBYaBeW4hVBpIMuoaSjLqGkwkrvKAjjLqGlAAWDF0wVoqoLsF2IAeIaW3o3Zo4mnGJoBALIB0wEIwKLzyAISYQoS5Yir5q275Zyo54Gr5pif5LiKEktodHRwczovL2kwLmhkc2xiLmNvbS9iZnMvZmFjZS9kODM4ZjZkYTVkZDE4NTdhYWU3NzkzYTIwM2ZmNTdlYTkwYjNlMGUwLndlYnAaYgoF5biFUGkQFhjLqGkgkrvKAijLqGkwy6hpOPoNSAFQ9mVgqoLsF3oJIzQzQjNFM0NDggEJIzQzQjNFM0NDigEJIzVGQzdGNEZGkgEJI0ZGRkZGRkZGmgEJIzAwMzA4Qzk5IgIIGjIAugEA`)
 	type InteractWord struct {
-		FansMedalInfo struct {
-			TargetId     int `pd:"1"`
-			AnchorRoomid int `pd:"12"`
-		} `pd:"9"`
-		UserInfo struct {
-			Base struct {
-				IsMystery bool `pd:"4"`
-			} `pd:"2"`
-		} `pd:"22"`
-		MsgType uint   `json:"msgType" pd:"5"`
-		Uname   []byte `pd:"2"`
+		MsgType uint `json:"msgType" pd:"5"`
 	}
 
 	d := NewPdDecoder()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = d.UnmarshalBase64S(base64S, &InteractWord{})
+		_ = d.Unmarshal(base64S, &InteractWord{})
+	}
+}
+
+func BenchmarkJson(b *testing.B) {
+	var base64S = `{"msgType":1}`
+	type InteractWord struct {
+		MsgType uint `json:"msgType" pd:"5"`
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = json.Unmarshal([]byte(base64S), &InteractWord{})
 	}
 }

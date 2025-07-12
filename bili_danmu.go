@@ -75,6 +75,8 @@ func Start(rootCtx context.Context) {
 		}
 	}()
 	{
+		// 校验必要组件
+		_ = replyFunc.ParseM3u8.Err()
 		//命令行操作 切换房间 发送弹幕
 		_ = Cmd.Run(func(ci CmdI) error {
 			ci.Cmd()
