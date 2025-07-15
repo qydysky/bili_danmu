@@ -167,12 +167,12 @@ func (t replyF) rank_changed(s string) {
 	var tmp = fmt.Sprintf("%s %d", j.Data.RankNameByType, j.Data.Rank)
 	t.Common.Note = tmp
 	Gui_show(tmp, "0rank")
-	t.Common.Danmu_Main_mq.Push_tag(`tts`, Danmu_mq_t{ //传入消息队列
-		uid: "0rank",
-		m: map[string]string{
+	_ = replyFunc.TTS.Run(func(t replyFunc.TTSI) error {
+		t.Deal("0rank", map[string]string{
 			`{Area_name}`: j.Data.RankNameByType,
 			`{Rank}`:      strconv.Itoa(j.Data.Rank),
-		},
+		})
+		return nil
 	})
 	msglog.L(`I: `, tmp)
 }
@@ -298,11 +298,11 @@ func (t replyF) vtr_gift_lottery(s string) {
 		return
 	}
 	{ //语言tts
-		t.Common.Danmu_Main_mq.Push_tag(`tts`, Danmu_mq_t{
-			uid: `0room`,
-			m: map[string]string{
+		_ = replyFunc.TTS.Run(func(t replyFunc.TTSI) error {
+			t.Deal("0room", map[string]string{
 				`{msg}`: j.Data.InteractMsg,
-			},
+			})
+			return nil
 		})
 	}
 	Gui_show(j.Data.InteractMsg, `0room`)
@@ -328,9 +328,11 @@ func (t replyF) interact_word(s string) {
 		return
 	} //关注时为2,进入时为1
 	{ //语言tts
-		t.Common.Danmu_Main_mq.Push_tag(`tts`, Danmu_mq_t{
-			uid: `0follow`,
-			msg: fmt.Sprint(J.Data.Uname + `关注了直播间`),
+		_ = replyFunc.TTS.Run(func(t replyFunc.TTSI) error {
+			t.Deal("0follow", map[string]string{
+				`{msg}`: fmt.Sprint(J.Data.Uname + `关注了直播间`),
+			})
+			return nil
 		})
 	}
 	Gui_show(J.Data.Uname+`关注了直播间`, `0follow`)
@@ -447,15 +449,15 @@ func (t replyF) user_toast_msg(s string) {
 		})
 	}
 	{ //语言tts
-		t.Common.Danmu_Main_mq.Push_tag(`tts`, Danmu_mq_t{ //传入消息队列
-			uid: `0buyguide`,
-			m: map[string]string{
+		_ = replyFunc.TTS.Run(func(t replyFunc.TTSI) error {
+			t.Deal("0buyguide", map[string]string{
 				`{username}`:  username,
 				`{op_name}`:   op_name,
 				`{role_name}`: role_name,
 				`{num}`:       strconv.Itoa(num),
 				`{unit}`:      unit,
-			},
+			})
+			return nil
 		})
 	}
 	{ //额外 ass 私信
@@ -878,14 +880,14 @@ func (t replyF) send_gift(s string) {
 	}
 
 	{ //语言tts
-		t.Common.Danmu_Main_mq.Push_tag(`tts`, Danmu_mq_t{ //传入消息队列
-			uid: `0gift`,
-			m: map[string]string{
+		_ = replyFunc.TTS.Run(func(t replyFunc.TTSI) error {
+			t.Deal("0gift", map[string]string{
 				`{num}`:      strconv.Itoa(num),
 				`{uname}`:    uname,
 				`{action}`:   action,
 				`{giftName}`: giftName,
-			},
+			})
+			return nil
 		})
 	}
 	fmt.Println("\n====")
@@ -1033,13 +1035,13 @@ func (t replyF) super_chat_message(s string) {
 		logg = append(logg, message)
 	}
 	{ //语言tts
-		t.Common.Danmu_Main_mq.Push_tag(`tts`, Danmu_mq_t{ //传入消息队列
-			uid: `0superchat`,
-			m: map[string]string{
+		_ = replyFunc.TTS.Run(func(t replyFunc.TTSI) error {
+			t.Deal("0superchat", map[string]string{
 				`{uname}`:   uname,
 				`{price}`:   strconv.Itoa(price),
 				`{message}`: message,
-			},
+			})
+			return nil
 		})
 	}
 	fmt.Print("====\n")
@@ -1073,12 +1075,12 @@ func (t replyF) hot_rank_settlement_v2(s string) {
 		tmp += strconv.Itoa(type_item.Data.Rank)
 	}
 	Gui_show(tmp, "0rank")
-	t.Common.Danmu_Main_mq.Push_tag(`tts`, Danmu_mq_t{ //传入消息队列
-		uid: "0rank",
-		m: map[string]string{
+	_ = replyFunc.TTS.Run(func(t replyFunc.TTSI) error {
+		t.Deal("0rank", map[string]string{
 			`{Area_name}`: type_item.Data.AreaName,
 			`{Rank}`:      strconv.Itoa(type_item.Data.Rank),
-		},
+		})
+		return nil
 	})
 	msglog.L(`I: `, "热门榜", tmp)
 }
@@ -1093,14 +1095,14 @@ func (t replyF) popularity_red_pocket_new(s string) {
 	}
 	var tmp = type_item.Data.Uname + type_item.Data.Action + strconv.Itoa(type_item.Data.Num) + `个` + type_item.Data.GiftName
 	Gui_show(tmp, "0gift")
-	t.Common.Danmu_Main_mq.Push_tag(`tts`, Danmu_mq_t{ //传入消息队列
-		uid: "0gift",
-		m: map[string]string{
+	_ = replyFunc.TTS.Run(func(t replyFunc.TTSI) error {
+		t.Deal("0gift", map[string]string{
 			`{num}`:      strconv.Itoa(type_item.Data.Num),
 			`{uname}`:    type_item.Data.Uname,
 			`{action}`:   type_item.Data.Action,
 			`{giftName}`: type_item.Data.GiftName,
-		},
+		})
+		return nil
 	})
 	msglog.L(`I: `, tmp)
 }
@@ -1115,37 +1117,14 @@ func (t replyF) popularity_red_pocket_start(s string) {
 	}
 	var tmp = type_item.Data.SenderName + `送出了礼物红包`
 	Gui_show(tmp, "0room")
-	t.Common.Danmu_Main_mq.Push_tag(`tts`, Danmu_mq_t{ //传入消息队列
-		uid: "0room",
-		m: map[string]string{
+	_ = replyFunc.TTS.Run(func(t replyFunc.TTSI) error {
+		t.Deal("0room", map[string]string{
 			`{msg}`: tmp,
-		},
+		})
+		return nil
 	})
 	msglog.L(`I: `, tmp)
 }
-
-// Msg-元气赏连抽
-// func (t replyF) common_notice_danmaku(s string) {
-// 	msglog := msglog.Base_add("房")
-
-// 	var type_item ws_msg.COMMON_NOTICE_DANMAKU
-// 	if e := json.Unmarshal([]byte(s), &type_item); e != nil {
-// 		msglog.L(`E: `, e)
-// 	}
-// 	var tmp = type_item.Data.ContentSegments
-// 	if len(tmp) == 0 {
-// 		return
-// 	}
-
-// 	Gui_show(tmp[0].Text, "0room")
-// 	t.Common.Danmu_Main_mq.Push_tag(`tts`, Danmu_mq_t{ //传入消息队列
-// 		uid: "0room",
-// 		m: map[string]string{
-// 			`{msg}`: tmp[0].Text,
-// 		},
-// 	})
-// 	msglog.L(`I: `, "元气赏连抽", tmp)
-// }
 
 // Msg-小消息
 func (t replyF) little_message_box(s string) {
@@ -1209,13 +1188,13 @@ func (t replyF) entry_effect(s string) {
 	}
 
 	{ //语言tts
-		t.Common.Danmu_Main_mq.Push_tag(`tts`, Danmu_mq_t{ //传入消息队列
-			uid: img,
-			m: map[string]string{
+		_ = replyFunc.TTS.Run(func(t replyFunc.TTSI) error {
+			t.Deal(img, map[string]string{
 				`{guard_name}`: guard_name,
 				`{username}`:   username,
 				`{msg}`:        copy_writing,
-			},
+			})
+			return nil
 		})
 	}
 	fmt.Print(">>> ")
@@ -1327,15 +1306,13 @@ func (t replyF) danmu(s string) {
 		{
 			if item.uid != "" {
 				if item.auth != nil {
-					if s, ok := TTS_setting_string[item.uid]; ok && s != "" {
-						t.Common.Danmu_Main_mq.Push_tag(`tts`, Danmu_mq_t{ //传入消息队列
-							uid: item.uid,
-							m: map[string]string{
-								`{auth}`: fmt.Sprint(item.auth),
-								`{msg}`:  item.msg,
-							},
+					_ = replyFunc.TTS.Run(func(t replyFunc.TTSI) error {
+						t.Deal(item.uid, map[string]string{
+							`{auth}`: fmt.Sprint(item.auth),
+							`{msg}`:  item.msg,
 						})
-					}
+						return nil
+					})
 				}
 				if i, e := strconv.Atoi(item.uid); e == nil {
 					if msg := t.Common.K_v.LoadV(`弹幕私信`).(string); msg != "" {
@@ -1467,12 +1444,12 @@ func Itos(i []interface{}) string {
 var _ = replyFunc.DanmuMerge.Run(func(dmi replyFunc.DanmuMergeI) error {
 	dmi.InitSend(func(roomid int, num uint, msg string) {
 		if num > 3 {
-			c.C.Danmu_Main_mq.Push_tag(`tts`, Danmu_mq_t{ //传入消息队列
-				uid: `0multi`,
-				m: map[string]string{
+			_ = replyFunc.TTS.Run(func(t replyFunc.TTSI) error {
+				t.Deal(`0multi`, map[string]string{
 					`{num}`: strconv.Itoa(int(num)),
 					`{msg}`: msg,
-				},
+				})
+				return nil
 			})
 			Msg_showdanmu(Danmu_item{
 				msg:    strconv.Itoa(int(num)) + " x " + msg,

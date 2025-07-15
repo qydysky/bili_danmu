@@ -1,7 +1,7 @@
 package bili_danmu
 
 import (
-	_ "github.com/qydysky/bili_danmu/cmd"
+	_ "github.com/qydysky/bili_danmu/cmd" //removable
 	comp "github.com/qydysky/part/component2"
 )
 

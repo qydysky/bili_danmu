@@ -89,7 +89,11 @@ func Start(rootCtx context.Context) {
 			ai.Init(c.C.K_v.LoadV("Ass"))
 			return nil
 		})
-		//
+		//tts初始化
+		_ = replyFunc.TTS.Run(func(t replyFunc.TTSI) error {
+			t.Init(mainCtx, danmulog, c.C.K_v.LoadV("TTS"))
+			return nil
+		})
 		if reply.IsOn(`相似弹幕忽略`) {
 			if max_num, ok := c.C.K_v.LoadV(`每秒显示弹幕数`).(float64); ok && int(max_num) >= 1 {
 				_ = replyFunc.LessDanmu.Run(func(ldi replyFunc.LessDanmuI) error {
@@ -138,7 +142,6 @@ func Start(rootCtx context.Context) {
 			exitSign                     = false
 			rs       fc.RangeSource[any] = func(yield func(any) bool) {
 				for !exitSign {
-
 					if !yield(nil) {
 						break
 					}
@@ -310,6 +313,13 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, c
 						return nil
 					})
 				}
+				//tts
+				defer func() {
+					_ = replyFunc.TTS.Run(func(t replyFunc.TTSI) error {
+						t.Clear()
+						return nil
+					})
+				}()
 				danmulog.L(`I: `, "连接到房间", common.Roomid)
 				// 获取弹幕服务器
 				F.Api.Get(common, `WSURL`)
