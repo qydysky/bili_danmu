@@ -15,6 +15,10 @@
 
 ### 当前支持显示/功能
 
+### 支持OS
+
+本程序由纯golang构建，详见[https://go.dev/wiki/MinimumRequirements#operating-systems](https://go.dev/wiki/MinimumRequirements#operating-systems)
+
 #### 当前支持显示
 以下内容可能过时，点击查看[当前支持显示](https://github.com/qydysky/bili_danmu/blob/master/Reply/Msg.go#L13)
 - [x] 人气

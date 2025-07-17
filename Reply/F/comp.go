@@ -7,19 +7,29 @@ import (
 	"net/http"
 	"time"
 
-	_ "github.com/qydysky/bili_danmu/Reply/F/ass"
-	_ "github.com/qydysky/bili_danmu/Reply/F/danmuCountPerMin"
-	_ "github.com/qydysky/bili_danmu/Reply/F/danmuEmotes"
-	_ "github.com/qydysky/bili_danmu/Reply/F/danmuMerge"
-	_ "github.com/qydysky/bili_danmu/Reply/F/danmuji"
-	_ "github.com/qydysky/bili_danmu/Reply/F/keepMedalLight"
-	_ "github.com/qydysky/bili_danmu/Reply/F/lessDanmu"
+	_ "github.com/qydysky/bili_danmu/Reply/F/ass"              //removable
+	_ "github.com/qydysky/bili_danmu/Reply/F/danmuCountPerMin" //removable
+	_ "github.com/qydysky/bili_danmu/Reply/F/danmuEmotes"      //removable
+	_ "github.com/qydysky/bili_danmu/Reply/F/danmuMerge"       //removable
+	_ "github.com/qydysky/bili_danmu/Reply/F/danmuji"          //removable
+	_ "github.com/qydysky/bili_danmu/Reply/F/keepMedalLight"   //removable
+	_ "github.com/qydysky/bili_danmu/Reply/F/lessDanmu"        //removable
 	_ "github.com/qydysky/bili_danmu/Reply/F/parseM3u8"
-	_ "github.com/qydysky/bili_danmu/Reply/F/rev"
-	_ "github.com/qydysky/bili_danmu/Reply/F/videoFastSeed"
+	_ "github.com/qydysky/bili_danmu/Reply/F/rev"           //removable
+	_ "github.com/qydysky/bili_danmu/Reply/F/tts"           //removable
+	_ "github.com/qydysky/bili_danmu/Reply/F/videoFastSeed" //removable
 	comp "github.com/qydysky/part/component2"
 	log "github.com/qydysky/part/log"
 )
+
+type TTSI interface {
+	Init(ctx context.Context, l *log.Log_interface, config any)
+	Deal(uid string, m map[string]string)
+	Clear()
+	Stop()
+}
+
+var TTS = comp.GetV2(`tts`, comp.PreFuncErr[TTSI]{})
 
 type LessDanmuI interface {
 	Init(maxNumSec int)

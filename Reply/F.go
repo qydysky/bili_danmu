@@ -226,6 +226,13 @@ func StreamOCut(roomid int) (setTitle func(title ...string)) {
 	return func(s ...string) {}
 }
 
+func TTS(i Danmu_mq_t) {
+	_ = replyFunc.TTS.Run(func(t replyFunc.TTSI) error {
+		t.Deal(i.uid, i.m)
+		return nil
+	})
+}
+
 /*
 	Moredanmu
 	目标：弹幕机自动发送弹幕
