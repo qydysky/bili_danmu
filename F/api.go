@@ -186,7 +186,6 @@ func SearchUP(s string) (list []struct {
 		apilog.L(`E: `, e)
 		return
 	} else {
-		fmt.Println(res)
 		return res
 	}
 }
