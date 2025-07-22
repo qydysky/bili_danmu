@@ -98,11 +98,9 @@ func (t *tts) Init(ctx context.Context, l *log.Log_interface, config any) {
 	} else {
 		defer t.lock.Lock()()
 
-		t.ctx, t.cancle = pctx.WaitCtx(ctx)
 		t.l = l.Base_add(`TTS`)
 
 		{ //tts配置
-
 			if v, ok := m[`TTS_总开关`].(bool); ok && !v {
 				return
 			}
@@ -162,15 +160,15 @@ func (t *tts) Init(ctx context.Context, l *log.Log_interface, config any) {
 			if !errors.Is(err, io.EOF) {
 				return
 			}
-			var buf map[string]interface{}
+			var buf map[string]any
 			_ = json.Unmarshal(bb, &buf)
 			if onoff, ok := buf[`onoff`]; ok {
-				for k, v := range onoff.(map[string]interface{}) {
+				for k, v := range onoff.(map[string]any) {
 					t.ttsSettingString[k] = v.(string)
 				}
 			}
 			if replace, ok := buf[`replace`]; ok {
-				for k, v := range replace.(map[string]interface{}) {
+				for k, v := range replace.(map[string]any) {
 					t.ttsSettingReplace[k] = v.(string)
 				}
 			}
@@ -178,6 +176,7 @@ func (t *tts) Init(ctx context.Context, l *log.Log_interface, config any) {
 		//启动程序
 		p.Exec().Start(exec.Command(t.ttsProg))
 
+		t.ctx, t.cancle = pctx.WaitCtx(ctx)
 		go func() {
 			defer t.cancle()
 			for {
@@ -419,6 +418,7 @@ func (t *tts) xf(msg string) error {
 				} else {
 					var buf []byte
 					wait, cancel := context.WithCancel(t.ctx)
+					defer cancel()
 
 					var someErr = errors.New(`someErr`)
 					wsc.Pull_tag_only(`rec`, func(wm *ws.WsMsg) (disable bool) {
