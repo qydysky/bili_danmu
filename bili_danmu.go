@@ -177,7 +177,7 @@ func Start(rootCtx context.Context) {
 			//获取cookie
 			F.Api.Get(c.C, `Cookie`)
 			//获取LIVE_BUVID
-			F.Api.Get(c.C, `LIVE_BUVID`)
+			// F.Api.Get(c.C, `LIVE_BUVID`)
 			//兑换硬币
 			F.Api.Get(c.C, `Silver2Coin`)
 			// 获取房间实际id
@@ -283,7 +283,7 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, c
 				//获取cookie，检查是否登录失效
 				F.Api.Get(common, `Cookie`)
 				//获取LIVE_BUVID
-				F.Api.Get(common, `LIVE_BUVID`)
+				// F.Api.Get(common, `LIVE_BUVID`)
 				//附加功能 自动发送即将过期礼物
 				reply.AutoSend_silver_gift(common)
 				//获取热门榜
