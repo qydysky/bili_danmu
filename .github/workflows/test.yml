@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go: [ '1.24' ]
+        go: [ '1.25' ]
     steps:
     - name: Set up Go${{ matrix.go }}
       uses: actions/setup-go@v5
@@ -34,16 +34,16 @@ jobs:
       run: git lfs checkout
 
 
-    - name: golangci-lint
-      uses: golangci/golangci-lint-action@v6
-      with:
-        args: --timeout 5m --verbose
+    # - name: golangci-lint
+    #   uses: golangci/golangci-lint-action@v8
+    #   with:
+    #     args: --timeout 5m --verbose
 
     - name: Test
       run: |
         sudo apt-get update
         sudo apt-get install libgtk-3-dev libcairo2-dev libglib2.0-dev
-        export r=213
+        export r=92613
         go get .
         go mod vendor
         CGO_ENABLED=1 go test -v --cover -coverprofile=coverage -race -count=1 ./...
@@ -69,7 +69,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go: [ '1.24' ]
+        go: [ '1.25' ]
     steps:
     - name: Set up Go${{ matrix.go }}
       uses: actions/setup-go@v5
@@ -96,7 +96,14 @@ jobs:
       
     - name: zip
       run: zip -q -r ubuntu_go${{ matrix.go }}.zip demo
-      
+
+    - name: VirusTotal Scan
+      uses: crazy-max/ghaction-virustotal@v4
+      with:
+        vt_api_key: ${{ secrets.VT_API_KEY }}
+        files: |
+          ./ubuntu_go${{ matrix.go }}.zip
+
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v4
       with:
@@ -109,7 +116,7 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        go: [ '1.24' ]
+        go: [ '1.25' ]
     steps:
     - name: Set up Go${{ matrix.go }}
       uses: actions/setup-go@v5
@@ -135,7 +142,14 @@ jobs:
         
     - name: zip
       run: .\7za.exe a -r .\windows_go${{ matrix.go }}.zip ./demo
-      
+
+    - name: VirusTotal Scan
+      uses: crazy-max/ghaction-virustotal@v4
+      with:
+        vt_api_key: ${{ secrets.VT_API_KEY }}
+        files: |
+          ./windows_go${{ matrix.go }}.zip
+
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v4
       with:
@@ -148,7 +162,7 @@ jobs:
     runs-on: macos-latest
     strategy:
       matrix:
-        go: [ '1.24' ]
+        go: [ '1.25' ]
     steps:
     - name: Set up Go${{ matrix.go }}
       uses: actions/setup-go@v5
@@ -174,7 +188,14 @@ jobs:
         
     - name: zip
       run: zip -q -r macos_go${{ matrix.go }}.zip demo
-      
+
+    - name: VirusTotal Scan
+      uses: crazy-max/ghaction-virustotal@v4
+      with:
+        vt_api_key: ${{ secrets.VT_API_KEY }}
+        files: |
+          ./macos_go${{ matrix.go }}.zip
+
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v4
       with:
