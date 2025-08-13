@@ -19,7 +19,6 @@ import (
 	pio "github.com/qydysky/part/io"
 	pkf "github.com/qydysky/part/keyFunc"
 	reqf "github.com/qydysky/part/reqf"
-	psync "github.com/qydysky/part/sync"
 	qr "github.com/skip2/go-qrcode"
 	"github.com/skratchdot/open-golang/open"
 )
@@ -54,7 +53,7 @@ func NewGetFuncV2() *GetFuncV2 {
 	t.api.Reg(`Live`, t.isValid(`Live`), t.getRoomPlayInfoByQn, t.getRoomPlayInfo, t.html)
 	t.api.Reg(`Token`, t.isValid(`Token`), t.getDanmuInfo)
 	t.api.Reg(`WSURL`, t.isValid(`WSURL`), t.getDanmuInfo)
-	t.api.Reg(`LIVE_BUVID`, t.isValid(`LIVE_BUVID`), t.getLiveBuvid)
+	// t.api.Reg(`LIVE_BUVID`, t.isValid(`LIVE_BUVID`), t.getLiveBuvid)
 	t.api.Reg(`CheckSwitch_FansMedal`, t.isValid(`CheckSwitch_FansMedal`), t.checkSwitchFansMedal)
 	t.api.Reg(`getOnlineGoldRank`, t.isValid(`getOnlineGoldRank`), t.queryContributionRank, t.getOnlineGoldRank)
 	t.api.Reg(`Silver2Coin`, t.isValid(`Silver2Coin`), t.silver2Coin)
@@ -110,8 +109,8 @@ func (t *GetFuncV2) isValid(key string) func() bool {
 			return t.common.Token != ``
 		case `WSURL`:
 			return len(t.common.WSURL) > 0
-		case `LIVE_BUVID`:
-			return t.common.LiveBuvidUpdated.After(time.Now().Add(-time.Hour))
+			// case `LIVE_BUVID`:
+			// 	return t.common.LiveBuvidUpdated.After(time.Now().Add(-time.Hour))
 		}
 		return true
 	}
@@ -336,9 +335,9 @@ func (t *GetFuncV2) getRoomPlayInfo() (missKey string, err error) {
 	if t.common.Roomid == 0 {
 		return `Roomid`, nil
 	}
-	if t.common.LiveBuvidUpdated.Before(time.Now().Add(-time.Hour)) {
-		return `LIVE_BUVID`, nil
-	}
+	// if t.common.LiveBuvidUpdated.Before(time.Now().Add(-time.Hour)) {
+	// 	return `LIVE_BUVID`, nil
+	// }
 
 	//Roominitres
 	{
@@ -492,9 +491,9 @@ func (t *GetFuncV2) getGuardNum() (missKey string, err error) {
 	if t.common.Roomid == 0 {
 		return `Roomid`, nil
 	}
-	if t.common.LiveBuvidUpdated.Before(time.Now().Add(-time.Hour)) {
-		return `LIVE_BUVID`, nil
-	}
+	// if t.common.LiveBuvidUpdated.Before(time.Now().Add(-time.Hour)) {
+	// 	return `LIVE_BUVID`, nil
+	// }
 
 	//Get_guardNum
 	if err, GuardNum := biliApi.GetGuardNum(t.common.UpUid, t.common.Roomid); err != nil {
@@ -532,9 +531,9 @@ func (t *GetFuncV2) getRoomPlayInfoByQn() (missKey string, err error) {
 	if t.common.Roomid == 0 {
 		return `Roomid`, nil
 	}
-	if t.common.LiveBuvidUpdated.Before(time.Now().Add(-time.Hour)) {
-		return `LIVE_BUVID`, nil
-	}
+	// if t.common.LiveBuvidUpdated.Before(time.Now().Add(-time.Hour)) {
+	// 	return `LIVE_BUVID`, nil
+	// }
 
 	// 挑选最大的画质
 	{
@@ -628,9 +627,9 @@ func (t *GetFuncV2) getDanmuInfo() (missKey string, err error) {
 	if t.common.Roomid == 0 {
 		return `Roomid`, nil
 	}
-	if t.common.LiveBuvidUpdated.Before(time.Now().Add(-time.Hour)) {
-		return `LIVE_BUVID`, nil
-	}
+	// if t.common.LiveBuvidUpdated.Before(time.Now().Add(-time.Hour)) {
+	// 	return `LIVE_BUVID`, nil
+	// }
 
 	//GetDanmuInfo
 	if err, res := biliApi.GetDanmuInfo(t.common.Roomid); err != nil {
@@ -646,43 +645,43 @@ func (t *GetFuncV2) getDanmuInfo() (missKey string, err error) {
 }
 
 // LIVE_BUVID
-func (t *GetFuncV2) getLiveBuvid() (missKey string, err error) {
-	apilog := apilog.Base_add(`LIVE_BUVID`)
+// func (t *GetFuncV2) getLiveBuvid() (missKey string, err error) {
+// 	apilog := apilog.Base_add(`LIVE_BUVID`)
 
-	//当房间处于特殊活动状态时，将会获取不到，此处使用了若干著名up主房间进行尝试
-	roomIdList := []int{
-		3, //哔哩哔哩音悦台
-		2, //直播姬
-		1, //哔哩哔哩直播
-	}
+// 	//当房间处于特殊活动状态时，将会获取不到，此处使用了若干著名up主房间进行尝试
+// 	roomIdList := []int{
+// 		3, //哔哩哔哩音悦台
+// 		2, //直播姬
+// 		1, //哔哩哔哩直播
+// 	}
 
-	req := t.common.ReqPool.Get()
-	defer t.common.ReqPool.Put(req)
-	for _, roomid := range roomIdList { //获取
-		err := biliApi.GetLiveBuvid(roomid)
-		if err != nil {
-			apilog.L(`E: `, err)
-			return ``, err
-		}
-		psync.StoreAll(t.common.Cookie, reqf.Cookies_List_2_Map(biliApi.GetCookies()))
-		if e, _ := biliApi.GetCookie(`LIVE_BUVID`); e == nil {
-			apilog.L(`I: `, `获取到LIVE_BUVID，保存cookie`)
-			break
-		} else {
-			apilog.L(`I: `, roomid, `未获取到，重试`)
-			time.Sleep(time.Second)
-		}
-	}
+// 	req := t.common.ReqPool.Get()
+// 	defer t.common.ReqPool.Put(req)
+// 	for _, roomid := range roomIdList { //获取
+// 		err := biliApi.GetLiveBuvid(roomid)
+// 		if err != nil {
+// 			apilog.L(`E: `, err)
+// 			return ``, err
+// 		}
+// 		psync.StoreAll(t.common.Cookie, reqf.Cookies_List_2_Map(biliApi.GetCookies()))
+// 		if e, _ := biliApi.GetCookie(`LIVE_BUVID`); e == nil {
+// 			apilog.L(`I: `, `获取到LIVE_BUVID，保存cookie`)
+// 			break
+// 		} else {
+// 			apilog.L(`I: `, roomid, `未获取到，重试`)
+// 			time.Sleep(time.Second)
+// 		}
+// 	}
 
-	t.common.LiveBuvidUpdated = time.Now()
+// 	t.common.LiveBuvidUpdated = time.Now()
 
-	return
-}
+// 	return
+// }
 
 func (t *GetFuncV2) checkSwitchFansMedal() (missKey string, err error) {
-	if t.common.LiveBuvidUpdated.Before(time.Now().Add(-time.Hour)) {
-		return `LIVE_BUVID`, nil
-	}
+	// if t.common.LiveBuvidUpdated.Before(time.Now().Add(-time.Hour)) {
+	// 	return `LIVE_BUVID`, nil
+	// }
 	if t.common.UpUid == 0 {
 		return `UpUid`, nil
 	}
@@ -796,9 +795,9 @@ func (t *GetFuncV2) getOnlineGoldRank() (missKey string, err error) {
 func (t *GetFuncV2) silver2Coin() (missKey string, err error) {
 	apilog := apilog.Base_add(`银瓜子=>硬币`)
 
-	if t.common.LiveBuvidUpdated.Before(time.Now().Add(-time.Hour)) {
-		return `LIVE_BUVID`, nil
-	}
+	// if t.common.LiveBuvidUpdated.Before(time.Now().Add(-time.Hour)) {
+	// 	return `LIVE_BUVID`, nil
+	// }
 
 	//验证登录
 	if !biliApi.IsLogin() {

@@ -10,7 +10,7 @@ func TestCookie(t *testing.T) {
 	//获取cookie
 	Api.Get(c.C, `Cookie`)
 	//获取LIVE_BUVID
-	Api.Get(c.C, `LIVE_BUVID`)
+	// Api.Get(c.C, `LIVE_BUVID`)
 
 	if _, ok := c.C.Cookie.Load("LIVE_BUVID"); !ok {
 		t.Fatal()
@@ -24,7 +24,7 @@ func Test_SearchUP(t *testing.T) {
 	//获取cookie
 	Api.Get(c.C, `Cookie`)
 	//获取LIVE_BUVID
-	Api.Get(c.C, `LIVE_BUVID`)
+	// Api.Get(c.C, `LIVE_BUVID`)
 
 	if v := SearchUP("qydysky"); len(v) == 0 || v[0].Roomid != 394988 {
 		t.Fatal()
@@ -35,7 +35,7 @@ func Test_Title(t *testing.T) {
 	//获取cookie
 	Api.Get(c.C, `Cookie`)
 	//获取LIVE_BUVID
-	Api.Get(c.C, `LIVE_BUVID`)
+	// Api.Get(c.C, `LIVE_BUVID`)
 	c.C.Roomid = 394988
 	Api.Get(c.C, `Title`)
 	if c.C.Title == `` {
@@ -47,7 +47,7 @@ func Test_Html(t *testing.T) {
 	//获取cookie
 	Api.Get(c.C, `Cookie`)
 	//获取LIVE_BUVID
-	Api.Get(c.C, `LIVE_BUVID`)
+	// Api.Get(c.C, `LIVE_BUVID`)
 	c.C.Roomid = 213
 	c.C.UpUid = 0
 	Api.common = c.C
@@ -63,7 +63,7 @@ func Test_getRoomPlayInfo(t *testing.T) {
 	//获取cookie
 	Api.Get(c.C, `Cookie`)
 	//获取LIVE_BUVID
-	Api.Get(c.C, `LIVE_BUVID`)
+	// Api.Get(c.C, `LIVE_BUVID`)
 	c.C.Roomid = 394988
 	c.C.UpUid = 0
 	Api.common = c.C
@@ -79,7 +79,7 @@ func Test_getRoomPlayInfoByQn(t *testing.T) {
 	//获取cookie
 	Api.Get(c.C, `Cookie`)
 	//获取LIVE_BUVID
-	Api.Get(c.C, `LIVE_BUVID`)
+	// Api.Get(c.C, `LIVE_BUVID`)
 	c.C.Roomid = 394988
 	c.C.UpUid = 0
 	Api.common = c.C
@@ -95,7 +95,7 @@ func Test_getDanmuInfo(t *testing.T) {
 	//获取cookie
 	Api.Get(c.C, `Cookie`)
 	//获取LIVE_BUVID
-	Api.Get(c.C, `LIVE_BUVID`)
+	// Api.Get(c.C, `LIVE_BUVID`)
 	c.C.Roomid = 394988
 	c.C.WSURL = []string{}
 	Api.Get(c.C, `WSURL`)
@@ -108,7 +108,7 @@ func Test_Get_guardNum(t *testing.T) {
 	//获取cookie
 	Api.Get(c.C, `Cookie`)
 	//获取LIVE_BUVID
-	Api.Get(c.C, `LIVE_BUVID`)
+	// Api.Get(c.C, `LIVE_BUVID`)
 	c.C.Roomid = 394988
 	c.C.GuardNum = -1
 	Api.Get(c.C, `GuardNum`)

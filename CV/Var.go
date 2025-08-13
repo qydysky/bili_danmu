@@ -210,7 +210,7 @@ func (t *Common) GenReqCookie() string {
 }
 
 func (t *Common) IsLogin() bool {
-	for _, n := range []string{`bili_jct`, `DedeUserID`, `LIVE_BUVID`} {
+	for _, n := range []string{`bili_jct`, `DedeUserID`} {
 		if _, ok := t.Cookie.Load(n); !ok {
 			return false
 		}
