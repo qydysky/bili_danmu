@@ -30,3 +30,5 @@ demo/danmu.sqlite3
 plugin/*.go
 bili_danmu.go
 demo/emots/*.png
+fastgit.sh
+fastgit2.sh
