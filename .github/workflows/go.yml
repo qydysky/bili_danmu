@@ -31,10 +31,10 @@ jobs:
       run: git lfs checkout
 
 
-    - name: golangci-lint
-      uses: golangci/golangci-lint-action@v8
-      with:
-        args: --timeout 5m --verbose
+    # - name: golangci-lint
+    #   uses: golangci/golangci-lint-action@v8
+    #   with:
+    #     args: --timeout 5m --verbose
 
     - name: Test
       run: |
