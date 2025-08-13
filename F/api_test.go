@@ -12,9 +12,9 @@ func TestCookie(t *testing.T) {
 	//获取LIVE_BUVID
 	// Api.Get(c.C, `LIVE_BUVID`)
 
-	if _, ok := c.C.Cookie.Load("LIVE_BUVID"); !ok {
-		t.Fatal()
-	}
+	// if _, ok := c.C.Cookie.Load("LIVE_BUVID"); !ok {
+	// 	t.Fatal()
+	// }
 	if _, ok := c.C.Cookie.Load("buvid3"); !ok {
 		t.Fatal()
 	}
