@@ -95,7 +95,7 @@ jobs:
         sudo apt-get install libgtk-3-dev libcairo2-dev libglib2.0-dev
         go get .
         CGO_ENABLED=0 go build -pgo=auto -v -buildmode=exe main.go
-        GOEXPERIMENT=greenteagc GOEXPERIMENT=jsonv2 CGO_ENABLED=0 go build -pgo=auto -v -buildmode=exe -o experiment main.go
+        GOEXPERIMENT=greenteagc,jsonv2 CGO_ENABLED=0 go build -pgo=auto -v -buildmode=exe -o experiment main.go
       
     - name: zip
       run: zip -q -r ubuntu_go${{ matrix.go }}.zip demo
@@ -142,8 +142,7 @@ jobs:
         go get .
         set CGO_ENABLED=0
         go build -pgo=auto -v -buildmode=exe main.go
-        set GOEXPERIMENT=greenteagc
-        set GOEXPERIMENT=jsonv2
+        set GOEXPERIMENT=greenteagc,jsonv2
         go build -pgo=auto -v -buildmode=exe -o experiment.exe main.go
         
     - name: zip
@@ -191,8 +190,7 @@ jobs:
         go get .
         set CGO_ENABLED=0
         go build -pgo=auto -v -buildmode=exe main.go
-        set GOEXPERIMENT=greenteagc
-        set GOEXPERIMENT=jsonv2
+        set GOEXPERIMENT=greenteagc,jsonv2
         go build -pgo=auto -v -buildmode=exe -o experiment main.go
         
     - name: zip
