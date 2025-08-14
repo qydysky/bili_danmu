@@ -6,6 +6,8 @@ on:
     - 'master'
     paths:
     - 'CV/VERSION'
+env:
+  R: ${{ vars.R }}
 
 jobs:
   buildtest:

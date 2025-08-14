@@ -11,6 +11,8 @@ on:
       - '**.sum'
       - '**.flv'
       - '**.mp4'
+env:
+  R: ${{ vars.R }}
 
 jobs:
   buildtest:
