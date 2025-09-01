@@ -51,6 +51,7 @@ func (t *lessDanmu) Unset() {
 func (t *lessDanmu) Init(maxNumSec int) {
 	t.Lock()
 	defer t.Unlock()
+	t.maxNumSec = maxNumSec
 	t.limit = limit.New(maxNumSec, "1s", "0s")
 }
 
@@ -64,17 +65,16 @@ func (t *lessDanmu) Do(s string) (show bool) {
 	}
 
 	if len(t.buf) < 20 {
-		t.buf = append(t.buf, s)
+		slice.AddFront(&t.buf, &s)
 		return true
+	} else {
+		o := cross(s, t.buf)
+		if o == 1 {
+			return false
+		} //完全无用的弹幕
+		slice.LoopAddFront(&t.buf, &s)
+		show = o < t.threshold
 	}
-	o := cross(s, t.buf)
-	if o == 1 {
-		return false
-	} //完全无用的弹幕
-
-	slice.DelFront(&t.buf, 1)
-
-	show = o < t.threshold
 
 	if show && t.maxNumSec > 0 {
 		return !t.limit.TO()

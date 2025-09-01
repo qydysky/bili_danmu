@@ -605,7 +605,7 @@ func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo floa
 				p.isHeader = false
 				p.Url = F.ResolveReferenceLast(v.Url, p.Base)
 				p.createdTime = time.Now()
-				slice.AddFront(&m4s_links, p)
+				slice.AddFront(&m4s_links, &p)
 			}
 		}
 

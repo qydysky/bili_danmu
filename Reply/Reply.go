@@ -1339,19 +1339,27 @@ func (t replyF) danmu(s string) {
 				return nil
 			})
 		}
+
+		var skip bool
+		// 附加功能 合并
 		_ = replyFunc.DanmuMerge.Run(func(dmi replyFunc.DanmuMergeI) error {
 			if i := dmi.Do(item.msg); i > 0 {
 				danmulog.L(`I: `, item.auth, ":", item.msg)
+				skip = true
 			}
 			return nil
 		})
-		//附加功能 更少弹幕
+		// 附加功能 更少弹幕
 		_ = replyFunc.LessDanmu.Run(func(i replyFunc.LessDanmuI) error {
 			if !i.Do(item.msg) {
 				danmulog.L(`I: `, item.auth, ":", item.msg)
+				skip = true
 			}
 			return nil
 		})
+		if skip {
+			return
+		}
 		if !item.hasEmote { // 表情跳过，避免破坏表情代码
 			if _msg := Shortdanmuf(item.msg); _msg == "" {
 				danmulog.L(`I: `, item.auth, ":", item.msg)
