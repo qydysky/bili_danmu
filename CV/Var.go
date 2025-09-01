@@ -132,7 +132,7 @@ func (t *Common) MarshalJSON() ([]byte, error) {
 		Locked:        t.Locked,
 		Login:         t.Login,
 		Note:          t.Note,
-		LiveStartTime: t.Live_Start_Time.Format(time.DateTime),
+		LiveStartTime: t.Live_Start_Time.Format(time.RFC3339),
 		Liveing:       t.Liveing,
 	})
 }
@@ -160,9 +160,9 @@ func (t LiveQn) MarshalJSON() ([]byte, error) {
 		Host:         t.Host(),
 		Up:           time.Now().After(t.ReUpTime),
 		Codec:        t.Codec,
-		CreateTime:   t.CreateTime.Format(time.DateTime),
-		ReUpTime:     t.ReUpTime.Format(time.DateTime),
-		Expires:      t.Expires.Format(time.DateTime),
+		CreateTime:   t.CreateTime.Format(time.RFC3339),
+		ReUpTime:     t.ReUpTime.Format(time.RFC3339),
+		Expires:      t.Expires.Format(time.RFC3339),
 		DisableCount: t.DisableCount,
 	})
 }
@@ -654,8 +654,8 @@ func (t *Common) Init() *Common {
 					"timeInfo": map[string]any{
 						"timeZone":           timeOffset,
 						"biliServerTimeZone": t.K_v.LoadV("服务器时区"),
-						"startTime":          t.StartT.Format(time.DateTime),
-						"currentTime":        time.Now().Format(time.DateTime),
+						"startTime":          t.StartT.Format(time.RFC3339),
+						"currentTime":        time.Now().Format(time.RFC3339),
 					},
 					"reqPoolState": map[string]any{
 						"pooled":   reqState.Pooled,
@@ -672,7 +672,7 @@ func (t *Common) Init() *Common {
 					},
 					"gc": map[string]any{
 						"numGC":            memStats.NumGC,
-						"lastGC":           time.UnixMicro(int64(memStats.LastGC / 1000)).Format(time.DateTime),
+						"lastGC":           time.UnixMicro(int64(memStats.LastGC / 1000)).Format(time.RFC3339),
 						"gcCPUFractionPpm": float64(int(memStats.GCCPUFraction*100000000)) / 100,
 						"gcAvgS":           float64(int(gcAvgS*100)) / 100,
 					},
