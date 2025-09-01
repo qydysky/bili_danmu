@@ -649,7 +649,7 @@ func (t *Common) Init() *Common {
 
 				ResStruct{0, "ok", map[string]any{
 					"version": t.Version,
-					"time": map[string]any{
+					"timeInfo": map[string]any{
 						"timeZone":           timeOffset,
 						"biliServerTimeZone": t.K_v.LoadV("服务器时区"),
 						"startTime":          t.StartT.Format(time.DateTime),
