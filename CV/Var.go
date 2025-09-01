@@ -648,39 +648,35 @@ func (t *Common) Init() *Common {
 				_, timeOffset := time.Now().Zone()
 
 				ResStruct{0, "ok", map[string]any{
-					"version": t.Version,
+					"pid":       t.PID,
+					"version":   t.Version,
+					"goVersion": runtime.Version(),
 					"timeInfo": map[string]any{
 						"timeZone":           timeOffset,
 						"biliServerTimeZone": t.K_v.LoadV("服务器时区"),
 						"startTime":          t.StartT.Format(time.DateTime),
 						"currentTime":        time.Now().Format(time.DateTime),
 					},
-					"state": map[string]any{
-						"base": map[string]any{
-							"reqPoolState": map[string]any{
-								"pooled":   reqState.Pooled,
-								"nopooled": reqState.Nopooled,
-								"inuse":    reqState.Inuse,
-								"nouse":    reqState.Nouse,
-								"sum":      reqState.Sum,
-								"qts":      math.Round(reqState.GetPerSec*100) / 100,
-							},
-							"pid":          t.PID,
-							"numGoroutine": runtime.NumGoroutine(),
-							"goVersion":    runtime.Version(),
-						},
-						"mem": map[string]any{
-							"memInUse":      humanize.Bytes(memStats.HeapInuse + memStats.StackInuse),
-							"memTotalAlloc": humanize.Bytes(memStats.TotalAlloc),
-						},
-						"gc": map[string]any{
-							"numGC":            memStats.NumGC,
-							"lastGC":           time.UnixMicro(int64(memStats.LastGC / 1000)).Format(time.DateTime),
-							"gcCPUFractionPpm": float64(int(memStats.GCCPUFraction*100000000)) / 100,
-							"gcAvgS":           float64(int(gcAvgS*100)) / 100,
-						},
-						"common": streams,
+					"reqPoolState": map[string]any{
+						"pooled":   reqState.Pooled,
+						"nopooled": reqState.Nopooled,
+						"inuse":    reqState.Inuse,
+						"nouse":    reqState.Nouse,
+						"sum":      reqState.Sum,
+						"qts":      math.Round(reqState.GetPerSec*100) / 100,
 					},
+					"numGoroutine": runtime.NumGoroutine(),
+					"mem": map[string]any{
+						"memInUse":      humanize.Bytes(memStats.HeapInuse + memStats.StackInuse),
+						"memTotalAlloc": humanize.Bytes(memStats.TotalAlloc),
+					},
+					"gc": map[string]any{
+						"numGC":            memStats.NumGC,
+						"lastGC":           time.UnixMicro(int64(memStats.LastGC / 1000)).Format(time.DateTime),
+						"gcCPUFractionPpm": float64(int(memStats.GCCPUFraction*100000000)) / 100,
+						"gcAvgS":           float64(int(gcAvgS*100)) / 100,
+					},
+					"common": streams,
 				},
 				}.Write(w)
 			})
