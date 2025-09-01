@@ -123,7 +123,7 @@ func (t *Common) MarshalJSON() ([]byte, error) {
 		Title:         t.Title,
 		Uname:         t.Uname,
 		UpUid:         t.UpUid,
-		Rev:           math.Round(t.Rev*100)/100,
+		Rev:           math.Round(t.Rev*100) / 100,
 		Watched:       t.Watched,
 		OnlineNum:     t.OnlineNum,
 		GuardNum:      t.GuardNum,
@@ -645,10 +645,16 @@ func (t *Common) Init() *Common {
 
 				reqState := t.ReqPool.State()
 
+				_, timeOffset := time.Now().Zone()
+
 				ResStruct{0, "ok", map[string]any{
-					"version":     t.Version,
-					"startTime":   t.StartT.Format(time.DateTime),
-					"currentTime": time.Now().Format(time.DateTime),
+					"version": t.Version,
+					"time": map[string]any{
+						"timeZone":           timeOffset,
+						"biliServerTimeZone": t.K_v.LoadV("服务器时区"),
+						"startTime":          t.StartT.Format(time.DateTime),
+						"currentTime":        time.Now().Format(time.DateTime),
+					},
 					"state": map[string]any{
 						"base": map[string]any{
 							"reqPoolState": map[string]any{
