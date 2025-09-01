@@ -101,29 +101,29 @@ func (t *Common) Lock() func() {
 
 func (t *Common) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
-		Live          []*LiveQn
-		LiveQn        int
-		Title         string
-		Uname         string
-		UpUid         int
-		Rev           float64
-		Watched       int
-		OnlineNum     int
-		GuardNum      int
-		ParentAreaID  int
-		AreaID        int
-		Locked        bool
-		Login         bool
-		Note          string
-		LiveStartTime string
-		Liveing       bool
+		Live          []*LiveQn `json:"live"`
+		LiveQn        int       `json:"liveQn"`
+		Title         string    `json:"title"`
+		Uname         string    `json:"uname"`
+		UpUid         int       `json:"upUid"`
+		Rev           float64   `json:"rev"`
+		Watched       int       `json:"watched"`
+		OnlineNum     int       `json:"onlineNum"`
+		GuardNum      int       `json:"guardNum"`
+		ParentAreaID  int       `json:"parentAreaID"`
+		AreaID        int       `json:"areaID"`
+		Locked        bool      `json:"locked"`
+		Login         bool      `json:"login"`
+		Note          string    `json:"note"`
+		LiveStartTime string    `json:"liveStartTime"`
+		Liveing       bool      `json:"liveing"`
 	}{
 		Live:          append([]*LiveQn{}, t.Live...),
 		LiveQn:        t.Live_qn,
 		Title:         t.Title,
 		Uname:         t.Uname,
 		UpUid:         t.UpUid,
-		Rev:           t.Rev,
+		Rev:           math.Round(t.Rev*100)/100,
 		Watched:       t.Watched,
 		OnlineNum:     t.OnlineNum,
 		GuardNum:      t.GuardNum,
@@ -149,13 +149,13 @@ type LiveQn struct {
 
 func (t LiveQn) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
-		Host         string
-		Up           bool
-		Codec        string
-		CreateTime   string
-		ReUpTime     string
-		Expires      string
-		DisableCount int
+		Host         string `json:"host"`
+		Up           bool   `json:"up"`
+		Codec        string `json:"codec"`
+		CreateTime   string `json:"createTime"`
+		ReUpTime     string `json:"reUpTime"`
+		Expires      string `json:"expires"`
+		DisableCount int    `json:"disableCount"`
 	}{
 		Host:         t.Host(),
 		Up:           time.Now().After(t.ReUpTime),
