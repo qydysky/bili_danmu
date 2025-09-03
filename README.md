@@ -603,90 +603,77 @@ config_K_v.json
 此时GET http://127.0.0.1:10000/state/
 ```json
 {
-  "code": 0,
-  "message": "ok",
-  "data": {
-    "currentTime": "2023-03-11 15:49:06", //当前时间
-    "startTime": "2023-03-11 15:48:26",   //启动时间
-    "version": "c797128",                 //版本
-    "state": {
-      "base": {
-        "goVersion": "go1.20.1",          //编译使用的golang版本
-        "numGoroutine": 53,               //goroutine数量
+    "code": 0,
+    "message": "ok",
+    "data": {
+        "common": {
+            "92613": { // 房间号
+                "live": [
+                    {
+                        "host": "cn-jssz-cm-02-05.bilivideo.com", // 流服务器主机名
+                        "up": true, // 是否启用
+                        "codec": "avc", // 编码格式
+                        "createTime": "2025-09-02T18:18:22+08:00", // 流服务器最初启用时间
+                        "reUpTime": "0001-01-01T00:00:00Z", // 流服务器启用时间
+                        "expires": "2081-05-05T05:36:44+08:00", 
+                        "disableCount": 0 // 禁用次数
+                    },
+                    {
+                        "host": "d1--cn-gotcha204b.bilivideo.com",
+                        "up": true,
+                        "codec": "avc",
+                        "createTime": "2025-09-02T18:18:22+08:00",
+                        "reUpTime": "0001-01-01T00:00:00Z",
+                        "expires": "2081-05-05T05:36:44+08:00",
+                        "disableCount": 0
+                    }
+                ],
+                "liveQn": 10000, // 画质编码
+                "title": "国际服在开荒一两天", // 房间标题
+                "uname": "少年Pi", // 主播名
+                "upUid": 13046, // 主播id
+                "rev": 1812.4, // 本场营收
+                "watched": 41456, // 本厂观看人数
+                "onlineNum": 172, // 当前在线人数
+                "guardNum": 530, // 大航海人数
+                "parentAreaID": 6, // 分区编码
+                "areaID": 235, // 子分区编码
+                "locked": false, // 直播间是否被封禁
+                "login": true, // 当前是否登陆
+                "note": "人气榜 100+", // 排名
+                "liveStartTime": "0001-01-01T00:00:00Z", // 本场开始直播时间
+                "liveing": false // 当前是否在直播
+            }
+        },
+        "gc": {
+            "gcAvgS": 117.19, // 平均gc间隔
+            "gcCPUFractionPpm": 10.23, // gc消耗cpu时间占比，百万分之
+            "lastGC": "2025-09-03T09:37:34+08:00", // 上次gc时间
+            "numGC": 970 // 总gc次数
+        },
+        "goVersion": "go1.25.0 X:jsonv2,greenteagc", // 构建golang版本
+        "mem": {
+            "memInUse": "20 MB", // 当前正在使用的内存大小
+            "memTotalAlloc": "9.1 GB" // 申请了的内存总计数
+        },
+        "numGoroutine": 22, // 当前协程数
+        "pid": 2729, // pid
         "reqPoolState": {
-            "inuse": 0,                   //全局请求池-正在使用数量
-            "nopooled": 0,
-            "nouse": 4,
-            "pooled": 4,
-            "qts": 1.8,                   //全局请求池-每秒请求数
-            "sum": 4                      //全局请求池-总数量
-        }
-      },
-      "common": {
-        "92613": {                        //正在录制的房间
-            "pid": 9,
-            "version": "c797128",
-            "live": [                     //流服务器状态>v0.14.5
-                {
-                    "Host": "xy111x59x162x229xy.mcdn.bilivideo.cn:486", //流服务器HOST
-                    "Up": true,                                         //是否启用
-                    "Codec": "avc",                                     //编码格式
-                    "ReUpTime": "0001-01-01 00:00:00",                  //重新启用时间
-                    "Expires": "2078-12-03 11:53:58",
-                    "DisableCount": 0                                   //被禁用次数
-                },
-                {
-                    "Host": "d1--cn-gotcha204-4.bilivideo.com",
-                    "Up": true,
-                    "Codec": "avc",
-                    "ReUpTime": "0001-01-01 00:00:00",
-                    "Expires": "2078-12-03 11:53:58",
-                    "DisableCount": 0
-                },
-                {
-                    "Host": "d1--cn-gotcha209.bilivideo.com",
-                    "Up": true,
-                    "Codec": "avc",
-                    "ReUpTime": "0001-01-01 00:00:00",
-                    "Expires": "2078-12-03 11:53:58",
-                    "DisableCount": 0
-                },
-                {
-                    "Host": "d1--cn-gotcha208.bilivideo.com",
-                    "Up": true,
-                    "Codec": "avc",
-                    "ReUpTime": "0001-01-01 00:00:00",
-                    "Expires": "2078-12-03 11:53:58",
-                    "DisableCount": 0
-                }
-            ],
-            "liveQn": 10000,                                //画质
-            "roomid": 92613,                                //房间号
-            "title": "补作业，没得D了",                     //标题
-            "uname": "少年Pi",
-            "upUid": 13046,
-            "rev": 0,
-            "renqi": 1,
-            "watched": 36272,
-            "onlineNum": 4615,
-            "guardNum": 720,
-            "parentAreaID": 6,
-            "areaID": 235,
-            "locked": false,
-            "note": "人气榜 100+",
-            "liveStartTime": "2024-06-17T15:55:05+08:00",
-            "liveing": true
-        }
-    },
-      "gc": {
-        "gcAvgS": 6.73,                   //平均gc间隔 单位秒
-        "gcCPUFractionPpm": 4.74,         //gc的STC耗时占总CPU时间比值 单位百万分之
-        "lastGC": "2023-03-11 15:49:01",  //最后gc时间
-        "numGC": 6                        //总gc数量
-      },
-      "mem": { "memInUse": "7.2 MB" }     //总使用内存
+            "inuse": 0, // 请求池当前使用数量
+            "nopooled": 0, // 请求池未在池中数量
+            "nouse": 4,  // 请求池当前未使用数量
+            "pooled": 4,  // 请求池在池中数量
+            "qts": 0.1, // 请求池每秒使用次数
+            "sum": 4  // 请求池大小
+        },
+        "timeInfo": {
+            "biliServerTimeZone": 28800,  // bilibili服务器时区，单位秒
+            "currentTime": "2025-09-03T09:38:03+08:00", // 服务当前时间
+            "startTime": "2025-09-02T02:03:23+08:00", // 服务启动时间
+            "timeZone": 28800 // 服务时区
+        },
+        "version": "2887d35" // 服务版本
     }
-  }
 }
 ```
 
