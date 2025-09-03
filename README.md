@@ -633,13 +633,13 @@ config_K_v.json
                 "uname": "少年Pi", // 主播名
                 "upUid": 13046, // 主播id
                 "rev": 1812.4, // 本场营收
-                "watched": 41456, // 本厂观看人数
+                "watched": 41456, // 本场观看人数
                 "onlineNum": 172, // 当前在线人数
                 "guardNum": 530, // 大航海人数
                 "parentAreaID": 6, // 分区编码
                 "areaID": 235, // 子分区编码
                 "locked": false, // 直播间是否被封禁
-                "login": true, // 当前是否登陆
+                "login": true, // 当前服务是否登陆
                 "note": "人气榜 100+", // 排名
                 "liveStartTime": "0001-01-01T00:00:00Z", // 本场开始直播时间
                 "liveing": false // 当前是否在直播
@@ -654,7 +654,7 @@ config_K_v.json
         "goVersion": "go1.25.0 X:jsonv2,greenteagc", // 构建golang版本
         "mem": {
             "memInUse": "20 MB", // 当前正在使用的内存大小
-            "memTotalAlloc": "9.1 GB" // 申请了的内存总计数
+            "memTotalAlloc": "9.1 GB" // 申请的内存历史总计数
         },
         "numGoroutine": 22, // 当前协程数
         "pid": 2729, // pid
@@ -672,7 +672,7 @@ config_K_v.json
             "startTime": "2025-09-02T02:03:23+08:00", // 服务启动时间
             "timeZone": 28800 // 服务时区
         },
-        "version": "2887d35" // 服务版本
+        "version": "2887d35" // 服务版本 git commit
     }
 }
 ```
