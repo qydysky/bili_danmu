@@ -101,29 +101,29 @@ func (t *Common) Lock() func() {
 
 func (t *Common) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
-		Live          []*LiveQn
-		LiveQn        int
-		Title         string
-		Uname         string
-		UpUid         int
-		Rev           float64
-		Watched       int
-		OnlineNum     int
-		GuardNum      int
-		ParentAreaID  int
-		AreaID        int
-		Locked        bool
-		Login         bool
-		Note          string
-		LiveStartTime string
-		Liveing       bool
+		Live          []*LiveQn `json:"live"`
+		LiveQn        int       `json:"liveQn"`
+		Title         string    `json:"title"`
+		Uname         string    `json:"uname"`
+		UpUid         int       `json:"upUid"`
+		Rev           float64   `json:"rev"`
+		Watched       int       `json:"watched"`
+		OnlineNum     int       `json:"onlineNum"`
+		GuardNum      int       `json:"guardNum"`
+		ParentAreaID  int       `json:"parentAreaID"`
+		AreaID        int       `json:"areaID"`
+		Locked        bool      `json:"locked"`
+		Login         bool      `json:"login"`
+		Note          string    `json:"note"`
+		LiveStartTime string    `json:"liveStartTime"`
+		Liveing       bool      `json:"liveing"`
 	}{
 		Live:          append([]*LiveQn{}, t.Live...),
 		LiveQn:        t.Live_qn,
 		Title:         t.Title,
 		Uname:         t.Uname,
 		UpUid:         t.UpUid,
-		Rev:           t.Rev,
+		Rev:           math.Round(t.Rev*100) / 100,
 		Watched:       t.Watched,
 		OnlineNum:     t.OnlineNum,
 		GuardNum:      t.GuardNum,
@@ -132,7 +132,7 @@ func (t *Common) MarshalJSON() ([]byte, error) {
 		Locked:        t.Locked,
 		Login:         t.Login,
 		Note:          t.Note,
-		LiveStartTime: t.Live_Start_Time.Format(time.DateTime),
+		LiveStartTime: t.Live_Start_Time.Format(time.RFC3339),
 		Liveing:       t.Liveing,
 	})
 }
@@ -149,20 +149,20 @@ type LiveQn struct {
 
 func (t LiveQn) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
-		Host         string
-		Up           bool
-		Codec        string
-		CreateTime   string
-		ReUpTime     string
-		Expires      string
-		DisableCount int
+		Host         string `json:"host"`
+		Up           bool   `json:"up"`
+		Codec        string `json:"codec"`
+		CreateTime   string `json:"createTime"`
+		ReUpTime     string `json:"reUpTime"`
+		Expires      string `json:"expires"`
+		DisableCount int    `json:"disableCount"`
 	}{
 		Host:         t.Host(),
 		Up:           time.Now().After(t.ReUpTime),
 		Codec:        t.Codec,
-		CreateTime:   t.CreateTime.Format(time.DateTime),
-		ReUpTime:     t.ReUpTime.Format(time.DateTime),
-		Expires:      t.Expires.Format(time.DateTime),
+		CreateTime:   t.CreateTime.Format(time.RFC3339),
+		ReUpTime:     t.ReUpTime.Format(time.RFC3339),
+		Expires:      t.Expires.Format(time.RFC3339),
 		DisableCount: t.DisableCount,
 	})
 }
@@ -645,36 +645,38 @@ func (t *Common) Init() *Common {
 
 				reqState := t.ReqPool.State()
 
+				_, timeOffset := time.Now().Zone()
+
 				ResStruct{0, "ok", map[string]any{
-					"version":     t.Version,
-					"startTime":   t.StartT.Format(time.DateTime),
-					"currentTime": time.Now().Format(time.DateTime),
-					"state": map[string]any{
-						"base": map[string]any{
-							"reqPoolState": map[string]any{
-								"pooled":   reqState.Pooled,
-								"nopooled": reqState.Nopooled,
-								"inuse":    reqState.Inuse,
-								"nouse":    reqState.Nouse,
-								"sum":      reqState.Sum,
-								"qts":      math.Round(reqState.GetPerSec*100) / 100,
-							},
-							"pid":          t.PID,
-							"numGoroutine": runtime.NumGoroutine(),
-							"goVersion":    runtime.Version(),
-						},
-						"mem": map[string]any{
-							"memInUse":      humanize.Bytes(memStats.HeapInuse + memStats.StackInuse),
-							"memTotalAlloc": humanize.Bytes(memStats.TotalAlloc),
-						},
-						"gc": map[string]any{
-							"numGC":            memStats.NumGC,
-							"lastGC":           time.UnixMicro(int64(memStats.LastGC / 1000)).Format(time.DateTime),
-							"gcCPUFractionPpm": float64(int(memStats.GCCPUFraction*100000000)) / 100,
-							"gcAvgS":           float64(int(gcAvgS*100)) / 100,
-						},
-						"common": streams,
+					"pid":       t.PID,
+					"version":   t.Version,
+					"goVersion": runtime.Version(),
+					"timeInfo": map[string]any{
+						"timeZone":           timeOffset,
+						"biliServerTimeZone": t.K_v.LoadV("服务器时区"),
+						"startTime":          t.StartT.Format(time.RFC3339),
+						"currentTime":        time.Now().Format(time.RFC3339),
 					},
+					"reqPoolState": map[string]any{
+						"pooled":   reqState.Pooled,
+						"nopooled": reqState.Nopooled,
+						"inuse":    reqState.Inuse,
+						"nouse":    reqState.Nouse,
+						"sum":      reqState.Sum,
+						"qts":      math.Round(reqState.GetPerSec*100) / 100,
+					},
+					"numGoroutine": runtime.NumGoroutine(),
+					"mem": map[string]any{
+						"memInUse":      humanize.Bytes(memStats.HeapInuse + memStats.StackInuse),
+						"memTotalAlloc": humanize.Bytes(memStats.TotalAlloc),
+					},
+					"gc": map[string]any{
+						"numGC":            memStats.NumGC,
+						"lastGC":           time.UnixMicro(int64(memStats.LastGC / 1000)).Format(time.RFC3339),
+						"gcCPUFractionPpm": float64(int(memStats.GCCPUFraction*100000000)) / 100,
+						"gcAvgS":           float64(int(gcAvgS*100)) / 100,
+					},
+					"common": streams,
 				},
 				}.Write(w)
 			})
