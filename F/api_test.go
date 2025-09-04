@@ -48,7 +48,7 @@ func Test_Html(t *testing.T) {
 	Api.Get(c.C, `Cookie`)
 	//获取LIVE_BUVID
 	// Api.Get(c.C, `LIVE_BUVID`)
-	c.C.Roomid = 213
+	c.C.Roomid = 394988
 	c.C.UpUid = 0
 	Api.common = c.C
 	if _, e := Api.html(); e != nil {

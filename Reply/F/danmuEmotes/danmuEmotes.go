@@ -16,6 +16,7 @@ import (
 	"github.com/dustin/go-humanize"
 	c "github.com/qydysky/bili_danmu/CV"
 	comp "github.com/qydysky/part/component2"
+	pe "github.com/qydysky/part/errors"
 	file "github.com/qydysky/part/file"
 	phash "github.com/qydysky/part/hash"
 	log "github.com/qydysky/part/log"
@@ -96,7 +97,7 @@ func (t *danmuEmotes) SaveEmote(ctx context.Context, ptr struct {
 							`Referer`:         "https://live.bilibili.com/",
 						},
 					}); e != nil {
-						ptr.Logg.L(`E: `, e)
+						ptr.Logg.L(`E: `, `表情下载失败`, pe.ErrorFormat(e, pe.ErrActionInLineFunc))
 					}
 				}()
 			}
@@ -192,7 +193,7 @@ func (t *danmuEmotes) PackEmotes(dir string) error {
 				set[key] = struct{}{}
 			}
 
-			f := file.Open(t.Dir+key+".png")
+			f := file.Open(t.Dir + key + ".png")
 			if f.IsExist() {
 				if w == nil {
 					f := file.Open(dir + "emotes.zip")
