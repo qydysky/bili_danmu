@@ -1066,12 +1066,12 @@ func init() {
 
 						} else {
 							if e := cuter.Cut(f, startT, duration, res); e != nil && !errors.Is(e, io.EOF) {
-								flog.L(`E: `, e)
+								flog.L(`I: `, e)
 							}
 						}
 
 					} else if e := f.CopyToIoWriter(w, pio.CopyConfig{BytePerSec: speed, SkipByte: rangeHeaderNum}); e != nil {
-						flog.L(`E: `, e)
+						flog.L(`I: `, e)
 					}
 					// }
 				}
