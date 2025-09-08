@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"regexp"
@@ -20,6 +21,7 @@ import (
 type TargetInterface interface {
 	// will WriteHeader
 	GetRec(savePath string, r *http.Request, w http.ResponseWriter) error
+	GetRec2(savePath string, w io.Writer) error
 	CheckRoot(dir string)
 	Rec(ctx context.Context, roomid int, savePath string) func(any)
 	Do(roomid int, msg string, uid string)
@@ -50,6 +52,14 @@ type danmuCountPerMin struct {
 
 func (t *danmuCountPerMin) CheckRoot(dir string) {
 	t.root = dir
+}
+
+func (t *danmuCountPerMin) GetRec2(savePath string, w io.Writer) error {
+	f := file.New(savePath+filename, 0, true).CheckRoot(t.root)
+	if f.IsDir() || !f.IsExist() {
+		return os.ErrNotExist
+	}
+	return f.CopyToIoWriter(w, part.CopyConfig{})
 }
 
 func (t *danmuCountPerMin) GetRec(savePath string, r *http.Request, w http.ResponseWriter) error {
@@ -174,7 +184,7 @@ func (t *danmuCountPerMin) Rec(ctx context.Context, rid int, savePath string) fu
 				cpm = append(cpm, make([]int, cu+1-len(cpm))...)
 			}
 
-			if data, e := json.MarshalIndent(cpm, "", " "); e != nil {
+			if data, e := json.Marshal(cpm); e != nil {
 				fmt.Println(e)
 			} else {
 				f := file.New(savePath+filename, 0, true)

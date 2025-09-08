@@ -659,6 +659,78 @@ func init() {
 			}
 		})
 
+		// 直播流文件弹幕统计apis
+		c.C.SerF.Store(spath+"danmuCountPerMins", func(w http.ResponseWriter, r *http.Request) {
+			if c.DefaultHttpFunc(c.C, w, r, http.MethodPost) {
+				return
+			}
+
+			root := ""
+			if v, ok := c.C.K_v.LoadV(`直播流保存位置`).(string); !ok || v == "" {
+				w.WriteHeader(http.StatusServiceUnavailable)
+				flog.L(`W: `, `直播流保存位置无效`)
+				return
+			} else {
+				_ = replyFunc.DanmuCountPerMin.Run(func(dcpmi replyFunc.DanmuCountPerMinI) error {
+					dcpmi.CheckRoot(root)
+					return nil
+				})
+				if strings.HasSuffix(v, "/") || strings.HasSuffix(v, "\\") {
+					root = v[:len(v)-1]
+				} else {
+					root = v
+				}
+			}
+
+			buf := make([]byte, humanize.KByte)
+			if n, e := io.ReadFull(r.Body, buf); n == len(buf) && e != io.EOF {
+				w.WriteHeader(http.StatusRequestEntityTooLarge)
+				return
+			} else {
+				buf = buf[:n]
+			}
+			var refs []string
+			if e := json.Unmarshal(buf, &refs); e != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+			w.Header().Set("Content-Type", "application/json")
+
+			_, _ = w.Write([]byte("["))
+			for i := 0; i < len(refs); i++ {
+				qref := refs[i]
+				if qref == "" {
+					continue
+				}
+				_, _ = w.Write([]byte(`{"ref":"` + qref + `","points":`))
+				if qref == `now` {
+					_, _ = w.Write([]byte("[]"))
+				} else {
+					qref = root + "/" + qref + "/"
+					if rawPath, e := url.PathUnescape(qref); e != nil {
+						flog.L(`I: `, "路径解码失败", qref)
+						continue
+					} else {
+						qref = rawPath
+					}
+					if e := replyFunc.DanmuCountPerMin.Run(func(dcpmi replyFunc.DanmuCountPerMinI) error {
+						if e := dcpmi.GetRec2(qref, w); e != nil && !errors.Is(e, os.ErrNotExist) {
+							flog.L(`W: `, "获取弹幕统计", e)
+						}
+						return nil
+					}); e != nil {
+						_, _ = w.Write([]byte("[]"))
+					}
+				}
+				if i < len(refs)-1 {
+					_, _ = w.Write([]byte("},"))
+				} else {
+					_, _ = w.Write([]byte("}"))
+				}
+			}
+			_, _ = w.Write([]byte("]"))
+		})
+
 		// 实时回放模式api
 		c.C.SerF.Store(spath+"streamMode", func(w http.ResponseWriter, r *http.Request) {
 			if c.DefaultHttpFunc(c.C, w, r, http.MethodGet) {

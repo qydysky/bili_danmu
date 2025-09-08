@@ -2,6 +2,7 @@ package f
 
 import (
 	"context"
+	"io"
 	"io/fs"
 	"iter"
 	"net/http"
@@ -67,6 +68,7 @@ var Rev = comp.GetV2(`rev`, comp.PreFuncErr[RevI]{})
 type DanmuCountPerMinI interface {
 	// will WriteHeader
 	GetRec(savePath string, r *http.Request, w http.ResponseWriter) error
+	GetRec2(savePath string, w io.Writer) error
 	CheckRoot(dir string)
 	Rec(ctx context.Context, roomid int, savePath string) func(any)
 	Do(roomid int, msg string, uid string)
