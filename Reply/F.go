@@ -671,15 +671,15 @@ func init() {
 				flog.L(`W: `, `直播流保存位置无效`)
 				return
 			} else {
-				_ = replyFunc.DanmuCountPerMin.Run(func(dcpmi replyFunc.DanmuCountPerMinI) error {
-					dcpmi.CheckRoot(root)
-					return nil
-				})
 				if strings.HasSuffix(v, "/") || strings.HasSuffix(v, "\\") {
 					root = v[:len(v)-1]
 				} else {
 					root = v
 				}
+				_ = replyFunc.DanmuCountPerMin.Run(func(dcpmi replyFunc.DanmuCountPerMinI) error {
+					dcpmi.CheckRoot(root)
+					return nil
+				})
 			}
 
 			buf := make([]byte, humanize.KByte)
@@ -696,13 +696,13 @@ func init() {
 			}
 			w.Header().Set("Content-Type", "application/json")
 
-			_, _ = w.Write([]byte("["))
+			_, _ = w.Write([]byte("{"))
 			for i := 0; i < len(refs); i++ {
 				qref := refs[i]
 				if qref == "" {
 					continue
 				}
-				_, _ = w.Write([]byte(`{"ref":"` + qref + `","points":`))
+				_, _ = w.Write([]byte(`"` + qref + `":`))
 				if qref == `now` {
 					_, _ = w.Write([]byte("[]"))
 				} else {
@@ -723,12 +723,10 @@ func init() {
 					}
 				}
 				if i < len(refs)-1 {
-					_, _ = w.Write([]byte("},"))
-				} else {
-					_, _ = w.Write([]byte("}"))
+					_, _ = w.Write([]byte(","))
 				}
 			}
-			_, _ = w.Write([]byte("]"))
+			_, _ = w.Write([]byte("}"))
 		})
 
 		// 实时回放模式api
