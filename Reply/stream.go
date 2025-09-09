@@ -358,7 +358,7 @@ func (t *M4SStream) fetchCheckStream() bool {
 	)
 	if v, ok := t.common.K_v.LoadV("直播流不使用mcdn").(bool); ok && v {
 		if reg, err := regexp.Compile(`\.mcdn\.`); err != nil {
-			_log.L(`W: `, `停用流服务器`, `正则错误`, err)
+			_log.L(`W: `, `停用流服务器`, `正则错误`, perrors.ErrorFormat(err, perrors.ErrActionInLineFunc))
 		} else {
 			noSer = append(noSer, reg)
 		}
@@ -367,7 +367,7 @@ func (t *M4SStream) fetchCheckStream() bool {
 		for i := 0; i < len(v); i++ {
 			if s, ok := v[i].(string); ok {
 				if reg, err := regexp.Compile(s); err != nil {
-					_log.L(`W: `, `停用流服务器`, `正则错误`, err)
+					_log.L(`W: `, `停用流服务器`, `正则错误`, perrors.ErrorFormat(err, perrors.ErrActionInLineFunc))
 				} else {
 					noSer = append(noSer, reg)
 				}
@@ -404,7 +404,7 @@ func (t *M4SStream) fetchCheckStream() bool {
 			Timeout:          5 * 1000,
 			JustResponseCode: true,
 		}); e != nil {
-			_log.L(`W: `, F.ParseHost(v.Url), e)
+			_log.L(`W: `, F.ParseHost(v.Url), perrors.ErrorFormat(e, perrors.ErrActionInLineFunc))
 			v.DisableAuto()
 			continue
 		}
