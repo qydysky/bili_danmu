@@ -671,7 +671,6 @@ func init() {
 				flog.L(`W: `, `直播流保存位置无效`)
 				return
 			} else {
-
 				if strings.HasSuffix(v, "/") || strings.HasSuffix(v, "\\") {
 					root = v[:len(v)-1]
 				} else {
@@ -682,8 +681,6 @@ func init() {
 					return nil
 				})
 			}
-
-			qref := r.URL.Query().Get("ref")
 
 			buf := make([]byte, humanize.KByte)
 			if n, e := io.ReadFull(r.Body, buf); n == len(buf) && e != io.EOF {
@@ -701,25 +698,24 @@ func init() {
 
 			_, _ = w.Write([]byte("{"))
 			for i := 0; i < len(refs); i++ {
-				ref := refs[i]
-				if ref == "" {
+				qref := refs[i]
+				if qref == "" {
 					continue
 				}
-				_, _ = w.Write([]byte(`"` + ref + `":`))
-				if ref == `now` {
+				_, _ = w.Write([]byte(`"` + qref + `":`))
+				if qref == `now` {
 					_, _ = w.Write([]byte("[]"))
 				} else {
-					ref = root + "/" + qref + ref + "/"
-					if rawPath, e := url.PathUnescape(ref); e != nil {
-						flog.L(`I: `, "路径解码失败", ref)
+					qref = root + "/" + qref + "/"
+					if rawPath, e := url.PathUnescape(qref); e != nil {
+						flog.L(`I: `, "路径解码失败", qref)
 						continue
 					} else {
-						ref = rawPath
+						qref = rawPath
 					}
 					if e := replyFunc.DanmuCountPerMin.Run(func(dcpmi replyFunc.DanmuCountPerMinI) error {
-						if e := dcpmi.GetRec2(ref, w); e != nil && !errors.Is(e, os.ErrNotExist) {
+						if e := dcpmi.GetRec2(qref, w); e != nil && !errors.Is(e, os.ErrNotExist) {
 							flog.L(`W: `, "获取弹幕统计", e)
-							return e
 						}
 						return nil
 					}); e != nil {
