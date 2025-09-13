@@ -96,7 +96,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
 func (t *Ass) ToAss(savePath string, filename ...string) {
 	f := file.New(savePath+append(filename, "0.ass")[0], 0, false)
-	defer f.Close()
+	defer f.CloseErr()
 	if f.IsExist() {
 		_ = f.Delete()
 	}
@@ -150,7 +150,7 @@ func (t *Ass) ToAss(savePath string, filename ...string) {
 func loadCsv(savePath string, filename ...string) iter.Seq[Data] {
 	return func(yield func(Data) bool) {
 		csvf := file.New(savePath+append(filename, "0.csv")[0], 0, false)
-		defer csvf.Close()
+		defer func() { _ = csvf.Close() }()
 
 		if !csvf.IsExist() {
 			return

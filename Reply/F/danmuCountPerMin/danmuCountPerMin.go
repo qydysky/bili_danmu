@@ -188,7 +188,7 @@ func (t *danmuCountPerMin) Rec(ctx context.Context, rid int, savePath string) fu
 				fmt.Println(e)
 			} else {
 				f := file.New(savePath+filename, 0, true)
-				defer f.Close()
+				defer f.CloseErr()
 				_ = f.Delete()
 				if _, e = f.WriteRaw(data, false); e != nil {
 					fmt.Println(e)

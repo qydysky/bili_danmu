@@ -151,7 +151,7 @@ func FileLoad(path string) (data []byte, err error) {
 		err = e
 		return
 	}
-	defer fileObject.Close()
+	defer func() { _ = fileObject.Close() }()
 	data, e = io.ReadAll(fileObject)
 	if e != nil {
 		err = e

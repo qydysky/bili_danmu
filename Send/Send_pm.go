@@ -31,12 +31,13 @@ func Send_pm(uid int, msg string) error {
 
 	log := c.C.Log.Base_add(`私信`)
 
-	if c.C.Uid == 0 {
-		log.L(`E: `, `client uid == 0`)
-		return errors.New(`client uid == 0`)
-	} else if c.C.Uid == uid {
+	switch c.C.Uid {
+	case uid:
 		log.L(`W: `, `不能发送给自己`)
 		return errors.New(`不能发送给自己`)
+	case 0:
+		log.L(`E: `, `client uid == 0`)
+		return errors.New(`client uid == 0`)
 	}
 
 	csrf, _ := c.C.Cookie.LoadV(`bili_jct`).(string)

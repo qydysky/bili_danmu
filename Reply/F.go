@@ -393,7 +393,7 @@ func (t *saveToJson) Init() {
 			f := file.Open(path)
 			_ = f.Delete()
 			_, _ = f.Write([]byte("["))
-			f.Close()
+			_ = f.Close()
 
 			t.msg = msgq.NewType[[]byte]()
 			t.msg.Pull_tag(map[string]func([]byte) (disable bool){
@@ -401,14 +401,14 @@ func (t *saveToJson) Init() {
 					f := file.New(path, -1, false)
 					_, _ = f.Write(b)
 					_, _ = f.Write([]byte(","))
-					f.Close()
+					_ = f.Close()
 					return false
 				},
 				`stop`: func(_ []byte) (disable bool) {
 					f := file.New(path, -1, false)
 					_ = f.SeekIndex(-1, file.AtEnd)
 					_, _ = f.Write([]byte("]"))
-					f.Close()
+					_ = f.Close()
 					return true
 				},
 			})
@@ -804,7 +804,9 @@ func init() {
 				}
 
 				dir := file.New(v, 0, true)
-				defer dir.Close()
+				defer func() {
+					_ = dir.Close()
+				}()
 				if !dir.IsDir() {
 					c.ResStruct{Code: -1, Message: "not dir", Data: nil}.Write(w)
 					return
@@ -1077,7 +1079,7 @@ func init() {
 					}
 
 					f := file.Open(v).CheckRoot(s)
-					defer f.Close()
+					defer f.CloseErr()
 
 					// 设置当前返回区间，并拷贝
 					// if fi, e := f.Stat(); e != nil {

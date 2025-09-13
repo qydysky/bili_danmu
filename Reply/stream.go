@@ -629,7 +629,7 @@ func (t *M4SStream) removeStream() (e error) {
 			if err != nil {
 				return err
 			}
-			defer f.Close()
+			defer func() { _ = f.Close() }()
 
 			if _, err = f.Stat(); err != nil {
 				return err
@@ -662,7 +662,9 @@ func (t *M4SStream) removeStream() (e error) {
 
 			for n, i := 2, len(oldIndex)-1; n > 0 && i >= 0; n, i = n-1, i-1 {
 				t.log.L(`I: `, "移除历史流", v+"/"+list[oldIndex[i]].Name())
-				os.RemoveAll(v + "/" + list[oldIndex[i]].Name())
+				if e := os.RemoveAll(v + "/" + list[oldIndex[i]].Name()); e != nil {
+					return e
+				}
 			}
 		}
 	}
@@ -715,7 +717,7 @@ func (t *M4SStream) saveStream() (e error) {
 		// 停止附加到其他文件
 		t.msg.PushLock_tag(`closefile`, t)
 
-		var startCount uint = defaultStartCount
+		var startCount = defaultStartCount
 		if s, ok := t.common.K_v.LoadV("直播流接收n帧才保存").(float64); ok && s > 0 && uint(s) > startCount {
 			startCount = uint(s)
 		}
@@ -1558,8 +1560,7 @@ func (t *M4SStream) Start() bool {
 								} else if e := dealer.GenFastSeed(f, sf); e != nil && !errors.Is(e, io.EOF) {
 									l.Base_add(`GenFastSeed`).L(`E: `, path, e)
 								}
-								f.Close()
-								return nil
+								return f.Close()
 							})
 						}
 					}
@@ -1651,7 +1652,7 @@ func (t *M4SStream) Cut() {
 // 保存到文件
 func (t *M4SStream) PusherToFile(contextC context.Context, filepath string, startFunc func(*M4SStream) error, stopFunc func(*M4SStream) error) error {
 	f := file.Open(filepath)
-	defer f.Close()
+	defer f.CloseErr()
 	_ = f.Delete()
 
 	if e := startFunc(t); e != nil {

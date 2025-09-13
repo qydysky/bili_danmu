@@ -59,7 +59,7 @@ func (t parseM3u8) Parse(respon []byte, lastNo int) (m4sLink iter.Seq[interface 
 	}
 
 	m3u := bytes.Split(respon, []byte("\n"))
-	var maxqn int = -1
+	var maxqn = -1
 	for i := 0; i < len(m3u); i++ {
 		if bytes.HasPrefix(m3u[i], extXStreamInf) {
 			// m3u8 指向新连接

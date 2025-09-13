@@ -32,11 +32,11 @@ type videoFastSeed struct {
 	filepath string
 }
 
-func (_ videoFastSeed) InitGet(fastSeedFilePath string) (getIndex func(seedTo time.Duration) (int64, error), e error) {
+func (v videoFastSeed) InitGet(fastSeedFilePath string) (getIndex func(seedTo time.Duration) (int64, error), e error) {
 	t := videoFastSeed{}
 	t.filepath = fastSeedFilePath
 	f := file.New(t.filepath, -1, false)
-	defer f.Close()
+	defer f.CloseErr()
 	if !f.IsExist() {
 		return nil, os.ErrNotExist
 	}
@@ -44,11 +44,11 @@ func (_ videoFastSeed) InitGet(fastSeedFilePath string) (getIndex func(seedTo ti
 	return t.GetIndex, nil
 }
 
-func (_ videoFastSeed) InitSav(fastSeedFilePath string) (savIndex func(seedTo time.Duration, cuIndex int64) error, e error) {
+func (v videoFastSeed) InitSav(fastSeedFilePath string) (savIndex func(seedTo time.Duration, cuIndex int64) error, e error) {
 	t := videoFastSeed{}
 	t.filepath = fastSeedFilePath
 	f := file.New(t.filepath, -1, false)
-	defer f.Close()
+	defer f.CloseErr()
 	if f.IsExist() {
 		_ = f.Delete()
 	}
@@ -61,7 +61,7 @@ func (t *videoFastSeed) SavIndex(ms time.Duration, cuIndex int64) error {
 		return ErrNoInitSav
 	}
 	f := file.New(t.filepath, -1, false)
-	defer f.Close()
+	defer f.CloseErr()
 	if _, e := f.WriteRaw(Itob64(ms.Milliseconds()), false); e != nil {
 		return e
 	}
@@ -76,7 +76,7 @@ func (t *videoFastSeed) GetIndex(seedTo time.Duration) (int64, error) {
 		return -1, ErrNoInitGet
 	}
 	f := file.Open(t.filepath)
-	defer f.Close()
+	defer f.CloseErr()
 	if !f.IsExist() {
 		return -1, os.ErrNotExist
 	}

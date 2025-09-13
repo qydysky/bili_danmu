@@ -12,9 +12,9 @@ import (
 )
 
 func TestDealEnv(t *testing.T) {
-	os.Setenv("tes", "2")
-	os.Setenv("tes1", "true")
-	os.Setenv("tes2", "true")
+	_ = os.Setenv("tes", "2")
+	_ = os.Setenv("tes1", "true")
+	_ = os.Setenv("tes2", "true")
 	var m syncmap.Map
 	m.Store("k", float64(1))
 	m.Store("b", false)
@@ -40,7 +40,7 @@ func TestDealEnv(t *testing.T) {
 }
 
 func TestDealEnv2(t *testing.T) {
-	os.Setenv("tes", "2")
+	_ = os.Setenv("tes", "2")
 	var m syncmap.Map
 	m.Store("k", map[string]any{"d": float64(1)})
 	if e := dealEnv(&m, map[string]any{`key`: `k.d`, `type`: `float64`, `env`: `tes`}); e != nil {
@@ -54,7 +54,7 @@ func TestDealEnv2(t *testing.T) {
 }
 
 func TestDealEnv3(t *testing.T) {
-	os.Setenv("tes", "2")
+	_ = os.Setenv("tes", "2")
 	var m syncmap.Map
 	m.Store("k", []any{float64(1)})
 	if e := dealEnv(&m, map[string]any{`key`: `k.[0]`, `type`: `float64`, `env`: `tes`}); e != nil {
@@ -68,7 +68,7 @@ func TestDealEnv3(t *testing.T) {
 }
 
 func TestDealEnv4(t *testing.T) {
-	os.Setenv("tes", "2")
+	_ = os.Setenv("tes", "2")
 	var m syncmap.Map
 	m.Store("k", []any{map[string]any{"d": float64(1)}})
 	if e := dealEnv(&m, map[string]any{`key`: `k.[0].d`, `type`: `float64`, `env`: `tes`}); e != nil {

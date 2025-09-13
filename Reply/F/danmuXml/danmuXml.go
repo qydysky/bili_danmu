@@ -56,7 +56,7 @@ func toXml(ctx context.Context, path *string) (any, error) {
 		Source:     "e-r",
 	}
 
-	csvf := file.Open((*path)+"0.csv")
+	csvf := file.Open((*path) + "0.csv")
 	var data = Data{}
 	for i := 0; true; i += 1 {
 		if line, e := csvf.ReadUntil([]byte{'\n'}, humanize.KByte, humanize.MByte); len(line) != 0 {
@@ -78,16 +78,16 @@ func toXml(ctx context.Context, path *string) (any, error) {
 			break
 		}
 	}
-	csvf.Close()
+	_ = csvf.Close()
 
 	output, err := xml.MarshalIndent(d, "", "    ")
 	if err != nil {
 		return nil, err
 	}
 
-	f := file.Open((*path)+"0.xml")
+	f := file.Open((*path) + "0.xml")
 	_ = f.Delete()
-	defer f.Close()
+	defer f.CloseErr()
 
 	if _, err := f.Write([]byte(xml.Header)); err != nil {
 		return nil, err

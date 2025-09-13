@@ -93,7 +93,7 @@ func Reply(common *c.Common, b []byte) {
 			reply_log.L(`E: `, "解压错误")
 			return
 		}
-		defer readc.Close()
+		defer func() { _ = readc.Close() }()
 
 		buf := bytes.NewBuffer(nil)
 		if _, err := buf.ReadFrom(readc); err != nil {
@@ -165,7 +165,7 @@ func (t replyF) rank_changed(s string) {
 	}
 
 	var tmp = fmt.Sprintf("%s %d", j.Data.RankNameByType, j.Data.Rank)
-	t.Common.Note = tmp
+	t.Note = tmp
 	Gui_show(tmp, "0rank")
 	_ = replyFunc.TTS.Run(func(t replyFunc.TTSI) error {
 		t.Deal("0rank", map[string]string{
@@ -440,7 +440,7 @@ func (t replyF) user_toast_msg(s string) {
 	}
 	if price != 0 {
 		sh_log = append(sh, fmt.Sprintf("￥%d", price/1000)) //不在界面显示价格
-		t.Common.Danmu_Main_mq.Push_tag(`c.Rev_add`, struct {
+		t.Danmu_Main_mq.Push_tag(`c.Rev_add`, struct {
 			Roomid int
 			Rev    float64
 		}{
@@ -461,15 +461,15 @@ func (t replyF) user_toast_msg(s string) {
 		})
 	}
 	{ //额外 ass 私信
-		t.Common.Danmu_Main_mq.Push_tag(`guard_update`, nil) //使用连续付费的新舰长无法区分，刷新舰长数
-		if msg := t.Common.K_v.LoadV(`上舰私信`).(string); uid != 0 && msg != "" {
-			t.Common.Danmu_Main_mq.Push_tag(`pm`, send.Pm_item{
+		t.Danmu_Main_mq.Push_tag(`guard_update`, nil) //使用连续付费的新舰长无法区分，刷新舰长数
+		if msg := t.K_v.LoadV(`上舰私信`).(string); uid != 0 && msg != "" {
+			t.Danmu_Main_mq.Push_tag(`pm`, send.Pm_item{
 				Uid: uid,
 				Msg: msg,
 			}) //上舰私信
 		}
-		if msg, uid := t.Common.K_v.LoadV(`上舰私信(额外)`).(string), t.Common.K_v.LoadV(`额外私信对象`).(float64); uid != 0 && msg != "" {
-			t.Common.Danmu_Main_mq.Push_tag(`pm`, send.Pm_item{
+		if msg, uid := t.K_v.LoadV(`上舰私信(额外)`).(string), t.K_v.LoadV(`额外私信对象`).(float64); uid != 0 && msg != "" {
+			t.Danmu_Main_mq.Push_tag(`pm`, send.Pm_item{
 				Uid: int(uid),
 				Msg: msg,
 			}) //上舰私信-对额外
@@ -499,10 +499,10 @@ var (
 )
 
 func (t replyF) heartbeat(s int) {
-	if v, ok := t.Common.K_v.LoadV("下播后不记录人气观看人数").(bool); ok && v && !t.Common.Liveing {
+	if v, ok := t.K_v.LoadV("下播后不记录人气观看人数").(bool); ok && v && !t.Liveing {
 		return
 	}
-	t.Common.Danmu_Main_mq.Push_tag(`c.Renqi`, struct {
+	t.Danmu_Main_mq.Push_tag(`c.Renqi`, struct {
 		Roomid int
 		Renqi  int
 	}{
@@ -512,8 +512,8 @@ func (t replyF) heartbeat(s int) {
 	if s == 1 {
 		return
 	} //人气为1,不输出
-	if t.Common.Roomid != cuRoom {
-		cuRoom = t.Common.Roomid
+	if t.Roomid != cuRoom {
+		cuRoom = t.Roomid
 		renqi_last = 0
 		renqi_old = 0
 		watched_old = 0
@@ -529,8 +529,8 @@ func (t replyF) heartbeat(s int) {
 			tmp1        string
 			tmp2        string
 		)
-		if time.Since(t.Common.Live_Start_Time) > time.Minute {
-			watchPerMin = float64(t.Common.Watched) / float64(time.Since(t.Common.Live_Start_Time)/time.Minute)
+		if time.Since(t.Live_Start_Time) > time.Minute {
+			watchPerMin = float64(t.Watched) / float64(time.Since(t.Live_Start_Time)/time.Minute)
 		}
 		if renqi_old != 0 {
 			renqi_l = (renqi_l + 100*float64(s-renqi_old)/float64(renqi_old)) / 2
@@ -557,7 +557,7 @@ func (t replyF) heartbeat(s int) {
 			tmp1 = "(=0.0%)"
 		}
 		if onlinenum_old != 0 {
-			onlinenum_l = (onlinenum_l + 100*float64(t.Common.OnlineNum-onlinenum_old)/float64(onlinenum_old)) / 2
+			onlinenum_l = (onlinenum_l + 100*float64(t.OnlineNum-onlinenum_old)/float64(onlinenum_old)) / 2
 			if onlinenum_l > 0 {
 				tmp2 = `+`
 			} else if onlinenum_l == 0 {
@@ -568,10 +568,10 @@ func (t replyF) heartbeat(s int) {
 		} else {
 			tmp2 = "(=0.0%)"
 		}
-		fmt.Printf("+----\n|当前人气:%s%d\n|平均观看:%s%d\n|在线人数:%s%d\n+----\n", tmp, s, tmp1, int(watchPerMin), tmp2, t.Common.OnlineNum)
+		fmt.Printf("+----\n|当前人气:%s%d\n|平均观看:%s%d\n|在线人数:%s%d\n+----\n", tmp, s, tmp1, int(watchPerMin), tmp2, t.OnlineNum)
 		renqi_old = s
 		watched_old = watchPerMin
-		onlinenum_old = t.Common.OnlineNum
+		onlinenum_old = t.OnlineNum
 	}
 	renqi_last = s
 	reply_log.Base_add(`人气`).Log_show_control(false).L(`I: `, "当前人气", s)
@@ -593,18 +593,18 @@ func (t replyF) win_activity(s string) {
 
 // Msg-观看人数
 func (t replyF) watched_change(s string) {
-	if v, ok := t.Common.K_v.LoadV("下播后不记录人气观看人数").(bool); ok && v && !t.Common.Liveing {
+	if v, ok := t.K_v.LoadV("下播后不记录人气观看人数").(bool); ok && v && !t.Liveing {
 		return
 	}
 	var data ws_msg.WATCHED_CHANGE
 	_ = json.Unmarshal([]byte(s), &data)
 	// fmt.Printf("\t观看人数:%d\n", watched)
-	if data.Data.Num == t.Common.Watched {
+	if data.Data.Num == t.Watched {
 		return
 	}
 	// fmt.Printf("\t观看人数:%d\n", data.Data.Num)
-	t.Common.Watched = data.Data.Num
-	var pperm = float64(t.Common.Watched) / float64(time.Since(t.Common.Live_Start_Time)/time.Minute)
+	t.Watched = data.Data.Num
+	var pperm = float64(t.Watched) / float64(time.Since(t.Live_Start_Time)/time.Minute)
 	msglog.Base_add("房").Log_show_control(false).L(`I: `, "观看人数", data.Data.Num, fmt.Sprintf(" avg:%.1f人/分", pperm))
 }
 
@@ -647,28 +647,28 @@ func (t replyF) room_change(s string) {
 	}
 
 	// 切换分区
-	if t.Common.AreaID != type_item.Data.AreaID {
-		t.Common.AreaID = type_item.Data.AreaID
-		t.Common.ParentAreaID = type_item.Data.ParentAreaID
+	if t.AreaID != type_item.Data.AreaID {
+		t.AreaID = type_item.Data.AreaID
+		t.ParentAreaID = type_item.Data.ParentAreaID
 		var sh = []any{"分区改变", type_item.Data.AreaName}
 		Gui_show(Itos(sh), "0room")
 		msglog.Base_add("房").L(`I: `, sh...)
 		return
 	}
 
-	setTitle := StreamOCut(t.Common.Roomid)
+	setTitle := StreamOCut(t.Roomid)
 
 	// 标题改变
-	if t.Common.Title != type_item.Data.Title {
-		t.Common.Title = type_item.Data.Title
-		setTitle(t.Common.Title)
-		var sh = []any{"标题改变", t.Common.Title}
+	if t.Title != type_item.Data.Title {
+		t.Title = type_item.Data.Title
+		setTitle(t.Title)
+		var sh = []any{"标题改变", t.Title}
 		Gui_show(Itos(sh), "0room")
 		msglog.Base_add("房").L(`I: `, sh...)
 	} else {
 		// 直播间标题引入审核机制，触发审核时会接收到一个roomchange但标题不变
 		tryS := 900.0
-		if v, ok := t.Common.K_v.LoadV("标题修改检测s").(float64); ok && v > tryS {
+		if v, ok := t.K_v.LoadV("标题修改检测s").(float64); ok && v > tryS {
 			tryS = v
 		}
 
@@ -676,23 +676,23 @@ func (t replyF) room_change(s string) {
 		roomChangeFC.FlashWithCallback(cancle)
 
 		go func(ctx context.Context, roomid int, oldTitle string) {
-			for t.Common.Roomid == roomid {
+			for t.Roomid == roomid {
 				select {
 				case <-ctx.Done():
 					msglog.Base_add("房").L(`W: `, `指定时长内标题未修改，可能需要调大标题修改检测s`)
 					return
 				case <-time.After(time.Second * 30):
 					F.Api.Get(t.Common, `Title`)
-					if t.Common.Roomid == roomid && t.Common.Title != oldTitle {
-						setTitle(t.Common.Title)
-						var sh = []any{"标题改变", t.Common.Title}
+					if t.Roomid == roomid && t.Title != oldTitle {
+						setTitle(t.Title)
+						var sh = []any{"标题改变", t.Title}
 						Gui_show(Itos(sh), "0room")
 						msglog.Base_add("房").L(`I: `, sh...)
 						return
 					}
 				}
 			}
-		}(ctx, t.Common.Roomid, t.Common.Title)
+		}(ctx, t.Roomid, t.Title)
 	}
 }
 
@@ -853,7 +853,7 @@ func (t replyF) send_gift(s string) {
 	if total_coin != 0 {
 		allprice = float64(total_coin) / 1000
 		sh_log = append(sh, fmt.Sprintf("￥%.1f", allprice)) //不在界面显示价格
-		t.Common.Danmu_Main_mq.Push_tag(`c.Rev_add`, struct {
+		t.Danmu_Main_mq.Push_tag(`c.Rev_add`, struct {
 			Roomid int
 			Rev    float64
 		}{
@@ -869,7 +869,7 @@ func (t replyF) send_gift(s string) {
 	//小于设定
 	{
 		var tmp = 20.0
-		if v, ok := t.Common.K_v.Load(`弹幕_礼物金额显示阈值`); ok {
+		if v, ok := t.K_v.Load(`弹幕_礼物金额显示阈值`); ok {
 			tmp = v.(float64)
 		}
 		if allprice < tmp {
@@ -924,7 +924,7 @@ func (t replyF) preparing(s string) {
 		return
 	} else {
 		{ //附加功能 savestream结束
-			t.Common.Liveing = false
+			t.Liveing = false
 			// 停止此房间录制
 			var roomId, _ = strconv.Atoi(type_item.Roomid)
 			StreamOStop(roomId)
@@ -952,24 +952,24 @@ func (t replyF) live(s string) {
 			// Obs_R(true)
 		}
 		{
-			t.Common.Rev = 0.0                    //营收
-			t.Common.Liveing = true               //直播i标志
-			t.Common.Live_Start_Time = time.Now() //开播h时间
+			t.Rev = 0.0                    //营收
+			t.Liveing = true               //直播i标志
+			t.Live_Start_Time = time.Now() //开播h时间
 		}
 		//开始录制
 		go func() {
-			if v, ok := t.Common.K_v.LoadV(`仅保存当前直播间流`).(bool); ok && v {
-				StreamOStopOther(t.Common.Roomid) //停止其他房间录制
+			if v, ok := t.K_v.LoadV(`仅保存当前直播间流`).(bool); ok && v {
+				StreamOStopOther(t.Roomid) //停止其他房间录制
 			}
 			if _, e := recStartEnd.RecStartCheck.Run(context.Background(), t.Common); e == nil {
-				if !StreamOStatus(t.Common.Roomid) {
-					StreamOStart(t.Common.Roomid)
+				if !StreamOStatus(t.Roomid) {
+					StreamOStart(t.Roomid)
 				}
 			} else {
 				msglog.L(`W: `, "房间", type_item.Roomid, e)
 			}
 			//有时不返回弹幕 开播刷新弹幕
-			t.Common.Danmu_Main_mq.Push_tag(`flash_room`, nil)
+			t.Danmu_Main_mq.Push_tag(`flash_room`, nil)
 		}()
 
 		Gui_show(Itos([]interface{}{"房间", type_item.Roomid, "开播了"}), "0room")
@@ -1019,7 +1019,7 @@ func (t replyF) super_chat_message(s string) {
 	if price != 0 {
 		sh = append(sh, "\n") //界面不显示价格
 		logg = append(logg, fmt.Sprintf("￥%d", price))
-		t.Common.Danmu_Main_mq.Push_tag(`c.Rev_add`, struct {
+		t.Danmu_Main_mq.Push_tag(`c.Rev_add`, struct {
 			Roomid int
 			Rev    float64
 		}{
@@ -1249,7 +1249,7 @@ func (t replyF) danmu(s string) {
 
 	infob := j.Info
 	item := Danmu_item{}
-	if v, ok := t.Common.K_v.LoadV(`弹幕回放_隐藏发送人`).(bool); ok && v {
+	if v, ok := t.K_v.LoadV(`弹幕回放_隐藏发送人`).(bool); ok && v {
 		item.hideAuth = true
 	}
 	{
@@ -1261,7 +1261,7 @@ func (t replyF) danmu(s string) {
 		if i, ok := infob[0].([]any); ok {
 			item.color = "#" + fmt.Sprintf("%x", F.Itob32(int32(i[3].(float64)))[1:])
 
-			if v, ok := t.Common.K_v.LoadV(`弹幕表情`).(bool); ok && v {
+			if v, ok := t.K_v.LoadV(`弹幕表情`).(bool); ok && v {
 				_ = replyFunc.DanmuEmotes.Run(func(dei replyFunc.DanmuEmotesI) error {
 					_, e := dei.SaveEmote(context.Background(), replyFunc.DanmuEmotesS{Logg: msglog, Info: i, Msg: &item.msg})
 					item.hasEmote = e == nil
@@ -1281,12 +1281,12 @@ func (t replyF) danmu(s string) {
 				item.auth = i[1]
 			}
 		}
-		item.roomid = t.Common.Roomid
+		item.roomid = t.Roomid
 	}
 
 	danmulog := msglog.Base("弹").LShow(false)
 
-	if v, ok := t.Common.K_v.LoadV(`弹幕输出到日志`).(bool); !ok || !v {
+	if v, ok := t.K_v.LoadV(`弹幕输出到日志`).(bool); !ok || !v {
 		danmulog.LFile("")
 		danmulog.LDB("", nil, "")
 	}
@@ -1315,16 +1315,16 @@ func (t replyF) danmu(s string) {
 					})
 				}
 				if i, e := strconv.Atoi(item.uid); e == nil {
-					if msg := t.Common.K_v.LoadV(`弹幕私信`).(string); msg != "" {
-						t.Common.Danmu_Main_mq.Push_tag(`pm`, send.Pm_item{
+					if msg := t.K_v.LoadV(`弹幕私信`).(string); msg != "" {
+						t.Danmu_Main_mq.Push_tag(`pm`, send.Pm_item{
 							Uid: i,
 							Msg: msg,
 						}) //弹幕私信
 					}
 				}
-				if t.Common.K_v.LoadV(`额外私信对象`).(float64) != 0 {
-					if msg, uid := t.Common.K_v.LoadV(`弹幕私信(额外)`).(string), t.Common.K_v.LoadV(`额外私信对象`).(float64); uid != 0 && msg != "" {
-						t.Common.Danmu_Main_mq.Push_tag(`pm`, send.Pm_item{
+				if t.K_v.LoadV(`额外私信对象`).(float64) != 0 {
+					if msg, uid := t.K_v.LoadV(`弹幕私信(额外)`).(string), t.K_v.LoadV(`额外私信对象`).(float64); uid != 0 && msg != "" {
+						t.Danmu_Main_mq.Push_tag(`pm`, send.Pm_item{
 							Uid: int(uid),
 							Msg: msg,
 						}) //弹幕私信-对额外

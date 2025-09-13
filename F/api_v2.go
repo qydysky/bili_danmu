@@ -190,7 +190,9 @@ func (t *GetFuncV2) getCookie() (missKey string, err error) {
 			apilog.L(`E: `, `qr error`)
 			return
 		}
-		defer os.RemoveAll(`qr.png`)
+		defer func() {
+			_ = os.RemoveAll(`qr.png`)
+		}()
 		//启动web
 		if scanPath, ok := t.common.K_v.LoadV("扫码登录路径").(string); ok && scanPath != "" {
 			t.common.SerF.Store(scanPath, func(w http.ResponseWriter, r *http.Request) {
@@ -860,7 +862,7 @@ func (t *GetFuncV2) configStreamType(sts []struct {
 }) {
 	var (
 		wantTypes []c.StreamType
-		chosen    int = -1
+		chosen    = -1
 	)
 
 	defer func() {
