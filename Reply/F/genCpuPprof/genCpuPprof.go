@@ -57,7 +57,7 @@ func start(ctx context.Context, file string) (any, error) {
 
 				_ = pgo.CopyFromIoReader(bufB, pio.CopyConfig{})
 
-				pgo.Close()
+				_ = pgo.Close()
 			}
 		})
 	return nil, nil

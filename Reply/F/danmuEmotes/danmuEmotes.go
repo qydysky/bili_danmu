@@ -201,7 +201,7 @@ func (t *danmuEmotes) PackEmotes(dir string) error {
 						_ = f.Delete()
 					}
 					w = zip.NewWriter(f.File())
-					defer w.Close()
+					defer func() { _ = w.Close() }()
 				}
 				if iw, e := w.Create(key + ".png"); e != nil {
 					return e
@@ -226,7 +226,7 @@ func (t *danmuEmotes) GetEmotesDir(dir string) fs.FS {
 func loadCsv(savePath string, filename ...string) iter.Seq[Data] {
 	return func(yield func(Data) bool) {
 		csvf := file.New(savePath+append(filename, "0.csv")[0], 0, false)
-		defer csvf.Close()
+		defer func() { _ = csvf.Close() }()
 
 		if !csvf.IsExist() {
 			return

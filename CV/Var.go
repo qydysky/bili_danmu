@@ -516,7 +516,7 @@ func (t *Common) Init() *Common {
 								stopPath = ""
 								break
 							} else {
-								conn.Close()
+								_ = conn.Close()
 							}
 							time.Sleep(time.Second)
 						}

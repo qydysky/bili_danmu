@@ -80,7 +80,7 @@ func save(ctx context.Context, i Info) (*Paf, error) {
 func get(ctx context.Context, savepath string) (*Paf, error) {
 	var d Paf
 	dirf := file.New(savepath, 0, true)
-	defer dirf.Close()
+	defer dirf.CloseErr()
 	if dirf.IsDir() {
 		// 从文件夹获取信息
 		// {
@@ -101,7 +101,7 @@ func get(ctx context.Context, savepath string) (*Paf, error) {
 			if !json0.IsExist() {
 				return &d, os.ErrNotExist
 			}
-			defer json0.Close()
+			defer json0.CloseErr()
 			if data, e := json0.ReadAll(1<<8, 1<<16); e != nil && !errors.Is(e, io.EOF) {
 				return &d, e
 			} else {

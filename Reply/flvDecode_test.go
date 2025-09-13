@@ -16,7 +16,7 @@ import (
 
 func Test_FLVdeal(t *testing.T) {
 	f := file.Open("testdata/0.flv")
-	defer f.Close()
+	defer f.CloseErr()
 
 	if f.IsDir() || !f.IsExist() {
 		t.Fatal("file not support")
@@ -65,11 +65,11 @@ func Test_FLVCut(t *testing.T) {
 		}()
 	}
 	cutf := file.Open("testdata/0.cut.flv")
-	defer cutf.Close()
+	defer cutf.CloseErr()
 	_ = cutf.Delete()
 
 	f := file.Open("testdata/0.flv")
-	defer f.Close()
+	defer f.CloseErr()
 
 	if f.IsDir() || !f.IsExist() {
 		t.Log("test file not exist")
@@ -86,7 +86,7 @@ func Test_FLVGenFastSeed(t *testing.T) {
 	}](`videoFastSeed`)
 
 	f := file.Open("testdata/0.flv")
-	defer f.Close()
+	defer f.CloseErr()
 	sf, e := VideoFastSeed.InitSav("testdata/0.flv.fastSeed")
 	if e != nil {
 		t.Fatal(e)
@@ -115,11 +115,11 @@ func Test_FLVCutSeed(t *testing.T) {
 		}()
 	}
 	cutf := file.Open("testdata/0.cut.flv")
-	defer cutf.Close()
+	defer cutf.CloseErr()
 	_ = cutf.Delete()
 
 	f := file.Open("testdata/0.flv")
-	defer f.Close()
+	defer f.CloseErr()
 
 	if f.IsDir() || !f.IsExist() {
 		t.Log("test file not exist")

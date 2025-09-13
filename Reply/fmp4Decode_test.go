@@ -17,9 +17,9 @@ import (
 func Test_deal(t *testing.T) {
 	flog := file.Open("0.mp4.log")
 	_ = flog.Delete()
-	defer flog.Close()
+	defer flog.CloseErr()
 	f := file.Open("testdata/0.mp4")
-	defer f.Close()
+	defer f.CloseErr()
 
 	if f.IsDir() || !f.IsExist() {
 		t.Fatal("file not support")
@@ -57,7 +57,7 @@ func Test_deal(t *testing.T) {
 			t.Log("front_buf")
 			break
 		}
-		_, _ = flog.Write([]byte(fmt.Sprintf("%d %d\n", c, len(front_buf))))
+		_, _ = fmt.Fprintf(flog, "%d %d\n", c, len(front_buf))
 		t.Log(c, len(front_buf))
 		_ = buff.RemoveFront(last_available_offset)
 	}
@@ -76,11 +76,11 @@ func Test_Mp4Cut(t *testing.T) {
 	}
 
 	cutf := file.Open("testdata/0.cut.mp4")
-	defer cutf.Close()
+	defer cutf.CloseErr()
 	_ = cutf.Delete()
 
 	f := file.Open("testdata/0.mp4")
-	defer f.Close()
+	defer f.CloseErr()
 
 	if f.IsDir() || !f.IsExist() {
 		t.Log("test file not exist")
@@ -97,7 +97,7 @@ func Test_Mp4GenFastSeed(t *testing.T) {
 	}](`videoFastSeed`)
 
 	f := file.Open("testdata/0.mp4")
-	defer f.Close()
+	defer f.CloseErr()
 	sf, e := VideoFastSeed.InitSav("testdata/0.fastSeed")
 	if e != nil {
 		t.Fatal(e)
@@ -130,11 +130,11 @@ func Test_Mp4CutSeed(t *testing.T) {
 	}
 
 	cutf := file.Open("testdata/0.cut.mp4")
-	defer cutf.Close()
+	defer cutf.CloseErr()
 	_ = cutf.Delete()
 
 	f := file.Open("testdata/0.mp4")
-	defer f.Close()
+	defer f.CloseErr()
 
 	if f.IsDir() || !f.IsExist() {
 		t.Log("test file not exist")

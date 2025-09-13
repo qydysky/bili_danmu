@@ -30,7 +30,7 @@ func (t *Pd) Type() uint32 {
 }
 func (t *Pd) Bool() bool {
 	t.dealed = true
-	return 0 != t.p.uint32()
+	return t.p.uint32() != 0
 }
 func (t *Pd) Uint32() (r uint32) {
 	t.dealed = true
@@ -214,7 +214,7 @@ func (t *PdDecoder) skipType(ty uint32) {
 	case 3:
 		for {
 			r = 7 & t.uint32()
-			if 4 == r {
+			if r == 4 {
 				break
 			}
 			t.skipType(r)

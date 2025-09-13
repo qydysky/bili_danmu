@@ -28,7 +28,7 @@ func TestSaveDanmuToDB(t *testing.T) {
 		uid:    "96767379",
 		roomid: 92613,
 	})
-	saveDanmuToDB.db.Close()
+	_ = saveDanmuToDB.db.Close()
 
 	if db, e := sql.Open("sqlite", "danmu.sqlite3"); e != nil {
 		t.Fatal(e)
@@ -53,7 +53,7 @@ func TestSaveDanmuToDB(t *testing.T) {
 		if _, e := tx.Fin(); e != nil {
 			t.Fatal(e)
 		}
-		db.Close()
+		_ = db.Close()
 	}
 }
 
