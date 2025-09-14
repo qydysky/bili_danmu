@@ -14,7 +14,6 @@ import (
 	"net/url"
 	"os"
 	"slices"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -817,16 +816,16 @@ func init() {
 					c.ResStruct{Code: -1, Message: e.Error(), Data: nil}.Write(w)
 					return
 				} else {
-					sort.Slice(fs, func(i, j int) bool {
-						return fs[i] > fs[j]
-					})
+					// sort.Slice(fs, func(i, j int) bool {
+					// 	return fs[i] > fs[j]
+					// })
 					skip, _ := strconv.Atoi(r.URL.Query().Get("skip"))
 					size, _ := strconv.Atoi(r.URL.Query().Get("size"))
 					uname := r.URL.Query().Get("uname")
 					startT := r.URL.Query().Get("startT")
 					startLiveT := r.URL.Query().Get("startLiveT")
 					sortS := r.URL.Query().Get("sort")
-					for i, n := 0, len(fs); i < n && (size == 0 || len(filePaths) < size); i++ {
+					for i, n := 0, len(fs); i < n; i++ {
 						if filePath, e := videoInfo.Get.Run(context.Background(), fs[i]); e != nil {
 							if !errors.Is(e, os.ErrNotExist) {
 								flog.L(`W: `, fs[i], e)
@@ -862,7 +861,11 @@ func init() {
 						})
 					}
 					if skip >= 0 {
-						filePaths = filePaths[min(skip, len(filePaths)):]
+						skip = min(skip, len(filePaths))
+						filePaths = filePaths[skip:]
+					}
+					if size >= 0 {
+						filePaths = filePaths[:min(size, len(filePaths))]
 					}
 				}
 			} else if len(filePaths) == 0 {
