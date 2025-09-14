@@ -821,6 +821,9 @@ func init() {
 					})
 					skip, _ := strconv.Atoi(r.URL.Query().Get("skip"))
 					size, _ := strconv.Atoi(r.URL.Query().Get("size"))
+					uname := r.URL.Query().Get("uname")
+					startT := r.URL.Query().Get("startT")
+					startLiveT := r.URL.Query().Get("startLiveT")
 					for i, n := 0, len(fs); i < n && (size == 0 || len(filePaths) < size); i++ {
 						if filePath, e := videoInfo.Get.Run(context.Background(), fs[i]); e != nil {
 							if !errors.Is(e, os.ErrNotExist) {
@@ -828,6 +831,15 @@ func init() {
 							}
 							continue
 						} else {
+							if uname != "" && uname != filePath.Uname {
+								continue
+							}
+							if startT != "" && !strings.HasPrefix(filePath.StartT, startT) {
+								continue
+							}
+							if startLiveT != "" && !strings.HasPrefix(filePath.StartLiveT, startLiveT) {
+								continue
+							}
 							skip -= 1
 							if skip >= 0 {
 								continue
