@@ -763,7 +763,7 @@ func init() {
 			}
 			w = cache.Cache(r.RequestURI, time.Second*5, w)
 
-			var filePaths []*videoInfo.Paf
+			var filePaths = []*videoInfo.Paf{}
 
 			// 获取当前房间的
 			var currentStreamO *M4SStream
