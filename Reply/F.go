@@ -13,6 +13,7 @@ import (
 	"net/http/pprof"
 	"net/url"
 	"os"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -824,6 +825,7 @@ func init() {
 					uname := r.URL.Query().Get("uname")
 					startT := r.URL.Query().Get("startT")
 					startLiveT := r.URL.Query().Get("startLiveT")
+					sortS := r.URL.Query().Get("sort")
 					for i, n := 0, len(fs); i < n && (size == 0 || len(filePaths) < size); i++ {
 						if filePath, e := videoInfo.Get.Run(context.Background(), fs[i]); e != nil {
 							if !errors.Is(e, os.ErrNotExist) {
@@ -840,13 +842,6 @@ func init() {
 							if startLiveT != "" && !strings.HasPrefix(filePath.StartLiveT, startLiveT) {
 								continue
 							}
-							skip -= 1
-							if skip >= 0 {
-								continue
-							}
-							if t, e := time.Parse("2006_01_02-15_04_05", filePath.StartT); e == nil {
-								filePath.StartT = t.Format(time.DateTime)
-							}
 							if currentStreamO != nil &&
 								currentStreamO.Common().Liveing &&
 								strings.Contains(currentStreamO.GetSavePath(), filePath.Path) {
@@ -855,6 +850,19 @@ func init() {
 							}
 							filePaths = append(filePaths, filePath)
 						}
+					}
+					switch sortS {
+					case `startTAsc`:
+						slices.SortFunc(filePaths, func(a, b *videoInfo.Paf) int {
+							return int(a.StartTS - b.StartTS)
+						})
+					case `startTDsc`:
+						slices.SortFunc(filePaths, func(a, b *videoInfo.Paf) int {
+							return int(b.StartTS - a.StartTS)
+						})
+					}
+					if skip >= 0 {
+						filePaths = filePaths[min(skip, len(filePaths)):]
 					}
 				}
 			} else if len(filePaths) == 0 {
