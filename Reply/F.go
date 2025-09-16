@@ -13,7 +13,7 @@ import (
 	"net/http/pprof"
 	"net/url"
 	"os"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -763,7 +763,7 @@ func init() {
 			}
 			w = cache.Cache(r.RequestURI, time.Second*5, w)
 
-			var filePaths []*videoInfo.Paf
+			var filePaths = []*videoInfo.Paf{}
 
 			// 获取当前房间的
 			var currentStreamO *M4SStream
@@ -816,24 +816,30 @@ func init() {
 					c.ResStruct{Code: -1, Message: e.Error(), Data: nil}.Write(w)
 					return
 				} else {
-					sort.Slice(fs, func(i, j int) bool {
-						return fs[i] > fs[j]
-					})
+					// sort.Slice(fs, func(i, j int) bool {
+					// 	return fs[i] > fs[j]
+					// })
 					skip, _ := strconv.Atoi(r.URL.Query().Get("skip"))
 					size, _ := strconv.Atoi(r.URL.Query().Get("size"))
-					for i, n := 0, len(fs); i < n && (size == 0 || len(filePaths) < size); i++ {
+					uname := r.URL.Query().Get("uname")
+					startT := r.URL.Query().Get("startT")
+					startLiveT := r.URL.Query().Get("startLiveT")
+					sortS := r.URL.Query().Get("sort")
+					for i, n := 0, len(fs); i < n; i++ {
 						if filePath, e := videoInfo.Get.Run(context.Background(), fs[i]); e != nil {
 							if !errors.Is(e, os.ErrNotExist) {
 								flog.L(`W: `, fs[i], e)
 							}
 							continue
 						} else {
-							skip -= 1
-							if skip >= 0 {
+							if uname != "" && uname != filePath.Uname {
 								continue
 							}
-							if t, e := time.Parse("2006_01_02-15_04_05", filePath.StartT); e == nil {
-								filePath.StartT = t.Format(time.DateTime)
+							if startT != "" && !strings.HasPrefix(filePath.StartT, startT) {
+								continue
+							}
+							if startLiveT != "" && !strings.HasPrefix(filePath.StartLiveT, startLiveT) {
+								continue
 							}
 							if currentStreamO != nil &&
 								currentStreamO.Common().Liveing &&
@@ -843,6 +849,23 @@ func init() {
 							}
 							filePaths = append(filePaths, filePath)
 						}
+					}
+					switch sortS {
+					case `startTAsc`:
+						slices.SortFunc(filePaths, func(a, b *videoInfo.Paf) int {
+							return int(a.StartTS - b.StartTS)
+						})
+					case `startTDsc`:
+						slices.SortFunc(filePaths, func(a, b *videoInfo.Paf) int {
+							return int(b.StartTS - a.StartTS)
+						})
+					}
+					if skip >= 0 {
+						skip = min(skip, len(filePaths))
+						filePaths = filePaths[skip:]
+					}
+					if size >= 0 {
+						filePaths = filePaths[:min(size, len(filePaths))]
 					}
 				}
 			} else if len(filePaths) == 0 {

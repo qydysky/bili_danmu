@@ -33,6 +33,7 @@ type Paf struct {
 	Qn              string `json:"qn"`
 	Name            string `json:"name"`
 	StartT          string `json:"startT"`
+	StartTS         int64  `json:"-"`
 	EndT            string `json:"endT"`
 	Path            string `json:"path"`
 	CurrentSavePath string `json:"-"`
@@ -107,6 +108,12 @@ func get(ctx context.Context, savepath string) (*Paf, error) {
 			} else {
 				if e := json.Unmarshal(data, &d); e != nil {
 					return &d, e
+				}
+				if t, e := time.Parse("2006_01_02-15_04_05", d.StartT); e == nil {
+					d.StartT = t.Format(time.DateTime)
+				}
+				if t, e := time.Parse(time.DateTime, d.StartT); e == nil {
+					d.StartTS = t.Unix()
 				}
 				d.CurrentSavePath = d.Path + "/0." + d.Format
 			}
