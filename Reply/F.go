@@ -24,6 +24,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
 	p "github.com/qydysky/part"
+	part "github.com/qydysky/part/log"
 	psql "github.com/qydysky/part/sql"
 	_ "modernc.org/sqlite"
 
@@ -37,6 +38,7 @@ import (
 
 	compress "github.com/qydysky/part/compress"
 	pctx "github.com/qydysky/part/ctx"
+	perrors "github.com/qydysky/part/errors"
 	file "github.com/qydysky/part/file"
 	fctrl "github.com/qydysky/part/funcCtrl"
 	pio "github.com/qydysky/part/io"
@@ -1169,7 +1171,7 @@ func init() {
 						}
 
 					} else if e := f.CopyToIoWriter(w, pio.CopyConfig{BytePerSec: speed, SkipByte: rangeHeaderNum}); e != nil {
-						flog.L(`I: `, e)
+						flog.L(`I: `, perrors.ErrorFormat(e, perrors.ErrActionInLineFunc))
 					}
 					// }
 				}
@@ -1215,7 +1217,7 @@ func init() {
 				// 	}
 				// }
 
-				if e := currentStreamO.PusherToHttp(flog, conn, w, r, startFunc, stopFunc); e != nil {
+				if e := currentStreamO.PusherToHttp(flog, conn, w, r, PusherEvent{startFunc, nil, stopFunc}); e != nil {
 					flog.L(`W: `, e)
 				}
 			}
@@ -1359,7 +1361,7 @@ func init() {
 }
 
 // 弹幕回放
-func StartRecDanmu(ctx context.Context, filePath string) {
+func StartRecDanmu(ctx context.Context, flog *part.Log_interface, filePath string) {
 	if !IsOn(`仅保存当前直播间流`) || !IsOn("弹幕回放") {
 		return
 	}

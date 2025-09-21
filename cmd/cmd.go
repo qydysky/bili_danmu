@@ -32,7 +32,8 @@ func (t *cmd) Cmd() {
 
 	go func() {
 		for scanner.Scan() {
-			if inputs := scanner.Text(); inputs == `` { //帮助
+			if inputs := scanner.Text(); inputs == `` {
+				// 帮助
 				fmt.Print("\n")
 				fmt.Println("切换房间->输入' 数字'回车")
 				if c.C.Roomid == 0 {
@@ -61,9 +62,11 @@ func (t *cmd) Cmd() {
 				fmt.Println("退出当前房间->输入' exit'回车")
 				fmt.Println("其他输出隔断不影响")
 				fmt.Print("\n")
-			} else if inputs[0] == 27 { //屏蔽功能键
+			} else if inputs[0] == 27 {
+				// 屏蔽功能键
 				cmdlog.L(`W: `, "不支持功能键")
-			} else if inputs[0] == 32 { // 开头
+			} else if inputs[0] == 32 {
+				// 开头
 				cmdlog.L(`T: `, "指令("+inputs+")")
 				//录播分段
 				if strings.Contains(inputs, ` cut`) {
@@ -233,7 +236,8 @@ func (t *cmd) Cmd() {
 					continue
 				}
 				cmdlog.L(`W: `, "无效指令("+inputs+")")
-			} else { //其余字符串
+			} else {
+				// 其余字符串
 				if c.C.Roomid == 0 {
 					continue
 				}
