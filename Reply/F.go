@@ -714,8 +714,11 @@ func init() {
 						qref = rawPath
 					}
 					if e := replyFunc.DanmuCountPerMin.Run(func(dcpmi replyFunc.DanmuCountPerMinI) error {
-						if e := dcpmi.GetRec2(qref, w); e != nil && !errors.Is(e, os.ErrNotExist) {
-							flog.L(`W: `, "获取弹幕统计", e)
+						if e := dcpmi.GetRec2(qref, w); e != nil {
+							if !errors.Is(e, os.ErrNotExist) {
+								flog.L(`W: `, "获取弹幕统计", e)
+							}
+							_, _ = w.Write([]byte("[]"))
 						}
 						return nil
 					}); e != nil {
