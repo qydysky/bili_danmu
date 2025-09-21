@@ -1669,12 +1669,12 @@ func (t *M4SStream) PusherToFile(contextC context.Context, filepath string, push
 			done()
 		}
 
-		select {
-		case <-ctx1.Done():
-			return true
-		default:
-			return false
-		}
+		// select {
+		// case <-ctx1.Done():
+		// 	return true
+		// default:
+		return false
+		// }
 	}
 	closeF := func(_ []byte) bool {
 		t.pullerToFile.Delete(`data`)
