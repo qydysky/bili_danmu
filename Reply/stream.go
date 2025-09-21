@@ -1428,7 +1428,7 @@ func (t *M4SStream) Start() bool {
 
 					ctx1, done := pctx.WithWait(mainCtx, 3, time.Second*30)
 					defer func() {
-						_ = done()
+						_ = done(true)
 					}()
 
 					// 分段时长min
