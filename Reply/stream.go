@@ -1677,7 +1677,7 @@ func (t *M4SStream) PusherToFile(contextC context.Context, filepath string, push
 		// }
 	}
 	closeF := func(_ []byte) bool {
-		t.pullerToFile.Delete(`data`)
+		_ = t.pullerToFile.CompareAndDelete(`data`, &dataF)
 		return true
 	}
 	t.pullerToFile.Store(`data`, &dataF)
