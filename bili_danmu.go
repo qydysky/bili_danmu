@@ -83,7 +83,10 @@ func Start(rootCtx context.Context) {
 			return nil
 		})
 		// 附加功能 savetojson
-		reply.SaveToJson.Init()
+		_ = replyFunc.SaveToJson.Run(func(i replyFunc.SaveToJsonI) error {
+			i.Init(c.C.K_v.LoadV(`save_to_json`))
+			return nil
+		})
 		//ass初始化
 		_ = replyFunc.Ass.Run(func(ai replyFunc.AssI) error {
 			ai.Init(c.C.K_v.LoadV("Ass"))
@@ -264,7 +267,10 @@ func Start(rootCtx context.Context) {
 		}
 
 		{ //附加功能 直播流停止 ws信息保存
-			reply.SaveToJson.Close()
+			_ = replyFunc.SaveToJson.Run(func(i replyFunc.SaveToJsonI) error {
+				i.Close()
+				return nil
+			})
 			reply.StreamOStopAll()
 		}
 	}
