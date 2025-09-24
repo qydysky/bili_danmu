@@ -128,7 +128,10 @@ func Reply(common *c.Common, b []byte) {
 		switch head.OpeaT {
 		case c.WS_OP_MESSAGE:
 			Msg(replyFS, contain)
-			SaveToJson.Write(contain)
+			_ = replyFunc.SaveToJson.Run(func(i replyFunc.SaveToJsonI) error {
+				i.Write(contain)
+				return nil
+			})
 		case c.WS_OP_HEARTBEAT_REPLY: //心跳响应
 			Heart(replyFS, contain)
 			return //忽略剩余内容
@@ -1298,8 +1301,11 @@ func (t replyF) danmu(s string) {
 			return nil
 		})
 		// 保存弹幕至db
-		saveDanmuToDB.init(t.Common)
-		saveDanmuToDB.danmu(item)
+		_ = replyFunc.SaveDanmuToDB.Run(func(sdtd replyFunc.SaveDanmuToDBI) error {
+			sdtd.Init(t.Common.K_v.LoadV(`保存弹幕至db`), msglog)
+			sdtd.Danmu(item.msg, item.color, item.auth, item.uid, int64(item.roomid))
+			return nil
+		})
 		// 对指定弹幕重新录制
 		_, _ = danmuReLiveTriger.Check.Run(context.Background(), danmuReLiveTriger.Danmu{Uid: item.uid, Msg: item.msg})
 		// 语言tts 私信
@@ -1360,13 +1366,16 @@ func (t replyF) danmu(s string) {
 		if skip {
 			return
 		}
-		if !item.hasEmote { // 表情跳过，避免破坏表情代码
-			if _msg := Shortdanmuf(item.msg); _msg == "" {
-				danmulog.L(`I: `, item.auth, ":", item.msg)
-				return
-			} else {
-				item.msg = _msg
-			}
+		// 表情跳过，避免破坏表情代码
+		if !item.hasEmote && IsOn("精简弹幕") {
+			_ = replyFunc.ShortDanmu.Run(func(i interface{ Deal(string) string }) error {
+				if _msg := i.Deal(item.msg); _msg == "" {
+					danmulog.L(`I: `, item.auth, ":", item.msg)
+				} else {
+					item.msg = _msg
+				}
+				return nil
+			})
 		}
 	}
 	if item.auth != nil {

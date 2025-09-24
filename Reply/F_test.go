@@ -8,6 +8,7 @@ import (
 	"time"
 
 	c "github.com/qydysky/bili_danmu/CV"
+	replyFunc "github.com/qydysky/bili_danmu/Reply/F"
 	videoInfo "github.com/qydysky/bili_danmu/Reply/F/videoInfo"
 	pctx "github.com/qydysky/part/ctx"
 	psql "github.com/qydysky/part/sql"
@@ -20,15 +21,11 @@ func TestSaveDanmuToDB(t *testing.T) {
 		"create": "create table danmu (created text, createdunix text, msg text, color text, auth text, uid text, roomid text)",
 		"insert": "insert into danmu  values ({Date},{Unix},{Msg},{Color},{Auth},{Uid},{Roomid})",
 	})
-	saveDanmuToDB.init(c.C)
-	saveDanmuToDB.danmu(Danmu_item{
-		msg:    "可能走位配合了他的压枪",
-		color:  "#54eed8",
-		auth:   "畏未",
-		uid:    "96767379",
-		roomid: 92613,
+	_ = replyFunc.SaveDanmuToDB.Run(func(sdtd replyFunc.SaveDanmuToDBI) error {
+		sdtd.Init(c.C.K_v.LoadV(`保存弹幕至db`), msglog)
+		sdtd.Danmu("可能走位配合了他的压枪", "#54eed8", "畏未", "96767379", 92613)
+		return sdtd.Close()
 	})
-	_ = saveDanmuToDB.db.Close()
 
 	if db, e := sql.Open("sqlite", "danmu.sqlite3"); e != nil {
 		t.Fatal(e)

@@ -16,16 +16,10 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
-	"database/sql"
-
-	_ "github.com/go-sql-driver/mysql"
-	_ "github.com/lib/pq"
 	p "github.com/qydysky/part"
-	psql "github.com/qydysky/part/sql"
-	_ "modernc.org/sqlite"
+	part "github.com/qydysky/part/log"
 
 	"github.com/dustin/go-humanize"
 	c "github.com/qydysky/bili_danmu/CV"
@@ -37,11 +31,10 @@ import (
 
 	compress "github.com/qydysky/part/compress"
 	pctx "github.com/qydysky/part/ctx"
+	perrors "github.com/qydysky/part/errors"
 	file "github.com/qydysky/part/file"
 	fctrl "github.com/qydysky/part/funcCtrl"
 	pio "github.com/qydysky/part/io"
-	msgq "github.com/qydysky/part/msgq"
-	psync "github.com/qydysky/part/sync"
 	pweb "github.com/qydysky/part/web"
 	websocket "github.com/qydysky/part/websocket"
 )
@@ -232,203 +225,6 @@ func TTS(i Danmu_mq_t) {
 		return nil
 	})
 }
-
-/*
-	Moredanmu
-	目标：弹幕机自动发送弹幕
-	原理：留存弹幕，称为buf。将当前若干弹幕在buf中的位置找出，根据位置聚集情况及该位置出现语句的频率，选择发送的弹幕
-*/
-// type Moredanmu struct {
-// 	buf []string
-// }
-
-// var moredanmu = Moredanmu{
-// }
-// func moredanmuf(s string) {
-// 	if !moredanmu.Inuse {return}
-// 	// if len(moredanmu.buf) < bufsize {
-// 		moredanmu.buf = append(moredanmu.buf, s)
-// 	// }
-
-// 	// b := p.Buf("danmu.buf").Load()
-// 	// if b.Get() != nil {
-// 	// 	moredanmu.buf = *b.Get()
-// 	// }
-// }
-
-// func moredanmu_get(tb []string) {
-// 	if !moredanmu.Inuse {return}
-
-// 	var tmp string
-// 	for _,v := range tb {
-// 		tmp += v
-// 	}
-// 	// for _,v := range tb {
-// 	// 	tmp += len([]rune(v[:len(v)-1]))
-// 	// }
-
-// 	var max float32
-// 	var loc int
-// 	for i := 0; len(moredanmu.buf) >= i + len(tb); i++ {
-// 		if m := cross(tmp, moredanmu.buf[i:i + len(tb)]);m > max {
-// 			max = m
-// 			loc = i
-// 		}
-// 	}
-// 	if loc != 0 {
-// 		p := moredanmu.buf[loc:loc + len(tb)]
-// 		for i,v := range p{
-// 			if m := cross(v, p);m > max {
-// 				max = m
-// 				loc = i
-// 			}
-// 		}
-// 		fmt.Println(len(moredanmu.buf),"=>",p[loc])
-// 	}
-// }
-
-type Shortdanmu struct {
-	lastdanmu []rune
-	l         sync.Mutex
-}
-
-var shortdanmu = Shortdanmu{}
-
-func Shortdanmuf(s string) string {
-	if !IsOn("精简弹幕") {
-		return s
-	}
-
-	shortdanmu.l.Lock()
-	defer shortdanmu.l.Unlock()
-
-	if len(shortdanmu.lastdanmu) == 0 {
-		shortdanmu.lastdanmu = []rune(s)
-		return s
-	}
-
-	var new string
-
-	for k, v := range []rune(s) {
-		if k >= len(shortdanmu.lastdanmu) {
-			new += string([]rune(s)[k:])
-			break
-		}
-		if v != shortdanmu.lastdanmu[k] {
-			switch k {
-			case 0, 1, 2:
-				new = s
-			default:
-				new = "..." + string([]rune(s)[k-1:])
-			}
-			break
-		}
-	}
-	// if new == "" {new = "...."}
-	shortdanmu.lastdanmu = []rune(s)
-	return new
-}
-
-type Jiezou struct {
-	alertdanmu string
-	skipS      map[string]interface{}
-
-	avg  float32
-	turn int
-	sync.Mutex
-}
-
-var jiezou = Jiezou{
-	alertdanmu: "",
-	skipS: map[string]interface{}{ //常见语气词忽略
-		"了": nil,
-		"的": nil,
-		"哈": nil,
-		"是": nil,
-		"，": nil,
-		"这": nil,
-	},
-}
-
-func Jiezouf(s []string) bool {
-	if !IsOn("Jiezou") {
-		return false
-	}
-	now, S := selfcross2(s)
-	jiezou.avg = (8*jiezou.avg + 2*now) / 10
-	if jiezou.turn < len(s) {
-		jiezou.turn += 1
-		return false
-	}
-
-	if _, ok := jiezou.skipS[S]; ok {
-		return false
-	}
-
-	jiezou.Lock()
-	if now > 1.3*jiezou.avg { //触发
-		c.C.Log.Base("jiezou").L(`W: `, "节奏注意", now, jiezou.avg, S)
-		jiezou.avg = now //沉默
-		jiezou.Unlock()
-
-		//发送弹幕
-		if jiezou.alertdanmu != "" {
-			Msg_senddanmu(jiezou.alertdanmu)
-		}
-		return true
-	}
-	jiezou.Unlock()
-	return false
-}
-
-// 保存所有消息到json
-type saveToJson struct {
-	msg  *msgq.MsgType[[]byte]
-	once sync.Once
-}
-
-func (t *saveToJson) Init() {
-	t.once.Do(func() {
-		if path, ok := c.C.K_v.LoadV(`save_to_json`).(string); ok && path != `` {
-			f := file.Open(path)
-			_ = f.Delete()
-			_, _ = f.Write([]byte("["))
-			_ = f.Close()
-
-			t.msg = msgq.NewType[[]byte]()
-			t.msg.Pull_tag(map[string]func([]byte) (disable bool){
-				`data`: func(b []byte) (disable bool) {
-					f := file.New(path, -1, false)
-					_, _ = f.Write(b)
-					_, _ = f.Write([]byte(","))
-					_ = f.Close()
-					return false
-				},
-				`stop`: func(_ []byte) (disable bool) {
-					f := file.New(path, -1, false)
-					_ = f.SeekIndex(-1, file.AtEnd)
-					_, _ = f.Write([]byte("]"))
-					_ = f.Close()
-					return true
-				},
-			})
-		}
-	})
-}
-
-func (t *saveToJson) Write(data []byte) {
-	if t.msg != nil {
-		t.msg.PushLock_tag(`data`, data)
-	}
-}
-
-func (t *saveToJson) Close() {
-	if t.msg != nil {
-		t.msg.PushLock_tag(`stop`, nil)
-	}
-}
-
-var SaveToJson saveToJson
 
 // 进入房间发送弹幕
 func Entry_danmu(common *c.Common) {
@@ -714,8 +510,11 @@ func init() {
 						qref = rawPath
 					}
 					if e := replyFunc.DanmuCountPerMin.Run(func(dcpmi replyFunc.DanmuCountPerMinI) error {
-						if e := dcpmi.GetRec2(qref, w); e != nil && !errors.Is(e, os.ErrNotExist) {
-							flog.L(`W: `, "获取弹幕统计", e)
+						if e := dcpmi.GetRec2(qref, w); e != nil {
+							if !errors.Is(e, os.ErrNotExist) {
+								flog.L(`W: `, "获取弹幕统计", e)
+							}
+							_, _ = w.Write([]byte("[]"))
 						}
 						return nil
 					}); e != nil {
@@ -1166,7 +965,7 @@ func init() {
 						}
 
 					} else if e := f.CopyToIoWriter(w, pio.CopyConfig{BytePerSec: speed, SkipByte: rangeHeaderNum}); e != nil {
-						flog.L(`I: `, e)
+						flog.L(`I: `, perrors.ErrorFormat(e, perrors.ErrActionInLineFunc))
 					}
 					// }
 				}
@@ -1212,7 +1011,7 @@ func init() {
 				// 	}
 				// }
 
-				if e := currentStreamO.PusherToHttp(flog, conn, w, r, startFunc, stopFunc); e != nil {
+				if e := currentStreamO.PusherToHttp(flog, conn, w, r, PusherEvent{startFunc, nil, stopFunc}); e != nil {
 					flog.L(`W: `, e)
 				}
 			}
@@ -1356,7 +1155,7 @@ func init() {
 }
 
 // 弹幕回放
-func StartRecDanmu(ctx context.Context, filePath string) {
+func StartRecDanmu(ctx context.Context, flog *part.Log_interface, filePath string) {
 	if !IsOn(`仅保存当前直播间流`) || !IsOn("弹幕回放") {
 		return
 	}
@@ -1403,138 +1202,4 @@ func PlayRecDanmu(filePath string) (*websocket.Server, func()) {
 		return nil, nil
 	}
 	return websocket.Play(filePath)
-}
-
-// 此次直播的交互人数
-var communicate Communicate
-
-type Communicate struct {
-	Buf *psync.Map
-}
-
-func init() {
-	communicate.Buf = new(psync.Map)
-	c.C.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
-		`change_room`: func(_ interface{}) bool { //房间改变
-			communicate.Reset()
-			return false
-		},
-		`flash_room`: func(_ interface{}) bool { //房间改变
-			communicate.Reset()
-			return false
-		},
-	})
-}
-
-func (t *Communicate) Reset() {
-	t.Buf.Range(func(key, _ interface{}) bool {
-		t.Buf.Delete(key)
-		return true
-	})
-}
-
-func (t *Communicate) Count() int {
-	return t.Buf.Len()
-}
-
-func (t *Communicate) Store(k interface{}) {
-	t.Buf.Store(k, nil)
-}
-
-// 保存弹幕至db
-var saveDanmuToDB SaveDanmuToDB
-
-type SaveDanmuToDB struct {
-	dbname string
-	db     *sql.DB
-	insert string
-	sync.Once
-}
-
-func (t *SaveDanmuToDB) init(c *c.Common) {
-	t.Do(func() {
-		if v, ok := c.K_v.LoadV(`保存弹幕至db`).(map[string]any); ok && len(v) != 0 {
-			var (
-				dbname, url, create                 string
-				dbnameok, urlok, createok, insertok bool
-			)
-
-			dbname, dbnameok = v["dbname"].(string)
-			url, urlok = v["url"].(string)
-			create, createok = v["create"].(string)
-			t.insert, insertok = v["insert"].(string)
-
-			if dbname == "" || url == "" || t.insert == "" || !dbnameok || !urlok || !insertok {
-				return
-			}
-
-			t.dbname = dbname
-
-			if db, e := sql.Open(dbname, url); e != nil {
-				c.Log.Base_add("保存弹幕至db").L(`E: `, e)
-			} else {
-				db.SetConnMaxLifetime(time.Minute * 3)
-				db.SetMaxOpenConns(10)
-				db.SetMaxIdleConns(10)
-				t.db = db
-				if createok {
-					tx := psql.BeginTx[any](db, pctx.GenTOCtx(time.Second*5))
-					tx.Do(psql.SqlFunc[any]{Sql: create, SkipSqlErr: true})
-					if _, e := tx.Fin(); e != nil {
-						c.Log.Base_add("保存弹幕至db").L(`E: `, e)
-						return
-					}
-				}
-				c.Log.Base_add("保存弹幕至db").L(`I: `, dbname)
-			}
-		}
-	})
-}
-
-func (t *SaveDanmuToDB) danmu(item Danmu_item) {
-	if t.db == nil {
-		return
-	}
-	if e := t.db.Ping(); e == nil {
-		type DanmuI struct {
-			Date   string
-			Unix   int64
-			Msg    string
-			Color  string
-			Auth   any
-			Uid    string
-			Roomid int64
-		}
-
-		var replaceF psql.ReplaceF
-		switch t.dbname {
-		case "postgres":
-			replaceF = psql.PlaceHolderB
-		default:
-			replaceF = psql.PlaceHolderA
-		}
-
-		tx := psql.BeginTx[any](t.db, pctx.GenTOCtx(time.Second*5))
-		tx.DoPlaceHolder(psql.SqlFunc[any]{Sql: t.insert}, &DanmuI{
-			Date:   time.Now().Format(time.DateTime),
-			Unix:   time.Now().Unix(),
-			Msg:    item.msg,
-			Color:  item.color,
-			Auth:   item.auth,
-			Uid:    item.uid,
-			Roomid: int64(item.roomid),
-		}, replaceF)
-		tx.AfterEF(func(_ *any, result sql.Result, e *error) {
-			if v, err := result.RowsAffected(); err != nil {
-				*e = err
-				return
-			} else if v != 1 {
-				*e = errors.New("插入数量错误")
-				return
-			}
-		})
-		if _, e := tx.Fin(); e != nil {
-			c.C.Log.Base_add("保存弹幕至db").L(`E: `, e)
-		}
-	}
 }

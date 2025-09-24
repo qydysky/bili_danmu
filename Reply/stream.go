@@ -44,6 +44,7 @@ import (
 	signal "github.com/qydysky/part/signal"
 	slice "github.com/qydysky/part/slice"
 	pstring "github.com/qydysky/part/strings"
+	psync "github.com/qydysky/part/sync"
 	pu "github.com/qydysky/part/util"
 	pweb "github.com/qydysky/part/web"
 )
@@ -75,6 +76,8 @@ type M4SStream struct {
 	Callback_stopRec  func(*M4SStream)          //录制结束的回调
 	Callback_stop     func(*M4SStream)          //实例结束的回调
 	reqPool           *pool.Buf[reqf.Req]       //请求池
+	cutNum            atomic.Uint32
+	pullerToFile      psync.MapFunc[string, *func([]byte) (disable bool)]
 }
 
 type M4SStream_Config struct {
@@ -672,11 +675,11 @@ func (t *M4SStream) removeStream() (e error) {
 }
 
 // 设置保存路径
-func (t *M4SStream) genSavepath() string {
+func (t *M4SStream) genSavepath(log *log.Log_interface) (cupath string) {
 	w := md5.New()
 	_, _ = io.WriteString(w, t.common.Title)
 
-	t.currentSavePath = fmt.Sprintf("%s/%s-%d-%d-%x-%s/",
+	cupath = fmt.Sprintf("%s/%s-%d-%d-%x-%s/",
 		t.config.save_path,
 		time.Now().Format("2006_01_02-15_04_05"),
 		t.common.Roomid,
@@ -684,12 +687,14 @@ func (t *M4SStream) genSavepath() string {
 		w.Sum(nil)[:3],
 		pstring.Rand(2, 3))
 
+	t.currentSavePath = cupath
+
 	// 显示保存位置
-	t.log.L(`I: `, "保存到", t.currentSavePath+`0.`+t.stream_type)
-	f := file.New(t.currentSavePath+"/tmp.create", 0, true)
+	log.L(`I: `, "保存到", cupath+`0.`+t.stream_type)
+	f := file.New(cupath+"/tmp.create", 0, true)
 	f.Create()
 	_ = f.Delete()
-	return t.currentSavePath
+	return cupath
 }
 
 var ErrDecode = perrors.Action("ErrDecode")
@@ -1376,6 +1381,8 @@ func (t *M4SStream) Start() bool {
 
 		// 初始化切片消息
 		t.stream_msg = msgq.NewType[[]byte]()
+		t.pullerToFile = psync.NewMapG[string, *func([]byte) (disable bool)]()
+		defer t.stream_msg.Pull_tag_syncmap(t.pullerToFile)()
 
 		// 设置事件
 		// 当录制停止时，取消全部录制
@@ -1410,26 +1417,26 @@ func (t *M4SStream) Start() bool {
 
 		if t.config.save_to_file {
 			var fc funcCtrl.FlashFunc
-			cancel := t.msg.Pull_tag_async(map[string]func(*M4SStream) (disable bool){
+			defer t.msg.Pull_tag_async(map[string]func(*M4SStream) (disable bool){
 				`cut`: func(ms *M4SStream) (disable bool) {
+					l := ms.log.Base_add(`分段`, ms.cutNum.Add(1))
 					// 有时尚未初始化接收到新的cut信号，导致保存失败。可能在开播信号重复发出出现
 					if ms.frameCount < defaultStartCount {
-						ml := ms.log.Base_add(`分段`)
-						ml.L(`I: `, "尚未接收到帧、跳过")
+						l.L(`I: `, "尚未接收到帧、跳过")
 						return false
 					}
 
-					// 当cut时，取消上次录制
 					ctx1, done := pctx.WithWait(mainCtx, 3, time.Second*30)
-					fc.FlashWithCallback(func() { _ = done(true) })
+					defer func() {
+						_ = done(true)
+					}()
 
 					// 分段时长min
-					if l, ok := ms.common.K_v.LoadV("分段时长min").(float64); ok && l > 0 {
-						cutT := time.Duration(int64(time.Minute) * int64(l))
-						ml := ms.log.Base_add(`分段`)
-						ml.L(`I: `, fmt.Sprintf("分段启动 %v", cutT))
+					if tmp, ok := ms.common.K_v.LoadV("分段时长min").(float64); ok && tmp > 0 {
+						cutT := time.Duration(int64(time.Minute) * int64(tmp))
+						l.L(`I: `, fmt.Sprintf("分段启动 %v", cutT))
 						defer time.AfterFunc(cutT, func() {
-							ml.L(`I: `, ms.common.Roomid, "ok")
+							l.L(`I: `, ms.common.Roomid, "ok")
 							ms.msg.Push_tag(`cut`, ms)
 						}).Stop()
 					}
@@ -1447,16 +1454,25 @@ func (t *M4SStream) Start() bool {
 						},
 					})()
 
-					savePath := ms.genSavepath()
+					savePath := ms.genSavepath(l)
 					saveType := ms.GetStreamType()
 
-					l := ms.log.Base_add(`文件保存`)
 					startf := func(_ *M4SStream) error {
 						l.L(`T: `, `开始`)
 						//弹幕分值统计
 						_ = replyFunc.DanmuCountPerMin.Run(func(dcpmi replyFunc.DanmuCountPerMinI) error {
 							dcpmi.Rec(ctx1, ms.common.Roomid, savePath)(ms.common.K_v.LoadV("弹幕分值"))
 							return nil
+						})
+						return nil
+					}
+					readyf := func(_ *M4SStream) error {
+						// 当cut时，取消上次录制
+						fc.FlashWithCallback(func() {
+							// wait all goroutine exit
+							if e := done(true); e != nil {
+								l.L(`E: `, e)
+							}
 						})
 						return nil
 					}
@@ -1475,59 +1491,16 @@ func (t *M4SStream) Start() bool {
 						l.Base_add(`videoInfo`).L(`E: `, e)
 					}
 
-					//保存弹幕
-					go StartRecDanmu(ctx1, savePath)
+					// 保存弹幕
+					go StartRecDanmu(ctx1, l, savePath)
 
-					//指定房间录制回调
-					// if v, ok := ms.common.K_v.LoadV("指定房间录制回调").([]any); ok && len(v) > 0 {
-					// 	l := l.Base(`录制回调`)
-					// 	for i := 0; i < len(v); i++ {
-					// 		if vm, ok := v[i].(map[string]any); ok {
-					// 			if roomid, ok := vm["roomid"].(float64); ok && int(roomid) == ms.common.Roomid {
-					// 				var (
-					// 					durationS, _ = vm["durationS"].(float64)
-					// 					start, _     = vm["start"].([]any)
-					// 				)
-					// 				if len(start) >= 2 && durationS >= 0 {
-					// 					go func() {
-					// 						ctx2, done2 := pctx.WaitCtx(ctx1)
-					// 						defer done2()
-					// 						select {
-					// 						case <-ctx2.Done():
-					// 						case <-time.After(time.Second * time.Duration(durationS)):
-					// 							var cmds []string
-					// 							for i := 0; i < len(start); i++ {
-					// 								if cmd, ok := start[i].(string); ok && cmd != "" {
-					// 									cmds = append(cmds, strings.ReplaceAll(cmd, "{type}", ms.GetStreamType()))
-					// 								}
-					// 							}
-
-					// 							cmd := exec.Command(cmds[0], cmds[1:]...)
-					// 							cmd.Dir = savePath
-					// 							l.L(`I: `, "启动", cmd.Args)
-					// 							if e := cmd.Run(); e != nil {
-					// 								l.L(`E: `, e)
-					// 							}
-					// 							l.L(`I: `, "结束")
-					// 						}
-					// 					}()
-					// 				}
-					// 			}
-					// 		}
-					// 	}
-					// }
-
+					// 保存视频流
 					path := savePath + `0.` + saveType
 					startT := time.Now()
-					if e := ms.PusherToFile(ctx1, path, startf, stopf); e != nil {
+					if e := ms.PusherToFile(ctx1, path, PusherEvent{startf, readyf, stopf}); e != nil {
 						l.Base_add(`PusherToFile`).L(`E: `, e)
 					}
 					duration := time.Since(startT)
-
-					// wait all goroutine exit
-					if e := done(true); e != nil {
-						l.L(`E: `, e)
-					}
 
 					//PusherToFile fin genFastSeed
 					if disableFastSeed, ok := ms.common.K_v.LoadV("禁用快速索引生成").(bool); !ok || !disableFastSeed {
@@ -1597,8 +1570,7 @@ func (t *M4SStream) Start() bool {
 					}
 					return false
 				},
-			})
-			defer cancel()
+			})()
 		}
 
 		// 主循环
@@ -1649,13 +1621,27 @@ func (t *M4SStream) Cut() {
 	t.msg.Push_tag(`cut`, t)
 }
 
+type PusherEvent struct {
+	startFunc, readyFunc, stopFunc func(*M4SStream) error
+}
+
+func ifNotNil(f func(*M4SStream) error) func(*M4SStream) error {
+	if f != nil {
+		return f
+	} else {
+		return func(_ *M4SStream) error {
+			return nil
+		}
+	}
+}
+
 // 保存到文件
-func (t *M4SStream) PusherToFile(contextC context.Context, filepath string, startFunc func(*M4SStream) error, stopFunc func(*M4SStream) error) error {
+func (t *M4SStream) PusherToFile(contextC context.Context, filepath string, pusherEvent PusherEvent) error {
 	f := file.Open(filepath)
 	defer f.CloseErr()
 	_ = f.Delete()
 
-	if e := startFunc(t); e != nil {
+	if e := ifNotNil(pusherEvent.startFunc)(t); e != nil {
 		return e
 	}
 
@@ -1668,36 +1654,44 @@ func (t *M4SStream) PusherToFile(contextC context.Context, filepath string, star
 	}
 
 	_, _ = f.Write(t.getFirstBuf())
-	cancelRec := t.stream_msg.Pull_tag(map[string]func([]byte) bool{
-		`data`: func(b []byte) bool {
-			defer pu.Callback(func(startT time.Time, args ...any) {
-				if dru := time.Since(startT).Seconds(); dru > to {
-					t.log.L("W: ", "磁盘写入超时", dru)
-					done()
-				}
-			})()
 
-			select {
-			case <-ctx1.Done():
-				return true
-			default:
-			}
-			if len(b) == 0 {
-				return true
-			}
-			if n, err := f.Write(b); err != nil || n == 0 {
+	dataF := func(b []byte) bool {
+		defer pu.Callback(func(startT time.Time, args ...any) {
+			if dru := time.Since(startT).Seconds(); dru > to {
+				t.log.L("W: ", "磁盘写入超时", dru)
 				done()
 			}
-			return false
-		},
-		`close`: func(_ []byte) bool {
+		})()
+		if len(b) == 0 {
 			return true
-		},
-	})
-	<-ctx1.Done()
-	cancelRec()
+		}
+		if n, err := f.Write(b); err != nil || n == 0 {
+			done()
+		}
 
-	if e := stopFunc(t); e != nil {
+		// select {
+		// case <-ctx1.Done():
+		// 	return true
+		// default:
+		return false
+		// }
+	}
+	closeF := func(_ []byte) bool {
+		_ = t.pullerToFile.CompareAndDelete(`data`, &dataF)
+		return true
+	}
+	t.pullerToFile.Store(`data`, &dataF)
+	t.pullerToFile.Store(`close`, &closeF)
+
+	if e := ifNotNil(pusherEvent.readyFunc)(t); e != nil {
+		return e
+	}
+	<-ctx1.Done()
+
+	_ = t.pullerToFile.CompareAndDelete(`data`, &dataF)
+	_ = t.pullerToFile.CompareAndDelete(`close`, &closeF)
+
+	if e := ifNotNil(pusherEvent.stopFunc)(t); e != nil {
 		return e
 	}
 
@@ -1707,7 +1701,7 @@ func (t *M4SStream) PusherToFile(contextC context.Context, filepath string, star
 // 流服务推送方法
 //
 // 在客户端存在某种代理时，将有可能无法监测到客户端关闭，这有可能导致goroutine泄漏
-func (t *M4SStream) PusherToHttp(plog *log.Log_interface, conn net.Conn, w http.ResponseWriter, r *http.Request, startFunc func(*M4SStream) error, stopFunc func(*M4SStream) error) error {
+func (t *M4SStream) PusherToHttp(plog *log.Log_interface, conn net.Conn, w http.ResponseWriter, r *http.Request, pusherEvent PusherEvent) error {
 
 	var (
 		cmdI  io.WriteCloser
@@ -1757,7 +1751,7 @@ func (t *M4SStream) PusherToHttp(plog *log.Log_interface, conn net.Conn, w http.
 		return errors.New("pusher no support stream_type")
 	}
 
-	if e := startFunc(t); e != nil {
+	if e := ifNotNil(pusherEvent.startFunc)(t); e != nil {
 		return e
 	}
 
@@ -1846,10 +1840,13 @@ func (t *M4SStream) PusherToHttp(plog *log.Log_interface, conn net.Conn, w http.
 		},
 	})
 
+	if e := ifNotNil(pusherEvent.readyFunc)(t); e != nil {
+		return e
+	}
 	<-ctx.Done()
 	cancelRec()
 
-	if e := stopFunc(t); e != nil {
+	if e := ifNotNil(pusherEvent.stopFunc)(t); e != nil {
 		return e
 	}
 

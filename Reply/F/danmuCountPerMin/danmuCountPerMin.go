@@ -28,7 +28,7 @@ type TargetInterface interface {
 }
 
 func init() {
-	if e := comp.Register[TargetInterface]("danmuCountPerMin", &danmuCountPerMin{
+	if e := comp.Register[TargetInterface](`danmuCountPerMin`, &danmuCountPerMin{
 		m: msgq.NewType[mi](),
 	}); e != nil {
 		panic(e)

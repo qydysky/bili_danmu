@@ -17,6 +17,9 @@ import (
 	_ "github.com/qydysky/bili_danmu/Reply/F/lessDanmu"        //removable
 	_ "github.com/qydysky/bili_danmu/Reply/F/parseM3u8"
 	_ "github.com/qydysky/bili_danmu/Reply/F/rev"           //removable
+	_ "github.com/qydysky/bili_danmu/Reply/F/saveDanmuToDB" //removable
+	_ "github.com/qydysky/bili_danmu/Reply/F/saveToJson"    //removable
+	_ "github.com/qydysky/bili_danmu/Reply/F/shortDanmu"    //removable
 	_ "github.com/qydysky/bili_danmu/Reply/F/tts"           //removable
 	_ "github.com/qydysky/bili_danmu/Reply/F/videoFastSeed" //removable
 	comp "github.com/qydysky/part/component2"
@@ -127,3 +130,23 @@ type DanmuEmotesI interface {
 }
 
 var DanmuEmotes = comp.GetV2(`danmuEmotes`, comp.PreFuncErr[DanmuEmotesI]{})
+
+var ShortDanmu = comp.GetV2(`shortDanmu`, comp.PreFuncErr[interface {
+	Deal(string) string
+}]{})
+
+type SaveToJsonI interface {
+	Close()
+	Init(path any)
+	Write(data []byte)
+}
+
+var SaveToJson = comp.GetV2(`saveToJson`, comp.PreFuncErr[SaveToJsonI]{})
+
+type SaveDanmuToDBI interface {
+	Init(config any, fl *log.Log_interface)
+	Danmu(Msg string, Color string, Auth any, Uid string, Roomid int64)
+	Close() error
+}
+
+var SaveDanmuToDB = comp.GetV2(`saveDanmuToDB`, comp.PreFuncErr[SaveDanmuToDBI]{})
