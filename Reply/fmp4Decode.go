@@ -1,7 +1,6 @@
 package reply
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -869,13 +868,13 @@ func decode(buf []byte, reSyncboxName string) (m []ie, recycle func([]ie), err e
 				}
 				return
 			}
+			// if reSyncI := bytes.Index(buf[cu:], []byte(reSyncboxName)); reSyncI != -1 {
+			// 	cu += reSyncI - 4
+			// 	m = m[:0]
+			// 	continue
+			// }
+			// err = ErrCantResync.WithReason(E.Error() + "> 未能reSync")
 			err = E
-			if reSyncI := bytes.Index(buf[cu:], []byte(reSyncboxName)); reSyncI != -1 {
-				cu += reSyncI - 4
-				m = m[:0]
-				continue
-			}
-			err = ErrCantResync.WithReason(E.Error() + "> 未能reSync")
 			return
 		}
 
@@ -907,7 +906,7 @@ func searchBox(buf []byte, cu *int) (boxName string, i int, e int, err error) {
 	boxName = boxNameU.Value()
 	isPureBoxOrNeedSkip, ok := boxs[boxNameU]
 	if !ok {
-		err = ErrUnkownBox.WithReason("未知包: " + boxNameU.Value())
+		err = ErrUnkownBox.WithReason(fmt.Sprintf("未知包: hex(%x%x%x%x)", boxName[0], boxName[1], boxName[2], boxName[3]))
 	} else if e > len(buf) {
 		err = io.EOF
 	} else if isPureBoxOrNeedSkip {
