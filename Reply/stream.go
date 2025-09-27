@@ -1033,7 +1033,6 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 		fmp4ListUpdateTo = 5.0
 		planSecPeriod    = 5.0
 		lastNewT         = time.Now()
-		skipErrFrame     = false
 	)
 
 	if v, ok := t.common.K_v.LoadV(`debug模式`).(bool); ok && v {
@@ -1061,9 +1060,6 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 	}
 	if v, ok := t.common.K_v.LoadV(`fmp4列表更新超时s`).(float64); ok && fmp4ListUpdateTo < v {
 		fmp4ListUpdateTo = v
-	}
-	if v, ok := t.common.K_v.LoadV(`fmp4跳过解码出错的帧`).(bool); ok {
-		skipErrFrame = v
 	}
 
 	// 下载循环
@@ -1241,28 +1237,24 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 			if e := cu.data.AppendTo(buf); e != nil {
 				t.log.L(`E: `, e)
 			}
-			t.putM4s(cu)
-			download_seq = slices.Delete(download_seq, k, k+1)
-			k -= 1
 
 			buff, unlock := buf.GetPureBufRLock()
 			last_available_offset, err := fmp4Decoder.SearchStreamFrame(buff, keyframe)
 			unlock()
 
 			if err != nil && !errors.Is(err, io.EOF) {
-				if ErrDecode.Catch(err) && skipErrFrame {
-					t.log.L(`W: `, err)
-					// 将此切片服务器设置停用
-					// if u, e := url.Parse(cu.Url); e == nil {
-					t.common.DisableLiveAutoByUuid(cu.SerUuid)
-					// t.common.DisableLiveAuto(u.Host)
-					// }
-				} else {
-					e = err
-					download_seq = download_seq[:0]
-					_ = pctx.CallCancel(t.Status)
-					break
-				}
+				// 发生解码错误，移除切片，禁用切片服务器
+				t.log.L(`W: `, err, `重试!`)
+				cu.status = 3
+				cu.err = err
+				_ = buf.RemoveBack(cu.data.Size())
+				cu.data.Clear()
+				break
+			} else {
+				// 未发生解码问题，归还资源
+				t.putM4s(cu)
+				download_seq = slices.Delete(download_seq, k, k+1)
+				k -= 1
 			}
 
 			// no, _ := cu.getNo()
