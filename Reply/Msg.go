@@ -17,6 +17,7 @@ var msglog = c.C.Log.Base(`Msg`)
 
 // Msg类型数据处理方法map
 var Msg_map = map[string]func(replyF, string){
+	`TIP_CARD`:                             nil,
 	`VOICE_JOIN_SWITCH`:                    nil,
 	`VOICE_JOIN_SWITCH_V2`:                 nil,
 	`RECALL_DANMU_MSG`:                     nil,
