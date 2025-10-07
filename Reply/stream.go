@@ -402,7 +402,7 @@ func (t *M4SStream) fetchCheckStream() bool {
 				`Cache-Control`:   `no-cache`,
 				`Referer`:         "https://live.bilibili.com/",
 				`Cookie`:          t.common.GenReqCookie(),
-				`Connection`:      `close`,
+				`Connection`:      `keep-alive`,
 			},
 			Timeout:          5 * 1000,
 			JustResponseCode: true,
@@ -1173,9 +1173,10 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 						Timeout:             to * 1000,
 						CopyResponseTimeout: (to + 2) * 1000,
 						Proxy:               t.common.Proxy,
-						Header: map[string]string{
-							`Connection`: `close`,
-						},
+						// change to keep-alive(default) to reuse tcp connection
+						// Header: map[string]string{
+						// 	`Connection`: `close`,
+						// },
 					})
 					if ActionErrFmp4DownloadCareTO.Catch(e) {
 						t.log.L(`W: `, e.Error())
