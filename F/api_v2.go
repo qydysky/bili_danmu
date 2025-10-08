@@ -12,7 +12,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/mdp/qrterminal/v3"
-	_ "github.com/qydysky/biliApi"
 	c "github.com/qydysky/bili_danmu/CV"
 	pe "github.com/qydysky/part/errors"
 	file "github.com/qydysky/part/file"
@@ -75,9 +74,6 @@ func (t *GetFuncV2) Get(common *c.Common, key string) {
 			apilog.Base_add(`Get`).L(`E: `, node.Key, node.MethodIndex, pe.ErrorFormat(node.Err, pe.ErrActionInLineFunc))
 		}
 	}
-	// if e := t.api.Get(key); e != nil {
-	// 	apilog.Base_add(`Get`).L(`E: `, e)
-	// }
 }
 
 func (t *GetFuncV2) isValid(key string) func() bool {
@@ -123,6 +119,15 @@ func (t *GetFuncV2) getCookie() (missKey string, err error) {
 	savepath := "./cookie.txt"
 	if tmp, ok := t.common.K_v.LoadV("cookie路径").(string); ok && tmp != "" {
 		savepath = tmp
+	}
+
+	biliApi := biliApi.Inter(func(ce error) BiliApiInter {
+		err = ce
+		apilog.L(`E: `, `biliApi组件未构建`, ce)
+		return nil
+	})
+	if biliApi == nil {
+		return
 	}
 
 	//获取其他Cookie
@@ -271,6 +276,15 @@ func (t *GetFuncV2) getRoomBaseInfo() (missKey string, err error) {
 
 	apilog := apilog.Base_add(`getRoomBaseInfo`)
 
+	biliApi := biliApi.Inter(func(ce error) BiliApiInter {
+		err = ce
+		apilog.L(`E: `, `biliApi组件未构建`, ce)
+		return nil
+	})
+	if biliApi == nil {
+		return
+	}
+
 	if t.common.Roomid == 0 {
 		return `Roomid`, nil
 	}
@@ -304,6 +318,15 @@ func (t *GetFuncV2) getInfoByRoom() (missKey string, err error) {
 
 	apilog := apilog.Base_add(`getInfoByRoom`)
 
+	biliApi := biliApi.Inter(func(ce error) BiliApiInter {
+		err = ce
+		apilog.L(`E: `, `biliApi组件未构建`, ce)
+		return nil
+	})
+	if biliApi == nil {
+		return
+	}
+
 	if t.common.Roomid == 0 {
 		return `Roomid`, nil
 	}
@@ -334,12 +357,18 @@ func (t *GetFuncV2) getInfoByRoom() (missKey string, err error) {
 func (t *GetFuncV2) getRoomPlayInfo() (missKey string, err error) {
 	apilog := apilog.Base_add(`getRoomPlayInfo`)
 
+	biliApi := biliApi.Inter(func(ce error) BiliApiInter {
+		err = ce
+		apilog.L(`E: `, `biliApi组件未构建`, ce)
+		return nil
+	})
+	if biliApi == nil {
+		return
+	}
+
 	if t.common.Roomid == 0 {
 		return `Roomid`, nil
 	}
-	// if t.common.LiveBuvidUpdated.Before(time.Now().Add(-time.Hour)) {
-	// 	return `LIVE_BUVID`, nil
-	// }
 
 	//Roominitres
 	{
@@ -416,6 +445,15 @@ func (t *GetFuncV2) getRoomPlayInfo() (missKey string, err error) {
 func (t *GetFuncV2) html() (missKey string, err error) {
 	apilog := apilog.Base_add(`html`)
 
+	biliApi := biliApi.Inter(func(ce error) BiliApiInter {
+		err = ce
+		apilog.L(`E: `, `biliApi组件未构建`, ce)
+		return nil
+	})
+	if biliApi == nil {
+		return
+	}
+
 	if t.common.Roomid == 0 {
 		return `Roomid`, nil
 	}
@@ -487,15 +525,21 @@ func (t *GetFuncV2) html() (missKey string, err error) {
 func (t *GetFuncV2) getGuardNum() (missKey string, err error) {
 	apilog := apilog.Base_add(`getGuardNum`)
 
+	biliApi := biliApi.Inter(func(ce error) BiliApiInter {
+		err = ce
+		apilog.L(`E: `, `biliApi组件未构建`, ce)
+		return nil
+	})
+	if biliApi == nil {
+		return
+	}
+
 	if t.common.UpUid == 0 {
 		return `UpUid`, nil
 	}
 	if t.common.Roomid == 0 {
 		return `Roomid`, nil
 	}
-	// if t.common.LiveBuvidUpdated.Before(time.Now().Add(-time.Hour)) {
-	// 	return `LIVE_BUVID`, nil
-	// }
 
 	//Get_guardNum
 	if err, GuardNum := biliApi.GetGuardNum(t.common.UpUid, t.common.Roomid); err != nil {
@@ -508,14 +552,23 @@ func (t *GetFuncV2) getGuardNum() (missKey string, err error) {
 }
 
 func (t *GetFuncV2) getPopularAnchorRank() (missKey string, err error) {
+	apilog := apilog.Base_add(`Get_HotRank`)
+
+	biliApi := biliApi.Inter(func(ce error) BiliApiInter {
+		err = ce
+		apilog.L(`E: `, `biliApi组件未构建`, ce)
+		return nil
+	})
+	if biliApi == nil {
+		return
+	}
+
 	if t.common.UpUid == 0 {
 		return `UpUid`, nil
 	}
 	if t.common.Roomid == 0 {
 		return `Roomid`, nil
 	}
-
-	apilog := apilog.Base_add(`Get_HotRank`)
 
 	//getHotRank
 	if err, note := biliApi.GetPopularAnchorRank(t.common.Uid, t.common.UpUid, t.common.Roomid); err != nil {
@@ -530,12 +583,18 @@ func (t *GetFuncV2) getPopularAnchorRank() (missKey string, err error) {
 func (t *GetFuncV2) getRoomPlayInfoByQn() (missKey string, err error) {
 	apilog := apilog.Base_add(`getRoomPlayInfoByQn`)
 
+	biliApi := biliApi.Inter(func(ce error) BiliApiInter {
+		err = ce
+		apilog.L(`E: `, `biliApi组件未构建`, ce)
+		return nil
+	})
+	if biliApi == nil {
+		return
+	}
+
 	if t.common.Roomid == 0 {
 		return `Roomid`, nil
 	}
-	// if t.common.LiveBuvidUpdated.Before(time.Now().Add(-time.Hour)) {
-	// 	return `LIVE_BUVID`, nil
-	// }
 
 	// 挑选最大的画质
 	{
@@ -626,12 +685,18 @@ func (t *GetFuncV2) getRoomPlayInfoByQn() (missKey string, err error) {
 }
 
 func (t *GetFuncV2) getDanmuInfo() (missKey string, err error) {
+	biliApi := biliApi.Inter(func(ce error) BiliApiInter {
+		err = ce
+		apilog.L(`E: `, `biliApi组件未构建`, ce)
+		return nil
+	})
+	if biliApi == nil {
+		return
+	}
+
 	if t.common.Roomid == 0 {
 		return `Roomid`, nil
 	}
-	// if t.common.LiveBuvidUpdated.Before(time.Now().Add(-time.Hour)) {
-	// 	return `LIVE_BUVID`, nil
-	// }
 
 	//GetDanmuInfo
 	if err, res := biliApi.GetDanmuInfo(t.common.Roomid); err != nil {
@@ -681,13 +746,20 @@ func (t *GetFuncV2) getDanmuInfo() (missKey string, err error) {
 // }
 
 func (t *GetFuncV2) checkSwitchFansMedal() (missKey string, err error) {
-	// if t.common.LiveBuvidUpdated.Before(time.Now().Add(-time.Hour)) {
-	// 	return `LIVE_BUVID`, nil
-	// }
+	apilog := apilog.Base_add(`切换粉丝牌`)
+
+	biliApi := biliApi.Inter(func(ce error) BiliApiInter {
+		err = ce
+		apilog.L(`E: `, `biliApi组件未构建`, ce)
+		return nil
+	})
+	if biliApi == nil {
+		return
+	}
+
 	if t.common.UpUid == 0 {
 		return `UpUid`, nil
 	}
-	apilog := apilog.Base_add(`切换粉丝牌`)
 
 	//验证登录
 	if !biliApi.IsLogin() {
@@ -696,7 +768,10 @@ func (t *GetFuncV2) checkSwitchFansMedal() (missKey string, err error) {
 	}
 
 	{ //获取当前牌子，验证是否本直播间牌子
-		res, _ := Get_weared_medal(t.common.Uid, t.common.UpUid)
+		res, e := Get_weared_medal(t.common.Uid, t.common.UpUid)
+		if e != nil {
+			return
+		}
 
 		t.common.Wearing_FansMedal = res.Roominfo.RoomID //更新佩戴信息
 		if res.TargetID == t.common.UpUid {
@@ -744,6 +819,16 @@ func (t *GetFuncV2) checkSwitchFansMedal() (missKey string, err error) {
 // 获取在线人数
 func (t *GetFuncV2) queryContributionRank() (missKey string, err error) {
 	apilog := apilog.Base_add(`获取在线人数`)
+
+	biliApi := biliApi.Inter(func(ce error) BiliApiInter {
+		err = ce
+		apilog.L(`E: `, `biliApi组件未构建`, ce)
+		return nil
+	})
+	if biliApi == nil {
+		return
+	}
+
 	if t.common.UpUid == 0 {
 		return `UpUid`, nil
 	}
@@ -770,6 +855,16 @@ func (t *GetFuncV2) queryContributionRank() (missKey string, err error) {
 // 获取在线人数
 func (t *GetFuncV2) getOnlineGoldRank() (missKey string, err error) {
 	apilog := apilog.Base_add(`获取在线人数`)
+
+	biliApi := biliApi.Inter(func(ce error) BiliApiInter {
+		err = ce
+		apilog.L(`E: `, `biliApi组件未构建`, ce)
+		return nil
+	})
+	if biliApi == nil {
+		return
+	}
+
 	if t.common.UpUid == 0 {
 		return `UpUid`, nil
 	}
@@ -797,9 +892,14 @@ func (t *GetFuncV2) getOnlineGoldRank() (missKey string, err error) {
 func (t *GetFuncV2) silver2Coin() (missKey string, err error) {
 	apilog := apilog.Base_add(`银瓜子=>硬币`)
 
-	// if t.common.LiveBuvidUpdated.Before(time.Now().Add(-time.Hour)) {
-	// 	return `LIVE_BUVID`, nil
-	// }
+	biliApi := biliApi.Inter(func(ce error) BiliApiInter {
+		err = ce
+		apilog.L(`E: `, `biliApi组件未构建`, ce)
+		return nil
+	})
+	if biliApi == nil {
+		return
+	}
 
 	//验证登录
 	if !biliApi.IsLogin() {

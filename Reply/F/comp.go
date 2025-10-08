@@ -9,10 +9,11 @@ import (
 	"time"
 
 	_ "github.com/qydysky/bili_danmu/Reply/F/ass"              //removable
-	_ "github.com/qydysky/bili_danmu/Reply/F/danmuCountPerMin" //removable
-	_ "github.com/qydysky/bili_danmu/Reply/F/danmuEmotes"      //removable
+	_ "github.com/qydysky/bili_danmu/Reply/F/danmuCountPerMin" //removable //replay
+	_ "github.com/qydysky/bili_danmu/Reply/F/danmuEmotes"      //removable //replay
 	_ "github.com/qydysky/bili_danmu/Reply/F/danmuMerge"       //removable
 	_ "github.com/qydysky/bili_danmu/Reply/F/danmuji"          //removable
+	_ "github.com/qydysky/bili_danmu/Reply/F/genCpuPprof"      //removable
 	_ "github.com/qydysky/bili_danmu/Reply/F/keepMedalLight"   //removable
 	_ "github.com/qydysky/bili_danmu/Reply/F/lessDanmu"        //removable
 	_ "github.com/qydysky/bili_danmu/Reply/F/parseM3u8"
@@ -26,6 +27,10 @@ import (
 	log "github.com/qydysky/part/log"
 )
 
+var GenCpuPprof = comp.GetV3[interface {
+	Start(ctx context.Context, file string) (any, error)
+}](`genCpuPprof`)
+
 type TTSI interface {
 	Init(ctx context.Context, l *log.Log_interface, config any)
 	Deal(uid string, m map[string]string)
@@ -33,7 +38,7 @@ type TTSI interface {
 	Stop()
 }
 
-var TTS = comp.GetV2(`tts`, comp.PreFuncErr[TTSI]{})
+var TTS = comp.GetV3[TTSI](`tts`)
 
 type LessDanmuI interface {
 	Init(maxNumSec int)
@@ -42,7 +47,7 @@ type LessDanmuI interface {
 	Do(s string) (show bool)
 }
 
-var LessDanmu = comp.GetV2(`lessDanmu`, comp.PreFuncErr[LessDanmuI]{})
+var LessDanmu = comp.GetV3[LessDanmuI](`lessDanmu`)
 
 type DanmuMergeI interface {
 	InitSend(f func(roomid int, num uint, msg string)) bool
@@ -51,7 +56,7 @@ type DanmuMergeI interface {
 	Do(s string) uint
 }
 
-var DanmuMerge = comp.GetV2(`danmuMerge`, comp.PreFuncErr[DanmuMergeI]{})
+var DanmuMerge = comp.GetV3[DanmuMergeI](`danmuMerge`)
 
 type KeepMedalLightI interface {
 	Init(L *log.Log_interface, Roomid int, SendDanmu func(danmu string, RoomID int) error, PreferDanmu any)
@@ -59,14 +64,14 @@ type KeepMedalLightI interface {
 	Do(prefer ...string)
 }
 
-var KeepMedalLight = comp.GetV2(`keepMedalLight`, comp.PreFuncErr[KeepMedalLightI]{})
+var KeepMedalLight = comp.GetV3[KeepMedalLightI](`keepMedalLight`)
 
 type RevI interface {
 	Init(l *log.Log_interface)
 	ShowRev(roomid int, rev float64)
 }
 
-var Rev = comp.GetV2(`rev`, comp.PreFuncErr[RevI]{})
+var Rev = comp.GetV3[RevI](`rev`)
 
 type DanmuCountPerMinI interface {
 	// will WriteHeader
@@ -77,28 +82,28 @@ type DanmuCountPerMinI interface {
 	Do(roomid int, msg string, uid string)
 }
 
-var DanmuCountPerMin = comp.GetV2(`danmuCountPerMin`, comp.PreFuncErr[DanmuCountPerMinI]{})
+var DanmuCountPerMin = comp.GetV3[DanmuCountPerMinI](`danmuCountPerMin`)
 
 type AssI interface {
 	ToAss(savePath string, filename ...string)
 	Init(cfg any)
 }
 
-var Ass = comp.GetV2(`ass`, comp.PreFuncErr[AssI]{})
+var Ass = comp.GetV3[AssI](`ass`)
 
 type DanmujiI interface {
 	Danmujif(s string, then func(string))
 	Danmuji_auto(ctx context.Context, danmus []any, waitSec float64, then func(string))
 }
 
-var Danmuji = comp.GetV2(`danmuji`, comp.PreFuncErr[DanmujiI]{})
+var Danmuji = comp.GetV3[DanmujiI](`danmuji`)
 
 type VideoFastSeedI interface {
 	InitGet(fastSeedFilePath string) (getIndex func(seedTo time.Duration) (int64, error), e error)
 	InitSav(fastSeedFilePath string) (savIndex func(seedTo time.Duration, cuIndex int64) error, e error)
 }
 
-var VideoFastSeed = comp.GetV2(`videoFastSeed`, comp.PreFuncErr[VideoFastSeedI]{})
+var VideoFastSeed = comp.GetV3[VideoFastSeedI](`videoFastSeed`)
 
 type ParseM3u8I interface {
 	Parse(respon []byte, lastNo int) (m4sLink iter.Seq[interface {
@@ -108,7 +113,7 @@ type ParseM3u8I interface {
 	IsErrRedirect(e error) bool
 }
 
-var ParseM3u8 = comp.GetV2(`parseM3u8`, comp.PreFuncPanic[ParseM3u8I]{})
+var ParseM3u8 = comp.GetV3(`parseM3u8`, comp.PreFuncPanic[ParseM3u8I]{})
 
 type DanmuEmotesS struct {
 	Logg *log.Log_interface
@@ -129,19 +134,19 @@ type DanmuEmotesI interface {
 	GetEmotesDir(dir string) fs.FS
 }
 
-var DanmuEmotes = comp.GetV2(`danmuEmotes`, comp.PreFuncErr[DanmuEmotesI]{})
+var DanmuEmotes = comp.GetV3[DanmuEmotesI](`danmuEmotes`)
 
-var ShortDanmu = comp.GetV2(`shortDanmu`, comp.PreFuncErr[interface {
+var ShortDanmu = comp.GetV3[interface {
 	Deal(string) string
-}]{})
+}](`shortDanmu`)
 
 type SaveToJsonI interface {
 	Close()
 	Init(path any)
-	Write(data []byte)
+	Write(data *[]byte)
 }
 
-var SaveToJson = comp.GetV2(`saveToJson`, comp.PreFuncErr[SaveToJsonI]{})
+var SaveToJson = comp.GetV3[SaveToJsonI](`saveToJson`)
 
 type SaveDanmuToDBI interface {
 	Init(config any, fl *log.Log_interface)
@@ -149,4 +154,4 @@ type SaveDanmuToDBI interface {
 	Close() error
 }
 
-var SaveDanmuToDB = comp.GetV2(`saveDanmuToDB`, comp.PreFuncErr[SaveDanmuToDBI]{})
+var SaveDanmuToDB = comp.GetV3[SaveDanmuToDBI](`saveDanmuToDB`)

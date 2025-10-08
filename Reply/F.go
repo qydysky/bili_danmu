@@ -220,9 +220,8 @@ func StreamOCut(roomid int) (setTitle func(title ...string)) {
 }
 
 func TTS(i Danmu_mq_t) {
-	_ = replyFunc.TTS.Run(func(t replyFunc.TTSI) error {
+	replyFunc.TTS.Run2(func(t replyFunc.TTSI) {
 		t.Deal(i.uid, i.m)
-		return nil
 	})
 }
 
@@ -238,16 +237,18 @@ func Entry_danmu(common *c.Common) {
 		return
 	}
 	if v, _ := common.K_v.LoadV(`进房弹幕_仅发首日弹幕`).(bool); v {
-		res, _ := F.Get_weared_medal(common.Uid, common.UpUid)
+		res, e := F.Get_weared_medal(common.Uid, common.UpUid)
+		if e != nil {
+			return
+		}
 		if res.TodayIntimacy > 0 {
 			flog.L(`T: `, `今日已发弹幕`)
 			return
 		}
 	}
 	if array, ok := common.K_v.LoadV(`进房弹幕_内容`).([]any); ok && len(array) != 0 {
-		_ = replyFunc.KeepMedalLight.Run(func(kmli replyFunc.KeepMedalLightI) error {
+		replyFunc.KeepMedalLight.Run2(func(kmli replyFunc.KeepMedalLightI) {
 			kmli.Do(array[p.Rand().MixRandom(0, int64(len(array)-1))].(string))
-			return nil
 		})
 	}
 }
@@ -271,13 +272,17 @@ func AutoSend_silver_gift(common *c.Common) {
 		F.Api.Get(common, `UpUid`)
 	}
 
+	sended := false
 	for _, v := range F.Gift_list() {
 		if time.Now().Add(time.Hour*time.Duration(24*int(day))).Unix() > int64(v.Expire_at) {
 			send.Send_gift(common, v.Gift_id, v.Bag_id, v.Gift_num)
+			sended = true
 		}
 	}
 
-	flog.Base_add(`自动送礼`).L(`I: `, `已完成`)
+	if sended {
+		flog.Base_add(`自动送礼`).L(`I: `, `已完成`)
+	}
 }
 
 // 直播Web服务口
@@ -429,9 +434,8 @@ func init() {
 				w.Header().Set("Content-Type", "application/json")
 				_, _ = w.Write([]byte("[]"))
 			} else {
-				_ = replyFunc.DanmuCountPerMin.Run(func(dcpmi replyFunc.DanmuCountPerMinI) error {
+				replyFunc.DanmuCountPerMin.Run2(func(dcpmi replyFunc.DanmuCountPerMinI) {
 					dcpmi.CheckRoot(v)
-					return nil
 				})
 				rpath := "/" + qref + "/"
 				if strings.HasSuffix(v, "/") || strings.HasSuffix(v, "\\") {
@@ -446,11 +450,10 @@ func init() {
 				} else {
 					v = rawPath
 				}
-				_ = replyFunc.DanmuCountPerMin.Run(func(dcpmi replyFunc.DanmuCountPerMinI) error {
+				replyFunc.DanmuCountPerMin.Run2(func(dcpmi replyFunc.DanmuCountPerMinI) {
 					if e := dcpmi.GetRec(v, r, w); e != nil && !errors.Is(e, os.ErrNotExist) {
 						flog.L(`W: `, "获取弹幕统计", e)
 					}
-					return nil
 				})
 			}
 		})
@@ -472,9 +475,8 @@ func init() {
 				} else {
 					root = v
 				}
-				_ = replyFunc.DanmuCountPerMin.Run(func(dcpmi replyFunc.DanmuCountPerMinI) error {
+				replyFunc.DanmuCountPerMin.Run2(func(dcpmi replyFunc.DanmuCountPerMinI) {
 					dcpmi.CheckRoot(root)
-					return nil
 				})
 			}
 
@@ -730,9 +732,8 @@ func init() {
 			var s string
 			if strings.HasPrefix(p, "emots/") {
 				s = "emots/"
-				_ = replyFunc.DanmuEmotes.Run(func(dei replyFunc.DanmuEmotesI) error {
+				replyFunc.DanmuEmotes.Run2(func(dei replyFunc.DanmuEmotesI) {
 					p = dei.Hashr(p)
-					return nil
 				})
 			} else {
 				s = "html/artPlayer/"
@@ -1181,17 +1182,15 @@ func StartRecDanmu(ctx context.Context, flog *part.Log_interface, filePath strin
 	}
 
 	// Ass
-	_ = replyFunc.Ass.Run(func(ai replyFunc.AssI) error {
+	replyFunc.Ass.Run2(func(ai replyFunc.AssI) {
 		ai.ToAss(filePath)
-		return nil
 	})
 
 	// emots
-	_ = replyFunc.DanmuEmotes.Run(func(dei replyFunc.DanmuEmotesI) error {
+	replyFunc.DanmuEmotes.Run2(func(dei replyFunc.DanmuEmotesI) {
 		if e := dei.PackEmotes(filePath); e != nil {
 			msglog.L(`E: `, e)
 		}
-		return nil
 	})
 
 	Recoder.Stop()

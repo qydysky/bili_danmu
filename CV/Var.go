@@ -22,8 +22,8 @@ import (
 	"time"
 
 	"github.com/dustin/go-humanize"
-	_ "github.com/go-sql-driver/mysql"
-	_ "github.com/jackc/pgx/v5/stdlib"
+	_ "github.com/go-sql-driver/mysql" //removable
+	_ "github.com/jackc/pgx/v5/stdlib" //removable
 	pca "github.com/qydysky/part/crypto/asymmetric"
 	pctx "github.com/qydysky/part/ctx"
 	file "github.com/qydysky/part/file"
@@ -35,7 +35,7 @@ import (
 	syncmap "github.com/qydysky/part/sync"
 	sys "github.com/qydysky/part/sys"
 	web "github.com/qydysky/part/web"
-	_ "modernc.org/sqlite"
+	_ "modernc.org/sqlite" //removable
 )
 
 //go:embed VERSION

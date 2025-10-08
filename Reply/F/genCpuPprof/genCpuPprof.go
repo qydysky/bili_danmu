@@ -7,21 +7,27 @@ import (
 	"sync"
 	"time"
 
-	comp "github.com/qydysky/part/component"
+	comp "github.com/qydysky/part/component2"
 	pctx "github.com/qydysky/part/ctx"
 	pfile "github.com/qydysky/part/file"
 	pio "github.com/qydysky/part/io"
 )
 
-var Start = comp.NewComp(start)
+func init() {
+	comp.RegisterOrPanic[interface {
+		Start(ctx context.Context, file string) (any, error)
+	}](`genCpuPprof`, &pp{})
+}
 
-var once sync.Once
+type pp struct {
+	once sync.Once
+}
 
-func start(ctx context.Context, file string) (any, error) {
+func (t *pp) Start(ctx context.Context, file string) (any, error) {
 	if file == "" {
 		return nil, nil
 	}
-	go once.Do(
+	go t.once.Do(
 		func() {
 			ctx1, done1 := pctx.WaitCtx(ctx)
 			defer done1()

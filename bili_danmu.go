@@ -17,7 +17,6 @@ import (
 	reply "github.com/qydysky/bili_danmu/Reply"
 	replyFunc "github.com/qydysky/bili_danmu/Reply/F"
 	"github.com/qydysky/bili_danmu/Reply/F/danmuReLiveTriger"
-	"github.com/qydysky/bili_danmu/Reply/F/genCpuPprof"
 	"github.com/qydysky/bili_danmu/Reply/F/recStartEnd"
 	send "github.com/qydysky/bili_danmu/Send"
 	pctx "github.com/qydysky/part/ctx"
@@ -78,38 +77,32 @@ func Start(rootCtx context.Context) {
 		// 校验必要组件
 		_ = replyFunc.ParseM3u8.Err()
 		//命令行操作 切换房间 发送弹幕
-		_ = Cmd.Run(func(ci CmdI) error {
+		Cmd.Run2(func(ci CmdI) {
 			ci.Cmd()
-			return nil
 		})
 		// 附加功能 savetojson
-		_ = replyFunc.SaveToJson.Run(func(i replyFunc.SaveToJsonI) error {
+		replyFunc.SaveToJson.Run2(func(i replyFunc.SaveToJsonI) {
 			i.Init(c.C.K_v.LoadV(`save_to_json`))
-			return nil
 		})
 		//ass初始化
-		_ = replyFunc.Ass.Run(func(ai replyFunc.AssI) error {
+		replyFunc.Ass.Run2(func(ai replyFunc.AssI) {
 			ai.Init(c.C.K_v.LoadV("Ass"))
-			return nil
 		})
 		//tts初始化
-		_ = replyFunc.TTS.Run(func(t replyFunc.TTSI) error {
+		replyFunc.TTS.Run2(func(t replyFunc.TTSI) {
 			t.Init(mainCtx, danmulog, c.C.K_v.LoadV("TTS"))
-			return nil
 		})
 		if reply.IsOn(`相似弹幕忽略`) {
 			if max_num, ok := c.C.K_v.LoadV(`每秒显示弹幕数`).(float64); ok && int(max_num) >= 1 {
-				_ = replyFunc.LessDanmu.Run(func(ldi replyFunc.LessDanmuI) error {
+				replyFunc.LessDanmu.Run2(func(ldi replyFunc.LessDanmuI) {
 					ldi.Init(int(max_num))
-					return nil
 				})
 			}
 		}
 		//rev初始化
 		if c.C.IsOn(`统计营收`) {
-			_ = replyFunc.Rev.Run(func(ri replyFunc.RevI) error {
+			replyFunc.Rev.Run2(func(ri replyFunc.RevI) {
 				ri.Init(danmulog)
-				return nil
 			})
 		}
 		// 指定房间录制区间
@@ -136,9 +129,13 @@ func Start(rootCtx context.Context) {
 		}
 		// pgo gen
 		if file, ok := c.C.K_v.LoadV("生成pgo").(string); ok {
-			if _, e := genCpuPprof.Start.Run(mainCtx, file); e != nil {
-				danmulog.Base("功能", "生成pgo").L(`E: `, e)
-			}
+			replyFunc.GenCpuPprof.Run2(func(inter interface {
+				Start(ctx context.Context, file string) (any, error)
+			}) {
+				if _, e := inter.Start(mainCtx, file); e != nil {
+					danmulog.Base("功能", "生成pgo").L(`E: `, e)
+				}
+			})
 		}
 
 		var (
@@ -176,7 +173,21 @@ func Start(rootCtx context.Context) {
 			danmulog.L(`T: `, "准备")
 
 			//如果连接中断，则等待
-			F.KeepConnect()
+			if !F.IsConnected() {
+				cancel1, ch := c.C.Danmu_Main_mq.Pull_tag_chan(`exit_room`, 1, rootCtx)
+				select {
+				case <-ch:
+					reply.StreamOStop(c.C.Roomid)
+					danmulog.L(`I: `, "退出房间", c.C.Roomid)
+					c.C.Roomid = 0
+				case <-interrupt_chan:
+					exitSign = true
+				case <-time.After(time.Duration(30) * time.Second):
+				}
+				cancel1()
+				continue
+			}
+
 			//获取cookie
 			F.Api.Get(c.C, `Cookie`)
 			//获取LIVE_BUVID
@@ -197,9 +208,8 @@ func Start(rootCtx context.Context) {
 						if ok {
 							common.Rev += rev.Rev
 							// 显示营收
-							_ = replyFunc.Rev.Run(func(ri replyFunc.RevI) error {
+							replyFunc.Rev.Run2(func(ri replyFunc.RevI) {
 								ri.ShowRev(common.Roomid, common.Rev)
-								return nil
 							})
 						}
 					}
@@ -267,9 +277,8 @@ func Start(rootCtx context.Context) {
 		}
 
 		{ //附加功能 直播流停止 ws信息保存
-			_ = replyFunc.SaveToJson.Run(func(i replyFunc.SaveToJsonI) error {
+			replyFunc.SaveToJson.Run2(func(i replyFunc.SaveToJsonI) {
 				i.Close()
-				return nil
 			})
 			reply.StreamOStopAll()
 		}
@@ -285,7 +294,19 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, c
 		rangeSource                 fc.RangeSource[any] = func(yield func(any) bool) {
 			for !exitloop {
 				//如果连接中断，则等待
-				F.KeepConnect()
+				if !F.IsConnected() {
+					cancel1, ch := c.C.Danmu_Main_mq.Pull_tag_chan(`exit_room`, 1, mainCtx)
+					select {
+					case <-ch:
+						reply.StreamOStop(c.C.Roomid)
+						danmulog.L(`I: `, "退出房间", c.C.Roomid)
+						c.C.Roomid = 0
+					case <-mainCtx.Done():
+					case <-time.After(time.Duration(30) * time.Second):
+					}
+					cancel1()
+					continue
+				}
 				//获取cookie，检查是否登录失效
 				F.Api.Get(common, `Cookie`)
 				//获取LIVE_BUVID
@@ -298,32 +319,27 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, c
 				F.Api.Get(common, `CheckSwitch_FansMedal`)
 				// 附加功能 保持牌子点亮
 				if reply.IsOn(`保持牌子亮着`) && common.Wearing_FansMedal != 0 {
-					_ = replyFunc.KeepMedalLight.Run(func(kmli replyFunc.KeepMedalLightI) error {
+					replyFunc.KeepMedalLight.Run2(func(kmli replyFunc.KeepMedalLightI) {
 						kmli.Init(danmulog.Base("保持牌子点亮"), common.Roomid, send.Danmu_s, c.C.K_v.LoadV(`进房弹幕_内容`))
-						return nil
 					})
 				} else {
-					_ = replyFunc.KeepMedalLight.Run(func(kmli replyFunc.KeepMedalLightI) error {
+					replyFunc.KeepMedalLight.Run2(func(kmli replyFunc.KeepMedalLightI) {
 						kmli.Clear()
-						return nil
 					})
 				}
 				if reply.IsOn(`相似弹幕忽略`) {
-					_ = replyFunc.LessDanmu.Run(func(ldi replyFunc.LessDanmuI) error {
+					replyFunc.LessDanmu.Run2(func(ldi replyFunc.LessDanmuI) {
 						ldi.InitRoom(common.Roomid)
-						return nil
 					})
 				} else {
-					_ = replyFunc.LessDanmu.Run(func(ldi replyFunc.LessDanmuI) error {
+					replyFunc.LessDanmu.Run2(func(ldi replyFunc.LessDanmuI) {
 						ldi.Unset()
-						return nil
 					})
 				}
 				//tts
 				defer func() {
-					_ = replyFunc.TTS.Run(func(t replyFunc.TTSI) error {
+					replyFunc.TTS.Run2(func(t replyFunc.TTSI) {
 						t.Clear()
-						return nil
 					})
 				}()
 				danmulog.L(`I: `, "连接到房间", common.Roomid)
@@ -456,9 +472,8 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, c
 		F.Api.Get(common, `getOnlineGoldRank`)
 		//附加功能 弹幕机 无cookie无法发送弹幕
 		if common.IsLogin() && reply.IsOn("自动弹幕机") {
-			_ = replyFunc.Danmuji.Run(func(di replyFunc.DanmujiI) error {
+			replyFunc.Danmuji.Run2(func(di replyFunc.DanmujiI) {
 				di.Danmuji_auto(ctx, c.C.K_v.LoadV(`自动弹幕机_内容`).([]any), c.C.K_v.LoadV(`自动弹幕机_发送间隔s`).(float64), reply.Msg_senddanmu)
-				return nil
 			})
 		}
 		{ //附加功能 进房间发送弹幕 直播流保存 每日签到
@@ -472,14 +487,12 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, c
 			}
 			//弹幕合并
 			if reply.IsOn("弹幕合并") {
-				_ = replyFunc.DanmuMerge.Run(func(dmi replyFunc.DanmuMergeI) error {
+				replyFunc.DanmuMerge.Run2(func(dmi replyFunc.DanmuMergeI) {
 					dmi.Init(ctx, common.Roomid)
-					return nil
 				})
 			} else {
-				_ = replyFunc.DanmuMerge.Run(func(dmi replyFunc.DanmuMergeI) error {
+				replyFunc.DanmuMerge.Run2(func(dmi replyFunc.DanmuMergeI) {
 					dmi.Unset()
-					return nil
 				})
 			}
 		}
@@ -528,9 +541,8 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, c
 						return false
 					}
 					if v, ok := common.K_v.LoadV("保持牌子亮着-开播时也发送").(bool); !common.Liveing || (ok && v) {
-						_ = replyFunc.KeepMedalLight.Run(func(kmli replyFunc.KeepMedalLightI) error {
+						replyFunc.KeepMedalLight.Run2(func(kmli replyFunc.KeepMedalLightI) {
 							kmli.Do()
-							return nil
 						})
 					}
 					if v, ok := common.K_v.LoadV("下播后不记录人气观看人数").(bool); ok && v && !common.Liveing {

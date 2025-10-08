@@ -128,9 +128,8 @@ func Reply(common *c.Common, b []byte) {
 		switch head.OpeaT {
 		case c.WS_OP_MESSAGE:
 			Msg(replyFS, contain)
-			_ = replyFunc.SaveToJson.Run(func(i replyFunc.SaveToJsonI) error {
-				i.Write(contain)
-				return nil
+			replyFunc.SaveToJson.Run2(func(i replyFunc.SaveToJsonI) {
+				i.Write(&contain)
 			})
 		case c.WS_OP_HEARTBEAT_REPLY: //心跳响应
 			Heart(replyFS, contain)
@@ -170,12 +169,11 @@ func (t replyF) rank_changed(s string) {
 	var tmp = fmt.Sprintf("%s %d", j.Data.RankNameByType, j.Data.Rank)
 	t.Note = tmp
 	Gui_show(tmp, "0rank")
-	_ = replyFunc.TTS.Run(func(t replyFunc.TTSI) error {
+	replyFunc.TTS.Run2(func(t replyFunc.TTSI) {
 		t.Deal("0rank", map[string]string{
 			`{Area_name}`: j.Data.RankNameByType,
 			`{Rank}`:      strconv.Itoa(j.Data.Rank),
 		})
-		return nil
 	})
 	msglog.L(`I: `, tmp)
 }
@@ -301,11 +299,10 @@ func (t replyF) vtr_gift_lottery(s string) {
 		return
 	}
 	{ //语言tts
-		_ = replyFunc.TTS.Run(func(t replyFunc.TTSI) error {
+		replyFunc.TTS.Run2(func(t replyFunc.TTSI) {
 			t.Deal("0room", map[string]string{
 				`{msg}`: j.Data.InteractMsg,
 			})
-			return nil
 		})
 	}
 	Gui_show(j.Data.InteractMsg, `0room`)
@@ -331,11 +328,10 @@ func (t replyF) interact_word(s string) {
 		return
 	} //关注时为2,进入时为1
 	{ //语言tts
-		_ = replyFunc.TTS.Run(func(t replyFunc.TTSI) error {
+		replyFunc.TTS.Run2(func(t replyFunc.TTSI) {
 			t.Deal("0follow", map[string]string{
 				`{msg}`: fmt.Sprint(J.Data.Uname + `关注了直播间`),
 			})
-			return nil
 		})
 	}
 	Gui_show(J.Data.Uname+`关注了直播间`, `0follow`)
@@ -452,7 +448,7 @@ func (t replyF) user_toast_msg(s string) {
 		})
 	}
 	{ //语言tts
-		_ = replyFunc.TTS.Run(func(t replyFunc.TTSI) error {
+		replyFunc.TTS.Run2(func(t replyFunc.TTSI) {
 			t.Deal("0buyguide", map[string]string{
 				`{username}`:  username,
 				`{op_name}`:   op_name,
@@ -460,7 +456,6 @@ func (t replyF) user_toast_msg(s string) {
 				`{num}`:       strconv.Itoa(num),
 				`{unit}`:      unit,
 			})
-			return nil
 		})
 	}
 	{ //额外 ass 私信
@@ -883,14 +878,13 @@ func (t replyF) send_gift(s string) {
 	}
 
 	{ //语言tts
-		_ = replyFunc.TTS.Run(func(t replyFunc.TTSI) error {
+		replyFunc.TTS.Run2(func(t replyFunc.TTSI) {
 			t.Deal("0gift", map[string]string{
 				`{num}`:      strconv.Itoa(num),
 				`{uname}`:    uname,
 				`{action}`:   action,
 				`{giftName}`: giftName,
 			})
-			return nil
 		})
 	}
 	fmt.Println("\n====")
@@ -1038,13 +1032,12 @@ func (t replyF) super_chat_message(s string) {
 		logg = append(logg, message)
 	}
 	{ //语言tts
-		_ = replyFunc.TTS.Run(func(t replyFunc.TTSI) error {
+		replyFunc.TTS.Run2(func(t replyFunc.TTSI) {
 			t.Deal("0superchat", map[string]string{
 				`{uname}`:   uname,
 				`{price}`:   strconv.Itoa(price),
 				`{message}`: message,
 			})
-			return nil
 		})
 	}
 	fmt.Print("====\n")
@@ -1078,12 +1071,11 @@ func (t replyF) hot_rank_settlement_v2(s string) {
 		tmp += strconv.Itoa(type_item.Data.Rank)
 	}
 	Gui_show(tmp, "0rank")
-	_ = replyFunc.TTS.Run(func(t replyFunc.TTSI) error {
+	replyFunc.TTS.Run2(func(t replyFunc.TTSI) {
 		t.Deal("0rank", map[string]string{
 			`{Area_name}`: type_item.Data.AreaName,
 			`{Rank}`:      strconv.Itoa(type_item.Data.Rank),
 		})
-		return nil
 	})
 	msglog.L(`I: `, "热门榜", tmp)
 }
@@ -1098,14 +1090,13 @@ func (t replyF) popularity_red_pocket_new(s string) {
 	}
 	var tmp = type_item.Data.Uname + type_item.Data.Action + strconv.Itoa(type_item.Data.Num) + `个` + type_item.Data.GiftName
 	Gui_show(tmp, "0gift")
-	_ = replyFunc.TTS.Run(func(t replyFunc.TTSI) error {
+	replyFunc.TTS.Run2(func(t replyFunc.TTSI) {
 		t.Deal("0gift", map[string]string{
 			`{num}`:      strconv.Itoa(type_item.Data.Num),
 			`{uname}`:    type_item.Data.Uname,
 			`{action}`:   type_item.Data.Action,
 			`{giftName}`: type_item.Data.GiftName,
 		})
-		return nil
 	})
 	msglog.L(`I: `, tmp)
 }
@@ -1120,11 +1111,10 @@ func (t replyF) popularity_red_pocket_start(s string) {
 	}
 	var tmp = type_item.Data.SenderName + `送出了礼物红包`
 	Gui_show(tmp, "0room")
-	_ = replyFunc.TTS.Run(func(t replyFunc.TTSI) error {
+	replyFunc.TTS.Run2(func(t replyFunc.TTSI) {
 		t.Deal("0room", map[string]string{
 			`{msg}`: tmp,
 		})
-		return nil
 	})
 	msglog.L(`I: `, tmp)
 }
@@ -1191,13 +1181,12 @@ func (t replyF) entry_effect(s string) {
 	}
 
 	{ //语言tts
-		_ = replyFunc.TTS.Run(func(t replyFunc.TTSI) error {
+		replyFunc.TTS.Run2(func(t replyFunc.TTSI) {
 			t.Deal(img, map[string]string{
 				`{guard_name}`: guard_name,
 				`{username}`:   username,
 				`{msg}`:        copy_writing,
 			})
-			return nil
 		})
 	}
 	fmt.Print(">>> ")
@@ -1265,13 +1254,12 @@ func (t replyF) danmu(s string) {
 			item.color = "#" + fmt.Sprintf("%x", F.Itob32(int32(i[3].(float64)))[1:])
 
 			if v, ok := t.K_v.LoadV(`弹幕表情`).(bool); ok && v {
-				_ = replyFunc.DanmuEmotes.Run(func(dei replyFunc.DanmuEmotesI) error {
+				replyFunc.DanmuEmotes.Run2(func(dei replyFunc.DanmuEmotesI) {
 					_, e := dei.SaveEmote(context.Background(), replyFunc.DanmuEmotesS{Logg: msglog, Info: i, Msg: &item.msg})
 					item.hasEmote = e == nil
 					if e != nil && !dei.IsErrNoEmote(e) {
 						msglog.Base_add("弹幕表情").L(`E: `, e)
 					}
-					return nil
 				})
 			}
 		}
@@ -1296,15 +1284,13 @@ func (t replyF) danmu(s string) {
 
 	{ // 附加功能 弹幕机 封禁 弹幕合并
 		// 弹幕统计
-		_ = replyFunc.DanmuCountPerMin.Run(func(dcpmi replyFunc.DanmuCountPerMinI) error {
+		replyFunc.DanmuCountPerMin.Run2(func(dcpmi replyFunc.DanmuCountPerMinI) {
 			dcpmi.Do(item.roomid, item.msg, item.uid)
-			return nil
 		})
 		// 保存弹幕至db
-		_ = replyFunc.SaveDanmuToDB.Run(func(sdtd replyFunc.SaveDanmuToDBI) error {
+		replyFunc.SaveDanmuToDB.Run2(func(sdtd replyFunc.SaveDanmuToDBI) {
 			sdtd.Init(t.Common.K_v.LoadV(`保存弹幕至db`), msglog)
 			sdtd.Danmu(item.msg, item.color, item.auth, item.uid, int64(item.roomid))
-			return nil
 		})
 		// 对指定弹幕重新录制
 		_, _ = danmuReLiveTriger.Check.Run(context.Background(), danmuReLiveTriger.Danmu{Uid: item.uid, Msg: item.msg})
@@ -1312,12 +1298,11 @@ func (t replyF) danmu(s string) {
 		{
 			if item.uid != "" {
 				if item.auth != nil {
-					_ = replyFunc.TTS.Run(func(t replyFunc.TTSI) error {
+					replyFunc.TTS.Run2(func(t replyFunc.TTSI) {
 						t.Deal(item.uid, map[string]string{
 							`{auth}`: fmt.Sprint(item.auth),
 							`{msg}`:  item.msg,
 						})
-						return nil
 					})
 				}
 				if i, e := strconv.Atoi(item.uid); e == nil {
@@ -1340,41 +1325,37 @@ func (t replyF) danmu(s string) {
 		}
 		// 反射弹幕机
 		if IsOn("反射弹幕机") {
-			_ = replyFunc.Danmuji.Run(func(di replyFunc.DanmujiI) error {
+			replyFunc.Danmuji.Run2(func(di replyFunc.DanmujiI) {
 				go di.Danmujif(item.msg, Msg_senddanmu)
-				return nil
 			})
 		}
 
 		var skip bool
 		// 附加功能 合并
-		_ = replyFunc.DanmuMerge.Run(func(dmi replyFunc.DanmuMergeI) error {
+		replyFunc.DanmuMerge.Run2(func(dmi replyFunc.DanmuMergeI) {
 			if i := dmi.Do(item.msg); i > 0 {
 				danmulog.L(`I: `, item.auth, ":", item.msg)
 				skip = true
 			}
-			return nil
 		})
 		// 附加功能 更少弹幕
-		_ = replyFunc.LessDanmu.Run(func(i replyFunc.LessDanmuI) error {
+		replyFunc.LessDanmu.Run2(func(i replyFunc.LessDanmuI) {
 			if !i.Do(item.msg) {
 				danmulog.L(`I: `, item.auth, ":", item.msg)
 				skip = true
 			}
-			return nil
 		})
 		if skip {
 			return
 		}
 		// 表情跳过，避免破坏表情代码
 		if !item.hasEmote && IsOn("精简弹幕") {
-			_ = replyFunc.ShortDanmu.Run(func(i interface{ Deal(string) string }) error {
+			replyFunc.ShortDanmu.Run2(func(i interface{ Deal(string) string }) {
 				if _msg := i.Deal(item.msg); _msg == "" {
 					danmulog.L(`I: `, item.auth, ":", item.msg)
 				} else {
 					item.msg = _msg
 				}
-				return nil
 			})
 		}
 	}
@@ -1461,12 +1442,11 @@ func Itos(i []interface{}) string {
 var _ = replyFunc.DanmuMerge.Run(func(dmi replyFunc.DanmuMergeI) error {
 	dmi.InitSend(func(roomid int, num uint, msg string) {
 		if num > 3 {
-			_ = replyFunc.TTS.Run(func(t replyFunc.TTSI) error {
+			replyFunc.TTS.Run2(func(t replyFunc.TTSI) {
 				t.Deal(`0multi`, map[string]string{
 					`{num}`: strconv.Itoa(int(num)),
 					`{msg}`: msg,
 				})
-				return nil
 			})
 			Msg_showdanmu(Danmu_item{
 				msg:    strconv.Itoa(int(num)) + " x " + msg,

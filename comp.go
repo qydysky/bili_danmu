@@ -9,4 +9,4 @@ type CmdI interface {
 	Cmd()
 }
 
-var Cmd = comp.GetV2(`cmd`, comp.PreFuncErr[CmdI]{})
+var Cmd = comp.GetV3[CmdI](`cmd`)
