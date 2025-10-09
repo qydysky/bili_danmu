@@ -1249,6 +1249,13 @@ go build .
 
   vendor链接: `https://github.com/qydysky/bili_danmu/releases/download/{version}/vendor.zip`
 
+* 组件优化：从源代码编译时，可以将各文件中存在的import项注释（存在`//`注释的），对应的组件将不会编译，对应功能将缺失，但产物大小将减少.
+
+  例如：
+  注释所有`//removable`后，使用下述命令编译时，产物将由17.9M->10M(v0.20.3时)
+  ```
+  CGO_ENABLED=0  go build -ldflags="-s -w" -trimpath -buildvcs=false -v -buildmode=exe  .
+  ```
 
 #### 关于更新版本v0.{y}.{z}
 * 当bilibili停止服务时，将会发布v1版本。

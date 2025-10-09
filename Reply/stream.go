@@ -516,16 +516,14 @@ func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo floa
 			redirectUrl string
 		)
 		if err := r.Respon(func(b []byte) (err error) {
-			_ = replyFunc.ParseM3u8.Run(func(pmi replyFunc.ParseM3u8I) error {
+			replyFunc.ParseM3u8.Run2(func(pmi replyFunc.ParseM3u8I) {
 				rg, redirectUrl, err = pmi.Parse(b, lastNo)
-				return nil
 			})
 			return
 		}); err != nil {
 			var isErrRedirect bool
-			_ = replyFunc.ParseM3u8.Run(func(pmi replyFunc.ParseM3u8I) error {
+			replyFunc.ParseM3u8.Run2(func(pmi replyFunc.ParseM3u8I) {
 				isErrRedirect = pmi.IsErrRedirect(err)
-				return nil
 			})
 			if isErrRedirect {
 				// 指向新连接
@@ -1453,9 +1451,8 @@ func (t *M4SStream) Start() bool {
 					startf := func(_ *M4SStream) error {
 						l.L(`T: `, `开始`)
 						//弹幕分值统计
-						_ = replyFunc.DanmuCountPerMin.Run(func(dcpmi replyFunc.DanmuCountPerMinI) error {
+						replyFunc.DanmuCountPerMin.Run2(func(dcpmi replyFunc.DanmuCountPerMinI) {
 							dcpmi.Rec(ctx1, ms.common.Roomid, savePath)(ms.common.K_v.LoadV("弹幕分值"))
-							return nil
 						})
 						return nil
 					}
