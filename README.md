@@ -1249,7 +1249,7 @@ go build .
 
   vendor链接: `https://github.com/qydysky/bili_danmu/releases/download/{version}/vendor.zip`
 
-* 组件优化：从源代码编译时，可以将各文件中存在的import项注释（存在`//`注释的），对应的组件将不会编译，对应功能将缺失，但产物大小将减少.
+* 组件优化：从源代码编译时，可以将各文件中存在的import项注释（存在`//`注释的），对应的组件将不会编译。这会使对应功能缺失，但能有效减少产物大小。
 
   例如：
   注释所有`//removable`后，在demo目录下，使用下述命令编译时，产物将由17.9M->10M(v0.20.3时)
