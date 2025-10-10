@@ -653,7 +653,7 @@ func (t *Common) Init() *Common {
 					"goVersion": runtime.Version(),
 					"timeInfo": map[string]any{
 						"timeZone":           timeOffset,
-						"biliServerTimeZone": t.K_v.LoadV("服务器时区"),
+						"biliServerTimeZone": t.SerLocation,
 						"startTime":          t.StartT.Format(time.RFC3339),
 						"currentTime":        time.Now().Format(time.RFC3339),
 					},
