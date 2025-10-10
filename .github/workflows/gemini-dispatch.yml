@@ -9,14 +9,14 @@ on:
       - 'submitted'
   pull_request:
     types:
-      - 'opened'
-  issues:
-    types:
-      - 'opened'
-      - 'reopened'
-  issue_comment:
-    types:
-      - 'created'
+      - 'ready_for_review'
+  # issues:
+  #   types:
+  #     - 'opened'
+  #     - 'reopened'
+  # issue_comment:
+  #   types:
+  #     - 'created'
 
 defaults:
   run:
