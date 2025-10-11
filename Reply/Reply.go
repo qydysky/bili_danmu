@@ -148,6 +148,22 @@ type replyF struct {
 	*c.Common
 }
 
+type danmuReuseS struct {
+	Cmd  string `json:"cmd"`
+	Info []any  `json:"info"`
+}
+
+var danmuPool = pool.New(pool.PoolFunc[danmuReuseS]{
+	New: func() *danmuReuseS {
+		return &danmuReuseS{}
+	},
+	Reuse: func(drs *danmuReuseS) *danmuReuseS {
+		drs.Cmd = ""
+		drs.Info = drs.Info[:0]
+		return drs
+	},
+}, 100)
+
 // 默认未识别Msg
 func (t replyF) defaultMsg(s string) {
 	msglog.Base_add("Unknow").L(`W: `, s)
@@ -1230,27 +1246,24 @@ type Danmu_item struct {
 }
 
 func (t replyF) danmu(s string) {
-	var j struct {
-		Cmd  string `json:"cmd"`
-		Info []any  `json:"info"`
-	}
+	j := danmuPool.Get()
 
-	if e := json.Unmarshal([]byte(s), &j); e != nil {
+	if e := json.Unmarshal([]byte(s), j); e != nil {
 		msglog.L(`E: `, e)
 	}
 
-	infob := j.Info
+	// infob := j.Info
 	item := Danmu_item{}
 	if v, ok := t.K_v.LoadV(`弹幕回放_隐藏发送人`).(bool); ok && v {
 		item.hideAuth = true
 	}
 	{
 		//解析
-		if len(infob) > 0 {
-			item.msg, _ = infob[1].(string)
+		if len(j.Info) > 0 {
+			item.msg, _ = j.Info[1].(string)
 			item.msg = strings.TrimSpace(item.msg)
 		}
-		if i, ok := infob[0].([]any); ok {
+		if i, ok := j.Info[0].([]any); ok {
 			item.color = "#" + fmt.Sprintf("%x", F.Itob32(int32(i[3].(float64)))[1:])
 
 			if v, ok := t.K_v.LoadV(`弹幕表情`).(bool); ok && v {
@@ -1263,8 +1276,8 @@ func (t replyF) danmu(s string) {
 				})
 			}
 		}
-		if len(infob) > 1 {
-			i, _ := infob[2].([]any)
+		if len(j.Info) > 1 {
+			i, _ := j.Info[2].([]any)
 			if len(i) > 0 {
 				item.uid = strconv.Itoa(int(i[0].(float64)))
 			}
@@ -1274,6 +1287,7 @@ func (t replyF) danmu(s string) {
 		}
 		item.roomid = t.Roomid
 	}
+	danmuPool.Put(j)
 
 	danmulog := msglog.Base("弹").LShow(false)
 
