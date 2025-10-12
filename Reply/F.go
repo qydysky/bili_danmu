@@ -219,11 +219,11 @@ func StreamOCut(roomid int) (setTitle func(title ...string)) {
 	return func(s ...string) {}
 }
 
-func TTS(i Danmu_mq_t) {
-	replyFunc.TTS.Run2(func(t replyFunc.TTSI) {
-		t.Deal(i.uid, i.m)
-	})
-}
+// func TTS(i Danmu_mq_t) {
+// 	replyFunc.TTS.Run2(func(t replyFunc.TTSI) {
+// 		t.Deal(i.uid, i.m)
+// 	})
+// }
 
 // 进入房间发送弹幕
 func Entry_danmu(common *c.Common) {
@@ -288,7 +288,7 @@ func AutoSend_silver_gift(common *c.Common) {
 // 直播Web服务口
 var StreamWs = websocket.New_server()
 
-func SendStreamWs(item Danmu_item) {
+func SendStreamWs(item *Danmu_item) {
 	var msg string
 	if item.auth != nil && !item.hideAuth {
 		msg += fmt.Sprint(item.auth) + `: `
