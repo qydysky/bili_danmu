@@ -43,8 +43,6 @@ jobs:
 
     - name: Test
       run: |
-        sudo apt-get update
-        sudo apt-get install libgtk-3-dev libcairo2-dev libglib2.0-dev
         export r=${R:-92613}
         go get .
         go mod vendor
@@ -91,8 +89,6 @@ jobs:
       run: |
         git rev-parse --short HEAD > CV/VERSION
         cd demo
-        sudo apt-get update
-        sudo apt-get install libgtk-3-dev libcairo2-dev libglib2.0-dev
         go get .
         CGO_ENABLED=0 go build -pgo=auto -v -buildmode=exe main.go
         GOEXPERIMENT=greenteagc,jsonv2 CGO_ENABLED=0 go build -pgo=auto -v -buildmode=exe -o experiment main.go

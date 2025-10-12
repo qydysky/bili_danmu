@@ -40,8 +40,6 @@ jobs:
 
     - name: Test
       run: |
-        sudo apt-get update
-        sudo apt-get install libgtk-3-dev libcairo2-dev libglib2.0-dev
         export r=${R:-92613}
         go get .
         go mod vendor
@@ -89,8 +87,6 @@ jobs:
 
     - name: Build
       run: |
-        sudo apt-get update
-        sudo apt-get install libgtk-3-dev libcairo2-dev libglib2.0-dev
         git rev-parse --short HEAD > CV/VERSION
         cd demo
         go get .
