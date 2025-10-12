@@ -21,7 +21,6 @@ import (
 	send "github.com/qydysky/bili_danmu/Send"
 	brotli "github.com/qydysky/brotli"
 	funcCtrl "github.com/qydysky/part/funcCtrl"
-	mq "github.com/qydysky/part/msgq"
 	pool "github.com/qydysky/part/pool"
 	pstrings "github.com/qydysky/part/strings"
 )
@@ -242,7 +241,7 @@ func (t replyF) cut_off(s string) {
 	j.Msg = fmt.Sprint(j.Msg)
 
 	//直播流服务弹幕
-	SendStreamWs(Danmu_item{
+	SendStreamWs(&Danmu_item{
 		auth:   "超管",
 		border: true,
 		color:  "#FF0000",
@@ -1061,7 +1060,7 @@ func (t replyF) super_chat_message(s string) {
 	{ //额外
 		Gui_show(Itos(sh), "0superchat")
 		//直播流服务弹幕
-		SendStreamWs(Danmu_item{
+		SendStreamWs(&Danmu_item{
 			auth:   uname,
 			border: true,
 			color:  "#FF0000",
@@ -1400,7 +1399,7 @@ func Msg_showdanmu(item Danmu_item) {
 	//展示
 	{
 		//直播流服务弹幕
-		SendStreamWs(item)
+		SendStreamWs(&item)
 
 		if item.auth != nil && !item.hideAuth {
 			Gui_show(fmt.Sprint(item.auth)+`: `+item.msg, item.uid)
@@ -1412,24 +1411,24 @@ func Msg_showdanmu(item Danmu_item) {
 }
 
 type Danmu_mq_t struct {
-	uid string
-	msg string
-	m   map[string]string //tts参数替换列表
+	uid *string
+	msg *string
+	// m   map[string]string //tts参数替换列表
 }
 
-var Danmu_mq = mq.New()
+// var Danmu_mq = mq.New()
 
 // 消息显示
 func Gui_show(m ...string) {
 	//m[0]:msg m[1]:uid
-	uid := ""
-	if len(m) > 1 {
-		uid = m[1]
-	}
-	Danmu_mq.Push_tag(`danmu`, Danmu_mq_t{
-		uid: uid,
-		msg: m[0],
-	})
+	// uid := ""
+	// if len(m) > 1 {
+	// 	uid = m[1]
+	// }
+	// Danmu_mq.Push_tag(`danmu`, Danmu_mq_t{
+	// 	uid: &uid,
+	// 	msg: &m[0],
+	// })
 }
 
 func Itos(i []interface{}) string {
