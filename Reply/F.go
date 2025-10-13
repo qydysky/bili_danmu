@@ -124,7 +124,7 @@ func StreamOCommon(roomid int) (array []*c.Common) {
 			return []*c.Common{v.(*M4SStream).Common()}
 		}
 	} else { //返回所有
-		c.StreamO.Range(func(_, v interface{}) bool {
+		c.StreamO.Range(func(_, v any) bool {
 			array = append(array, v.(*M4SStream).Common())
 			return true
 		})
@@ -169,7 +169,7 @@ func StreamOStart(roomid int) {
 
 // 停止实例
 func StreamOStopAll() {
-	c.StreamO.Range(func(k, v interface{}) bool {
+	c.StreamO.Range(func(k, v any) bool {
 		if !pctx.Done(v.(*M4SStream).Status) {
 			v.(*M4SStream).Stop()
 		}
@@ -180,7 +180,7 @@ func StreamOStopAll() {
 
 // 停止实例
 func StreamOStopOther(roomid int) {
-	c.StreamO.Range(func(_roomid, v interface{}) bool {
+	c.StreamO.Range(func(_roomid, v any) bool {
 		if roomid == _roomid {
 			return true
 		}
@@ -951,7 +951,7 @@ func init() {
 
 			// 获取当前房间的
 			var currentStreamO *M4SStream
-			c.StreamO.Range(func(key, value interface{}) bool {
+			c.StreamO.Range(func(key, value any) bool {
 				if key != nil && c.C.Roomid == key.(int) {
 					currentStreamO = value.(*M4SStream)
 					return false
@@ -1057,8 +1057,8 @@ func init() {
 				}
 				return
 			} else if IsOn("直播Web可以发送弹幕") {
-				StreamWs.Interface().Pull_tag(map[string](func(interface{}) bool){
-					`recv`: func(i interface{}) bool {
+				StreamWs.Interface().Pull_tag(map[string](func(any) bool){
+					`recv`: func(i any) bool {
 						if u, ok := i.(websocket.Uinterface); ok {
 							if bytes.Equal(u.Data[:2], []byte("%S")) && len(u.Data) > 0 {
 								flog.Base_add(`流服务弹幕`).L(`I: `, string(u.Data[2:]))
@@ -1067,7 +1067,7 @@ func init() {
 						}
 						return false
 					},
-					`close`: func(i interface{}) bool { return true },
+					`close`: func(i any) bool { return true },
 				})
 			}
 
