@@ -10,7 +10,6 @@ import (
 	"io/fs"
 	"net"
 	"net/http"
-	"net/http/pprof"
 	"net/url"
 	"os"
 	"slices"
@@ -334,29 +333,6 @@ func init() {
 		if spath[0] != '/' {
 			flog.L(`E: `, `直播Web服务路径错误`)
 			return
-		}
-
-		// debug模式
-		if debugP, ok := c.C.K_v.LoadV(`debug路径`).(string); ok && debugP != "" {
-			c.C.SerF.Store(debugP, func(w http.ResponseWriter, r *http.Request) {
-				if c.DefaultHttpFunc(c.C, w, r, http.MethodGet, http.MethodPost) {
-					return
-				}
-				if name, found := strings.CutPrefix(r.URL.Path, debugP); found && name != "" {
-					switch name {
-					case "cmdline":
-						pprof.Cmdline(w, r)
-					case "profile":
-						pprof.Profile(w, r)
-					case "trace":
-						pprof.Trace(w, r)
-					default:
-						pprof.Handler(name).ServeHTTP(w, r)
-					}
-					return
-				}
-				pprof.Index(w, r)
-			})
 		}
 
 		// 直播流回放连接限制

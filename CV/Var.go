@@ -12,6 +12,7 @@ import (
 	"math"
 	"net"
 	"net/http"
+	"net/http/pprof"
 	"net/url"
 	"os"
 	"runtime"
@@ -580,6 +581,29 @@ func (t *Common) Init() *Common {
 					}
 				}
 			}
+		}
+
+		// debug模式
+		if debugP, ok := t.K_v.LoadV(`debug路径`).(string); ok && debugP != "" {
+			t.SerF.Store(debugP, func(w http.ResponseWriter, r *http.Request) {
+				if DefaultHttpFunc(t, w, r, http.MethodGet, http.MethodPost) {
+					return
+				}
+				if name, found := strings.CutPrefix(r.URL.Path, debugP); found && name != "" {
+					switch name {
+					case "cmdline":
+						pprof.Cmdline(w, r)
+					case "profile":
+						pprof.Profile(w, r)
+					case "trace":
+						pprof.Trace(w, r)
+					default:
+						pprof.Handler(name).ServeHTTP(w, r)
+					}
+					return
+				}
+				pprof.Index(w, r)
+			})
 		}
 
 		if val, ok := t.K_v.LoadV("stop路径").(string); ok && val != "" {
