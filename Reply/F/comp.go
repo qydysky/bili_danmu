@@ -14,8 +14,9 @@ import (
 	_ "github.com/qydysky/bili_danmu/Reply/F/danmuMerge"       //removable
 	_ "github.com/qydysky/bili_danmu/Reply/F/danmuji"          //removable
 	_ "github.com/qydysky/bili_danmu/Reply/F/genCpuPprof"      //removable
-	_ "github.com/qydysky/bili_danmu/Reply/F/keepMedalLight"   //removable
-	_ "github.com/qydysky/bili_danmu/Reply/F/lessDanmu"        //removable
+	_ "github.com/qydysky/bili_danmu/Reply/F/json"
+	_ "github.com/qydysky/bili_danmu/Reply/F/keepMedalLight" //removable
+	_ "github.com/qydysky/bili_danmu/Reply/F/lessDanmu"      //removable
 	_ "github.com/qydysky/bili_danmu/Reply/F/parseM3u8"
 	_ "github.com/qydysky/bili_danmu/Reply/F/rev"           //removable
 	_ "github.com/qydysky/bili_danmu/Reply/F/saveDanmuToDB" //removable
@@ -26,6 +27,10 @@ import (
 	comp "github.com/qydysky/part/component2"
 	log "github.com/qydysky/part/log"
 )
+
+var J = comp.GetV3[interface {
+	Unmarshal(data []byte, v any) error
+}](`json`).Inter()
 
 var GenCpuPprof = comp.GetV3[interface {
 	Start(ctx context.Context, file string) (any, error)

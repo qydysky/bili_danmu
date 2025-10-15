@@ -6,6 +6,7 @@ import (
 	"io"
 
 	c "github.com/qydysky/bili_danmu/CV"
+	replyFunc "github.com/qydysky/bili_danmu/Reply/F"
 	file "github.com/qydysky/part/file"
 )
 
@@ -189,7 +190,7 @@ func Msg(replyFS replyF, b []byte) {
 		Cmd string `json:"cmd"`
 	}
 
-	if e := json.Unmarshal(b, &tmp); e != nil {
+	if e := replyFunc.J.Unmarshal(b, &tmp); e != nil {
 		msglog.Base_add(`select func`).L(`E: `, e)
 		return
 	}
