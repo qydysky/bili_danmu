@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/zlib"
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -172,7 +173,7 @@ func (t replyF) defaultMsg(s string) {
 func (t replyF) rank_changed(s string) {
 	msglog := msglog.Base_add("房")
 	var j ws_msg.RANK_CHANGED
-	if e := replyFunc.J.Unmarshal([]byte(s), &j); e != nil {
+	if e := json.Unmarshal([]byte(s), &j); e != nil {
 		msglog.L(`E: `, e)
 		return
 	}
@@ -197,7 +198,7 @@ func (t replyF) rank_changed(s string) {
 func (t replyF) room_lock(s string) {
 	msglog := msglog.Base_add("房")
 	var j ws_msg.ROOM_LOCK
-	if e := replyFunc.J.Unmarshal([]byte(s), &j); e != nil {
+	if e := json.Unmarshal([]byte(s), &j); e != nil {
 		msglog.L(`E: `, e)
 		return
 	}
@@ -209,7 +210,7 @@ func (t replyF) room_lock(s string) {
 func (t replyF) wealth_notify(s string) {
 	msglog := msglog.Base_add("房")
 	var j ws_msg.WEALTH_NOTIFY
-	if e := replyFunc.J.Unmarshal([]byte(s), &j); e != nil {
+	if e := json.Unmarshal([]byte(s), &j); e != nil {
 		msglog.L(`E: `, e)
 		return
 	}
@@ -221,7 +222,7 @@ func (t replyF) wealth_notify(s string) {
 func (t replyF) log_in_notice(s string) {
 	msglog := msglog.Base_add("房")
 	var j ws_msg.LOG_IN_NOTICE
-	if e := replyFunc.J.Unmarshal([]byte(s), &j); e != nil {
+	if e := json.Unmarshal([]byte(s), &j); e != nil {
 		msglog.L(`E: `, e)
 		return
 	}
@@ -233,7 +234,7 @@ func (t replyF) log_in_notice(s string) {
 func (t replyF) cut_off(s string) {
 	msglog := msglog.Base_add("房", "超管")
 	var j ws_msg.CUT_OFF
-	if e := replyFunc.J.Unmarshal([]byte(s), &j); e != nil {
+	if e := json.Unmarshal([]byte(s), &j); e != nil {
 		msglog.L(`E: `, e)
 		return
 	}
@@ -255,7 +256,7 @@ func (t replyF) cut_off(s string) {
 func (t replyF) pk_lottery_start(s string) {
 	msglog := msglog.Base_add("大乱斗")
 	var j ws_msg.PK_LOTTERY_START
-	if e := replyFunc.J.Unmarshal([]byte(s), &j); e != nil {
+	if e := json.Unmarshal([]byte(s), &j); e != nil {
 		msglog.L(`E: `, e)
 		return
 	}
@@ -267,7 +268,7 @@ func (t replyF) pk_lottery_start(s string) {
 func (t replyF) voice_join_status(s string) {
 	msglog := msglog.Base_add("连麦")
 	var j ws_msg.VOICE_JOIN_STATUS
-	if e := replyFunc.J.Unmarshal([]byte(s), &j); e != nil {
+	if e := json.Unmarshal([]byte(s), &j); e != nil {
 		msglog.L(`E: `, e)
 		return
 	}
@@ -283,7 +284,7 @@ func (t replyF) voice_join_status(s string) {
 func (t replyF) voice_join_room_count_info(s string) {
 	msglog := msglog.Base_add("连麦")
 	var j ws_msg.VOICE_JOIN_ROOM_COUNT_INFO
-	if e := replyFunc.J.Unmarshal([]byte(s), &j); e != nil {
+	if e := json.Unmarshal([]byte(s), &j); e != nil {
 		msglog.L(`E: `, e)
 		return
 	}
@@ -295,7 +296,7 @@ func (t replyF) voice_join_room_count_info(s string) {
 func (t replyF) pk_battle_process_new(s string) {
 	msglog := msglog.Base_add("大乱斗")
 	var j ws_msg.PK_BATTLE_PROCESS_NEW
-	if e := replyFunc.J.Unmarshal([]byte(s), &j); e != nil {
+	if e := json.Unmarshal([]byte(s), &j); e != nil {
 		msglog.L(`E: `, e)
 		return
 	}
@@ -309,7 +310,7 @@ func (t replyF) pk_battle_process_new(s string) {
 func (t replyF) vtr_gift_lottery(s string) {
 	msglog := msglog.Base_add("特别礼物")
 	var j ws_msg.VTR_GIFT_LOTTERY
-	if e := replyFunc.J.Unmarshal([]byte(s), &j); e != nil {
+	if e := json.Unmarshal([]byte(s), &j); e != nil {
 		msglog.L(`E: `, e)
 		return
 	}
@@ -333,7 +334,7 @@ func (t replyF) interact_word(s string) {
 			Uname   string `json:"uname" pd:"2"`
 		} `json:"data"`
 	}{}
-	if e := replyFunc.J.Unmarshal([]byte(s), &J); e != nil {
+	if e := json.Unmarshal([]byte(s), &J); e != nil {
 		return
 	}
 	if e := F.UnmarshalBase64S(J.Data.Pb, &(J.Data)); e != nil {
@@ -408,7 +409,7 @@ func (t replyF) user_toast_msg(s string) {
 	msglog := msglog.Base_add("礼", "大航海")
 
 	var j ws_msg.USER_TOAST_MSG
-	if e := replyFunc.J.Unmarshal([]byte(s), &j); e != nil {
+	if e := json.Unmarshal([]byte(s), &j); e != nil {
 		msglog.L(`E: `, e)
 		return
 	}
@@ -597,7 +598,7 @@ func (t replyF) win_activity(s string) {
 			Title any `json:"title"`
 		} `json:"data"`
 	}{}
-	if e := replyFunc.J.Unmarshal([]byte(s), &J); e != nil {
+	if e := json.Unmarshal([]byte(s), &J); e != nil {
 		return
 	}
 	fmt.Println("活动", J.Data.Title, "已开启")
@@ -610,7 +611,7 @@ func (t replyF) watched_change(s string) {
 		return
 	}
 	var data ws_msg.WATCHED_CHANGE
-	_ = replyFunc.J.Unmarshal([]byte(s), &data)
+	_ = json.Unmarshal([]byte(s), &data)
 	// fmt.Printf("\t观看人数:%d\n", watched)
 	if data.Data.Num == t.Watched {
 		return
@@ -655,7 +656,7 @@ var roomChangeFC funcCtrl.FlashFunc
 func (t replyF) room_change(s string) {
 	var type_item ws_msg.ROOM_CHANGE
 
-	if e := replyFunc.J.Unmarshal([]byte(s), &type_item); e != nil {
+	if e := json.Unmarshal([]byte(s), &type_item); e != nil {
 		msglog.L(`E: `, e)
 	}
 
@@ -713,7 +714,7 @@ func (t replyF) room_change(s string) {
 func (t replyF) warning(s string) {
 	var type_item ws_msg.WARNING
 
-	if e := replyFunc.J.Unmarshal([]byte(s), &type_item); e != nil {
+	if e := json.Unmarshal([]byte(s), &type_item); e != nil {
 		msglog.L(`E: `, e)
 	}
 
@@ -728,7 +729,7 @@ func (t replyF) warning(s string) {
 func (t replyF) like_info_v3_click(s string) {
 	var type_item ws_msg.LIKE_INFO_V3_CLICK
 
-	if e := replyFunc.J.Unmarshal([]byte(s), &type_item); e != nil {
+	if e := json.Unmarshal([]byte(s), &type_item); e != nil {
 		msglog.L(`E: `, e)
 	}
 	s = type_item.Data.Uname + type_item.Data.LikeText
@@ -742,7 +743,7 @@ func (t replyF) like_info_v3_click(s string) {
 func (t replyF) little_tips(s string) {
 	var type_item ws_msg.LITTLE_TIPS
 
-	if e := replyFunc.J.Unmarshal([]byte(s), &type_item); e != nil {
+	if e := json.Unmarshal([]byte(s), &type_item); e != nil {
 		msglog.L(`E: `, e)
 	}
 	s = type_item.Data.Msg
@@ -756,7 +757,7 @@ func (t replyF) little_tips(s string) {
 // func (t replyF) popular_rank_changed(s string) {
 // 	var type_item ws_msg.POPULAR_RANK_CHANGED
 
-// 	if e := replyFunc.J.Unmarshal([]byte(s), &type_item); e != nil {
+// 	if e := json.Unmarshal([]byte(s), &type_item); e != nil {
 // 		msglog.L(`E: `, e)
 // 	}
 // 	s = fmt.Sprintf("人气排行 %d", type_item.Data.Rank)
@@ -771,7 +772,7 @@ func (t replyF) video_connection_join_start(s string) {
 	msglog := msglog.Base_add("房").Log_show_control(false)
 
 	var j ws_msg.VIDEO_CONNECTION_JOIN_START
-	if e := replyFunc.J.Unmarshal([]byte(s), &j); e != nil {
+	if e := json.Unmarshal([]byte(s), &j); e != nil {
 		msglog.L(`E: `, e)
 	}
 
@@ -787,7 +788,7 @@ func (t replyF) video_connection_join_end(s string) {
 	msglog := msglog.Base_add("房").Log_show_control(false)
 
 	var j ws_msg.VIDEO_CONNECTION_JOIN_END
-	if e := replyFunc.J.Unmarshal([]byte(s), &j); e != nil {
+	if e := json.Unmarshal([]byte(s), &j); e != nil {
 		msglog.L(`E: `, e)
 	}
 
@@ -803,7 +804,7 @@ func (t replyF) video_connection_msg(s string) {
 	msglog := msglog.Base_add("房").Log_show_control(false)
 
 	var j ws_msg.VIDEO_CONNECTION_MSG
-	if e := replyFunc.J.Unmarshal([]byte(s), &j); e != nil {
+	if e := json.Unmarshal([]byte(s), &j); e != nil {
 		msglog.L(`E: `, e)
 	}
 
@@ -819,7 +820,7 @@ func (t replyF) activity_banner_change_v2(s string) {
 	msglog := msglog.Base_add("房").Log_show_control(false)
 
 	var j ws_msg.ACTIVITY_BANNER_CHANGE_V2
-	if e := replyFunc.J.Unmarshal([]byte(s), &j); e != nil {
+	if e := json.Unmarshal([]byte(s), &j); e != nil {
 		msglog.L(`E: `, e)
 	}
 
@@ -839,7 +840,7 @@ func (t replyF) send_gift(s string) {
 	msglog := msglog.Base_add("礼").Log_show_control(false)
 
 	var j ws_msg.SEND_GIFT
-	if e := replyFunc.J.Unmarshal([]byte(s), &j); e != nil {
+	if e := json.Unmarshal([]byte(s), &j); e != nil {
 		msglog.L(`E: `, e)
 	}
 
@@ -917,7 +918,7 @@ func (t replyF) room_block_msg(s string) {
 	J := struct {
 		Uname string `json:"uname"`
 	}{}
-	if e := replyFunc.J.Unmarshal([]byte(s), &J); e != nil {
+	if e := json.Unmarshal([]byte(s), &J); e != nil {
 		return
 	}
 
@@ -931,7 +932,7 @@ func (t replyF) preparing(s string) {
 	msglog := msglog.Base_add("房", "下播")
 
 	var type_item ws_msg.PREPARING
-	if err := replyFunc.J.Unmarshal([]byte(s), &type_item); err != nil {
+	if err := json.Unmarshal([]byte(s), &type_item); err != nil {
 		msglog.L(`E: `, err)
 		return
 	} else {
@@ -955,7 +956,7 @@ func (t replyF) live(s string) {
 	msglog := msglog.Base_add("房", "开播")
 
 	var type_item ws_msg.LIVE
-	if err := replyFunc.J.Unmarshal([]byte(s), &type_item); err != nil {
+	if err := json.Unmarshal([]byte(s), &type_item); err != nil {
 		msglog.L(`E: `, err)
 		return
 	} else {
@@ -996,7 +997,7 @@ func (t replyF) super_chat_message(s string) {
 	msglog := msglog.Base_add("礼", "SC")
 
 	var j ws_msg.SUPER_CHAT_MESSAGE
-	if e := replyFunc.J.Unmarshal([]byte(s), &j); e != nil {
+	if e := json.Unmarshal([]byte(s), &j); e != nil {
 		msglog.L(`E: `, e)
 	}
 
@@ -1075,7 +1076,7 @@ func (t replyF) hot_rank_settlement_v2(s string) {
 	msglog := msglog.Base_add("房")
 
 	var type_item ws_msg.HOT_RANK_SETTLEMENT_V2
-	if e := replyFunc.J.Unmarshal([]byte(s), &type_item); e != nil {
+	if e := json.Unmarshal([]byte(s), &type_item); e != nil {
 		msglog.L(`E: `, e)
 	}
 	var tmp = `获得:`
@@ -1100,7 +1101,7 @@ func (t replyF) popularity_red_pocket_new(s string) {
 	msglog := msglog.Base_add("礼", "礼物红包")
 
 	var type_item ws_msg.POPULARITY_RED_POCKET_NEW
-	if e := replyFunc.J.Unmarshal([]byte(s), &type_item); e != nil {
+	if e := json.Unmarshal([]byte(s), &type_item); e != nil {
 		msglog.L(`E: `, e)
 	}
 	var tmp = type_item.Data.Uname + type_item.Data.Action + strconv.Itoa(type_item.Data.Num) + `个` + type_item.Data.GiftName
@@ -1121,7 +1122,7 @@ func (t replyF) popularity_red_pocket_start(s string) {
 	msglog := msglog.Base_add("礼", "礼物红包")
 
 	var type_item ws_msg.POPULARITY_RED_POCKET_START
-	if e := replyFunc.J.Unmarshal([]byte(s), &type_item); e != nil {
+	if e := json.Unmarshal([]byte(s), &type_item); e != nil {
 		msglog.L(`E: `, e)
 	}
 	var tmp = type_item.Data.SenderName + `送出了礼物红包`
@@ -1139,7 +1140,7 @@ func (t replyF) little_message_box(s string) {
 	msglog := msglog.Base_add("系统")
 
 	var type_item ws_msg.LITTLE_MESSAGE_BOX
-	if e := replyFunc.J.Unmarshal([]byte(s), &type_item); e != nil {
+	if e := json.Unmarshal([]byte(s), &type_item); e != nil {
 		msglog.L(`E: `, e)
 	}
 	if type_item.Data.Msg != `` {
@@ -1152,7 +1153,7 @@ func (t replyF) messagebox_user_medal_change(s string) {
 	msglog := msglog.Base_add("房")
 
 	var type_item ws_msg.MESSAGEBOX_USER_MEDAL_CHANGE
-	if e := replyFunc.J.Unmarshal([]byte(s), &type_item); e != nil {
+	if e := json.Unmarshal([]byte(s), &type_item); e != nil {
 		msglog.L(`E: `, e)
 	}
 	if type_item.Data.Medal_name != `` {
@@ -1168,7 +1169,7 @@ func (t replyF) entry_effect(s string) {
 			Copy_writing string `json:"copy_writing"`
 		} `json:"data"`
 	}
-	if e := replyFunc.J.Unmarshal([]byte(s), &res); e != nil {
+	if e := json.Unmarshal([]byte(s), &res); e != nil {
 		msglog.L(`E: `, e)
 	}
 
@@ -1220,7 +1221,7 @@ func (t replyF) roomsilent(s string) {
 			Level int `json:"level"`
 		} `json:"data"`
 	}{}
-	if e := replyFunc.J.Unmarshal([]byte(s), &J); e != nil {
+	if e := json.Unmarshal([]byte(s), &J); e != nil {
 		return
 	}
 
@@ -1247,7 +1248,7 @@ type Danmu_item struct {
 func (t replyF) danmu(s string) {
 	j := danmuPool.Get()
 
-	if e := replyFunc.J.Unmarshal([]byte(s), j); e != nil {
+	if e := json.Unmarshal([]byte(s), j); e != nil {
 		msglog.L(`E: `, e)
 	}
 
