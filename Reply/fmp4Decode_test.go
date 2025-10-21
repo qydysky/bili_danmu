@@ -86,7 +86,7 @@ func Test_Mp4Cut(t *testing.T) {
 		t.Log("test file not exist")
 	}
 
-	e := NewFmp4Decoder().Cut(f, time.Minute*30, time.Second*20, cutf.File())
+	e := NewFmp4Decoder().Cut(f, time.Minute*30, time.Second*20, cutf.File(), false, false)
 	t.Log(perrors.ErrorFormat(e))
 }
 
@@ -150,6 +150,6 @@ func Test_Mp4CutSeed(t *testing.T) {
 		t.Fatal(e)
 	}
 
-	e = NewFmp4Decoder().CutSeed(f, time.Minute*30, time.Second*20, cutf.File(), f, gf)
+	e = NewFmp4Decoder().CutSeed(f, time.Minute*30, time.Second*20, cutf.File(), f, gf, false, false)
 	t.Log(perrors.ErrorFormat(e))
 }

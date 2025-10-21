@@ -75,7 +75,7 @@ func Test_FLVCut(t *testing.T) {
 		t.Log("test file not exist")
 	}
 
-	e := NewFlvDecoder().Cut(f, time.Minute*10, time.Second*20, cutf.File())
+	e := NewFlvDecoder().Cut(f, time.Minute*10, time.Second*20, cutf.File(), false, false)
 	t.Log(perrors.ErrorFormat(e))
 }
 
@@ -135,6 +135,6 @@ func Test_FLVCutSeed(t *testing.T) {
 		t.Fatal(e)
 	}
 
-	e = NewFlvDecoder().CutSeed(f, time.Minute*10, time.Second*20, cutf.File(), f, gf)
+	e = NewFlvDecoder().CutSeed(f, time.Minute*10, time.Second*20, cutf.File(), f, gf, false, false)
 	t.Log(perrors.ErrorFormat(e))
 }
