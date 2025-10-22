@@ -1257,6 +1257,9 @@ func (t replyF) danmu(s string) {
 	if v, ok := t.K_v.LoadV(`弹幕回放_隐藏发送人`).(bool); ok && v {
 		item.hideAuth = true
 	}
+	if v, ok := t.K_v.LoadV(`弹幕回放_未登录时隐藏发送人`).(bool); ok && v && !t.Login {
+		item.hideAuth = true
+	}
 	{
 		//解析
 		if len(j.Info) > 0 {
