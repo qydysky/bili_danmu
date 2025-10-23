@@ -28,6 +28,7 @@ import (
 	pca "github.com/qydysky/part/crypto/asymmetric"
 	pctx "github.com/qydysky/part/ctx"
 	file "github.com/qydysky/part/file"
+	pio "github.com/qydysky/part/io"
 	log "github.com/qydysky/part/log"
 	mq "github.com/qydysky/part/msgq"
 	pool "github.com/qydysky/part/pool"
@@ -580,6 +581,26 @@ func (t *Common) Init() *Common {
 						t.SerLimit.AddLimitItem(web.NewLimitItem(int(max)).Cidr(cidr))
 					}
 				}
+			}
+		}
+
+		// 登陆
+		if v, ok := t.K_v.LoadV(`扫码登录`).(bool); ok && v {
+			if scanPath, ok := t.K_v.LoadV("扫码登录路径").(string); ok && scanPath != "" {
+				_ = file.Open("qr.png").Delete()
+				t.SerF.Store(scanPath, func(w http.ResponseWriter, r *http.Request) {
+					if DefaultHttpFunc(t, w, r, http.MethodGet) {
+						return
+					}
+					if q := file.Open("qr.png"); q.IsExist() {
+						_ = q.CopyToIoWriter(w, pio.CopyConfig{})
+					} else if !t.Login {
+						t.Danmu_Main_mq.Push_tag(`login`, nil)
+						_ = q.CopyToIoWriter(w, pio.CopyConfig{})
+					} else {
+						w.WriteHeader(http.StatusNotFound)
+					}
+				})
 			}
 		}
 

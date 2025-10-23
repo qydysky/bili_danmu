@@ -77,7 +77,7 @@ func (t *danmuEmotes) SaveEmote(ctx context.Context, ptr struct {
 			}
 			isEmote = true
 			savePath := t.Dir + t.Hashr(*ptr.Msg) + ".png"
-			if !file.New(savePath, 0, true).IsExist() {
+			if !file.IsExist(savePath) {
 				go func() {
 					req := c.C.ReqPool.Get()
 					defer c.C.ReqPool.Put(req)
@@ -124,7 +124,7 @@ func (t *danmuEmotes) SaveEmote(ctx context.Context, ptr struct {
 
 						isEmote = true
 						savePath := t.Dir + t.Hashr(k) + ".png"
-						if file.New(savePath, 0, true).IsExist() {
+						if file.IsExist(savePath) {
 							continue
 						}
 						go func() {

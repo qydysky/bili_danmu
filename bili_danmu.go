@@ -137,6 +137,11 @@ func Start(rootCtx context.Context) {
 				}
 			})
 		}
+		// login
+		c.C.Danmu_Main_mq.Pull_tag_only(`login`, func(_ any) (disable bool) {
+			F.Api.Get(c.C, `CookieNoBlock`)
+			return false
+		})
 
 		var (
 			exitSign                     = false
@@ -499,6 +504,7 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, c
 
 		//当前ws
 		{
+			var login = common.Login
 			// 处理各种指令
 			var cancelfunc = common.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
 				`interrupt`: func(_ any) (disable bool) {
@@ -536,7 +542,7 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, c
 					return false
 				},
 				`every100s`: func(_ any) bool { //每100s
-					if time.Now().After(aliveT) {
+					if time.Now().After(aliveT) || login != c.C.IsLogin() {
 						common.Danmu_Main_mq.Push_tag(`flash_room`, nil)
 						return false
 					}
