@@ -594,7 +594,7 @@ func (t *Common) Init() *Common {
 					}
 					if q := file.Open("qr.png"); q.IsExist() {
 						_ = q.CopyToIoWriter(w, pio.CopyConfig{})
-					} else if !t.Login {
+					} else if !t.IsLogin() {
 						t.Danmu_Main_mq.Push_tag(`login`, nil)
 						_ = q.CopyToIoWriter(w, pio.CopyConfig{})
 					} else {
