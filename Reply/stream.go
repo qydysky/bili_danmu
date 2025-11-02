@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/fs"
 	"iter"
 	"math"
 	"net"
@@ -624,48 +623,49 @@ func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo floa
 func (t *M4SStream) removeStream() (e error) {
 	if d, ok := t.common.K_v.LoadV("直播流保存天数").(float64); ok && d >= 1 {
 		if v, ok := t.common.K_v.LoadV(`直播流保存位置`).(string); ok && v != "" {
-			type dirEntryDirs []fs.DirEntry
-			var list dirEntryDirs
-			f, err := http.Dir(v).Open("/")
-			if err != nil {
-				return err
-			}
-			defer func() { _ = f.Close() }()
 
-			if _, err = f.Stat(); err != nil {
-				return err
-			}
-			if d, ok := f.(fs.ReadDirFile); ok {
-				list, err = d.ReadDir(-1)
+			var playlists []PlayItem
+			if f := file.Open(v + "/0.json"); f.IsExist() {
+				if data, err := f.ReadAll(humanize.KByte, humanize.MByte); err != nil && !errors.Is(err, io.EOF) {
+					return err
+				} else if err := json.Unmarshal(data, &playlists); err != nil {
+					return err
+				}
 			}
 
-			if err != nil {
-				return err
-			}
-
-			var (
-				oldest   float64
-				oldIndex []int
-			)
-			for i, n := 0, len(list); i < n; i++ {
-				if list[i].IsDir() && len(list[i].Name()) > 20 {
-					if file.IsExist(v + "/" + list[i].Name() + "/.keep") {
-						continue
-					}
-					if tt, err := time.Parse("2006_01_02-15_04_05", list[i].Name()[:19]); err == nil {
-						if ts := time.Since(tt).Seconds(); ts > d*24*60*60 && ts > oldest {
-							oldest = ts
-							oldIndex = append(oldIndex, i)
+			var oldDir []*file.File
+			f := file.Open(v)
+			defer f.Close()
+			for dir := range f.DirFilesRange(func(fi os.FileInfo) bool {
+				return !fi.IsDir() || len(fi.Name()) <= 20
+			}) {
+				if slices.IndexFunc(playlists, func(item PlayItem) bool {
+					for i := 0; i < len(item.Live); i++ {
+						if item.Live[i].LiveDir == dir.SelfName() {
+							return true
 						}
 					}
+					return false
+				}) != -1 {
+					continue
+				}
+				if file.IsExist(v + "/" + dir.SelfName() + "/.keep") {
+					continue
+				}
+				if tt, err := time.Parse("2006_01_02-15_04_05", dir.SelfName()[:19]); err == nil {
+					if ts := time.Since(tt).Seconds(); ts > d*24*60*60 {
+						oldDir = append(oldDir, dir)
+					}
 				}
 			}
 
-			for n, i := 2, len(oldIndex)-1; n > 0 && i >= 0; n, i = n-1, i-1 {
-				t.log.L(`I: `, "移除历史流", v+"/"+list[oldIndex[i]].Name())
-				if e := os.RemoveAll(v + "/" + list[oldIndex[i]].Name()); e != nil {
-					return e
-				}
+			slices.SortFunc(oldDir, func(a, b *file.File) int {
+				return strings.Compare(a.SelfName(), b.SelfName())
+			})
+
+			for i := 0; i < min(2, len(oldDir)); i++ {
+				t.log.L(`I: `, "移除历史流", v+"/"+oldDir[i].SelfName())
+				_ = oldDir[i].Delete()
 			}
 		}
 	}

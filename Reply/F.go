@@ -1096,7 +1096,7 @@ func init() {
 				if file.Open(liveRootDir + "/" + ref + "/0.csv").CheckRoot(liveRootDir).IsExist() {
 					if s, closeF := websocket.Plays(func(reg func(filepath string, start, dur time.Duration) error) {
 						if e := reg(liveRootDir+"/"+ref+"/0.csv", 0, 0); e != nil {
-							flog.L(`W: `, `加载节目单弹幕失败`, e)
+							flog.L(`W: `, `加载弹幕失败`, e)
 						}
 					}); s == nil {
 						w.WriteHeader(http.StatusNotFound)
