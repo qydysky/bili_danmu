@@ -128,6 +128,8 @@ func get(ctx context.Context, savepath string) (*Paf, error) {
 				d.CurrentSavePath = d.Path + "/0." + d.Format
 			}
 		}
+	} else {
+		return &d, os.ErrNotExist
 	}
 	return &d, nil
 }

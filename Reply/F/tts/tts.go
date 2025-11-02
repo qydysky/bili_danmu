@@ -421,7 +421,7 @@ func (t *tts) xf(msg string) error {
 					defer cancel()
 
 					var someErr = errors.New(`someErr`)
-					wsc.Pull_tag_only(`rec`, func(wm *ws.WsMsg) (disable bool) {
+					wsc.Pull_tag_only(`recv`, func(wm *ws.WsMsg) (disable bool) {
 						return wm.Msg(func(b []byte) error {
 							if len(b) == 0 {
 								cancel()

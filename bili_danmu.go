@@ -372,7 +372,8 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, c
 		ws_c, err := ws.New_client(&ws.Client{
 			BufSize:           150,
 			Url:               v,
-			TO:                (heartinterval + 5) * 1000,
+			RTOMs:             (heartinterval + 5) * 1000,
+			WTOMs:             (heartinterval + 5) * 1000,
 			Proxy:             common.Proxy,
 			Func_abort_close:  func() { danmulog.L(`I: `, `服务器连接中断`) },
 			Func_normal_close: func() { danmulog.L(`I: `, `服务器连接关闭`) },
@@ -411,7 +412,7 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, c
 				},
 			})
 			waitCheckAuth, cancel := context.WithTimeout(ctx, 5*time.Second)
-			doneAuth := wsmsg.Pull_tag_only(`rec`, func(wm *ws.WsMsg) (disable bool) {
+			doneAuth := wsmsg.Pull_tag_only(`recv`, func(wm *ws.WsMsg) (disable bool) {
 				_ = wm.Msg(func(b []byte) error {
 					if F.HelloChe(b) {
 						cancel()
@@ -444,7 +445,7 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, c
 
 		// 处理ws消息
 		var cancelDeal = wsmsg.Pull_tag(map[string]func(*ws.WsMsg) (disable bool){
-			`rec`: func(wm *ws.WsMsg) (disable bool) {
+			`recv`: func(wm *ws.WsMsg) (disable bool) {
 				go func() {
 					_ = wm.Msg(func(b []byte) error {
 						reply.Reply(common, b)
