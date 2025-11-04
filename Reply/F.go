@@ -257,18 +257,19 @@ func SendStreamWs(item *Danmu_item) {
 
 // 节目单
 type PlayItem struct {
-	Uname      string         `json:"uname"`      // 主播名 // 自动从Live[0]取
-	UpUid      int            `json:"upUid"`      // 主播uid // 自动从Live[0]取
-	Roomid     int            `json:"roomid"`     // 房间号 // 自动从Live[0]取
-	Qn         string         `json:"qn"`         // 画质 // 自动从Live[0]取
-	Name       string         `json:"name"`       // 自定义标题
-	StartT     string         `json:"startT"`     // 本段起始时间 // 自动从Live[0]取
-	StartTS    int64          `json:"-"`          // 本段起始时间unix // 自动从Live[0]取
-	EndT       string         `json:"endT"`       // 本段停止时间 // 自动从Live[len(Live)-1]取
-	Path       string         `json:"path"`       // 自定义目录名
-	Format     string         `json:"format"`     // 格式 // 自动从Live[0]取
-	StartLiveT string         `json:"startLiveT"` // 本场起始时间 // 自动从Live[0]取
-	Live       []PlayItemlive `json:"live"`
+	Uname         string         `json:"uname"`         // 主播名 // 自动从Live[0]取
+	UpUid         int            `json:"upUid"`         // 主播uid // 自动从Live[0]取
+	Roomid        int            `json:"roomid"`        // 房间号 // 自动从Live[0]取
+	Qn            string         `json:"qn"`            // 画质 // 自动从Live[0]取
+	Name          string         `json:"name"`          // 自定义标题
+	StartT        string         `json:"startT"`        // 本段起始时间 // 自动从Live[0]取
+	StartTS       int64          `json:"-"`             // 本段起始时间unix // 自动从Live[0]取
+	EndT          string         `json:"endT"`          // 本段停止时间 // 自动从Live[len(Live)-1]取
+	Path          string         `json:"path"`          // 自定义目录名
+	Format        string         `json:"format"`        // 格式 // 自动从Live[0]取
+	StartLiveT    string         `json:"startLiveT"`    // 本场起始时间 // 自动从Live[0]取
+	OnlinesPerMin []int          `json:"onlinesPerMin"` // 人数
+	Live          []PlayItemlive `json:"live"`
 }
 
 type PlayItemlive struct {
@@ -548,27 +549,37 @@ func init() {
 					} else {
 						// 从子live里获取信息
 						for i := 0; i < len(playlists); i++ {
-							if len(playlists[i].Live) == 0 {
-								continue
-							}
-							if fi, e := videoInfo.Get.Run(context.Background(), v+"/"+playlists[i].Live[0].LiveDir); e != nil {
-								flog.L(`W: `, `读取节目单元数据失败`, v+"/"+playlists[i].Live[0].LiveDir, e)
-								continue
-							} else {
-								playlists[i].StartT = fi.StartT
-								playlists[i].StartTS = fi.StartTS
-								playlists[i].StartLiveT = fi.StartLiveT
-								playlists[i].Format = fi.Format
-								playlists[i].Roomid = fi.Roomid
-								playlists[i].Uname = fi.Uname
-								playlists[i].Qn = fi.Qn
-								playlists[i].UpUid = fi.UpUid
-							}
-							if fi, e := videoInfo.Get.Run(context.Background(), v+"/"+playlists[i].Live[len(playlists[i].Live)-1].LiveDir); e != nil {
-								flog.L(`W: `, `加载节目单子项目失败`, v, e)
-								continue
-							} else {
-								playlists[i].EndT = fi.EndT
+							for j := 0; j < len(playlists[i].Live); j++ {
+								fi, e := videoInfo.Get.Run(context.Background(), v+"/"+playlists[i].Live[j].LiveDir)
+								if e != nil {
+									flog.L(`W: `, `读取节目单元数据失败`, v+"/"+playlists[i].Live[j].LiveDir, e)
+									break
+								}
+								if j == 0 {
+									playlists[i].StartT = fi.StartT
+									playlists[i].StartTS = fi.StartTS
+									playlists[i].StartLiveT = fi.StartLiveT
+									playlists[i].Format = fi.Format
+									playlists[i].Roomid = fi.Roomid
+									playlists[i].Uname = fi.Uname
+									playlists[i].Qn = fi.Qn
+									playlists[i].UpUid = fi.UpUid
+								}
+								if j == len(playlists[i].Live)-1 {
+									playlists[i].EndT = fi.EndT
+								}
+								sst, sdur := int(parseDuration(playlists[i].Live[j].StartT).Minutes()), int(parseDuration(playlists[i].Live[j].Dur).Minutes())
+								if sst < 0 {
+									sst = 0
+								} else if sst > len(fi.OnlinesPerMin) {
+									sst = len(fi.OnlinesPerMin)
+								}
+								if sdur <= 0 {
+									sdur = len(fi.OnlinesPerMin)
+								} else if sdur > len(fi.OnlinesPerMin) {
+									sdur = len(fi.OnlinesPerMin)
+								}
+								playlists[i].OnlinesPerMin = append(playlists[i].OnlinesPerMin, fi.OnlinesPerMin[sst:sdur]...)
 							}
 						}
 						switch sortS {
@@ -811,10 +822,6 @@ func init() {
 		})
 
 		var (
-			parseDuration = func(s string) (t time.Duration) {
-				t, _ = time.ParseDuration(s)
-				return
-			}
 			readFile = func(w http.ResponseWriter, liveRoot, videoDirFromRoot string, startT, duration time.Duration, skipHeader, writeLastBuf bool, offsetByte *int) {
 				if rawPath, e := url.PathUnescape(videoDirFromRoot); e != nil {
 					w.WriteHeader(http.StatusServiceUnavailable)
@@ -1325,4 +1332,9 @@ func StartRecDanmu(ctx context.Context, flog *part.Log_interface, filePath strin
 	})
 
 	Recoder.Stop()
+}
+
+func parseDuration(s string) (t time.Duration) {
+	t, _ = time.ParseDuration(s)
+	return
 }
