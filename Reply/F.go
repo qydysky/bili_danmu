@@ -653,31 +653,96 @@ func init() {
 				return
 			}
 
-			ref := ""
 			if u, e := url.Parse(r.Header.Get("Referer")); e == nil {
-				ref = u.Query().Get("ref")
-				if ref != "now" {
-					ref = liveRootDir + "/" + ref + "/"
-				} else {
-					ref = ""
-				}
-			}
-			if replyFunc.DanmuEmotes.Run(func(dei replyFunc.DanmuEmotesI) error {
-				emoteDir := dei.GetEmotesDir(ref)
-
-				if f, e := emoteDir.Open(strings.TrimPrefix(r.URL.Path, spath+"emots/")); e != nil {
-					if errors.Is(e, fs.ErrNotExist) {
+				tmp := u.Query().Get("ref")
+				if tmp == "now" {
+					if replyFunc.DanmuEmotes.Run(func(dei replyFunc.DanmuEmotesI) error {
+						emoteDir := dei.GetEmotesDir("")
+						defer emoteDir.Close()
+						if f, e := emoteDir.Open(strings.TrimPrefix(r.URL.Path, spath+"emots/")); e != nil {
+							if errors.Is(e, fs.ErrNotExist) {
+								w.WriteHeader(http.StatusNotFound)
+							} else {
+								w.WriteHeader(http.StatusBadRequest)
+							}
+						} else if info, e := f.Stat(); e != nil {
+							w.WriteHeader(http.StatusNotFound)
+						} else if !pweb.NotModified(r, w, info.ModTime()) {
+							_, _ = io.Copy(w, f)
+						}
+						return nil
+					}) != nil {
 						w.WriteHeader(http.StatusNotFound)
-					} else {
-						w.WriteHeader(http.StatusBadRequest)
 					}
-				} else if info, e := f.Stat(); e != nil {
+				} else if f := file.Open(filepath.Dir(liveRootDir+"/"+tmp) + "/0.json"); f.IsExist() {
+					// 节目单
+					var playlists []PlayItem
+					if data, e := f.ReadAll(humanize.KByte, humanize.MByte); e != nil && !errors.Is(e, io.EOF) {
+						w.WriteHeader(http.StatusServiceUnavailable)
+						flog.L(`W: `, `读取节目单失败`, e)
+						return
+					} else if e := json.Unmarshal(data, &playlists); e != nil {
+						w.WriteHeader(http.StatusServiceUnavailable)
+						flog.L(`W: `, `解析节目单失败`, e)
+						return
+					}
+
+					if playlistI := slices.IndexFunc(playlists, func(i PlayItem) bool {
+						return i.Path == tmp
+					}); playlistI > -1 {
+						switch e := replyFunc.DanmuEmotes.Run(func(dei replyFunc.DanmuEmotesI) error {
+							for i := 0; i < len(playlists[playlistI].Live); i++ {
+								f := dei.GetEmotesDir(liveRootDir + "/" + playlists[playlistI].Live[i].LiveDir)
+								defer f.Close()
+								if f, e := f.Open(strings.TrimPrefix(r.URL.Path, spath+"emots/")); e != nil {
+									if errors.Is(e, fs.ErrNotExist) {
+										continue
+									} else {
+										return e
+									}
+								} else if info, e := f.Stat(); e != nil {
+									if errors.Is(e, fs.ErrNotExist) {
+										continue
+									} else {
+										return e
+									}
+								} else if !pweb.NotModified(r, w, info.ModTime()) {
+									_, _ = io.Copy(w, f)
+									return nil
+								} else {
+									return nil
+								}
+							}
+							return os.ErrNotExist
+						}); e {
+						case nil:
+						case os.ErrNotExist:
+							w.WriteHeader(http.StatusNotFound)
+						default:
+							w.WriteHeader(http.StatusBadRequest)
+						}
+					} else {
+						w.WriteHeader(http.StatusNotFound)
+					}
+				} else if replyFunc.DanmuEmotes.Run(func(dei replyFunc.DanmuEmotesI) error {
+					emoteDir := dei.GetEmotesDir(filepath.Dir(liveRootDir + "/" + tmp + "/"))
+					defer emoteDir.Close()
+					if f, e := emoteDir.Open(strings.TrimPrefix(r.URL.Path, spath+"emots/")); e != nil {
+						if errors.Is(e, fs.ErrNotExist) {
+							w.WriteHeader(http.StatusNotFound)
+						} else {
+							w.WriteHeader(http.StatusBadRequest)
+						}
+					} else if info, e := f.Stat(); e != nil {
+						w.WriteHeader(http.StatusNotFound)
+					} else if !pweb.NotModified(r, w, info.ModTime()) {
+						_, _ = io.Copy(w, f)
+					}
+					return nil
+				}) != nil {
 					w.WriteHeader(http.StatusNotFound)
-				} else if !pweb.NotModified(r, w, info.ModTime()) {
-					_, _ = io.Copy(w, f)
 				}
-				return nil
-			}) != nil {
+			} else {
 				w.WriteHeader(http.StatusNotFound)
 			}
 		})

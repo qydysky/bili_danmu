@@ -131,7 +131,10 @@ type DanmuEmotesI interface {
 	SetLayerN(n int)
 	IsErrNoEmote(e error) bool
 	PackEmotes(dir string) error
-	GetEmotesDir(dir string) fs.FS
+	GetEmotesDir(dir string) interface {
+		fs.FS
+		io.Closer
+	}
 }
 
 var DanmuEmotes = comp.GetV3[DanmuEmotesI](`danmuEmotes`)

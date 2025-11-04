@@ -33,7 +33,10 @@ type TargetInterface interface {
 	SetLayerN(n int)
 	IsErrNoEmote(e error) bool
 	PackEmotes(dir string) error
-	GetEmotesDir(dir string) fs.FS
+	GetEmotesDir(dir string) interface {
+		fs.FS
+		io.Closer
+	}
 }
 
 func init() {
@@ -162,6 +165,9 @@ func (t *danmuEmotes) SaveEmote(ctx context.Context, ptr struct {
 
 func (t *danmuEmotes) Hashr(s string) (r string) {
 	rs := phash.Md5String(s)
+	if t.LayerN <= 0 {
+		return rs
+	}
 	rr := []byte{}
 	layer := t.LayerN
 	if layer > len(rs)-1 {
@@ -214,13 +220,35 @@ func (t *danmuEmotes) PackEmotes(dir string) error {
 	return nil
 }
 
-func (t *danmuEmotes) GetEmotesDir(dir string) fs.FS {
-	if dir != "" && file.IsExist(dir+"emotes.zip") {
-		if rc, e := zip.OpenReader(dir + "emotes.zip"); e == nil {
-			return rc
+type wrapperFs struct {
+	f fs.FS
+	c func() error
+}
+
+func (t wrapperFs) Open(name string) (fs.File, error) {
+	return t.f.Open(name)
+}
+
+func (t wrapperFs) Close() error {
+	return t.c()
+}
+
+func (t *danmuEmotes) GetEmotesDir(dir string) interface {
+	fs.FS
+	io.Closer
+} {
+	if dir != "" && file.IsExist(dir+"/emotes.zip") {
+		if rc, e := zip.OpenReader(dir + "/emotes.zip"); e == nil {
+			return wrapperFs{
+				f: rc,
+				c: rc.Close,
+			}
 		}
 	}
-	return file.DirFS(t.Dir)
+	return wrapperFs{
+		f: file.DirFS(t.Dir),
+		c: func() error { return nil },
+	}
 }
 
 func loadCsv(savePath string, filename ...string) iter.Seq[Data] {
@@ -232,9 +260,12 @@ func loadCsv(savePath string, filename ...string) iter.Seq[Data] {
 			return
 		}
 
-		var data = Data{}
+		var (
+			data = Data{}
+			line = []byte{}
+		)
 		for i := 0; true; i += 1 {
-			if line, e := csvf.ReadUntil([]byte{'\n'}, humanize.KByte, humanize.MByte); len(line) != 0 {
+			if e := csvf.ReadUntilV2(&line, []byte{'\n'}, humanize.KByte, humanize.MByte); len(line) != 0 {
 				lined := bytes.SplitN(line, []byte{','}, 3)
 				if len(lined) == 3 {
 					if t, e := strconv.ParseFloat(string(lined[0]), 64); e == nil {
