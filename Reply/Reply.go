@@ -1414,11 +1414,11 @@ func Msg_showdanmu(item Danmu_item) {
 	fmt.Println(item.msg)
 }
 
-type Danmu_mq_t struct {
-	uid *string
-	msg *string
-	// m   map[string]string //tts参数替换列表
-}
+// type Danmu_mq_t struct {
+// 	uid *string
+// 	msg *string
+// 	// m   map[string]string //tts参数替换列表
+// }
 
 // var Danmu_mq = mq.New()
 

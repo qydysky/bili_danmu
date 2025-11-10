@@ -3,14 +3,17 @@ package danmucoutpermin
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"regexp"
+	"strconv"
 	"sync"
 	"time"
 
+	"github.com/dustin/go-humanize"
 	comp "github.com/qydysky/part/component2"
 	file "github.com/qydysky/part/file"
 	part "github.com/qydysky/part/io"
@@ -22,6 +25,7 @@ type TargetInterface interface {
 	// will WriteHeader
 	GetRec(savePath string, r *http.Request, w http.ResponseWriter) error
 	GetRec2(savePath string, w io.Writer) error
+	GetRec3(savePath string, w io.Writer, st, dur time.Duration) error
 	CheckRoot(dir string)
 	Rec(ctx context.Context, roomid int, savePath string) func(any)
 	Do(roomid int, msg string, uid string)
@@ -35,7 +39,7 @@ func init() {
 	}
 }
 
-const filename = "danmuCountPerMin.json"
+const filename = "/danmuCountPerMin.json"
 
 var noFoundModT, _ = time.Parse(time.DateTime, "2006-01-02 15:04:05")
 
@@ -52,6 +56,37 @@ type danmuCountPerMin struct {
 
 func (t *danmuCountPerMin) CheckRoot(dir string) {
 	t.root = dir
+}
+
+func (t *danmuCountPerMin) GetRec3(savePath string, w io.Writer, std, durd time.Duration) error {
+	f := file.Open(savePath + filename).CheckRoot(t.root)
+	if f.IsDir() || !f.IsExist() {
+		return os.ErrNotExist
+	}
+	var (
+		st, dur int = int(std.Minutes()), int(durd.Minutes())
+		ls      []int
+	)
+	if data, e := f.ReadAll(10, humanize.MByte); e != nil && !errors.Is(e, io.EOF) {
+		return e
+	} else if e := json.Unmarshal(data, &ls); e != nil {
+		return e
+	}
+	if st < 0 {
+		st = 0
+	} else if st > len(ls) {
+		st = len(ls)
+	}
+	if dur <= 0 || st+dur > len(ls) {
+		dur = len(ls) - st
+	}
+	for i := 0; i < dur; i++ {
+		_, _ = w.Write([]byte(strconv.Itoa(ls[st+i])))
+		if i != dur-1 {
+			_, _ = w.Write([]byte{','})
+		}
+	}
+	return nil
 }
 
 func (t *danmuCountPerMin) GetRec2(savePath string, w io.Writer) error {

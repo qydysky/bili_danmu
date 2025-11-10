@@ -115,7 +115,7 @@ func NewFmp4DecoderWithBufsize(size int) *Fmp4Decoder {
 func (t *Fmp4Decoder) Init(buf []byte) (b []byte, dropOffset int, err error) {
 	var ftypI, ftypE, moovI, moovE int
 
-	ies, recycle, e := decode(buf, "ftyp")
+	ies, recycle, e := decode(buf)
 	defer recycle(ies)
 	if e != nil {
 		return
@@ -282,7 +282,7 @@ func (t *Fmp4Decoder) SearchStreamFrame(buf []byte, keyframe *slice.Buf[byte]) (
 		}
 	)
 
-	ies, recycle, e := decode(buf, "moof")
+	ies, recycle, e := decode(buf)
 	defer recycle(ies)
 	if e != nil {
 		return 0, e
@@ -529,7 +529,7 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...dealFMp4) (cu int, err error) {
 		}
 	)
 
-	ies, recycle, e := decode(buf, "moof")
+	ies, recycle, e := decode(buf)
 	defer recycle(ies)
 	if e != nil {
 		return 0, e
@@ -858,7 +858,7 @@ var (
 	iesPool       = slice.NewFlexBlocks[ie](5)
 )
 
-func decode(buf []byte, reSyncboxName string) (m []ie, recycle func([]ie), err error) {
+func decode(buf []byte) (m []ie, recycle func([]ie), err error) {
 	var cu int
 
 	m, recycle, err = iesPool.Get()

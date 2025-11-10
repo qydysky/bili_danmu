@@ -7,11 +7,11 @@ import (
 )
 
 func TestMain(t *testing.T) {
-	var ass = comp.Get[interface {
+	var ass = comp.GetV3[interface {
 		ToAss(savePath string, filename ...string)
 		Init(cfg any)
 	}](`ass`)
-	ass.ToAss("./testdata/", "1.ass")
+	ass.Inter().ToAss("./testdata/", "1.ass")
 }
 
 func TestStos(t *testing.T) {

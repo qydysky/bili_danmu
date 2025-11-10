@@ -22,8 +22,9 @@ func TestMain(m *testing.T) {
 	q.Start(ctx)
 	c()
 
+	var line = []byte{}
 	for {
-		if line, e := fl.ReadUntil([]byte{'\n'}, humanize.KByte, humanize.MByte); e != nil {
+		if e := fl.ReadUntilV2(&line, []byte{'\n'}, humanize.KByte, humanize.MByte); e != nil {
 			if !errors.Is(e, io.EOF) {
 				m.Fatal(e)
 			} else {

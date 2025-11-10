@@ -50,9 +50,8 @@ func Benchmark(b *testing.B) {
 
 }
 
-
 func Test(t *testing.T) {
-	i := comp.GetV2(`saveToJson`, comp.PreFuncErr[interface {
+	i := comp.GetV3(`saveToJson`, comp.PreFuncErr[interface {
 		Init(path any)
 		Write(data *[]byte)
 		Close()
@@ -80,7 +79,7 @@ func Test(t *testing.T) {
 		} else if !slices.Equal(tmp, []byte(`[123]`)) {
 			t.Fatal()
 		}
-		pf.Open(`1.json`).Delete()
+		_ = pf.Open(`1.json`).Delete()
 		return nil
 	})
 }
