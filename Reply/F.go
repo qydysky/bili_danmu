@@ -397,7 +397,7 @@ func init() {
 				e = ErrUrl.NewErr(e)
 				return
 			}
-			playlist := file.Open(filepath.Dir(liveRootDir+"/"+qref) + "/0.json").CheckRoot(liveRootDir)
+			playlist := file.Open(filepath.Dir(liveRootDir+"/"+qref) + "/1.json").CheckRoot(liveRootDir)
 			hasLivsJson = playlist.IsExist()
 			if qref == "" || strings.HasSuffix(qref, "/") {
 				if hasLivsJson {
@@ -420,8 +420,9 @@ func init() {
 						dir = filepath.Dir(liveRootDir + "/" + qref)
 						for i, n := 0, len(fs); i < n; i++ {
 							if filePath, err := videoInfo.Get.Run(context.Background(), fs[i]); err != nil {
-								e = ErrPlayInfoRead.NewErr(err)
-								return
+								if !errors.Is(err, os.ErrNotExist) {
+									e = ErrPlayInfoRead.NewErr(err)
+								}
 							} else {
 								refs = append(refs, PlayItem{
 									Uname:         filePath.Uname,
