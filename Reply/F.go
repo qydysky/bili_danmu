@@ -290,6 +290,13 @@ func init() {
 			liveRootDir = s
 		}
 	}
+	if liveRootDir == "" {
+		flog.L(`W: `, `直播流保存位置无效`)
+	} else {
+		replyFunc.DanmuCountPerMin.Run2(func(dcpmi replyFunc.DanmuCountPerMinI) {
+			dcpmi.CheckRoot(liveRootDir)
+		})
+	}
 
 	if spath, ok := c.C.K_v.LoadV(`直播Web服务路径`).(string); ok {
 		if spath[0] != '/' {
@@ -491,12 +498,7 @@ func init() {
 
 			if liveRootDir == "" {
 				w.WriteHeader(http.StatusServiceUnavailable)
-				flog.L(`W: `, `直播流保存位置无效`)
 				return
-			} else {
-				replyFunc.DanmuCountPerMin.Run2(func(dcpmi replyFunc.DanmuCountPerMinI) {
-					dcpmi.CheckRoot(liveRootDir)
-				})
 			}
 
 			buf := make([]byte, humanize.KByte)
@@ -754,7 +756,7 @@ func init() {
 					}); playlistI > -1 {
 						switch e := replyFunc.DanmuEmotes.Run(func(dei replyFunc.DanmuEmotesI) error {
 							for i := 0; i < len(playlists[playlistI].Live); i++ {
-								f := dei.GetEmotesDir(liveRootDir + "/" + playlists[playlistI].Live[i].LiveDir)
+								f := dei.GetEmotesDir(dir + "/" + playlists[playlistI].Live[i].LiveDir)
 								defer f.Close()
 								if f, e := f.Open(strings.TrimPrefix(r.URL.Path, spath+"emots/")); e != nil {
 									if errors.Is(e, fs.ErrNotExist) {
@@ -1136,7 +1138,7 @@ func init() {
 									if i == len(v.Live)-1 && !nodur && sdur != 0 {
 										dur = min(dur, sdur)
 									}
-									readFile(w, liveRootDir+"/", v.Live[i].LiveDir+"/", sst, dur, skipHeader, true, &rangeHeaderNum)
+									readFile(w, dir+"/", v.Live[i].LiveDir+"/", sst, dur, skipHeader, true, &rangeHeaderNum)
 									skipHeader = true
 									if !nodur {
 										dur -= (fi.Dur - sst)
@@ -1278,47 +1280,6 @@ func init() {
 						w.WriteHeader(http.StatusNotFound)
 						return
 					}
-				}
-			}
-		})
-
-		// 弹幕回放xml
-		c.C.SerF.Store(spath+"player/xml", func(w http.ResponseWriter, r *http.Request) {
-			if c.DefaultHttpFunc(c.C, w, r, http.MethodGet) {
-				return
-			}
-
-			var rpath string
-
-			if qref := r.URL.Query().Get("ref"); rpath == "" && qref != "" {
-				rpath = "/" + qref + "/"
-			}
-
-			if rpath == "" {
-				w.Header().Set("Retry-After", "1")
-				w.WriteHeader(http.StatusServiceUnavailable)
-				return
-			}
-
-			if liveRootDir == "" {
-				w.Header().Set("Retry-After", "1")
-				w.WriteHeader(http.StatusServiceUnavailable)
-				flog.L(`W: `, `直播流保存位置无效`)
-			} else {
-				var v string = liveRootDir + rpath
-
-				if !file.New(v+"0.xml", 0, true).CheckRoot(liveRootDir).IsExist() {
-					if !file.New(v+"0.csv", 0, true).CheckRoot(liveRootDir).IsExist() {
-						w.WriteHeader(http.StatusNotFound)
-						return
-					}
-					if _, e := danmuXml.DanmuXml.Run(context.Background(), &v); e != nil {
-						msglog.L(`E: `, e)
-					}
-				}
-
-				if e := file.New(v+"0.xml", 0, true).CheckRoot(liveRootDir).CopyToIoWriter(w, pio.CopyConfig{}); e != nil {
-					flog.L(`W: `, e)
 				}
 			}
 		})
