@@ -624,13 +624,10 @@ func (t *M4SStream) removeStream() (e error) {
 	if d, ok := t.common.K_v.LoadV("直播流保存天数").(float64); ok && d >= 1 {
 		if v, ok := t.common.K_v.LoadV(`直播流保存位置`).(string); ok && v != "" {
 
+			// 获取节目单
 			var playlists []PlayItem
-			if f := file.Open(v + "/0.json"); f.IsExist() {
-				if data, err := f.ReadAll(humanize.KByte, humanize.MByte); err != nil && !errors.Is(err, io.EOF) {
-					return err
-				} else if err := json.Unmarshal(data, &playlists); err != nil {
-					return err
-				}
+			if _, hasLivsJson, _, tmp := LiveDirF(v, ""); hasLivsJson {
+				playlists = tmp
 			}
 
 			var oldDir []*file.File
