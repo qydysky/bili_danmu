@@ -1,4 +1,4 @@
-package reply
+package Reply
 
 import (
 	"errors"

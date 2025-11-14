@@ -1,4 +1,4 @@
-package reply
+package Reply
 
 import (
 	"context"
@@ -637,8 +637,8 @@ func (t *M4SStream) removeStream() (e error) {
 				return !fi.IsDir() || len(fi.Name()) <= 20
 			}) {
 				if slices.IndexFunc(playlists, func(item PlayItem) bool {
-					for i := 0; i < len(item.Live); i++ {
-						if item.Live[i].LiveDir == dir.SelfName() {
+					for i := 0; i < len(item.Lives); i++ {
+						if item.Lives[i].LiveDir == dir.SelfName() {
 							return true
 						}
 					}

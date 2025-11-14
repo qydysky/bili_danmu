@@ -1,4 +1,4 @@
-package reply
+package Reply
 
 import (
 	"bytes"
@@ -270,7 +270,7 @@ type PlayItem struct {
 	Format        string         `json:"format"`        // 格式 // 自动从Live[0]取
 	StartLiveT    string         `json:"startLiveT"`    // 本场起始时间 // 自动从Live[0]取
 	OnlinesPerMin []int          `json:"onlinesPerMin"` // 人数
-	Live          []PlayItemlive `json:"live,omitempty"`
+	Lives         []PlayItemlive `json:"lives,omitempty"`
 	Cuts          []PlayCut      `json:"cuts,omitempty"`
 }
 
@@ -422,8 +422,8 @@ func init() {
 							_, _ = w.Write([]byte("["))
 							if hasLivsJson {
 								// 节目单
-								for j := 0; j < len(playlists[0].Live); j++ {
-									live := playlists[0].Live[j]
+								for j := 0; j < len(playlists[0].Lives); j++ {
+									live := playlists[0].Lives[j]
 									sst, sdur := parseDuration(live.StartT), parseDuration(live.Dur)
 									if e := dcpmi.GetRec3(dir+"/"+live.LiveDir, w, sst, sdur); e != nil {
 										if !errors.Is(e, os.ErrNotExist) {
@@ -431,7 +431,7 @@ func init() {
 										}
 										break
 									}
-									if j < len(playlists[0].Live)-1 {
+									if j < len(playlists[0].Lives)-1 {
 										_, _ = w.Write([]byte(","))
 									}
 								}
@@ -521,10 +521,10 @@ func init() {
 			} else if hasLivsJson {
 				// 从子live里获取信息
 				for i := 0; i < len(playlists); i++ {
-					for j := 0; j < len(playlists[i].Live); j++ {
-						fi, e := videoInfo.Get.Run(context.Background(), dir+"/"+playlists[i].Live[j].LiveDir)
+					for j := 0; j < len(playlists[i].Lives); j++ {
+						fi, e := videoInfo.Get.Run(context.Background(), dir+"/"+playlists[i].Lives[j].LiveDir)
 						if e != nil {
-							flog.L(`W: `, `读取节目单元数据失败`, dir+"/"+playlists[i].Live[j].LiveDir, e)
+							flog.L(`W: `, `读取节目单元数据失败`, dir+"/"+playlists[i].Lives[j].LiveDir, e)
 							break
 						}
 						if j == 0 {
@@ -537,10 +537,10 @@ func init() {
 							playlists[i].Qn = fi.Qn
 							playlists[i].UpUid = fi.UpUid
 						}
-						if j == len(playlists[i].Live)-1 {
+						if j == len(playlists[i].Lives)-1 {
 							playlists[i].EndT = fi.EndT
 						}
-						sst, sdur := int(parseDuration(playlists[i].Live[j].StartT).Minutes()), int(parseDuration(playlists[i].Live[j].Dur).Minutes())
+						sst, sdur := int(parseDuration(playlists[i].Lives[j].StartT).Minutes()), int(parseDuration(playlists[i].Lives[j].Dur).Minutes())
 						if sst < 0 {
 							sst = 0
 						} else if sst > len(fi.OnlinesPerMin) {
@@ -645,8 +645,8 @@ func init() {
 						return i.Path == filepath.Base(qref)
 					}); playlistI > -1 {
 						switch e := replyFunc.DanmuEmotes.Run(func(dei replyFunc.DanmuEmotesI) error {
-							for i := 0; i < len(playlists[playlistI].Live); i++ {
-								f := dei.GetEmotesDir(dir + "/" + playlists[playlistI].Live[i].LiveDir)
+							for i := 0; i < len(playlists[playlistI].Lives); i++ {
+								f := dei.GetEmotesDir(dir + "/" + playlists[playlistI].Lives[i].LiveDir)
 								defer f.Close()
 								if f, e := f.Open(strings.TrimPrefix(r.URL.Path, spath+"emots/")); e != nil {
 									if errors.Is(e, fs.ErrNotExist) {
@@ -1009,26 +1009,26 @@ func init() {
 						return i.Path == filepath.Base(ref)
 					}); playlistI > -1 {
 						v := playlists[playlistI]
-						if len(v.Live) > 0 {
+						if len(v.Lives) > 0 {
 							flog.L(`T: `, r.RemoteAddr, `接入录播`)
 							defer func(ts time.Time) {
 								flog.L(`T: `, r.RemoteAddr, `断开录播`, time.Since(ts))
 							}(time.Now())
-							sst, sdur, skipHeader := parseDuration(v.Live[0].StartT)+st, parseDuration(v.Live[len(v.Live)-1].Dur), false
+							sst, sdur, skipHeader := parseDuration(v.Lives[0].StartT)+st, parseDuration(v.Lives[len(v.Lives)-1].Dur), false
 							nodur := dur == 0
-							for i := 0; i < len(v.Live) && (nodur || dur > 0); i++ {
-								if fi, e := videoInfo.Get.Run(context.Background(), dir+"/"+v.Live[i].LiveDir); e != nil {
-									flog.L(`W: `, `读取节目单元数据失败`, dir+"/"+v.Live[i].LiveDir, e)
+							for i := 0; i < len(v.Lives) && (nodur || dur > 0); i++ {
+								if fi, e := videoInfo.Get.Run(context.Background(), dir+"/"+v.Lives[i].LiveDir); e != nil {
+									flog.L(`W: `, `读取节目单元数据失败`, dir+"/"+v.Lives[i].LiveDir, e)
 									w.WriteHeader(http.StatusServiceUnavailable)
 									return
 								} else if sst > fi.Dur {
 									sst -= fi.Dur
 									continue
 								} else {
-									if i == len(v.Live)-1 && !nodur && sdur != 0 {
+									if i == len(v.Lives)-1 && !nodur && sdur != 0 {
 										dur = min(dur, sdur)
 									}
-									readFile(w, dir+"/", v.Live[i].LiveDir+"/", sst, dur, skipHeader, true, &rangeHeaderNum)
+									readFile(w, dir+"/", v.Lives[i].LiveDir+"/", sst, dur, skipHeader, true, &rangeHeaderNum)
 									skipHeader = true
 									if !nodur {
 										dur -= (fi.Dur - sst)
@@ -1129,21 +1129,21 @@ func init() {
 						return i.Path == filepath.Base(ref)
 					}); playlistI > -1 {
 						v := playlists[playlistI]
-						if len(v.Live) > 0 {
+						if len(v.Lives) > 0 {
 							if s, closeF := websocket.Plays(func(reg func(filepath string, start, dur time.Duration) error) {
-								for i := 0; i < len(v.Live); i++ {
-									st, dur := parseDuration(v.Live[i].StartT), parseDuration(v.Live[i].Dur)
+								for i := 0; i < len(v.Lives); i++ {
+									st, dur := parseDuration(v.Lives[i].StartT), parseDuration(v.Lives[i].Dur)
 									{
 										// 列表中间的必须填入时长，如未填入，尝试从元数据中获取
-										if dur == 0 && i < len(v.Live)-1 {
-											if fi, e := videoInfo.Get.Run(context.Background(), dir+"/"+v.Live[i].LiveDir); e != nil {
-												flog.L(`W: `, `读取节目单元数据失败`, dir+"/"+v.Live[i].LiveDir, e)
+										if dur == 0 && i < len(v.Lives)-1 {
+											if fi, e := videoInfo.Get.Run(context.Background(), dir+"/"+v.Lives[i].LiveDir); e != nil {
+												flog.L(`W: `, `读取节目单元数据失败`, dir+"/"+v.Lives[i].LiveDir, e)
 												return
 											} else {
 												dur = fi.Dur
 											}
 										}
-										if e := reg(dir+"/"+v.Live[i].LiveDir+"/0.csv", st, dur); e != nil {
+										if e := reg(dir+"/"+v.Lives[i].LiveDir+"/0.csv", st, dur); e != nil {
 											flog.L(`W: `, `加载节目单弹幕失败`, e)
 											return
 										}

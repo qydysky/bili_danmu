@@ -1,4 +1,4 @@
-package reply
+package Reply
 
 import (
 	F "github.com/qydysky/bili_danmu/F"
