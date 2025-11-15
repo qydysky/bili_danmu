@@ -1144,7 +1144,7 @@ func init() {
 						return
 					}
 				} else {
-					if _, playlist := util.Search(playlists, func(t *PlayItem) bool { return t.Path == filepath.Base(ref) }); playlist != nil || len(playlist.Lives) == 0 {
+					if _, playlist := util.Search(playlists, func(t *PlayItem) bool { return t.Path == filepath.Base(ref) }); playlist == nil || len(playlist.Lives) == 0 {
 						w.WriteHeader(http.StatusNotFound)
 						return
 					} else {
