@@ -125,10 +125,10 @@ func Test_FLVCutSeed(t *testing.T) {
 		t.Log("test file not exist")
 	}
 
-	var VideoFastSeed = comp.Get[interface {
+	var VideoFastSeed = comp.GetV3[interface {
 		InitGet(fastSeedFilePath string) (getIndex func(seedTo time.Duration) (int64, error), e error)
 		InitSav(fastSeedFilePath string) (savIndex func(seedTo time.Duration, cuIndex int64) error, e error)
-	}](`videoFastSeed`)
+	}](`videoFastSeed`).Inter()
 
 	gf, e := VideoFastSeed.InitGet("testdata/0.flv.fastSeed")
 	if e != nil {

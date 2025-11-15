@@ -654,20 +654,14 @@ func (t *Common) Init() *Common {
 		}
 
 		if val, ok := t.K_v.LoadV("性能路径").(string); ok && val != "" {
-			var cache web.Cache
 			t.SerF.Store(val, func(w http.ResponseWriter, r *http.Request) {
 				if DefaultHttpFunc(t, w, r, http.MethodGet) {
 					return
 				}
 
-				//cache
-				if bp, ok := cache.IsCache(val); ok {
-					w.Header().Set("Content-Type", "application/json")
-					w.Header().Set("Cache-Control", "max-age=5")
-					_, _ = w.Write(*bp)
+				if web.NotModifiedDur(r, w, time.Second*5) {
 					return
 				}
-				w = cache.Cache(val, time.Second*5, w)
 
 				var memStats runtime.MemStats
 				runtime.ReadMemStats(&memStats)

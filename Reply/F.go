@@ -36,6 +36,7 @@ import (
 	fctrl "github.com/qydysky/part/funcCtrl"
 	pio "github.com/qydysky/part/io"
 	ps "github.com/qydysky/part/slice"
+	util "github.com/qydysky/part/util"
 	pweb "github.com/qydysky/part/web"
 	websocket "github.com/qydysky/part/websocket"
 )
@@ -281,9 +282,11 @@ type PlayItemlive struct {
 }
 
 type PlayCut struct {
-	Title string `json:"title"`
-	St    string `json:"st,omitempty"`
-	Dur   string `json:"dur,omitempty"`
+	Title   string        `json:"title"`
+	LiveDir string        `json:"liveDir,omitempty"`
+	St      string        `json:"st,omitempty"`
+	stt     time.Duration `json:"-"`
+	Dur     string        `json:"dur,omitempty"`
 }
 
 func (t *PlayCut) MarshalJSON() ([]byte, error) {
@@ -296,6 +299,25 @@ func (t *PlayCut) MarshalJSON() ([]byte, error) {
 		St:    fmt.Sprintf("%.1f", parseDuration(t.St).Minutes()),
 		Dur:   fmt.Sprintf("%.1f", parseDuration(t.Dur).Minutes()),
 	})
+}
+
+func (t *PlayCut) UnmarshalJSON(b []byte) (e error) {
+	var tmp = struct {
+		Title   string `json:"title"`
+		LiveDir string `json:"liveDir,omitempty"`
+		St      string `json:"st,omitempty"`
+		stt     time.Duration
+		Dur     string `json:"dur,omitempty"`
+	}{}
+	e = json.Unmarshal(b, &tmp)
+	if e == nil {
+		t.Title = tmp.Title
+		t.LiveDir = tmp.LiveDir
+		t.St = tmp.St
+		t.stt = parseDuration(tmp.St)
+		t.Dur = tmp.Dur
+	}
+	return
 }
 
 func init() {
@@ -338,9 +360,6 @@ func init() {
 				}
 			}
 		}
-
-		// cache
-		var cache pweb.Cache
 
 		// 直播流主页
 		c.C.SerF.Store(spath, func(w http.ResponseWriter, r *http.Request) {
@@ -406,8 +425,7 @@ func init() {
 			w.Header().Set("Content-Type", "application/json")
 
 			_, _ = w.Write([]byte("{"))
-			for i := 0; i < len(refs); i++ {
-				qref := refs[i]
+			for i, qref := range refs {
 				if qref == "" {
 					continue
 				}
@@ -422,8 +440,7 @@ func init() {
 							_, _ = w.Write([]byte("["))
 							if hasLivsJson {
 								// 节目单
-								for j := 0; j < len(playlists[0].Lives); j++ {
-									live := playlists[0].Lives[j]
+								for j, live := range playlists[0].Lives {
 									sst, sdur := parseDuration(live.StartT), parseDuration(live.Dur)
 									if e := dcpmi.GetRec3(dir+"/"+live.LiveDir, w, sst, sdur); e != nil {
 										if !errors.Is(e, os.ErrNotExist) {
@@ -489,14 +506,9 @@ func init() {
 				return
 			}
 
-			//cache
-			if bp, ok := cache.IsCache(r.RequestURI); ok {
-				w.Header().Set("Content-Type", "application/json")
-				w.Header().Set("Cache-Control", "max-age=5")
-				_, _ = w.Write(*bp)
+			if pweb.NotModifiedDur(r, w, time.Second*5) {
 				return
 			}
-			w = cache.Cache(r.RequestURI, time.Second*5, w)
 
 			// 获取当前房间的
 			var currentStreamO *M4SStream
@@ -520,27 +532,38 @@ func init() {
 				return
 			} else if hasLivsJson {
 				// 从子live里获取信息
-				for i := 0; i < len(playlists); i++ {
-					for j := 0; j < len(playlists[i].Lives); j++ {
-						fi, e := videoInfo.Get.Run(context.Background(), dir+"/"+playlists[i].Lives[j].LiveDir)
+				for _, playlist := range util.Range(playlists) {
+					for j, live := range util.Range(playlist.Lives) {
+						fi, e := videoInfo.Get.Run(context.Background(), dir+"/"+live.LiveDir)
 						if e != nil {
-							flog.L(`W: `, `读取节目单元数据失败`, dir+"/"+playlists[i].Lives[j].LiveDir, e)
+							flog.L(`W: `, `读取节目单元数据失败`, dir+"/"+live.LiveDir, e)
 							break
 						}
+						// 根据cut 的 LiveDir 重新计算开始时刻
+						for _, cut := range util.Range(playlist.Cuts) {
+							if cut.LiveDir == "" {
+								continue
+							} else if cut.LiveDir != live.LiveDir {
+								cut.stt += fi.Dur
+							} else {
+								cut.St = fmt.Sprint(cut.stt)
+								cut.LiveDir = ""
+							}
+						}
 						if j == 0 {
-							playlists[i].StartT = fi.StartT
-							playlists[i].StartTS = fi.StartTS
-							playlists[i].StartLiveT = fi.StartLiveT
-							playlists[i].Format = fi.Format
-							playlists[i].Roomid = fi.Roomid
-							playlists[i].Uname = fi.Uname
-							playlists[i].Qn = fi.Qn
-							playlists[i].UpUid = fi.UpUid
+							playlist.StartT = fi.StartT
+							playlist.StartTS = fi.StartTS
+							playlist.StartLiveT = fi.StartLiveT
+							playlist.Format = fi.Format
+							playlist.Roomid = fi.Roomid
+							playlist.Uname = fi.Uname
+							playlist.Qn = fi.Qn
+							playlist.UpUid = fi.UpUid
 						}
-						if j == len(playlists[i].Lives)-1 {
-							playlists[i].EndT = fi.EndT
+						if j == len(playlist.Lives)-1 {
+							playlist.EndT = fi.EndT
 						}
-						sst, sdur := int(parseDuration(playlists[i].Lives[j].StartT).Minutes()), int(parseDuration(playlists[i].Lives[j].Dur).Minutes())
+						sst, sdur := int(parseDuration(live.StartT).Minutes()), int(parseDuration(live.Dur).Minutes())
 						if sst < 0 {
 							sst = 0
 						} else if sst > len(fi.OnlinesPerMin) {
@@ -551,7 +574,7 @@ func init() {
 						} else if sdur > len(fi.OnlinesPerMin) {
 							sdur = len(fi.OnlinesPerMin)
 						}
-						playlists[i].OnlinesPerMin = append(playlists[i].OnlinesPerMin, fi.OnlinesPerMin[sst:sdur]...)
+						playlist.OnlinesPerMin = append(playlist.OnlinesPerMin, fi.OnlinesPerMin[sst:sdur]...)
 					}
 				}
 				switch sortS {
@@ -641,12 +664,16 @@ func init() {
 					flog.L(`I: `, "路径解码失败", qref, perrors.ErrorFormat(e, perrors.ErrActionInLineFunc))
 					return
 				} else if hasLivsJson {
-					if playlistI := slices.IndexFunc(playlists, func(i PlayItem) bool {
-						return i.Path == filepath.Base(qref)
-					}); playlistI > -1 {
+					for i, playlist := range playlists {
+						if playlist.Path != filepath.Base(qref) {
+							if i == len(playlists)-1 {
+								w.WriteHeader(http.StatusNotFound)
+							}
+							continue
+						}
 						switch e := replyFunc.DanmuEmotes.Run(func(dei replyFunc.DanmuEmotesI) error {
-							for i := 0; i < len(playlists[playlistI].Lives); i++ {
-								f := dei.GetEmotesDir(dir + "/" + playlists[playlistI].Lives[i].LiveDir)
+							for _, live := range playlist.Lives {
+								f := dei.GetEmotesDir(dir + "/" + live.LiveDir)
 								defer f.Close()
 								if f, e := f.Open(strings.TrimPrefix(r.URL.Path, spath+"emots/")); e != nil {
 									if errors.Is(e, fs.ErrNotExist) {
@@ -675,8 +702,7 @@ func init() {
 						default:
 							w.WriteHeader(http.StatusBadRequest)
 						}
-					} else {
-						w.WriteHeader(http.StatusNotFound)
+						break
 					}
 				} else if replyFunc.DanmuEmotes.Run(func(dei replyFunc.DanmuEmotesI) error {
 					emoteDir := dei.GetEmotesDir(dir)
@@ -1005,43 +1031,36 @@ func init() {
 					}(time.Now())
 					readFile(w, dir+"/", "/", st, dur, false, true, &rangeHeaderNum)
 				} else {
-					if playlistI := slices.IndexFunc(playlists, func(i PlayItem) bool {
-						return i.Path == filepath.Base(ref)
-					}); playlistI > -1 {
-						v := playlists[playlistI]
-						if len(v.Lives) > 0 {
-							flog.L(`T: `, r.RemoteAddr, `接入录播`)
-							defer func(ts time.Time) {
-								flog.L(`T: `, r.RemoteAddr, `断开录播`, time.Since(ts))
-							}(time.Now())
-							sst, sdur, skipHeader := parseDuration(v.Lives[0].StartT)+st, parseDuration(v.Lives[len(v.Lives)-1].Dur), false
-							nodur := dur == 0
-							for i := 0; i < len(v.Lives) && (nodur || dur > 0); i++ {
-								if fi, e := videoInfo.Get.Run(context.Background(), dir+"/"+v.Lives[i].LiveDir); e != nil {
-									flog.L(`W: `, `读取节目单元数据失败`, dir+"/"+v.Lives[i].LiveDir, e)
-									w.WriteHeader(http.StatusServiceUnavailable)
-									return
-								} else if sst > fi.Dur {
-									sst -= fi.Dur
-									continue
-								} else {
-									if i == len(v.Lives)-1 && !nodur && sdur != 0 {
-										dur = min(dur, sdur)
-									}
-									readFile(w, dir+"/", v.Lives[i].LiveDir+"/", sst, dur, skipHeader, true, &rangeHeaderNum)
-									skipHeader = true
-									if !nodur {
-										dur -= (fi.Dur - sst)
-									}
-									sst = 0
-								}
-							}
-						} else {
-							w.WriteHeader(http.StatusNotFound)
-							return
-						}
-					} else {
+					if _, playlist := util.Search(playlists, func(t *PlayItem) bool { return t.Path == filepath.Base(ref) }); playlist == nil || len(playlist.Lives) == 0 {
 						w.WriteHeader(http.StatusNotFound)
+						return
+					} else {
+						flog.L(`T: `, r.RemoteAddr, `接入录播`)
+						defer func(ts time.Time) {
+							flog.L(`T: `, r.RemoteAddr, `断开录播`, time.Since(ts))
+						}(time.Now())
+						sst, sdur, skipHeader := parseDuration(playlist.Lives[0].StartT)+st, parseDuration(playlist.Lives[len(playlist.Lives)-1].Dur), false
+						nodur := dur == 0
+						for i := 0; i < len(playlist.Lives) && (nodur || dur > 0); i++ {
+							if fi, e := videoInfo.Get.Run(context.Background(), dir+"/"+playlist.Lives[i].LiveDir); e != nil {
+								flog.L(`W: `, `读取节目单元数据失败`, dir+"/"+playlist.Lives[i].LiveDir, e)
+								w.WriteHeader(http.StatusServiceUnavailable)
+								return
+							} else if sst > fi.Dur {
+								sst -= fi.Dur
+								continue
+							} else {
+								if i == len(playlist.Lives)-1 && !nodur && sdur != 0 {
+									dur = min(dur, sdur)
+								}
+								readFile(w, dir+"/", playlist.Lives[i].LiveDir+"/", sst, dur, skipHeader, true, &rangeHeaderNum)
+								skipHeader = true
+								if !nodur {
+									dur -= (fi.Dur - sst)
+								}
+								sst = 0
+							}
+						}
 						return
 					}
 				}
@@ -1125,49 +1144,41 @@ func init() {
 						return
 					}
 				} else {
-					if playlistI := slices.IndexFunc(playlists, func(i PlayItem) bool {
-						return i.Path == filepath.Base(ref)
-					}); playlistI > -1 {
-						v := playlists[playlistI]
-						if len(v.Lives) > 0 {
-							if s, closeF := websocket.Plays(func(reg func(filepath string, start, dur time.Duration) error) {
-								for i := 0; i < len(v.Lives); i++ {
-									st, dur := parseDuration(v.Lives[i].StartT), parseDuration(v.Lives[i].Dur)
-									{
-										// 列表中间的必须填入时长，如未填入，尝试从元数据中获取
-										if dur == 0 && i < len(v.Lives)-1 {
-											if fi, e := videoInfo.Get.Run(context.Background(), dir+"/"+v.Lives[i].LiveDir); e != nil {
-												flog.L(`W: `, `读取节目单元数据失败`, dir+"/"+v.Lives[i].LiveDir, e)
-												return
-											} else {
-												dur = fi.Dur
-											}
-										}
-										if e := reg(dir+"/"+v.Lives[i].LiveDir+"/0.csv", st, dur); e != nil {
-											flog.L(`W: `, `加载节目单弹幕失败`, e)
+					if _, playlist := util.Search(playlists, func(t *PlayItem) bool { return t.Path == filepath.Base(ref) }); playlist != nil || len(playlist.Lives) == 0 {
+						w.WriteHeader(http.StatusNotFound)
+						return
+					} else {
+						if s, closeF := websocket.Plays(func(reg func(filepath string, start, dur time.Duration) error) {
+							for i, live := range playlist.Lives {
+								st, dur := parseDuration(live.StartT), parseDuration(live.Dur)
+								{
+									// 列表中间的必须填入时长，如未填入，尝试从元数据中获取
+									if dur == 0 && i < len(playlist.Lives)-1 {
+										if fi, e := videoInfo.Get.Run(context.Background(), dir+"/"+live.LiveDir); e != nil {
+											flog.L(`W: `, `读取节目单元数据失败`, dir+"/"+live.LiveDir, e)
 											return
+										} else {
+											dur = fi.Dur
 										}
 									}
+									if e := reg(dir+"/"+live.LiveDir+"/0.csv", st, dur); e != nil {
+										flog.L(`W: `, `加载节目单弹幕失败`, e)
+										return
+									}
 								}
-							}); s == nil {
-								w.WriteHeader(http.StatusNotFound)
-								return
-							} else {
-								defer closeF()
-								//获取通道
-								conn := s.WS(w, r)
-								//由通道获取本次会话id，并测试 提示
-								<-conn
-								//等待会话结束，通道释放
-								<-conn
 							}
-							return
-						} else {
+						}); s == nil {
 							w.WriteHeader(http.StatusNotFound)
 							return
+						} else {
+							defer closeF()
+							//获取通道
+							conn := s.WS(w, r)
+							//由通道获取本次会话id，并测试 提示
+							<-conn
+							//等待会话结束，通道释放
+							<-conn
 						}
-					} else {
-						w.WriteHeader(http.StatusNotFound)
 						return
 					}
 				}
@@ -1317,8 +1328,8 @@ func LiveDirF(liveRootDir, qref string) (e error, hasLivsJson bool, dir string, 
 			} else if err = json.Unmarshal(data, &refs); err != nil {
 				e = ErrPlaylistParse.NewErr(err)
 			}
-			if i := slices.IndexFunc(refs, func(i PlayItem) bool {
-				return i.Path == filepath.Base(qref)
+			if i, _ := util.Search(refs, func(t *PlayItem) bool {
+				return t.Path == filepath.Base(qref)
 			}); i != -1 {
 				refs = refs[i : i+1]
 			}
