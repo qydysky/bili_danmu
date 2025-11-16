@@ -587,7 +587,7 @@ func init() {
 			ps.Del(&playlists, func(t *PlayItem) (del bool) {
 				if currentStreamO != nil &&
 					currentStreamO.Common().Liveing &&
-					strings.Contains(currentStreamO.GetSavePath(), t.Path) {
+					currentStreamO.GetSavePath() == t.Path {
 					t.Name = "Now: " + t.Name
 					t.Path = "now"
 				}
