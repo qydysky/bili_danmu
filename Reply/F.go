@@ -526,7 +526,8 @@ func init() {
 			sortS := r.URL.Query().Get("sort")
 
 			// 支持ref
-			if e, hasLivsJson, dir, playlists := LiveDirF(liveRootDir, qref); e != nil {
+			e, hasLivsJson, dir, playlists := LiveDirF(liveRootDir, qref)
+			if e != nil {
 				w.WriteHeader(http.StatusBadRequest)
 				flog.L(`I: `, "路径解码失败", qref, perrors.ErrorFormat(e, perrors.ErrActionInLineFunc))
 				return
@@ -577,59 +578,40 @@ func init() {
 						playlist.OnlinesPerMin = append(playlist.OnlinesPerMin, fi.OnlinesPerMin[sst:sdur]...)
 					}
 				}
-				switch sortS {
-				case `startTAsc`:
-					slices.SortFunc(playlists, func(a, b PlayItem) int {
-						return int(a.StartTS - b.StartTS)
-					})
-				case `startTDsc`:
-					slices.SortFunc(playlists, func(a, b PlayItem) int {
-						return int(b.StartTS - a.StartTS)
-					})
-				}
-				if skip >= 0 {
-					skip = min(skip, len(playlists))
-					playlists = playlists[skip:]
-				}
-				if size >= 0 {
-					playlists = playlists[:min(size, len(playlists))]
-				}
-				c.ResStruct{Code: 0, Message: "ok", Data: playlists}.Write(w)
-				return
-			} else {
-				uname := r.URL.Query().Get("uname")
-				startT := r.URL.Query().Get("startT")
-				startLiveT := r.URL.Query().Get("startLiveT")
-
-				ps.Del(&playlists, func(t *PlayItem) (del bool) {
-					if currentStreamO != nil &&
-						currentStreamO.Common().Liveing &&
-						strings.Contains(currentStreamO.GetSavePath(), t.Path) {
-						t.Name = "Now: " + t.Name
-						t.Path = "now"
-					}
-					return (uname != "" && uname != t.Uname) || (startT != "" && !strings.HasPrefix(t.StartT, startT)) || (startLiveT != "" && !strings.HasPrefix(t.StartLiveT, startLiveT))
-				})
-
-				switch sortS {
-				case `startTAsc`:
-					slices.SortFunc(playlists, func(a, b PlayItem) int {
-						return int(a.StartTS - b.StartTS)
-					})
-				case `startTDsc`:
-					slices.SortFunc(playlists, func(a, b PlayItem) int {
-						return int(b.StartTS - a.StartTS)
-					})
-				}
-				if skip >= 0 {
-					skip = min(skip, len(playlists))
-					playlists = playlists[skip:]
-				}
-				if size >= 0 {
-					playlists = playlists[:min(size, len(playlists))]
-				}
-				c.ResStruct{Code: 0, Message: "ok", Data: playlists}.Write(w)
 			}
+
+			uname := r.URL.Query().Get("uname")
+			startT := r.URL.Query().Get("startT")
+			startLiveT := r.URL.Query().Get("startLiveT")
+
+			ps.Del(&playlists, func(t *PlayItem) (del bool) {
+				if currentStreamO != nil &&
+					currentStreamO.Common().Liveing &&
+					strings.Contains(currentStreamO.GetSavePath(), t.Path) {
+					t.Name = "Now: " + t.Name
+					t.Path = "now"
+				}
+				return (uname != "" && uname != t.Uname) || (startT != "" && !strings.HasPrefix(t.StartT, startT)) || (startLiveT != "" && !strings.HasPrefix(t.StartLiveT, startLiveT))
+			})
+
+			switch sortS {
+			case `startTAsc`:
+				slices.SortFunc(playlists, func(a, b PlayItem) int {
+					return int(a.StartTS - b.StartTS)
+				})
+			case `startTDsc`:
+				slices.SortFunc(playlists, func(a, b PlayItem) int {
+					return int(b.StartTS - a.StartTS)
+				})
+			}
+			if skip >= 0 {
+				skip = min(skip, len(playlists))
+				playlists = playlists[skip:]
+			}
+			if size >= 0 {
+				playlists = playlists[:min(size, len(playlists))]
+			}
+			c.ResStruct{Code: 0, Message: "ok", Data: playlists}.Write(w)
 		})
 
 		// 表情
