@@ -13,13 +13,13 @@ import (
 var testM3u8 []byte
 
 func TestMain(t *testing.T) {
-	var ParseM3u8 = comp.Get[interface {
+	var ParseM3u8 = comp.GetV3[interface {
 		Parse(respon []byte, lastNo int) (m4sLink iter.Seq[interface {
 			IsHeader() bool
 			M4sLink() string
 		}], redirectUrl string, err error)
 		IsErrRedirect(e error) bool
-	}](`parseM3u8`)
+	}](`parseM3u8`).Inter()
 	_, url, e := ParseM3u8.Parse(testM3u8, 0)
 	if !ParseM3u8.IsErrRedirect(e) {
 		t.Fatal()

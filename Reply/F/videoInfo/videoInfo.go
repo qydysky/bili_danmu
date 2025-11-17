@@ -27,19 +27,21 @@ type Info interface {
 }
 
 type Paf struct {
-	Uname           string `json:"uname"`
-	UpUid           int    `json:"upUid"`
-	Roomid          int    `json:"roomid"`
-	Qn              string `json:"qn"`
-	Name            string `json:"name"`
-	StartT          string `json:"startT"`
-	StartTS         int64  `json:"-"`
-	EndT            string `json:"endT"`
-	Path            string `json:"path"`
-	CurrentSavePath string `json:"-"`
-	Format          string `json:"format"`
-	StartLiveT      string `json:"startLiveT"`
-	OnlinesPerMin   []int  `json:"onlinesPerMin"`
+	Uname           string        `json:"uname"`
+	UpUid           int           `json:"upUid"`
+	Roomid          int           `json:"roomid"`
+	Qn              string        `json:"qn"`
+	Name            string        `json:"name"`
+	StartT          string        `json:"startT"`
+	StartTS         int64         `json:"-"`
+	EndT            string        `json:"endT"`
+	EndTS           int64         `json:"-"`
+	Dur             time.Duration `json:"-"`
+	Path            string        `json:"path"`
+	CurrentSavePath string        `json:"-"`
+	Format          string        `json:"format"`
+	StartLiveT      string        `json:"startLiveT"`
+	OnlinesPerMin   []int         `json:"onlinesPerMin"`
 }
 
 func save(ctx context.Context, i Info) (*Paf, error) {
@@ -112,12 +114,22 @@ func get(ctx context.Context, savepath string) (*Paf, error) {
 				if t, e := time.Parse("2006_01_02-15_04_05", d.StartT); e == nil {
 					d.StartT = t.Format(time.DateTime)
 				}
-				if t, e := time.Parse(time.DateTime, d.StartT); e == nil {
-					d.StartTS = t.Unix()
+				st, se := time.Parse(time.DateTime, d.StartT)
+				if se == nil {
+					d.StartTS = st.Unix()
+				}
+				et, ee := time.Parse(time.DateTime, d.EndT)
+				if ee == nil {
+					d.EndTS = et.Unix()
+				}
+				if se == nil && ee == nil {
+					d.Dur = et.Sub(st)
 				}
 				d.CurrentSavePath = d.Path + "/0." + d.Format
 			}
 		}
+	} else {
+		return &d, os.ErrNotExist
 	}
 	return &d, nil
 }

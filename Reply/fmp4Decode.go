@@ -1,4 +1,4 @@
-package reply
+package Reply
 
 import (
 	"errors"
@@ -115,7 +115,7 @@ func NewFmp4DecoderWithBufsize(size int) *Fmp4Decoder {
 func (t *Fmp4Decoder) Init(buf []byte) (b []byte, dropOffset int, err error) {
 	var ftypI, ftypE, moovI, moovE int
 
-	ies, recycle, e := decode(buf, "ftyp")
+	ies, recycle, e := decode(buf)
 	defer recycle(ies)
 	if e != nil {
 		return
@@ -282,7 +282,7 @@ func (t *Fmp4Decoder) SearchStreamFrame(buf []byte, keyframe *slice.Buf[byte]) (
 		}
 	)
 
-	ies, recycle, e := decode(buf, "moof")
+	ies, recycle, e := decode(buf)
 	defer recycle(ies)
 	if e != nil {
 		return 0, e
@@ -529,7 +529,7 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...dealFMp4) (cu int, err error) {
 		}
 	)
 
-	ies, recycle, e := decode(buf, "moof")
+	ies, recycle, e := decode(buf)
 	defer recycle(ies)
 	if e != nil {
 		return 0, e
@@ -677,11 +677,11 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...dealFMp4) (cu int, err error) {
 }
 
 // Deprecated: 效率低于GenFastSeed+CutSeed
-func (t *Fmp4Decoder) Cut(reader io.Reader, startT, duration time.Duration, w io.Writer) (err error) {
-	return t.CutSeed(reader, startT, duration, w, nil, nil)
+func (t *Fmp4Decoder) Cut(reader io.Reader, startT, duration time.Duration, w io.Writer, skipHeader, writeLastBuf bool) (err error) {
+	return t.CutSeed(reader, startT, duration, w, nil, nil, skipHeader, writeLastBuf)
 }
 
-func (t *Fmp4Decoder) CutSeed(reader io.Reader, startT, duration time.Duration, w io.Writer, seeker io.Seeker, getIndex func(seedTo time.Duration) (int64, error)) (err error) {
+func (t *Fmp4Decoder) CutSeed(reader io.Reader, startT, duration time.Duration, w io.Writer, seeker io.Seeker, getIndex func(seedTo time.Duration) (int64, error), skipHeader, writeLastBuf bool) (err error) {
 	buf := make([]byte, humanize.MByte*3)
 	init := false
 	seek := false
@@ -712,6 +712,12 @@ func (t *Fmp4Decoder) CutSeed(reader io.Reader, startT, duration time.Duration, 
 	for c := 0; err == nil && !over; c++ {
 		n, e := reader.Read(buf)
 		if n == 0 && errors.Is(e, io.EOF) {
+			if t.buf.Size() > 0 {
+				buf, ulock := t.buf.GetPureBufRLock()
+				_, _ = w.Write(buf)
+				ulock()
+				t.buf.Reset()
+			}
 			return io.EOF
 		}
 		err = t.buf.Append(buf[:n])
@@ -723,11 +729,13 @@ func (t *Fmp4Decoder) CutSeed(reader io.Reader, startT, duration time.Duration, 
 				if len(frontBuf) == 0 {
 					continue
 				} else {
-					if t.Debug {
-						fmt.Printf("write frontBuf: frontBufSize: %d\n", len(frontBuf))
-					}
 					init = true
-					_, err = w.Write(frontBuf)
+					if !skipHeader {
+						if t.Debug {
+							fmt.Printf("write frontBuf: frontBufSize: %d\n", len(frontBuf))
+						}
+						_, err = w.Write(frontBuf)
+					}
 				}
 			}
 		} else {
@@ -850,7 +858,7 @@ var (
 	iesPool       = slice.NewFlexBlocks[ie](5)
 )
 
-func decode(buf []byte, reSyncboxName string) (m []ie, recycle func([]ie), err error) {
+func decode(buf []byte) (m []ie, recycle func([]ie), err error) {
 	var cu int
 
 	m, recycle, err = iesPool.Get()

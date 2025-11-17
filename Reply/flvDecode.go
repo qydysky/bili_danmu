@@ -1,4 +1,4 @@
-package reply
+package Reply
 
 import (
 	"errors"
@@ -266,11 +266,11 @@ func (t *FlvDecoder) oneF(buf []byte, w ...dealFFlv) (dropOffset int, err error)
 }
 
 // Deprecated: 效率低于GenFastSeed+CutSeed
-func (t *FlvDecoder) Cut(reader io.Reader, startT, duration time.Duration, w io.Writer) (err error) {
-	return t.CutSeed(reader, startT, duration, w, nil, nil)
+func (t *FlvDecoder) Cut(reader io.Reader, startT, duration time.Duration, w io.Writer, skipHeader, writeLastBuf bool) (err error) {
+	return t.CutSeed(reader, startT, duration, w, nil, nil, skipHeader, writeLastBuf)
 }
 
-func (t *FlvDecoder) CutSeed(reader io.Reader, startT, duration time.Duration, w io.Writer, seeker io.Seeker, getIndex func(seedTo time.Duration) (int64, error)) (err error) {
+func (t *FlvDecoder) CutSeed(reader io.Reader, startT, duration time.Duration, w io.Writer, seeker io.Seeker, getIndex func(seedTo time.Duration) (int64, error), skipHeader, writeLastBuf bool) (err error) {
 	buf := make([]byte, humanize.KByte*500)
 	buff := slice.New[byte]()
 	over := false
@@ -295,6 +295,12 @@ func (t *FlvDecoder) CutSeed(reader io.Reader, startT, duration time.Duration, w
 	for c := 0; err == nil && !over; c++ {
 		n, e := reader.Read(buf)
 		if n == 0 && errors.Is(e, io.EOF) {
+			if buff.Size() > 0 {
+				buf, ulock := buff.GetPureBufRLock()
+				_, _ = w.Write(buf)
+				ulock()
+				buff.Reset()
+			}
 			return io.EOF
 		}
 		err = buff.Append(buf[:n])
@@ -308,7 +314,7 @@ func (t *FlvDecoder) CutSeed(reader io.Reader, startT, duration time.Duration, w
 				}
 				if len(frontBuf) == 0 {
 					continue
-				} else {
+				} else if !skipHeader {
 					_, err = w.Write(frontBuf)
 				}
 			}

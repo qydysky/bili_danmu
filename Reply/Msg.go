@@ -1,4 +1,4 @@
-package reply
+package Reply
 
 import (
 	"encoding/json"
@@ -17,6 +17,10 @@ var msglog = c.C.Log.Base(`Msg`)
 
 // Msg类型数据处理方法map
 var Msg_map = map[string]func(replyF, string){
+	`PLAYURL_RELOAD_MASTER`:                nil,
+	`COLLABORATION_LIVE_POPULARITY`:        nil, // 跨房直播活跃度
+	`COLLABORATION_LIVE_WATCHED`:           nil, // 跨房直播观看数
+	`COLLABORATION_LIVE_ONLINE`:            nil, // 跨房直播在线数
 	`TIP_CARD`:                             nil,
 	`VOICE_JOIN_SWITCH`:                    nil,
 	`VOICE_JOIN_SWITCH_V2`:                 nil,

@@ -3,7 +3,6 @@ package F
 import (
 	"errors"
 	"fmt"
-	"net/http"
 	"net/url"
 	"os"
 	"strconv"
@@ -15,7 +14,6 @@ import (
 	c "github.com/qydysky/bili_danmu/CV"
 	pe "github.com/qydysky/part/errors"
 	file "github.com/qydysky/part/file"
-	pio "github.com/qydysky/part/io"
 	pkf "github.com/qydysky/part/keyFunc"
 	reqf "github.com/qydysky/part/reqf"
 	qr "github.com/skip2/go-qrcode"
@@ -35,6 +33,7 @@ type GetFuncV2 struct {
 //	使用Get(key)获取需要的key，会尝试调用可以获取到该key的接口
 func NewGetFuncV2() *GetFuncV2 {
 	t := &GetFuncV2{api: pkf.NewKeyFunc()}
+	t.api.Reg(`CookieNoBlock`, t.isValid(`Cookie`), t.getCookieNoBlock)
 	t.api.Reg(`Cookie`, t.isValid(`Cookie`), t.getCookie)
 	t.api.Reg(`UpUid`, t.isValid(`UpUid`), t.getRoomBaseInfo, t.getInfoByRoom, t.getRoomPlayInfo, t.html)
 	t.api.Reg(`Live_Start_Time`, t.isValid(`Live_Start_Time`), t.getRoomBaseInfo, t.getInfoByRoom, t.getRoomPlayInfo, t.html)
@@ -137,7 +136,7 @@ func (t *GetFuncV2) getCookie() (missKey string, err error) {
 		}
 	}()
 
-	if file.New(savepath, 0, true).IsExist() { //读取cookie文件
+	if file.IsExist(savepath) { //读取cookie文件
 		if cookieString := string(CookieGet(savepath)); cookieString != `` {
 			biliApi.SetCookies(reqf.Cookies_String_2_List(cookieString)) //cookie 存入biliApi
 			if biliApi.IsLogin() {
@@ -191,7 +190,7 @@ func (t *GetFuncV2) getCookie() (missKey string, err error) {
 	// }
 
 	{ //生成二维码
-		if e := qr.WriteFile(img_url, qr.Medium, 256, `qr.png`); e != nil || !file.New("qr.png", 0, true).IsExist() {
+		if e := qr.WriteFile(img_url, qr.Medium, 256, `qr.png`); e != nil || !file.IsExist("qr.png") {
 			apilog.L(`E: `, `qr error`)
 			return
 		}
@@ -200,12 +199,6 @@ func (t *GetFuncV2) getCookie() (missKey string, err error) {
 		}()
 		//启动web
 		if scanPath, ok := t.common.K_v.LoadV("扫码登录路径").(string); ok && scanPath != "" {
-			t.common.SerF.Store(scanPath, func(w http.ResponseWriter, r *http.Request) {
-				if c.DefaultHttpFunc(t.common, w, r, http.MethodGet) {
-					return
-				}
-				_ = file.New("qr.png", 0, true).CopyToIoWriter(w, pio.CopyConfig{})
-			})
 			if t.common.K_v.LoadV(`扫码登录自动打开标签页`).(bool) {
 				_ = open.Run(`http://127.0.0.1:` + t.common.Stream_url.Port() + scanPath)
 			}
@@ -236,8 +229,8 @@ func (t *GetFuncV2) getCookie() (missKey string, err error) {
 	// }
 
 	{ //循环查看是否通过
-		r := t.common.ReqPool.Get()
-		defer t.common.ReqPool.Put(r)
+		// r := t.common.ReqPool.Get()
+		// defer t.common.ReqPool.Put(r)
 		for pollC := 10; pollC > 0; pollC-- {
 			//3s刷新查看是否通过
 			time.Sleep(time.Duration(3) * time.Second)
@@ -265,6 +258,131 @@ func (t *GetFuncV2) getCookie() (missKey string, err error) {
 		apilog.L(`W: `, `扫码超时`)
 		return "", errors.New(`扫码超时`)
 	}
+}
+
+func (t *GetFuncV2) getCookieNoBlock() (missKey string, err error) {
+	apilog := apilog.Base_add(`获取Cookie`)
+
+	savepath := "./cookie.txt"
+	if tmp, ok := t.common.K_v.LoadV("cookie路径").(string); ok && tmp != "" {
+		savepath = tmp
+	}
+
+	biliApi := biliApi.Inter(func(ce error) BiliApiInter {
+		err = ce
+		apilog.L(`E: `, `biliApi组件未构建`, ce)
+		return nil
+	})
+	if biliApi == nil {
+		return
+	}
+
+	if file.IsExist(savepath) { //读取cookie文件
+		if cookieString := string(CookieGet(savepath)); cookieString != `` {
+			biliApi.SetCookies(reqf.Cookies_String_2_List(cookieString)) //cookie 存入biliApi
+			if biliApi.IsLogin() {
+				if e, res := biliApi.GetNav(); e != nil {
+					apilog.L(`E: `, e)
+				} else if res.IsLogin {
+					// uid
+					if e, uid := biliApi.GetCookie(`DedeUserID`); e == nil { //cookie中无DedeUserID
+						if uid, e := strconv.Atoi(uid); e == nil {
+							t.common.Uid = uid
+						}
+					}
+
+					t.common.Login = true
+					apilog.L(`I: `, `已登录`)
+					return
+				}
+			}
+		}
+	}
+
+	t.common.Login = false
+	t.common.Uid = 0
+	apilog.L(`I: `, `未登录`)
+
+	if v, ok := t.common.K_v.LoadV(`扫码登录`).(bool); !ok || !v {
+		apilog.L(`W: `, `配置文件已禁止扫码登录，如需登录，修改配置文件"扫码登录"为true`)
+		return
+	} else {
+		apilog.L(`I: `, `"扫码登录"为true，开始登录`)
+	}
+
+	var img_url string
+	var oauth string
+	//获取二维码
+	if err, imgUrl, QrcodeKey := biliApi.LoginQrCode(); err != nil {
+		apilog.L(`E: `, err)
+		return "", pkf.ErrNextMethod.NewErr(err)
+	} else {
+		img_url = imgUrl
+		oauth = QrcodeKey
+	}
+
+	{ //生成二维码
+		if e := qr.WriteFile(img_url, qr.Medium, 256, `qr.png`); e != nil || !file.IsExist("qr.png") {
+			apilog.L(`E: `, `qr error`)
+			return
+		}
+		//启动web
+		if scanPath, ok := t.common.K_v.LoadV("扫码登录路径").(string); ok && scanPath != "" {
+			if t.common.K_v.LoadV(`扫码登录自动打开标签页`).(bool) {
+				_ = open.Run(`http://127.0.0.1:` + t.common.Stream_url.Port() + scanPath)
+			}
+			apilog.L(`W: `, `扫描命令行二维码或打开链接扫码登录：`+t.common.Stream_url.String()+scanPath)
+		}
+
+		c := qrterminal.Config{
+			Level:     qrterminal.L,
+			Writer:    os.Stdout,
+			BlackChar: `  `,
+			WhiteChar: `OO`,
+		}
+		if white, ok := t.common.K_v.LoadV(`登录二维码-白`).(string); ok && len(white) != 0 {
+			c.WhiteChar = white
+		}
+		if black, ok := t.common.K_v.LoadV(`登录二维码-黑`).(string); ok && len(black) != 0 {
+			c.BlackChar = black
+		}
+		//show qr code in cmd
+		qrterminal.GenerateWithConfig(img_url, c)
+		apilog.L(`I: `, `手机扫命令行二维码登录。如不登录，修改配置文件"扫码登录"为false`)
+	}
+
+	{ //循环查看是否通过
+		go func() {
+			//获取其他Cookie
+			defer func() {
+				if err := biliApi.GetOtherCookies(); err != nil {
+					apilog.L(`E: `, err)
+				}
+				_ = os.RemoveAll(`qr.png`)
+			}()
+			for pollC := 10; pollC > 0; pollC-- {
+				//3s刷新查看是否通过
+				time.Sleep(time.Duration(3) * time.Second)
+
+				if err, code := biliApi.LoginQrPoll(oauth); err != nil {
+					apilog.L(`E: `, err)
+					return
+				} else if code == 0 {
+					if cookies := biliApi.GetCookies(); len(cookies) != 0 {
+						if e, uid := biliApi.GetCookie(`DedeUserID`); e == nil { //cookie中无DedeUserID
+							if uid, e := strconv.Atoi(uid); e == nil {
+								t.common.Uid = uid
+							}
+						}
+						apilog.L(`I: `, `登录,并保存了cookie`)
+						return
+					}
+				}
+			}
+			apilog.L(`W: `, `扫码超时`)
+		}()
+	}
+	return "", nil
 }
 
 func (t *GetFuncV2) getRoomBaseInfo() (missKey string, err error) {
@@ -836,11 +954,6 @@ func (t *GetFuncV2) queryContributionRank() (missKey string, err error) {
 		return `Roomid`, nil
 	}
 
-	if api_limit.TO() {
-		apilog.L(`E: `, `超时！`)
-		return
-	} //超额请求阻塞，超时将取消
-
 	if e, OnlineNum := biliApi.QueryContributionRank(t.common.UpUid, t.common.Roomid); e != nil {
 		apilog.L(`E: `, e)
 		return
@@ -871,11 +984,6 @@ func (t *GetFuncV2) getOnlineGoldRank() (missKey string, err error) {
 	if t.common.Roomid == 0 {
 		return `Roomid`, nil
 	}
-
-	if api_limit.TO() {
-		apilog.L(`E: `, `超时！`)
-		return
-	} //超额请求阻塞，超时将取消
 
 	if e, OnlineNum := biliApi.GetOnlineGoldRank(t.common.UpUid, t.common.Roomid); e != nil {
 		apilog.L(`E: `, e)

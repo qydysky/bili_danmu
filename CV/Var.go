@@ -12,6 +12,7 @@ import (
 	"math"
 	"net"
 	"net/http"
+	"net/http/pprof"
 	"net/url"
 	"os"
 	"runtime"
@@ -27,6 +28,7 @@ import (
 	pca "github.com/qydysky/part/crypto/asymmetric"
 	pctx "github.com/qydysky/part/ctx"
 	file "github.com/qydysky/part/file"
+	pio "github.com/qydysky/part/io"
 	log "github.com/qydysky/part/log"
 	mq "github.com/qydysky/part/msgq"
 	pool "github.com/qydysky/part/pool"
@@ -582,6 +584,49 @@ func (t *Common) Init() *Common {
 			}
 		}
 
+		// 登陆
+		if v, ok := t.K_v.LoadV(`扫码登录`).(bool); ok && v {
+			if scanPath, ok := t.K_v.LoadV("扫码登录路径").(string); ok && scanPath != "" {
+				_ = file.Open("qr.png").Delete()
+				t.SerF.Store(scanPath, func(w http.ResponseWriter, r *http.Request) {
+					if DefaultHttpFunc(t, w, r, http.MethodGet) {
+						return
+					}
+					if q := file.Open("qr.png"); q.IsExist() {
+						_ = q.CopyToIoWriter(w, pio.CopyConfig{})
+					} else if !t.IsLogin() {
+						t.Danmu_Main_mq.Push_tag(`login`, nil)
+						_ = q.CopyToIoWriter(w, pio.CopyConfig{})
+					} else {
+						w.WriteHeader(http.StatusNotFound)
+					}
+				})
+			}
+		}
+
+		// debug模式
+		if debugP, ok := t.K_v.LoadV(`debug路径`).(string); ok && debugP != "" {
+			t.SerF.Store(debugP, func(w http.ResponseWriter, r *http.Request) {
+				if DefaultHttpFunc(t, w, r, http.MethodGet, http.MethodPost) {
+					return
+				}
+				if name, found := strings.CutPrefix(r.URL.Path, debugP); found && name != "" {
+					switch name {
+					case "cmdline":
+						pprof.Cmdline(w, r)
+					case "profile":
+						pprof.Profile(w, r)
+					case "trace":
+						pprof.Trace(w, r)
+					default:
+						pprof.Handler(name).ServeHTTP(w, r)
+					}
+					return
+				}
+				pprof.Index(w, r)
+			})
+		}
+
 		if val, ok := t.K_v.LoadV("stop路径").(string); ok && val != "" {
 			t.SerF.Store(val, func(w http.ResponseWriter, r *http.Request) {
 				if DefaultHttpFunc(t, w, r, http.MethodGet, http.MethodOptions) {
@@ -609,20 +654,14 @@ func (t *Common) Init() *Common {
 		}
 
 		if val, ok := t.K_v.LoadV("性能路径").(string); ok && val != "" {
-			var cache web.Cache
 			t.SerF.Store(val, func(w http.ResponseWriter, r *http.Request) {
 				if DefaultHttpFunc(t, w, r, http.MethodGet) {
 					return
 				}
 
-				//cache
-				if bp, ok := cache.IsCache(val); ok {
-					w.Header().Set("Content-Type", "application/json")
-					w.Header().Set("Cache-Control", "max-age=5")
-					_, _ = w.Write(*bp)
+				if web.NotModifiedDur(r, w, time.Second*5) {
 					return
 				}
-				w = cache.Cache(val, time.Second*5, w)
 
 				var memStats runtime.MemStats
 				runtime.ReadMemStats(&memStats)

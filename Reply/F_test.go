@@ -1,4 +1,4 @@
-package reply
+package Reply
 
 import (
 	"context"
@@ -37,7 +37,7 @@ func TestSaveDanmuToDB(t *testing.T) {
 				Msg string
 			}
 
-			v, err := psql.DealRows(rows, func() row { return row{} })
+			v, err := psql.DealRows[row](rows)
 			if err != nil {
 				*e = err
 				return

@@ -1,4 +1,4 @@
-package reply
+package Reply
 
 import (
 	"errors"
@@ -75,15 +75,15 @@ func Test_FLVCut(t *testing.T) {
 		t.Log("test file not exist")
 	}
 
-	e := NewFlvDecoder().Cut(f, time.Minute*10, time.Second*20, cutf.File())
+	e := NewFlvDecoder().Cut(f, time.Minute*10, time.Second*20, cutf.File(), false, false)
 	t.Log(perrors.ErrorFormat(e))
 }
 
 func Test_FLVGenFastSeed(t *testing.T) {
-	var VideoFastSeed = comp.Get[interface {
+	var VideoFastSeed = comp.GetV3[interface {
 		InitGet(fastSeedFilePath string) (getIndex func(seedTo time.Duration) (int64, error), e error)
 		InitSav(fastSeedFilePath string) (savIndex func(seedTo time.Duration, cuIndex int64) error, e error)
-	}](`videoFastSeed`)
+	}](`videoFastSeed`).Inter()
 
 	f := file.Open("testdata/0.flv")
 	defer f.CloseErr()
@@ -125,16 +125,16 @@ func Test_FLVCutSeed(t *testing.T) {
 		t.Log("test file not exist")
 	}
 
-	var VideoFastSeed = comp.Get[interface {
+	var VideoFastSeed = comp.GetV3[interface {
 		InitGet(fastSeedFilePath string) (getIndex func(seedTo time.Duration) (int64, error), e error)
 		InitSav(fastSeedFilePath string) (savIndex func(seedTo time.Duration, cuIndex int64) error, e error)
-	}](`videoFastSeed`)
+	}](`videoFastSeed`).Inter()
 
 	gf, e := VideoFastSeed.InitGet("testdata/0.flv.fastSeed")
 	if e != nil {
 		t.Fatal(e)
 	}
 
-	e = NewFlvDecoder().CutSeed(f, time.Minute*10, time.Second*20, cutf.File(), f, gf)
+	e = NewFlvDecoder().CutSeed(f, time.Minute*10, time.Second*20, cutf.File(), f, gf, false, false)
 	t.Log(perrors.ErrorFormat(e))
 }

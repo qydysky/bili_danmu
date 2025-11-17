@@ -156,9 +156,12 @@ func loadCsv(savePath string, filename ...string) iter.Seq[Data] {
 			return
 		}
 
-		var data = Data{}
+		var (
+			line = []byte{}
+			data = Data{}
+		)
 		for i := 0; true; i += 1 {
-			if line, e := csvf.ReadUntil([]byte{'\n'}, humanize.KByte, humanize.MByte); len(line) != 0 {
+			if e := csvf.ReadUntilV2(&line, []byte{'\n'}, humanize.KByte, humanize.MByte); len(line) != 0 {
 				lined := bytes.SplitN(line, []byte{','}, 3)
 				if len(lined) == 3 {
 					if t, e := strconv.ParseFloat(string(lined[0]), 64); e == nil {

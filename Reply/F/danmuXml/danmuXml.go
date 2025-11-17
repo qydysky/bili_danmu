@@ -57,9 +57,12 @@ func toXml(ctx context.Context, path *string) (any, error) {
 	}
 
 	csvf := file.Open((*path) + "0.csv")
-	var data = Data{}
+	var (
+		data = Data{}
+		line = []byte{}
+	)
 	for i := 0; true; i += 1 {
-		if line, e := csvf.ReadUntil([]byte{'\n'}, humanize.KByte, humanize.MByte); len(line) != 0 {
+		if e := csvf.ReadUntilV2(&line, []byte{'\n'}, humanize.KByte, humanize.MByte); len(line) != 0 {
 			lined := bytes.SplitN(line, []byte{','}, 3)
 			if len(lined) == 3 {
 				if e := json.Unmarshal(lined[2], &data); e == nil {

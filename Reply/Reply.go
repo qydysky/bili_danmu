@@ -1,4 +1,4 @@
-package reply
+package Reply
 
 import (
 	"bytes"
@@ -153,8 +153,9 @@ type danmuReuseS struct {
 }
 
 var danmuPool = pool.New(pool.PoolFunc[danmuReuseS]{
-	New: func() *danmuReuseS {
-		return &danmuReuseS{}
+	New: func() (s *danmuReuseS) {
+		s = &danmuReuseS{}
+		return
 	},
 	Reuse: func(drs *danmuReuseS) *danmuReuseS {
 		drs.Cmd = ""
@@ -1256,6 +1257,9 @@ func (t replyF) danmu(s string) {
 	if v, ok := t.K_v.LoadV(`弹幕回放_隐藏发送人`).(bool); ok && v {
 		item.hideAuth = true
 	}
+	if v, ok := t.K_v.LoadV(`弹幕回放_未登录时隐藏发送人`).(bool); ok && v && !t.IsLogin() {
+		item.hideAuth = true
+	}
 	{
 		//解析
 		if len(j.Info) > 0 {
@@ -1410,11 +1414,11 @@ func Msg_showdanmu(item Danmu_item) {
 	fmt.Println(item.msg)
 }
 
-type Danmu_mq_t struct {
-	uid *string
-	msg *string
-	// m   map[string]string //tts参数替换列表
-}
+// type Danmu_mq_t struct {
+// 	uid *string
+// 	msg *string
+// 	// m   map[string]string //tts参数替换列表
+// }
 
 // var Danmu_mq = mq.New()
 

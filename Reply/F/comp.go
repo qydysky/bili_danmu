@@ -77,6 +77,7 @@ type DanmuCountPerMinI interface {
 	// will WriteHeader
 	GetRec(savePath string, r *http.Request, w http.ResponseWriter) error
 	GetRec2(savePath string, w io.Writer) error
+	GetRec3(savePath string, w io.Writer, st, dur time.Duration) error
 	CheckRoot(dir string)
 	Rec(ctx context.Context, roomid int, savePath string) func(any)
 	Do(roomid int, msg string, uid string)
@@ -131,7 +132,10 @@ type DanmuEmotesI interface {
 	SetLayerN(n int)
 	IsErrNoEmote(e error) bool
 	PackEmotes(dir string) error
-	GetEmotesDir(dir string) fs.FS
+	GetEmotesDir(dir string) interface {
+		fs.FS
+		io.Closer
+	}
 }
 
 var DanmuEmotes = comp.GetV3[DanmuEmotesI](`danmuEmotes`)
