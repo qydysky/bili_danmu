@@ -26,6 +26,7 @@ type TargetInterface interface {
 	GetRec(savePath string, r *http.Request, w http.ResponseWriter) error
 	GetRec2(savePath string, w io.Writer) error
 	GetRec3(savePath string, w io.Writer, st, dur time.Duration) error
+	GetRec4(savePath string, points *[]int) (e error)
 	CheckRoot(dir string)
 	Rec(ctx context.Context, roomid int, savePath string) func(any)
 	Do(roomid int, msg string, uid string)
@@ -56,6 +57,22 @@ type danmuCountPerMin struct {
 
 func (t *danmuCountPerMin) CheckRoot(dir string) {
 	t.root = dir
+}
+
+func (t *danmuCountPerMin) GetRec4(savePath string, points *[]int) (e error) {
+	f := file.Open(savePath + filename).CheckRoot(t.root)
+	if f.IsDir() || !f.IsExist() {
+		e = os.ErrNotExist
+		return
+	}
+	if data, err := f.ReadAll(10, humanize.MByte); e != nil && !errors.Is(e, io.EOF) {
+		e = err
+		return
+	} else if err := json.Unmarshal(data, points); e != nil {
+		e = err
+		return
+	}
+	return
 }
 
 func (t *danmuCountPerMin) GetRec3(savePath string, w io.Writer, std, durd time.Duration) error {

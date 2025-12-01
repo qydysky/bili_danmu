@@ -12,6 +12,7 @@ import (
 	"github.com/dustin/go-humanize"
 	F "github.com/qydysky/bili_danmu/F"
 	pe "github.com/qydysky/part/errors"
+	pool "github.com/qydysky/part/pool"
 	slice "github.com/qydysky/part/slice"
 )
 
@@ -837,14 +838,14 @@ func (t *dealIE) deal(ies []ie, cu int) (err error) {
 	return nil
 }
 
-func deal(ies []ie, dealIEf dealIE) (err error) {
+func deal(ies *[]ie, dealIEf dealIE) (err error) {
 	return deals(ies, []dealIE{dealIEf})
 }
 
-func deals(ies []ie, dealIEs []dealIE) (err error) {
-	for cu := 0; cu < len(ies) && len(dealIEs) != 0; cu++ {
+func deals(ies *[]ie, dealIEs []dealIE) (err error) {
+	for cu := 0; cu < len(*ies) && len(dealIEs) != 0; cu++ {
 		for i := 0; i < len(dealIEs); i++ {
-			if e := dealIEs[i].deal(ies, cu); e != nil {
+			if e := dealIEs[i].deal(*ies, cu); e != nil {
 				return e
 			}
 		}
@@ -855,23 +856,21 @@ func deals(ies []ie, dealIEs []dealIE) (err error) {
 var (
 	ErrMisBox     = pe.New("decode", "ErrMisBox")
 	ErrCantResync = pe.New("decode")
-	iesPool       = slice.NewFlexBlocks[ie](5)
+	iesPool       = pool.NewPoolBlocks[ie]()
 )
 
-func decode(buf []byte) (m []ie, recycle func([]ie), err error) {
+func decode(buf []byte) (m *[]ie, recycle func(*[]ie), err error) {
 	var cu int
 
-	m, recycle, err = iesPool.Get()
-	if err != nil {
-		return
-	}
-	m = m[:0]
+	m = iesPool.Get()
+	recycle = iesPool.Put
+	*m = (*m)[:0]
 
 	for cu < len(buf)-fmp4BoxLenSize-fmp4BoxNameSize {
 		boxName, i, e, E := searchBox(buf, &cu)
 		if E != nil {
 			if errors.Is(E, io.EOF) {
-				if len(m) == 0 {
+				if len(*m) == 0 {
 					err = ErrMisBox
 				}
 				return
@@ -886,13 +885,13 @@ func decode(buf []byte) (m []ie, recycle func([]ie), err error) {
 			return
 		}
 
-		if cu := len(m); cu < cap(m) {
-			m = m[:cu+1]
-			m[cu].n = boxName
-			m[cu].i = i
-			m[cu].e = e
+		if cu := len(*m); cu < cap(*m) {
+			*m = (*m)[:cu+1]
+			(*m)[cu].n = boxName
+			(*m)[cu].i = i
+			(*m)[cu].e = e
 		} else {
-			m = append(m, ie{
+			*m = append(*m, ie{
 				n: boxName,
 				i: i,
 				e: e,

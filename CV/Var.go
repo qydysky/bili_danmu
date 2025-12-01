@@ -765,7 +765,7 @@ func (t *Common) Init() *Common {
 				}
 				if createok {
 					tx := psql.BeginTx[any](db, pctx.GenTOCtx(time.Second*5))
-					tx.Do(psql.SqlFunc[any]{
+					tx.Do(&psql.SqlFunc[any]{
 						Sql:        create,
 						SkipSqlErr: true,
 					})

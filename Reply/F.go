@@ -36,7 +36,6 @@ import (
 	fctrl "github.com/qydysky/part/funcCtrl"
 	pio "github.com/qydysky/part/io"
 	ps "github.com/qydysky/part/slice"
-	util "github.com/qydysky/part/util"
 	pweb "github.com/qydysky/part/web"
 	websocket "github.com/qydysky/part/websocket"
 )
@@ -265,8 +264,10 @@ type PlayItem struct {
 	Qn            string         `json:"qn"`            // 画质 // 自动从Live[0]取
 	Name          string         `json:"name"`          // 自定义标题
 	StartT        string         `json:"startT"`        // 本段起始时间 // 自动从Live[0]取
-	StartTS       int64          `json:"-"`             // 本段起始时间unix // 自动从Live[0]取
+	StartTS       int64          `json:"-"`             // 本段起始时间unix
 	EndT          string         `json:"endT"`          // 本段停止时间 // 自动从Live[len(Live)-1]取
+	EndTS         int64          `json:"-"`             // 本段停止时间unix
+	Dur           time.Duration  `json:"-"`             // 本段时长
 	Path          string         `json:"path"`          // 自定义目录名
 	Format        string         `json:"format"`        // 格式 // 自动从Live[0]取
 	StartLiveT    string         `json:"startLiveT"`    // 本场起始时间 // 自动从Live[0]取
@@ -279,6 +280,8 @@ type PlayItemlive struct {
 	LiveDir string `json:"liveDir"`
 	StartT  string `json:"startT,omitempty"` // 只有第一个设置
 	Dur     string `json:"dur,omitempty"`    // 只有最后一个设置
+
+	infoDur time.Duration `json:"-"` // 录播dur
 }
 
 type PlayCut struct {
@@ -400,6 +403,8 @@ func init() {
 		})
 
 		// 直播流文件弹幕统计apis
+		//
+		// req body ["1","2","3"]
 		c.C.SerF.Store(spath+"danmuCountPerMins", func(w http.ResponseWriter, r *http.Request) {
 			if c.DefaultHttpFunc(c.C, w, r, http.MethodPost) {
 				return
@@ -437,25 +442,57 @@ func init() {
 					_, _ = w.Write([]byte(`"` + qref + `":`))
 					if qref != `now` {
 						if e := replyFunc.DanmuCountPerMin.Run(func(dcpmi replyFunc.DanmuCountPerMinI) error {
+							var points []int
 							_, _ = w.Write([]byte("["))
 							if hasLivsJson {
 								// 节目单
-								for j, live := range playlists[0].Lives {
-									sst, sdur := parseDuration(live.StartT), parseDuration(live.Dur)
-									if e := dcpmi.GetRec3(dir+"/"+live.LiveDir, w, sst, sdur); e != nil {
+								var (
+									totalDur time.Duration
+									totalNum int
+								)
+								for j, live := range ps.Range(playlists[0].Lives) {
+									if e := dcpmi.GetRec4(dir+"/"+live.LiveDir, &points); e != nil {
 										if !errors.Is(e, os.ErrNotExist) {
 											flog.L(`W: `, "获取弹幕统计", e)
 										}
 										break
+									} else {
+										st, dur := func() (st, dur int) {
+											st, dur = int(parseDuration(live.StartT).Minutes()), int(parseDuration(live.Dur).Minutes())
+											if st < 0 {
+												st = 0
+											} else if st > len(points) {
+												st = len(points)
+											}
+											if dur <= 0 || st+dur > len(points) {
+												dur = len(points) - st
+											}
+											return
+										}()
+										totalDur += live.infoDur
+										for i := 0; i < dur && float64(totalNum) < totalDur.Minutes(); i++ {
+											_, _ = w.Write([]byte(strconv.Itoa(points[st+i])))
+											totalNum += 1
+											if i != dur-1 && float64(totalNum) < totalDur.Minutes() {
+												_, _ = w.Write([]byte{','})
+											}
+										}
 									}
 									if j < len(playlists[0].Lives)-1 {
 										_, _ = w.Write([]byte(","))
 									}
 								}
 							} else {
-								if e := dcpmi.GetRec3(dir, w, 0, 0); e != nil {
+								if e := dcpmi.GetRec4(dir, &points); e != nil {
 									if !errors.Is(e, os.ErrNotExist) {
 										flog.L(`W: `, "获取弹幕统计", e)
+									}
+								} else {
+									for i := 0; i < len(points); i++ {
+										_, _ = w.Write([]byte(strconv.Itoa(points[i])))
+										if i != len(points)-1 {
+											_, _ = w.Write([]byte{','})
+										}
 									}
 								}
 							}
@@ -526,58 +563,11 @@ func init() {
 			sortS := r.URL.Query().Get("sort")
 
 			// 支持ref
-			e, hasLivsJson, dir, playlists := LiveDirF(liveRootDir, qref)
+			e, _, _, playlists := LiveDirF(liveRootDir, qref)
 			if e != nil {
 				w.WriteHeader(http.StatusBadRequest)
 				flog.L(`I: `, "路径解码失败", qref, perrors.ErrorFormat(e, perrors.ErrActionInLineFunc))
 				return
-			} else if hasLivsJson {
-				// 从子live里获取信息
-				for _, playlist := range util.Range(playlists) {
-					for j, live := range util.Range(playlist.Lives) {
-						fi, e := videoInfo.Get.Run(context.Background(), dir+"/"+live.LiveDir)
-						if e != nil {
-							flog.L(`W: `, `读取节目单元数据失败`, dir+"/"+live.LiveDir, e)
-							break
-						}
-						// 根据cut 的 LiveDir 重新计算开始时刻
-						for _, cut := range util.Range(playlist.Cuts) {
-							if cut.LiveDir == "" {
-								continue
-							} else if cut.LiveDir != live.LiveDir {
-								cut.stt += fi.Dur
-							} else {
-								cut.St = fmt.Sprint(cut.stt)
-								cut.LiveDir = ""
-							}
-						}
-						if j == 0 {
-							playlist.StartT = fi.StartT
-							playlist.StartTS = fi.StartTS
-							playlist.StartLiveT = fi.StartLiveT
-							playlist.Format = fi.Format
-							playlist.Roomid = fi.Roomid
-							playlist.Uname = fi.Uname
-							playlist.Qn = fi.Qn
-							playlist.UpUid = fi.UpUid
-						}
-						if j == len(playlist.Lives)-1 {
-							playlist.EndT = fi.EndT
-						}
-						sst, sdur := int(parseDuration(live.StartT).Minutes()), int(parseDuration(live.Dur).Minutes())
-						if sst < 0 {
-							sst = 0
-						} else if sst > len(fi.OnlinesPerMin) {
-							sst = len(fi.OnlinesPerMin)
-						}
-						if sdur <= 0 {
-							sdur = len(fi.OnlinesPerMin)
-						} else if sdur > len(fi.OnlinesPerMin) {
-							sdur = len(fi.OnlinesPerMin)
-						}
-						playlist.OnlinesPerMin = append(playlist.OnlinesPerMin, fi.OnlinesPerMin[sst:sdur]...)
-					}
-				}
 			}
 
 			uname := r.URL.Query().Get("uname")
@@ -1013,7 +1003,7 @@ func init() {
 					}(time.Now())
 					readFile(w, dir+"/", "/", st, dur, false, true, &rangeHeaderNum)
 				} else {
-					if _, playlist := util.Search(playlists, func(t *PlayItem) bool { return t.Path == filepath.Base(ref) }); playlist == nil || len(playlist.Lives) == 0 {
+					if _, playlist := ps.Search(playlists, func(t *PlayItem) bool { return t.Path == filepath.Base(ref) }); playlist == nil || len(playlist.Lives) == 0 {
 						w.WriteHeader(http.StatusNotFound)
 						return
 					} else {
@@ -1126,7 +1116,7 @@ func init() {
 						return
 					}
 				} else {
-					if _, playlist := util.Search(playlists, func(t *PlayItem) bool { return t.Path == filepath.Base(ref) }); playlist == nil || len(playlist.Lives) == 0 {
+					if _, playlist := ps.Search(playlists, func(t *PlayItem) bool { return t.Path == filepath.Base(ref) }); playlist == nil || len(playlist.Lives) == 0 {
 						w.WriteHeader(http.StatusNotFound)
 						return
 					} else {
@@ -1234,7 +1224,7 @@ var (
 //
 // 1. 当有节目单json时
 //
-// hasLivsJson = true, dir = qref目录， refs = 目录下的录播infos
+// hasLivsJson = true, dir = qref目录， refs = 节目单nfos
 //
 // 2. 当无节目单json时
 //
@@ -1244,7 +1234,7 @@ var (
 //
 // 1. 当是节目单json的录播路径时
 //
-// hasLivsJson = true, dir = qref目录， refs[0] = 录播目录info
+// hasLivsJson = true, dir = qref目录， refs[0] = 节目单info
 //
 // 2. 当不是节目单json的录播路径时
 //
@@ -1257,6 +1247,7 @@ func LiveDirF(liveRootDir, qref string) (e error, hasLivsJson bool, dir string, 
 	}
 	playlist := file.Open(filepath.Dir(liveRootDir+"/"+qref) + "/1.json").CheckRoot(liveRootDir)
 	hasLivsJson = playlist.IsExist()
+	// 录播父级目录
 	if qref == "" || strings.HasSuffix(qref, "/") {
 		if hasLivsJson {
 			dir = filepath.Dir(liveRootDir + "/" + qref)
@@ -1264,6 +1255,56 @@ func LiveDirF(liveRootDir, qref string) (e error, hasLivsJson bool, dir string, 
 				e = ErrPlaylistRead.NewErr(err)
 			} else if err = json.Unmarshal(data, &refs); err != nil {
 				e = ErrPlaylistParse.NewErr(err)
+			} else {
+				// 从子live里获取信息
+				for _, info := range ps.Range(refs) {
+					for j, live := range ps.Range(info.Lives) {
+						fi, e := videoInfo.Get.Run(context.Background(), dir+"/"+live.LiveDir)
+						if e != nil {
+							flog.L(`W: `, `读取节目单元数据失败`, dir+"/"+live.LiveDir, e)
+							break
+						}
+						// 根据cut 的 LiveDir 重新计算开始时刻
+						for _, cut := range ps.Range(info.Cuts) {
+							if cut.LiveDir == "" {
+								continue
+							} else if cut.LiveDir != live.LiveDir {
+								cut.stt += fi.Dur
+							} else {
+								cut.St = fmt.Sprint(cut.stt)
+								cut.LiveDir = ""
+							}
+						}
+						if j == 0 {
+							info.StartT = fi.StartT
+							info.StartTS = fi.StartTS
+							info.StartLiveT = fi.StartLiveT
+							info.Format = fi.Format
+							info.Roomid = fi.Roomid
+							info.Uname = fi.Uname
+							info.Qn = fi.Qn
+							info.UpUid = fi.UpUid
+						}
+						if j == len(info.Lives)-1 {
+							info.EndT = fi.EndT
+							info.EndTS = fi.EndTS
+						}
+						live.infoDur = fi.Dur
+						info.Dur += fi.Dur
+						sst, sdur := int(parseDuration(live.StartT).Minutes()), int(parseDuration(live.Dur).Minutes())
+						if sst < 0 {
+							sst = 0
+						} else if sst > len(fi.OnlinesPerMin) {
+							sst = len(fi.OnlinesPerMin)
+						}
+						if sdur <= 0 {
+							sdur = len(fi.OnlinesPerMin)
+						} else if sdur > len(fi.OnlinesPerMin) {
+							sdur = len(fi.OnlinesPerMin)
+						}
+						info.OnlinesPerMin = append(info.OnlinesPerMin, fi.OnlinesPerMin[sst:sdur]...)
+					}
+				}
 			}
 			return
 		} else {
@@ -1277,24 +1318,26 @@ func LiveDirF(liveRootDir, qref string) (e error, hasLivsJson bool, dir string, 
 			} else {
 				dir = filepath.Dir(liveRootDir + "/" + qref)
 				for i, n := 0, len(fs); i < n; i++ {
-					if filePath, err := videoInfo.Get.Run(context.Background(), fs[i]); err != nil {
+					if info, err := videoInfo.Get.Run(context.Background(), fs[i]); err != nil {
 						if !errors.Is(err, os.ErrNotExist) {
 							e = ErrPlayInfoRead.NewErr(err)
 						}
 					} else {
 						refs = append(refs, PlayItem{
-							Uname:         filePath.Uname,
-							UpUid:         filePath.UpUid,
-							Roomid:        filePath.Roomid,
-							Qn:            filePath.Qn,
-							Name:          filePath.Name,
-							StartT:        filePath.StartT,
-							StartTS:       filePath.StartTS,
-							EndT:          filePath.EndT,
-							Path:          filePath.Path,
-							Format:        filePath.Format,
-							StartLiveT:    filePath.StartLiveT,
-							OnlinesPerMin: filePath.OnlinesPerMin,
+							Uname:         info.Uname,
+							UpUid:         info.UpUid,
+							Roomid:        info.Roomid,
+							Qn:            info.Qn,
+							Name:          info.Name,
+							StartT:        info.StartT,
+							StartTS:       info.StartTS,
+							EndT:          info.EndT,
+							EndTS:         info.EndTS,
+							Dur:           info.Dur,
+							Path:          info.Path,
+							Format:        info.Format,
+							StartLiveT:    info.StartLiveT,
+							OnlinesPerMin: info.OnlinesPerMin,
 						})
 					}
 				}
@@ -1303,17 +1346,68 @@ func LiveDirF(liveRootDir, qref string) (e error, hasLivsJson bool, dir string, 
 		}
 	}
 	if qref != "" {
+		// 录播目录
 		if hasLivsJson {
+			// 为节目单的虚拟录播目录
 			dir = filepath.Dir(liveRootDir + "/" + qref)
 			if data, err := playlist.ReadAll(humanize.KByte, humanize.MByte); err != nil && !errors.Is(err, io.EOF) {
 				e = ErrPlaylistRead.NewErr(err)
 			} else if err = json.Unmarshal(data, &refs); err != nil {
 				e = ErrPlaylistParse.NewErr(err)
 			}
-			if i, _ := util.Search(refs, func(t *PlayItem) bool {
+			if i, _ := ps.Search(refs, func(t *PlayItem) bool {
 				return t.Path == filepath.Base(qref)
 			}); i != -1 {
 				refs = refs[i : i+1]
+			}
+			// 从子live里获取信息
+			for _, info := range ps.Range(refs) {
+				for j, live := range ps.Range(info.Lives) {
+					fi, e := videoInfo.Get.Run(context.Background(), dir+"/"+live.LiveDir)
+					if e != nil {
+						flog.L(`W: `, `读取节目单元数据失败`, dir+"/"+live.LiveDir, e)
+						break
+					}
+					// 根据cut 的 LiveDir 重新计算开始时刻
+					for _, cut := range ps.Range(info.Cuts) {
+						if cut.LiveDir == "" {
+							continue
+						} else if cut.LiveDir != live.LiveDir {
+							cut.stt += fi.Dur
+						} else {
+							cut.St = fmt.Sprint(cut.stt)
+							cut.LiveDir = ""
+						}
+					}
+					if j == 0 {
+						info.StartT = fi.StartT
+						info.StartTS = fi.StartTS
+						info.StartLiveT = fi.StartLiveT
+						info.Format = fi.Format
+						info.Roomid = fi.Roomid
+						info.Uname = fi.Uname
+						info.Qn = fi.Qn
+						info.UpUid = fi.UpUid
+					}
+					if j == len(info.Lives)-1 {
+						info.EndT = fi.EndT
+						info.EndTS = fi.EndTS
+					}
+					live.infoDur = fi.Dur
+					info.Dur += fi.Dur
+					sst, sdur := int(parseDuration(live.StartT).Minutes()), int(parseDuration(live.Dur).Minutes())
+					if sst < 0 {
+						sst = 0
+					} else if sst > len(fi.OnlinesPerMin) {
+						sst = len(fi.OnlinesPerMin)
+					}
+					if sdur <= 0 {
+						sdur = len(fi.OnlinesPerMin)
+					} else if sdur > len(fi.OnlinesPerMin) {
+						sdur = len(fi.OnlinesPerMin)
+					}
+					info.OnlinesPerMin = append(info.OnlinesPerMin, fi.OnlinesPerMin[sst:sdur]...)
+				}
 			}
 			return
 		} else {
@@ -1323,23 +1417,25 @@ func LiveDirF(liveRootDir, qref string) (e error, hasLivsJson bool, dir string, 
 				return
 			}
 			dir = filepath.Dir(liveRootDir + "/" + qref + "/")
-			if filePath, err := videoInfo.Get.Run(context.Background(), liveRootDir+"/"+qref+"/"); err != nil {
+			if info, err := videoInfo.Get.Run(context.Background(), liveRootDir+"/"+qref+"/"); err != nil {
 				e = ErrPlayInfoRead.NewErr(err)
 				return
 			} else {
 				refs = append(refs, PlayItem{
-					Uname:         filePath.Uname,
-					UpUid:         filePath.UpUid,
-					Roomid:        filePath.Roomid,
-					Qn:            filePath.Qn,
-					Name:          filePath.Name,
-					StartT:        filePath.StartT,
-					StartTS:       filePath.StartTS,
-					EndT:          filePath.EndT,
-					Path:          filePath.Path,
-					Format:        filePath.Format,
-					StartLiveT:    filePath.StartLiveT,
-					OnlinesPerMin: filePath.OnlinesPerMin,
+					Uname:         info.Uname,
+					UpUid:         info.UpUid,
+					Roomid:        info.Roomid,
+					Qn:            info.Qn,
+					Name:          info.Name,
+					StartT:        info.StartT,
+					StartTS:       info.StartTS,
+					EndT:          info.EndT,
+					EndTS:         info.EndTS,
+					Dur:           info.Dur,
+					Path:          info.Path,
+					Format:        info.Format,
+					StartLiveT:    info.StartLiveT,
+					OnlinesPerMin: info.OnlinesPerMin,
 				})
 				return
 			}

@@ -5,7 +5,6 @@ import (
 	"io"
 	"io/fs"
 	"iter"
-	"net/http"
 	"time"
 
 	_ "github.com/qydysky/bili_danmu/Reply/F/ass"              //removable
@@ -75,9 +74,7 @@ var Rev = comp.GetV3[RevI](`rev`)
 
 type DanmuCountPerMinI interface {
 	// will WriteHeader
-	GetRec(savePath string, r *http.Request, w http.ResponseWriter) error
-	GetRec2(savePath string, w io.Writer) error
-	GetRec3(savePath string, w io.Writer, st, dur time.Duration) error
+	GetRec4(savePath string, points *[]int) (e error)
 	CheckRoot(dir string)
 	Rec(ctx context.Context, roomid int, savePath string) func(any)
 	Do(roomid int, msg string, uid string)
