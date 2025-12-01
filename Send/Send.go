@@ -73,18 +73,18 @@ func Danmu_s2(data map[string]string) error {
 	l := c.C.Log.Base("弹幕发送")
 
 	if _, ok := data[`msg`]; !ok {
-		l.L(`E: `, "必须输入参数msg")
+		l.E("必须输入参数msg")
 		return ErrMsgEmpty
 	}
 
 	if _, ok := data[`roomid`]; !ok {
-		l.L(`E: `, "必须输入参数roomid")
+		l.E("必须输入参数roomid")
 		return ErrRoomEmpty
 	}
 
 	csrf, _ := c.C.Cookie.LoadV(`bili_jct`).(string)
 	if csrf == `` {
-		l.L(`E: `, "Cookie错误,无bili_jct=")
+		l.E("Cookie错误,无bili_jct=")
 		return ErrNoLogin
 	}
 
@@ -105,7 +105,7 @@ func Danmu_s2(data map[string]string) error {
 	data[`csrf_token`] = csrf
 
 	postStr, contentType := reqf.ToForm(data)
-	l.L(`I: `, "发送", data[`msg`], "至", data[`roomid`])
+	l.I("发送", data[`msg`], "至", data[`roomid`])
 
 	r := c.C.ReqPool.Get()
 	defer c.C.ReqPool.Put(r)
@@ -131,7 +131,7 @@ func Danmu_s2(data map[string]string) error {
 		},
 	})
 	if err != nil {
-		l.L(`E: `, err)
+		l.E(err)
 		return err
 	}
 
@@ -141,12 +141,12 @@ func Danmu_s2(data map[string]string) error {
 	}
 
 	if e := r.ResponUnmarshal(json.Unmarshal, &res); e != nil {
-		l.L(`E: `, e)
+		l.E(e)
 		return e
 	}
 
 	if res.Code != 0 {
-		l.L(`E: `, `产生错误：`, res.Code, res.Message)
+		l.E(`产生错误：`, res.Code, res.Message)
 		return errors.Join(ErrRes, errors.New(res.Message))
 	}
 

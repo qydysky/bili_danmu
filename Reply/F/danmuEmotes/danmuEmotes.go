@@ -19,13 +19,13 @@ import (
 	pe "github.com/qydysky/part/errors"
 	file "github.com/qydysky/part/file"
 	phash "github.com/qydysky/part/hash"
-	log "github.com/qydysky/part/log"
+	log "github.com/qydysky/part/log/v2"
 	reqf "github.com/qydysky/part/reqf"
 )
 
 type TargetInterface interface {
 	SaveEmote(ctx context.Context, ptr struct {
-		Logg *log.Log_interface
+		Logg *log.Log
 		Info []any
 		Msg  *string
 	}) (ret any, err error)
@@ -66,7 +66,7 @@ func (t *danmuEmotes) SetLayerN(n int) {
 }
 
 func (t *danmuEmotes) SaveEmote(ctx context.Context, ptr struct {
-	Logg *log.Log_interface
+	Logg *log.Log
 	Info []any
 	Msg  *string
 }) (ret any, err error) {
@@ -100,7 +100,7 @@ func (t *danmuEmotes) SaveEmote(ctx context.Context, ptr struct {
 							`Referer`:         "https://live.bilibili.com/",
 						},
 					}); e != nil {
-						ptr.Logg.L(`E: `, `表情下载失败`, pe.ErrorFormat(e, pe.ErrActionInLineFunc))
+						ptr.Logg.E(`表情下载失败`, pe.ErrorFormat(e, pe.ErrActionInLineFunc))
 					}
 				}()
 			}
@@ -149,7 +149,7 @@ func (t *danmuEmotes) SaveEmote(ctx context.Context, ptr struct {
 									`Referer`:         "https://live.bilibili.com/",
 								},
 							}); e != nil {
-								ptr.Logg.L(`E: `, e)
+								ptr.Logg.E(e)
 							}
 						}()
 					}

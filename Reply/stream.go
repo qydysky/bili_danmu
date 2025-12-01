@@ -36,7 +36,7 @@ import (
 	file "github.com/qydysky/part/file"
 	funcCtrl "github.com/qydysky/part/funcCtrl"
 	pio "github.com/qydysky/part/io"
-	log "github.com/qydysky/part/log"
+	log "github.com/qydysky/part/log/v2"
 	msgq "github.com/qydysky/part/msgq"
 	pool "github.com/qydysky/part/pool"
 	reqf "github.com/qydysky/part/reqf"
@@ -55,7 +55,7 @@ const (
 type M4SStream struct {
 	Status               context.Context       //IsLive()是否运行中
 	exitSign             *signal.Signal        //IsLive()是否等待退出中
-	log                  *log.Log_interface    //日志
+	log                  *log.Log              //日志
 	config               M4SStream_Config      //配置
 	stream_last_modified time.Time             //流地址更新时间
 	stream_type          string                //流类型
@@ -289,10 +289,10 @@ func (t *M4SStream) fetchCheckStream() bool {
 		if _, ok := t.common.Qn[t.config.want_qn]; ok {
 			if t.config.want_qn != t.common.Live_qn {
 				if t.common.Login {
-					_log.L(`W: `, `仅清晰度true,当前清晰度`, t.common.Qn[t.common.Live_qn])
+					_log.W(`仅清晰度true,当前清晰度`, t.common.Qn[t.common.Live_qn])
 					return false
 				} else {
-					_log.L(`W: `, `未登录,忽略仅清晰度true,当前清晰度`, t.common.Qn[t.common.Live_qn])
+					_log.W(`未登录,忽略仅清晰度true,当前清晰度`, t.common.Qn[t.common.Live_qn])
 				}
 			}
 		}
@@ -336,7 +336,7 @@ func (t *M4SStream) fetchCheckStream() bool {
 			}
 
 			if !pass {
-				_log.L(`W: `, `仅类型true,当前类型`, cuType, cuCode)
+				_log.W(`仅类型true,当前类型`, cuType, cuCode)
 				return false
 			}
 		}
@@ -360,7 +360,7 @@ func (t *M4SStream) fetchCheckStream() bool {
 	)
 	if v, ok := t.common.K_v.LoadV("直播流不使用mcdn").(bool); ok && v {
 		if reg, err := regexp.Compile(`\.mcdn\.`); err != nil {
-			_log.L(`W: `, `停用流服务器`, `正则错误`, perrors.ErrorFormat(err, perrors.ErrActionInLineFunc))
+			_log.W(`停用流服务器`, `正则错误`, perrors.ErrorFormat(err, perrors.ErrActionInLineFunc))
 		} else {
 			noSer = append(noSer, reg)
 		}
@@ -369,7 +369,7 @@ func (t *M4SStream) fetchCheckStream() bool {
 		for i := 0; i < len(v); i++ {
 			if s, ok := v[i].(string); ok {
 				if reg, err := regexp.Compile(s); err != nil {
-					_log.L(`W: `, `停用流服务器`, `正则错误`, perrors.ErrorFormat(err, perrors.ErrActionInLineFunc))
+					_log.W(`停用流服务器`, `正则错误`, perrors.ErrorFormat(err, perrors.ErrActionInLineFunc))
 				} else {
 					noSer = append(noSer, reg)
 				}
@@ -383,7 +383,7 @@ func (t *M4SStream) fetchCheckStream() bool {
 	for _, v := range t.common.Live {
 		if noSerF(v.Url) {
 			v.Disable(time.Now().Add(time.Hour * 100))
-			_log.L(`I: `, `停用流服务器`, F.ParseHost(v.Url))
+			_log.I(`停用流服务器`, F.ParseHost(v.Url))
 			continue
 		}
 
@@ -406,23 +406,23 @@ func (t *M4SStream) fetchCheckStream() bool {
 			Timeout:          5 * 1000,
 			JustResponseCode: true,
 		}); e != nil {
-			_log.L(`W: `, F.ParseHost(v.Url), perrors.ErrorFormat(e, perrors.ErrActionInLineFunc))
+			_log.W(F.ParseHost(v.Url), perrors.ErrorFormat(e, perrors.ErrActionInLineFunc))
 			v.DisableAuto()
 			continue
 		}
 
 		if r.Wait() != nil {
-			_log.L(`W: `, `live响应错误`, F.ParseHost(v.Url))
+			_log.W(`live响应错误`, F.ParseHost(v.Url))
 			v.DisableAuto()
 			continue
 		} else if r.ResStatusCode()&200 != 200 {
-			_log.L(`W: `, `live响应错误`, F.ParseHost(v.Url), r.ResStatusCode())
+			_log.W(`live响应错误`, F.ParseHost(v.Url), r.ResStatusCode())
 			v.DisableAuto()
 			continue
 		}
 
 		// 显示使用流服务器
-		_log.L(`I: `, `使用流服务器`, F.ParseHost(v.Url))
+		_log.I(`使用流服务器`, F.ParseHost(v.Url))
 	}
 
 	return t.common.ValidLive() != nil
@@ -432,7 +432,7 @@ func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo floa
 	{
 		n := t.common.ValidNum()
 		if d, ok := t.common.K_v.LoadV("fmp4获取更多服务器").(bool); ok && d && n <= 1 && len(t.common.Live) <= 5 {
-			t.log.L("I: ", "获取更多服务器...")
+			t.log.I("获取更多服务器...")
 			if !t.fetchCheckStream() {
 				e = errors.New("全部流服务器发生故障")
 				return
@@ -480,7 +480,7 @@ func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo floa
 
 		if err := r.Reqf(rval); err != nil {
 			v.DisableAuto()
-			t.log.L("W: ", fmt.Sprintf("服务器 %s 发生故障 %s", F.ParseHost(v.Url), perrors.ErrorFormat(err, perrors.ErrActionInLineFunc)))
+			t.log.W(fmt.Sprintf("服务器 %s 发生故障 %s", F.ParseHost(v.Url), perrors.ErrorFormat(err, perrors.ErrActionInLineFunc)))
 			if t.common.ValidLive() == nil {
 				e = errors.New("全部流服务器发生故障")
 				break
@@ -489,7 +489,7 @@ func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo floa
 		}
 
 		if r.ResStatusCode() == http.StatusNotModified {
-			t.log.L(`T: `, `hls未更改`)
+			t.log.T(`hls未更改`)
 			return
 		}
 
@@ -526,12 +526,12 @@ func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo floa
 			})
 			if isErrRedirect {
 				// 指向新连接
-				t.log.L(`I: `, `指向新连接`, v.Host(), "=>", F.ParseHost(redirectUrl))
+				t.log.I(`指向新连接`, v.Host(), "=>", F.ParseHost(redirectUrl))
 				v.SetUrl(redirectUrl)
 				i -= 1
 			} else {
 				// 1min后重新启用
-				t.log.L("W: ", fmt.Sprintf("服务器 %s 发生故障 %v", F.ParseHost(v.Url), err))
+				t.log.W(fmt.Sprintf("服务器 %s 发生故障 %v", F.ParseHost(v.Url), err))
 				v.DisableAuto()
 				if t.common.ValidLive() == nil {
 					e = errors.New("全部切片服务器发生故障")
@@ -558,7 +558,7 @@ func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo floa
 				time.Since(lastM4s.createdTime).Seconds() > fmp4ListUpdateTo {
 				// 1min后重新启用
 				v.DisableAuto()
-				t.log.L("W: ", fmt.Sprintf("服务器 %s 发生故障 %.2f 秒未产出切片", F.ParseHost(v.Url), time.Since(lastM4s.createdTime).Seconds()))
+				t.log.W(fmt.Sprintf("服务器 %s 发生故障 %.2f 秒未产出切片", F.ParseHost(v.Url), time.Since(lastM4s.createdTime).Seconds()))
 				if t.common.ValidLive() == nil {
 					e = errors.New("全部切片服务器发生故障")
 					break
@@ -577,7 +577,7 @@ func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo floa
 			if (timed > 5 && nos-noe == 0) || (nos-noe > 50) {
 				// 1min后重新启用
 				v.DisableAuto()
-				t.log.L("W: ", fmt.Sprintf("服务器 %s 发生故障 %d 秒产出了 %d 切片", F.ParseHost(v.Url), int(timed), nos-noe))
+				t.log.W(fmt.Sprintf("服务器 %s 发生故障 %d 秒产出了 %d 切片", F.ParseHost(v.Url), int(timed), nos-noe))
 				if t.common.ValidLive() == nil {
 					e = errors.New("全部切片服务器发生故障")
 					break
@@ -661,7 +661,7 @@ func (t *M4SStream) removeStream() (e error) {
 			})
 
 			for i := 0; i < min(2, len(oldDir)); i++ {
-				t.log.L(`I: `, "移除历史流", v+"/"+oldDir[i].SelfName())
+				t.log.I("移除历史流", v+"/"+oldDir[i].SelfName())
 				_ = oldDir[i].Delete()
 			}
 		}
@@ -670,7 +670,7 @@ func (t *M4SStream) removeStream() (e error) {
 }
 
 // 设置保存路径
-func (t *M4SStream) genSavepath(log *log.Log_interface) (cupath string) {
+func (t *M4SStream) genSavepath(log *log.Log) (cupath string) {
 	w := md5.New()
 	_, _ = io.WriteString(w, t.common.Title)
 
@@ -685,7 +685,7 @@ func (t *M4SStream) genSavepath(log *log.Log_interface) (cupath string) {
 	t.currentSavePath = cupath
 
 	// 显示保存位置
-	log.L(`I: `, "保存到", cupath+`0.`+t.stream_type)
+	log.I("保存到", cupath+`0.`+t.stream_type)
 	f := file.New(cupath+"/tmp.create", 0, true)
 	f.Create()
 	_ = f.Delete()
@@ -700,14 +700,14 @@ func (t *M4SStream) saveStream() (e error) {
 	t.frameCount = 0
 
 	if s, ok := t.common.K_v.LoadV("直播Web服务路径").(string); ok && s != "" {
-		t.log.L(`I: `, "Web服务地址", t.common.Stream_url.String()+s)
+		t.log.I("Web服务地址", t.common.Stream_url.String()+s)
 	}
 
 	// 录制回调
 	t.msg.Push_tag(`startRec`, t)
 	if t.Callback_startRec != nil {
 		if err := t.Callback_startRec(t); err != nil {
-			t.log.L(`W: `, `开始录制回调错误`, err.Error())
+			t.log.W(`开始录制回调错误`, err.Error())
 			return err
 		}
 	}
@@ -727,7 +727,7 @@ func (t *M4SStream) saveStream() (e error) {
 				ms.msg.Push_tag(`cut`, ms)
 				return true
 			}
-			t.log.L(`T: `, fmt.Sprintf("%d帧后开始录制", startCount-t.frameCount))
+			t.log.T(fmt.Sprintf("%d帧后开始录制", startCount-t.frameCount))
 			return false
 		})
 		defer cancelkeyFrame()
@@ -741,7 +741,7 @@ func (t *M4SStream) saveStream() (e error) {
 		e = t.saveStreamFlv()
 	default:
 		e = errors.New("undefind stream type")
-		t.log.L(`E: `, e)
+		t.log.E(e)
 	}
 
 	// 退出当前方法时，结束录制
@@ -779,7 +779,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 			var err error
 			surl, err = url.Parse(v.Url)
 			if err != nil {
-				t.log.L(`E: `, err)
+				t.log.E(err)
 				e = err
 				v.DisableAuto()
 				continue
@@ -846,14 +846,14 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 						return
 					case curT := <-timer.C:
 						if curT.Unix()-leastReadUnix.Load() > readTO {
-							// t.log.L(`W: `, fmt.Sprintf("%vs未接收到有效数据", readTO))
+							// t.log.W( fmt.Sprintf("%vs未接收到有效数据", readTO))
 							pctx.PutVal(cancelC, &errCtx, fmt.Errorf("%vs未接收到有效数据", readTO))
 							// 时间段内未接收到任何数据
 							return
 						}
 						if v, ok := c.C.K_v.LoadV(`直播流清晰度`).(float64); ok {
 							if t.config.want_qn != int(v) {
-								t.log.L(`I: `, "直播流清晰度改变:", t.common.Qn[t.config.want_qn], "=>", t.common.Qn[int(v)])
+								t.log.I("直播流清晰度改变:", t.common.Qn[t.config.want_qn], "=>", t.common.Qn[int(v)])
 								t.config.want_qn = int(v)
 								return
 							}
@@ -895,7 +895,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 						unlock()
 
 						if err != nil {
-							// t.log.L(`E: `, err)
+							// t.log.E(err)
 							pctx.PutVal(cancelC, &errCtx, errors.New("[decoder]"+err.Error()))
 							break
 						} else {
@@ -915,7 +915,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 						unlock()
 
 						if err != nil {
-							// t.log.L(`E: `, err)
+							// t.log.E(err)
 							pctx.PutVal(cancelC, &errCtx, errors.New("[decoder]"+err.Error()))
 							break
 						} else {
@@ -926,7 +926,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 								continue
 							} else {
 								if l := leastReadUnix.Load(); l > 0 && time.Now().Unix()-l > readTO-5 {
-									t.log.L(`W: `, fmt.Sprintf("flv断流超时s(%d)或许应该大于%d", readTO, (time.Now().Unix()-l+5)))
+									t.log.W(fmt.Sprintf("flv断流超时s(%d)或许应该大于%d", readTO, (time.Now().Unix() - l + 5)))
 								}
 								// 存在有效数据
 								leastReadUnix.Store(time.Now().Unix())
@@ -947,7 +947,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 				buff.Reset()
 			}()
 
-			t.log.L(`I: `, `flv下载开始`, F.ParseHost(surl.String()))
+			t.log.I(`flv下载开始`, F.ParseHost(surl.String()))
 
 			_ = r.Reqf(reqf.Rval{
 				Ctx:                 cancelC,
@@ -972,31 +972,31 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 			})
 			if err := r.Wait(); err != nil {
 				if errors.Is(err, io.EOF) {
-					t.log.L(`I: `, `flv下载结束`, F.ParseHost(surl.String()))
+					t.log.I(`flv下载结束`, F.ParseHost(surl.String()))
 				} else if reqf.IsCancel(err) {
-					t.log.L(`I: `, `flv下载停止`, F.ParseHost(surl.String()))
+					t.log.I(`flv下载停止`, F.ParseHost(surl.String()))
 				} else if reqf.IsTimeout(err) {
-					t.log.L(`E: `, `flv下载超时`, F.ParseHost(surl.String()))
+					t.log.E(`flv下载超时`, F.ParseHost(surl.String()))
 				} else {
 					e = err
-					t.log.L(`E: `, `flv下载失败:`, F.ParseHost(surl.String()), err)
+					t.log.E(`flv下载失败:`, F.ParseHost(surl.String()), err)
 				}
 			}
 			if err := errCtx.Get(); err != nil {
-				t.log.L(`E: `, `flv处理错误`, F.ParseHost(surl.String()), err)
+				t.log.E(`flv处理错误`, F.ParseHost(surl.String()), err)
 				e = errors.Join(e, err)
 			}
 		}
 
 		cancel()
 
-		t.log.L(`T: `, `flv等待协程退出`)
+		t.log.T(`flv等待协程退出`)
 		wg.Wait()
 
 		if v1, ok := t.common.K_v.LoadV(`flv断流续接`).(bool); ok && !v1 {
 			break
 		} else {
-			t.log.L(`W: `, `flv断流续接，时间戳将发生跳动，后续需要修复`)
+			t.log.W(`flv断流续接，时间戳将发生跳动，后续需要修复`)
 		}
 
 		v.DisableAuto()
@@ -1009,7 +1009,7 @@ func (t *M4SStream) removeSer() {
 	slice.Del(&t.common.Live, func(v **c.LiveQn) (del bool) {
 		isDel := time.Now().Add(time.Minute * 2).Before((*v).ReUpTime)
 		if isDel {
-			t.log.L(`I: `, `移除流服务器`, (*v).Host())
+			t.log.I(`移除流服务器`, (*v).Host())
 		}
 		return isDel
 	})
@@ -1042,7 +1042,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 				case <-time.After(time.Minute):
 				}
 				reqState := t.m4s_pool.State()
-				t.log.L(`T: `, fmt.Sprintf("m4sPoolState pooled/no(%d/%d), inuse/no(%d/%d), sum(%d), qts(%.2f)",
+				t.log.T(fmt.Sprintf("m4sPoolState pooled/no(%d/%d), inuse/no(%d/%d), sum(%d), qts(%.2f)",
 					reqState.Pooled, reqState.Nopooled, reqState.Inuse, reqState.Nouse, reqState.Sum, reqState.GetPerSec))
 			}
 		}()
@@ -1071,7 +1071,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 
 			var m4s_links, guessCount, err = t.fetchParseM3U8(lastM4s, fmp4ListUpdateTo)
 			if err != nil {
-				t.log.L(`E: `, `获取解析m3u8发生错误`, err)
+				t.log.E(`获取解析m3u8发生错误`, err)
 				// if len(download_seq) != 0 {
 				// 	continue
 				// }
@@ -1088,7 +1088,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 			} else if secInLastPeriod > fmp4ListUpdateTo {
 				// fmp4ListUpdateTo秒未产出切片
 				e = fmt.Errorf("%.2f 秒未产出切片", secInLastPeriod)
-				t.log.L("E: ", "获取解析m3u8发生错误", e)
+				t.log.E("获取解析m3u8发生错误", e)
 				break
 			}
 
@@ -1099,7 +1099,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 					planSecPeriod += 0.2
 				}
 				if guessCount >= 3 {
-					t.log.L(`I: `, `发现`, guessCount, `个切片遗漏，优先下载`)
+					t.log.I(`发现`, guessCount, `个切片遗漏，优先下载`)
 				}
 			}
 			if planSecPeriod < 3 {
@@ -1134,7 +1134,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 
 				// 每次最多只下载10个切片
 				if dCount >= 10 {
-					t.log.L(`T: `, `延迟切片下载 数量(`, len(download_seq)-i, `)`)
+					t.log.T(`延迟切片下载 数量(`, len(download_seq)-i, `)`)
 					break
 				}
 				dCount += 1
@@ -1151,7 +1151,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 						} else {
 							download_seq[i].replaceSer(vl)
 							if !hadDisable {
-								t.log.L(`W: `, `切片下载失败，故障转移`, linkUrl.Host, ` -> `, vl.Host())
+								t.log.W(`切片下载失败，故障转移`, linkUrl.Host, ` -> `, vl.Host())
 							}
 						}
 						// download_seq[i].Url = linkUrl.String()
@@ -1174,13 +1174,13 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 						// },
 					})
 					if ActionErrFmp4DownloadCareTO.Catch(e) {
-						t.log.L(`W: `, e.Error())
+						t.log.W(e.Error())
 					} else if e != nil {
 						downErr.Store(true)
 						if reqf.IsTimeout(e) {
-							t.log.L(`W: `, fmt.Sprintf("fmp4切片下载超时s或许应该大于%d", to))
+							t.log.W(fmt.Sprintf("fmp4切片下载超时s或许应该大于%d", to))
 						}
-						t.log.L(`W: `, `切片下载失败`, link.Base, perrors.ErrorFormat(e, perrors.ErrActionInLineFunc))
+						t.log.W(`切片下载失败`, link.Base, perrors.ErrorFormat(e, perrors.ErrActionInLineFunc))
 					}
 				}(download_seq[i])
 				// 间隔100ms发起
@@ -1206,13 +1206,13 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 					front_buf, _, e := fmp4Decoder.Init(buf)
 					unlock()
 					if e != nil {
-						t.log.L(`E: `, e, `重试!`)
+						t.log.E(e, `重试!`)
 						cu.status = 3
 						break
 					} else {
 						for _, trak := range fmp4Decoder.traks {
 							// fmt.Println(`T: `, "找到trak:", string(trak.handlerType), trak.trackID, trak.timescale)
-							t.log.L(`T: `, "找到trak:", string(trak.handlerType), trak.trackID, trak.timescale)
+							t.log.T("找到trak:", string(trak.handlerType), trak.trackID, trak.timescale)
 						}
 						t.first_buf = make([]byte, len(front_buf))
 						copy(t.first_buf, front_buf)
@@ -1231,7 +1231,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 			}
 
 			if e := cu.data.AppendTo(buf); e != nil {
-				t.log.L(`E: `, e)
+				t.log.E(e)
 			}
 
 			buff, unlock := buf.GetPureBufRLock()
@@ -1240,7 +1240,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 
 			if err != nil && !errors.Is(err, io.EOF) {
 				// 发生解码错误，移除切片，禁用切片服务器
-				t.log.L(`W: `, err, `重试!`)
+				t.log.W(err, `重试!`)
 				cu.status = 3
 				cu.err = err
 				_ = buf.RemoveBack(cu.data.Size())
@@ -1275,9 +1275,9 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 			if len(download_seq) != 0 {
 				if time.Now().Unix() > t.stream_last_modified.Unix()+300 {
 					e = errors.New("切片下载超时")
-					t.log.L(`E: `, e)
+					t.log.E(e)
 				} else {
-					t.log.L(`I: `, `下载最后切片:`, len(download_seq))
+					t.log.I(`下载最后切片:`, len(download_seq))
 					continue
 				}
 			}
@@ -1286,7 +1286,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 
 		if v, ok := c.C.K_v.LoadV(`直播流清晰度`).(float64); ok {
 			if t.config.want_qn != int(v) {
-				t.log.L(`I: `, "直播流清晰度改变:", t.common.Qn[t.config.want_qn], "=>", t.common.Qn[int(v)])
+				t.log.I("直播流清晰度改变:", t.common.Qn[t.config.want_qn], "=>", t.common.Qn[int(v)])
 				t.config.want_qn = int(v)
 				return
 			}
@@ -1312,14 +1312,14 @@ func (t *M4SStream) Start() bool {
 
 	// 状态检测与设置
 	if !pctx.Done(t.Status) {
-		t.log.L(`T: `, `已存在实例`)
+		t.log.T(`已存在实例`)
 		return false
 	}
 
 	// 是否在直播
 	F.Api.Get(t.common, `Liveing`)
 	if !t.common.Liveing {
-		t.log.L(`I: `, `未直播`)
+		t.log.I(`未直播`)
 		return false
 	}
 
@@ -1328,15 +1328,15 @@ func (t *M4SStream) Start() bool {
 	t.msg.Push_tag(`start`, t)
 	if t.Callback_start != nil {
 		if e := t.Callback_start(t); e != nil {
-			t.log.L(`W: `, `开始回调错误`, e.Error())
+			t.log.W(`开始回调错误`, e.Error())
 			return false
 		}
 	}
 
 	go func() {
-		t.log.L(`I: `, `初始化录制(`+strconv.Itoa(t.common.Roomid)+`)`)
+		t.log.I(`初始化录制(` + strconv.Itoa(t.common.Roomid) + `)`)
 
-		defer t.log.L(`I: `, `结束录制(`+strconv.Itoa(t.common.Roomid)+`)`)
+		defer t.log.I(`结束录制(` + strconv.Itoa(t.common.Roomid) + `)`)
 		defer func() {
 			// use anonymous func avoid data race and unexpect sign wait
 			t.exitSign.Done()
@@ -1379,7 +1379,7 @@ func (t *M4SStream) Start() bool {
 		defer func() {
 			switch done() {
 			case pctx.ErrWaitTo:
-				t.log.L(`E: `, `结束超时`)
+				t.log.E(`结束超时`)
 			case pctx.ErrNothingWait:
 				fallthrough
 			default:
@@ -1407,10 +1407,10 @@ func (t *M4SStream) Start() bool {
 			var fc funcCtrl.FlashFunc
 			defer t.msg.Pull_tag_async(map[string]func(*M4SStream) (disable bool){
 				`cut`: func(ms *M4SStream) (disable bool) {
-					l := ms.log.Base_add(`分段`, ms.cutNum.Add(1))
+					l := ms.log.BaseAdd(`分段`, ms.cutNum.Add(1))
 					// 有时尚未初始化接收到新的cut信号，导致保存失败。可能在开播信号重复发出出现
 					if ms.frameCount < defaultStartCount {
-						l.L(`I: `, "尚未接收到帧、跳过")
+						l.I("尚未接收到帧、跳过")
 						return false
 					}
 
@@ -1422,9 +1422,9 @@ func (t *M4SStream) Start() bool {
 					// 分段时长min
 					if tmp, ok := ms.common.K_v.LoadV("分段时长min").(float64); ok && tmp > 0 {
 						cutT := time.Duration(int64(time.Minute) * int64(tmp))
-						l.L(`I: `, fmt.Sprintf("分段启动 %v", cutT))
+						l.I(fmt.Sprintf("分段启动 %v", cutT))
 						defer time.AfterFunc(cutT, func() {
-							l.L(`I: `, ms.common.Roomid, "ok")
+							l.I(ms.common.Roomid, "ok")
 							ms.msg.Push_tag(`cut`, ms)
 						}).Stop()
 					}
@@ -1446,7 +1446,7 @@ func (t *M4SStream) Start() bool {
 					saveType := ms.GetStreamType()
 
 					startf := func(_ *M4SStream) error {
-						l.L(`T: `, `开始`)
+						l.T(`开始`)
 						//弹幕分值统计
 						replyFunc.DanmuCountPerMin.Run2(func(dcpmi replyFunc.DanmuCountPerMinI) {
 							dcpmi.Rec(ctx1, ms.common.Roomid, savePath)(ms.common.K_v.LoadV("弹幕分值"))
@@ -1458,24 +1458,24 @@ func (t *M4SStream) Start() bool {
 						fc.FlashWithCallback(func() {
 							// wait all goroutine exit
 							if e := done(true); e != nil {
-								l.L(`E: `, e)
+								l.E(e)
 							}
 						})
 						return nil
 					}
 					stopf := func(_ *M4SStream) error {
-						l.L(`T: `, `结束`)
+						l.T(`结束`)
 						return nil
 					}
 
 					// 移除历史流
 					if err := ms.removeStream(); err != nil {
-						l.Base_add(`removeStream`).L(`W: `, err)
+						l.BaseAdd(`removeStream`).W(err)
 					}
 
 					// savestate
 					if e, _ := videoInfo.Save.Run(ctx1, ms); e != nil {
-						l.Base_add(`videoInfo`).L(`E: `, e)
+						l.BaseAdd(`videoInfo`).E(e)
 					}
 
 					// 保存弹幕
@@ -1485,7 +1485,7 @@ func (t *M4SStream) Start() bool {
 					path := savePath + `0.` + saveType
 					startT := time.Now()
 					if e := ms.PusherToFile(ctx1, path, PusherEvent{startf, readyf, stopf}); e != nil {
-						l.Base_add(`PusherToFile`).L(`E: `, e)
+						l.BaseAdd(`PusherToFile`).E(e)
 					}
 					duration := time.Since(startT)
 
@@ -1516,9 +1516,9 @@ func (t *M4SStream) Start() bool {
 							_ = replyFunc.VideoFastSeed.Run(func(vfsi replyFunc.VideoFastSeedI) error {
 								f := file.Open(path)
 								if sf, e := vfsi.InitSav(path + ".fastSeed"); e != nil {
-									l.Base_add(`GenFastSeed`).L(`E: `, path, e)
+									l.BaseAdd(`GenFastSeed`).E(path, e)
 								} else if e := dealer.GenFastSeed(f, sf); e != nil && !errors.Is(e, io.EOF) {
-									l.Base_add(`GenFastSeed`).L(`E: `, path, e)
+									l.BaseAdd(`GenFastSeed`).E(path, e)
 								}
 								return f.Close()
 							})
@@ -1545,11 +1545,11 @@ func (t *M4SStream) Start() bool {
 
 										cmd := exec.Command(cmds[0], cmds[1:]...)
 										cmd.Dir = savePath
-										l.L(`I: `, "启动", cmd.Args)
+										l.I("启动", cmd.Args)
 										if e := cmd.Run(); e != nil {
-											l.L(`E: `, e)
+											l.E(e)
 										}
-										l.L(`I: `, "结束")
+										l.I("结束")
 									}
 								}
 							}
@@ -1565,7 +1565,7 @@ func (t *M4SStream) Start() bool {
 			// 是否在直播
 			F.Api.Get(t.common, `Liveing`)
 			if !t.common.Liveing {
-				t.log.L(`I: `, `未直播`)
+				t.log.I(`未直播`)
 				break
 			}
 
@@ -1581,7 +1581,7 @@ func (t *M4SStream) Start() bool {
 			// 保存流
 			err := t.saveStream()
 			if err != nil {
-				t.log.L(`E: `, "saveStream:", err)
+				t.log.E("saveStream:", err)
 			}
 		}
 
@@ -1593,15 +1593,15 @@ func (t *M4SStream) Start() bool {
 
 func (t *M4SStream) Stop() {
 	if pctx.Done(t.Status) {
-		t.log.L(`I: `, `正在等待下载完成...`)
+		t.log.I(`正在等待下载完成...`)
 		t.exitSign.Wait()
 		return
 	}
 	t.exitSign = signal.Init()
 	_ = pctx.CallCancel(t.Status)
-	t.log.L(`I: `, `正在等待下载完成...`)
+	t.log.I(`正在等待下载完成...`)
 	t.exitSign.Wait()
-	t.log.L(`I: `, `结束`)
+	t.log.I(`结束`)
 }
 
 func (t *M4SStream) Cut() {
@@ -1645,7 +1645,7 @@ func (t *M4SStream) PusherToFile(contextC context.Context, filepath string, push
 	dataF := func(b []byte) bool {
 		defer pu.Callback(func(startT time.Time, args ...any) {
 			if dru := time.Since(startT).Seconds(); dru > to {
-				t.log.L("W: ", "磁盘写入超时", dru)
+				t.log.W("磁盘写入超时", dru)
 				done()
 			}
 		})()
@@ -1688,7 +1688,7 @@ func (t *M4SStream) PusherToFile(contextC context.Context, filepath string, push
 // 流服务推送方法
 //
 // 在客户端存在某种代理时，将有可能无法监测到客户端关闭，这有可能导致goroutine泄漏
-func (t *M4SStream) PusherToHttp(plog *log.Log_interface, conn net.Conn, w http.ResponseWriter, r *http.Request, pusherEvent PusherEvent) error {
+func (t *M4SStream) PusherToHttp(plog *log.Log, conn net.Conn, w http.ResponseWriter, r *http.Request, pusherEvent PusherEvent) error {
 
 	var (
 		cmdI  io.WriteCloser
@@ -1717,7 +1717,7 @@ func (t *M4SStream) PusherToHttp(plog *log.Log_interface, conn net.Conn, w http.
 								return err
 							}
 							defer func() {
-								plog.L(`W: `, r.RemoteAddr, cmd.Wait())
+								plog.W(r.RemoteAddr, cmd.Wait())
 							}()
 						}
 					}
@@ -1807,15 +1807,15 @@ func (t *M4SStream) PusherToHttp(plog *log.Log_interface, conn net.Conn, w http.
 			_ = conn.SetWriteDeadline(time.Now().Add(time.Second * 30))
 			if cmdI != nil {
 				if _, err := cmdI.Write(b); err != nil {
-					plog.L(`W: `, r.RemoteAddr, err)
+					plog.W(r.RemoteAddr, err)
 					cancel(err)
 					return true
 				}
 			} else if n, err := w.Write(b); err != nil || n == 0 {
 				if errors.Is(err, pio.ErrCacheWriterBusy) {
-					plog.L(`I: `, r.RemoteAddr, "回放缓存跳过，或许应该增加`直播流实时回放缓存`")
+					plog.I(r.RemoteAddr, "回放缓存跳过，或许应该增加`直播流实时回放缓存`")
 				} else {
-					plog.L(`W: `, r.RemoteAddr, err)
+					plog.W(r.RemoteAddr, err)
 					cancel(err)
 					return true
 				}

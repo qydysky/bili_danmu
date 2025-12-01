@@ -10,7 +10,7 @@ import (
 	_ "github.com/lib/pq"
 	comp "github.com/qydysky/part/component2"
 	pctx "github.com/qydysky/part/ctx"
-	log "github.com/qydysky/part/log"
+	log "github.com/qydysky/part/log/v2"
 	psql "github.com/qydysky/part/sql"
 	_ "modernc.org/sqlite"
 )
@@ -18,7 +18,7 @@ import (
 // 保存弹幕至db
 func init() {
 	comp.RegisterOrPanic[interface {
-		Init(config any, fl *log.Log_interface)
+		Init(config any, fl *log.Log)
 		Danmu(Msg string, Color string, Auth any, Uid string, Roomid int64)
 		Close() error
 	}](`saveDanmuToDB`, &saveDanmuToDB{})
@@ -29,10 +29,10 @@ type saveDanmuToDB struct {
 	dbname string
 	db     *sql.DB
 	insert string
-	fl     *log.Log_interface
+	fl     *log.Log
 }
 
-func (t *saveDanmuToDB) Init(config any, fl *log.Log_interface) {
+func (t *saveDanmuToDB) Init(config any, fl *log.Log) {
 	if t.state.CompareAndSwap(0, 1) {
 		if v, ok := config.(map[string]any); ok && len(v) != 0 {
 			var (
@@ -52,9 +52,9 @@ func (t *saveDanmuToDB) Init(config any, fl *log.Log_interface) {
 
 			t.dbname = dbname
 
-			t.fl = fl.Base_add("保存弹幕至db")
+			t.fl = fl.BaseAdd("保存弹幕至db")
 			if db, e := sql.Open(dbname, url); e != nil {
-				t.fl.L(`E: `, e)
+				t.fl.E(e)
 			} else {
 				db.SetConnMaxLifetime(time.Minute * 3)
 				db.SetMaxOpenConns(10)
@@ -64,12 +64,12 @@ func (t *saveDanmuToDB) Init(config any, fl *log.Log_interface) {
 					tx := psql.BeginTx[any](db, pctx.GenTOCtx(time.Second*5))
 					tx.Do(&psql.SqlFunc[any]{Sql: create, SkipSqlErr: true})
 					if _, e := tx.Fin(); e != nil {
-						t.fl.L(`E: `, e)
+						t.fl.E(e)
 						t.state.CompareAndSwap(1, 0)
 						return
 					}
 				}
-				t.fl.L(`I: `, dbname)
+				t.fl.I(dbname)
 				t.state.CompareAndSwap(1, 2)
 				return
 			}
@@ -118,7 +118,7 @@ func (t *saveDanmuToDB) Danmu(Msg string, Color string, Auth any, Uid string, Ro
 				return
 			})
 			if _, e := tx.Fin(); e != nil {
-				t.fl.L(`E: `, e)
+				t.fl.E(e)
 			}
 		}
 	}

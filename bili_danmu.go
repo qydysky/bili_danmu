@@ -21,7 +21,7 @@ import (
 	send "github.com/qydysky/bili_danmu/Send"
 	pctx "github.com/qydysky/part/ctx"
 	fc "github.com/qydysky/part/funcCtrl"
-	part "github.com/qydysky/part/log"
+	plog "github.com/qydysky/part/log/v2"
 	sys "github.com/qydysky/part/sys"
 
 	msgq "github.com/qydysky/part/msgq"
@@ -30,8 +30,8 @@ import (
 
 func Start(rootCtx context.Context) {
 	danmulog := c.C.Log.Base(`bilidanmu`)
-	danmulog.L(`I: `, `当前PID:`, c.C.PID)
-	danmulog.L(`I: `, "version: ", c.C.Version)
+	danmulog.I(`当前PID:`, c.C.PID)
+	danmulog.I("version: ", c.C.Version)
 
 	//检查配置
 	if c.C.K_v.Len() == 0 {
@@ -44,11 +44,11 @@ func Start(rootCtx context.Context) {
 
 	mainCtx, mainDone := pctx.WithWait(context.Background(), 0, time.Minute)
 	defer func() {
-		danmulog.L(`I: `, fmt.Sprintf("等待%v协程结束", time.Minute))
+		danmulog.I(fmt.Sprintf("等待%v协程结束", time.Minute))
 		if e := mainDone(); errors.Is(e, pctx.ErrWaitTo) {
-			danmulog.L(`W: `, `等待退出超时`)
+			danmulog.W(`等待退出超时`)
 		} else {
-			danmulog.L(`I: `, "结束")
+			danmulog.I("结束")
 		}
 	}()
 
@@ -61,7 +61,7 @@ func Start(rootCtx context.Context) {
 		var interrupt = make(chan os.Signal, 2)
 		//捕获ctrl+c、容器退出
 		signal.Notify(interrupt, syscall.SIGINT, syscall.SIGTERM)
-		danmulog.L(`I: `, "3s内2次ctrl+c退出")
+		danmulog.I("3s内2次ctrl+c退出")
 		for {
 			<-interrupt
 			c.C.Danmu_Main_mq.Push_tag(`interrupt`, nil)
@@ -107,7 +107,7 @@ func Start(rootCtx context.Context) {
 		}
 		// 指定房间录制区间
 		if _, err := recStartEnd.InitF.Run(mainCtx, c.C); err != nil {
-			danmulog.Base("功能", "指定房间录制区间").L(`E: `, err)
+			danmulog.Base("功能", "指定房间录制区间").E(err)
 		} else {
 			_, _ = recStartEnd.LoopCheck.Run(mainCtx, recStartEnd.StreamCtl{
 				C:       c.C,
@@ -125,7 +125,7 @@ func Start(rootCtx context.Context) {
 			},
 			C: c.C,
 		}); err != nil {
-			danmulog.Base("功能", "指定弹幕重启录制").L(`E: `, err)
+			danmulog.Base("功能", "指定弹幕重启录制").E(err)
 		}
 		// pgo gen
 		if file, ok := c.C.K_v.LoadV("生成pgo").(string); ok {
@@ -133,7 +133,7 @@ func Start(rootCtx context.Context) {
 				Start(ctx context.Context, file string) (any, error)
 			}) {
 				if _, e := inter.Start(mainCtx, file); e != nil {
-					danmulog.Base("功能", "生成pgo").L(`E: `, e)
+					danmulog.Base("功能", "生成pgo").E(e)
 				}
 			})
 		}
@@ -168,14 +168,14 @@ func Start(rootCtx context.Context) {
 				}
 				cancel1()
 			} else {
-				danmulog.L(`T: `, "房间号: ", strconv.Itoa(c.C.Roomid))
+				danmulog.T("房间号: ", strconv.Itoa(c.C.Roomid))
 			}
 
 			if exitSign {
 				break
 			}
 
-			danmulog.L(`T: `, "准备")
+			danmulog.T("准备")
 
 			//如果连接中断，则等待
 			if !F.IsConnected() {
@@ -183,7 +183,7 @@ func Start(rootCtx context.Context) {
 				select {
 				case <-ch:
 					reply.StreamOStop(c.C.Roomid)
-					danmulog.L(`I: `, "退出房间", c.C.Roomid)
+					danmulog.I("退出房间", c.C.Roomid)
 					c.C.Roomid = 0
 				case <-interrupt_chan:
 					exitSign = true
@@ -239,7 +239,7 @@ func Start(rootCtx context.Context) {
 				`pm`: func(data any) bool { //私信
 					if tmp, ok := data.(send.Pm_item); ok {
 						if e := send.Send_pm(tmp.Uid, tmp.Msg); e != nil {
-							danmulog.Base_add(`私信`).L(`E: `, e)
+							danmulog.BaseAdd(`私信`).E(e)
 						}
 					}
 					return false
@@ -290,7 +290,7 @@ func Start(rootCtx context.Context) {
 	}
 }
 
-func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, common *c.Common) (exitSign bool) {
+func entryRoom(rootCtx, mainCtx context.Context, danmulog *plog.Log, common *c.Common) (exitSign bool) {
 	var (
 		heartbeatmsg, heartinterval                        = F.Heartbeat()
 		loopCtx, loopCancel                                = context.WithTimeout(mainCtx, time.Hour*3)
@@ -302,7 +302,7 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, c
 					select {
 					case <-ch:
 						reply.StreamOStop(c.C.Roomid)
-						danmulog.L(`I: `, "退出房间", c.C.Roomid)
+						danmulog.I("退出房间", c.C.Roomid)
 						c.C.Roomid = 0
 					case <-mainCtx.Done():
 					case <-time.After(time.Duration(30) * time.Second):
@@ -345,7 +345,7 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, c
 						t.Clear()
 					})
 				}()
-				danmulog.L(`I: `, "连接到房间", common.Roomid)
+				danmulog.I("连接到房间", common.Roomid)
 				// 获取弹幕服务器
 				F.Api.Get(common, `WSURL`)
 
@@ -367,7 +367,7 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, c
 
 	for ctx, v := range rangeSource.RangeCtxCancel(loopCtx, loopCancel) {
 		//ws启动
-		danmulog.L(`T: `, "连接 "+v)
+		danmulog.T("连接 " + v)
 		u, _ := url.Parse(v)
 		ws_c, err := ws.New_client(&ws.Client{
 			BufSize:           150,
@@ -375,8 +375,8 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, c
 			RTOMs:             (heartinterval + 5) * 1000,
 			WTOMs:             (heartinterval + 5) * 1000,
 			Proxy:             common.Proxy,
-			Func_abort_close:  func() { danmulog.L(`I: `, `服务器连接中断`) },
-			Func_normal_close: func() { danmulog.L(`I: `, `服务器连接关闭`) },
+			Func_abort_close:  func() { danmulog.I(`服务器连接中断`) },
+			Func_normal_close: func() { danmulog.I(`服务器连接关闭`) },
 			Header: map[string]string{
 				`Cookie`:          common.GenReqCookie(),
 				`Host`:            u.Hostname(),
@@ -389,17 +389,17 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, c
 			},
 		})
 		if err != nil {
-			danmulog.L(`E: `, "连接错误", err)
+			danmulog.E("连接错误", err)
 			continue
 		}
 		wsmsg, err := ws_c.Handle()
 		if err != nil {
-			danmulog.L(`E: `, "连接错误", err)
+			danmulog.E("连接错误", err)
 			continue
 		}
 		if ws_c.Isclose() {
 			if err := ws_c.Error(); err != nil {
-				danmulog.L(`E: `, "连接错误", err)
+				danmulog.E("连接错误", err)
 			}
 			continue
 		}
@@ -424,23 +424,23 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, c
 			<-waitCheckAuth.Done()
 			doneAuth()
 			if err := waitCheckAuth.Err(); errors.Is(err, context.DeadlineExceeded) {
-				danmulog.L(`E: `, "连接验证失败")
+				danmulog.E("连接验证失败")
 				continue
 			}
 		}
 
-		danmulog.L(`I: `, "已连接到房间", common.Uname, `(`, common.Roomid, `)`)
+		danmulog.I("已连接到房间", common.Uname, `(`, common.Roomid, `)`)
 		reply.Gui_show(`进入直播间: `+common.Uname+` (`+strconv.Itoa(common.Roomid)+`)`, `0room`)
 		if common.Title != `` {
-			danmulog.L(`I: `, `房间标题: `+common.Title)
+			danmulog.I(`房间标题: ` + common.Title)
 			reply.Gui_show(`房间标题: `+common.Title, `0room`)
 		}
 
 		// 直播状态
 		if F.Api.Get(common, `Liveing`); common.Liveing {
-			danmulog.L(`I: `, "直播中")
+			danmulog.I("直播中")
 		} else {
-			danmulog.L(`I: `, "未直播")
+			danmulog.I("未直播")
 		}
 
 		// 处理ws消息
@@ -461,7 +461,7 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, c
 
 		//30s获取一次人气
 		go func() {
-			danmulog.L(`T: `, "获取人气")
+			danmulog.T("获取人气")
 			for !ws_c.Isclose() {
 				wsmsg.Push_tag(`send`, &ws.WsMsg{
 					Msg: func(f func([]byte) error) error {
@@ -489,7 +489,7 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, c
 			if _, e := recStartEnd.RecStartCheck.Run(ctx, common); e == nil {
 				reply.StreamOStart(common.Roomid)
 			} else {
-				danmulog.Base("功能", "指定房间录制区间").L(`I: `, common.Roomid, e)
+				danmulog.Base("功能", "指定房间录制区间").I(common.Roomid, e)
 			}
 			//弹幕合并
 			if reply.IsOn("弹幕合并") {
@@ -511,7 +511,7 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, c
 				`interrupt`: func(_ any) (disable bool) {
 					loopCancel()
 					exitSign = true
-					danmulog.L(`I: `, "停止，等待服务器断开连接")
+					danmulog.I("停止，等待服务器断开连接")
 					ws_c.Close()
 					reply.StreamOStopAll() //停止录制
 					return true
@@ -519,7 +519,7 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, c
 				`exit_room`: func(_ any) bool { //退出当前房间
 					loopCancel()
 					reply.StreamOStop(common.Roomid)
-					danmulog.L(`I: `, "退出房间", common.Roomid)
+					danmulog.I("退出房间", common.Roomid)
 					c.C.Roomid = 0
 					ws_c.Close()
 					return true
@@ -561,7 +561,7 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, c
 				},
 			})
 
-			danmulog.L(`T: `, "启动完成", common.Uname, `(`, common.Roomid, `)`)
+			danmulog.T("启动完成", common.Uname, `(`, common.Roomid, `)`)
 
 			{
 				cancel, c := wsmsg.Pull_tag_chan(`exit`, 1, ctx)
@@ -577,7 +577,7 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *part.Log_interface, c
 			}
 
 			if err := ws_c.Error(); err != nil {
-				danmulog.L(`E: `, "连接错误", err)
+				danmulog.E("连接错误", err)
 			}
 
 			cancelfunc()

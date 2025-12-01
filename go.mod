@@ -4,7 +4,7 @@ go 1.25
 
 require (
 	github.com/mdp/qrterminal/v3 v3.2.0
-	github.com/qydysky/part v0.28.20251201174740
+	github.com/qydysky/part v0.28.20251201190357
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966
 	golang.org/x/text v0.31.0 // indirect
@@ -39,7 +39,7 @@ require (
 	github.com/go-sql-driver/mysql v1.8.1
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/jackc/pgx/v5 v5.7.6
-	github.com/klauspost/compress v1.18.1 // indirect
+	github.com/klauspost/compress v1.18.2 // indirect
 	github.com/lib/pq v1.10.9
 	github.com/miekg/dns v1.1.68 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect

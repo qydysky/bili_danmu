@@ -194,7 +194,7 @@ func Msg(replyFS replyF, b []byte) {
 	}
 
 	if e := json.Unmarshal(b, &tmp); e != nil {
-		msglog.Base_add(`select func`).L(`E: `, e)
+		msglog.BaseAdd(`select func`).E(e)
 		return
 	}
 	if F, ok := Msg_map[tmp.Cmd]; ok {

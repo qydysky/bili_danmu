@@ -17,27 +17,27 @@ import (
 var gift_limit = limit.New(1, "2s", "10s")
 
 func Send_gift(common *c.Common, gift_id, bag_id, gift_num int) {
-	log := common.Log.Base_add(`发送礼物`)
+	log := common.Log.BaseAdd(`发送礼物`)
 
 	if gift_limit.TO() {
-		log.L(`W: `, "超时")
+		log.W("超时")
 		return
 	}
 
 	if common.UpUid == 0 {
-		log.L(`W: `, "还未获取到Up主uid")
+		log.W("还未获取到Up主uid")
 		return
 	}
 
 	if common.Locked {
-		log.L(`W: `, "房间被封禁")
+		log.W("房间被封禁")
 		return
 	}
 
 	{ //发送请求（银瓜子礼物）
 		csrf, _ := common.Cookie.LoadV(`bili_jct`).(string)
 		if csrf == `` {
-			log.L(`E: `, "Cookie错误,无bili_jct=")
+			log.E("Cookie错误,无bili_jct=")
 			return
 		}
 
@@ -80,23 +80,23 @@ func Send_gift(common *c.Common, gift_id, bag_id, gift_num int) {
 				`Cookie`:          common.GenReqCookie(),
 			},
 		}); e != nil {
-			log.L(`E: `, e)
+			log.E(e)
 			return
 		}
 
 		var res J.SendBag
 
 		if e := req.ResponUnmarshal(json.Unmarshal, &res); e != nil {
-			log.L(`E: `, e)
+			log.E(e)
 			return
 		}
 
 		if res.Code != 0 {
-			log.L(`W: `, res.Message)
+			log.W(res.Message)
 			return
 		}
 		for i := 0; i < len(res.Data.GiftList); i++ {
-			log.L(`I: `, `给`, common.Roomid, `赠送了`, res.Data.GiftList[i].GiftNum, `个`, res.Data.GiftList[i].GiftName)
+			log.I(`给`, common.Roomid, `赠送了`, res.Data.GiftList[i].GiftNum, `个`, res.Data.GiftList[i].GiftName)
 		}
 	}
 }

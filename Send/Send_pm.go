@@ -29,14 +29,14 @@ func Send_pm(uid int, msg string) error {
 		return errors.New(`msg == "" || uid == 0`)
 	}
 
-	log := c.C.Log.Base_add(`私信`)
+	log := c.C.Log.BaseAdd(`私信`)
 
 	switch c.C.Uid {
 	case uid:
-		log.L(`W: `, `不能发送给自己`)
+		log.W(`不能发送给自己`)
 		return errors.New(`不能发送给自己`)
 	case 0:
-		log.L(`E: `, `client uid == 0`)
+		log.E(`client uid == 0`)
 		return errors.New(`client uid == 0`)
 	}
 
@@ -73,7 +73,7 @@ func Send_pm(uid int, msg string) error {
 			`Cookie`:          c.C.GenReqCookie(),
 		},
 	}); e != nil {
-		log.L(`E: `, e)
+		log.E(e)
 		return e
 	}
 
@@ -82,10 +82,10 @@ func Send_pm(uid int, msg string) error {
 	}{}
 
 	if e := req.ResponUnmarshal(json.Unmarshal, &J); e != nil {
-		log.L(`E: `, e)
+		log.E(e)
 		return e
 	}
 
-	log.L(`I: `, `发送私信给`, uid, `:`, msg)
+	log.I(`发送私信给`, uid, `:`, msg)
 	return nil
 }

@@ -23,7 +23,7 @@ import (
 	file "github.com/qydysky/part/file"
 	phash "github.com/qydysky/part/hash"
 	limit "github.com/qydysky/part/limit"
-	log "github.com/qydysky/part/log"
+	log "github.com/qydysky/part/log/v2"
 	reqf "github.com/qydysky/part/reqf"
 	pstrings "github.com/qydysky/part/strings"
 	sync "github.com/qydysky/part/sync"
@@ -32,7 +32,7 @@ import (
 )
 
 type ttsI interface {
-	Init(ctx context.Context, l *log.Log_interface, config any)
+	Init(ctx context.Context, l *log.Log, config any)
 	Deal(uid string, m map[string]string)
 	Clear()
 	Stop()
@@ -41,7 +41,7 @@ type ttsI interface {
 type tts struct {
 	ctx               context.Context
 	cancle            func()
-	l                 *log.Log_interface
+	l                 *log.Log
 	ttsSer            string
 	ttsSerMap         map[string]func(string) error
 	ttsProg           string
@@ -92,13 +92,13 @@ func init() {
 	comp.RegisterOrPanic[ttsI](`tts`, t)
 }
 
-func (t *tts) Init(ctx context.Context, l *log.Log_interface, config any) {
+func (t *tts) Init(ctx context.Context, l *log.Log, config any) {
 	if m, ok := config.(map[string]any); !ok {
 		return
 	} else {
 		defer t.lock.Lock()()
 
-		t.l = l.Base_add(`TTS`)
+		t.l = l.BaseAdd(`TTS`)
 
 		{ //tts配置
 			if v, ok := m[`TTS_总开关`].(bool); ok && !v {
@@ -107,12 +107,12 @@ func (t *tts) Init(ctx context.Context, l *log.Log_interface, config any) {
 			if v, ok := m[`TTS_使用程序路径`].(string); ok && v != `` {
 				t.ttsProg = v
 			} else {
-				t.l.L(`E: `, `TTS_使用程序路径不是字符串或为空`)
+				t.l.E(`TTS_使用程序路径不是字符串或为空`)
 			}
 			if v, ok := m[`TTS_使用程序参数`].(string); ok && v != `` {
 				t.ttsProgSet = v
 			} else {
-				t.l.L(`E: `, `TTS_使用程序参数不是字符串`)
+				t.l.E(`TTS_使用程序参数不是字符串`)
 			}
 			if v, ok := m[`TTS_服务器`].(string); ok && v != "" {
 				if _, ok := t.ttsSerMap[v]; ok {
@@ -128,7 +128,7 @@ func (t *tts) Init(ctx context.Context, l *log.Log_interface, config any) {
 				t.youdaoappKey = v
 			}
 			if t.ttsSer == `youdao` && (t.youdaoId == `` || t.youdaoappKey == ``) {
-				t.l.L(`W: `, `未提供youdaoId、Key，使用baidu`)
+				t.l.W(`未提供youdaoId、Key，使用baidu`)
 				t.ttsSer = `baidu`
 			}
 			if v, ok := m[`TTS_服务器_xfId`].(string); ok && v != `` {
@@ -144,11 +144,11 @@ func (t *tts) Init(ctx context.Context, l *log.Log_interface, config any) {
 				if _, ok := t.xfVmap[v]; ok || v == `random` {
 					t.xfVoice = v
 				} else {
-					t.l.L(`I: `, `未支持设定发音，使用随机`)
+					t.l.I(`未支持设定发音，使用随机`)
 				}
 			}
 			if t.ttsSer == `xf` && (t.xfId == `` || t.xfKey == `` || t.xfSecret == ``) {
-				t.l.L(`W: `, `未提供讯飞Id、Key、Secret，使用baidu`)
+				t.l.W(`未提供讯飞Id、Key、Secret，使用baidu`)
 				t.ttsSer = `baidu`
 			}
 
@@ -199,7 +199,7 @@ func (t *tts) Init(ctx context.Context, l *log.Log_interface, config any) {
 						ulock()
 
 						if err != nil {
-							t.l.L(`E: `, err)
+							t.l.E(err)
 							return
 						}
 					}
@@ -241,7 +241,7 @@ func (t *tts) Deal(uid string, m map[string]string) {
 			runel = append(runel, v)
 		}
 
-		t.l.L(`I: `, uid, string(runel))
+		t.l.I(uid, string(runel))
 		t.ttsList <- string(runel)
 	}
 }
