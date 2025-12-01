@@ -51,7 +51,7 @@ func save(ctx context.Context, i Info) (*Paf, error) {
 	}
 
 	go func(ctx context.Context, info Info, infop *Paf) {
-		logger := info.Common().Log.Base_add("videoInfo")
+		logger := info.Common().Log.BaseAdd("videoInfo")
 		ctx1, done1 := pctx.WaitCtx(ctx)
 		defer done1()
 		for {
@@ -59,7 +59,7 @@ func save(ctx context.Context, i Info) (*Paf, error) {
 			case <-ctx1.Done():
 				infop.EndT = time.Now().Format(time.DateTime)
 				if e := _save(infop); e != nil {
-					logger.L(`E: `, e)
+					logger.E(e)
 					return
 				}
 				return
@@ -69,7 +69,7 @@ func save(ctx context.Context, i Info) (*Paf, error) {
 				if infop.Name != info.Common().Title {
 					infop.Name = info.Common().Title
 					if e := _save(infop); e != nil {
-						logger.L(`E: `, e)
+						logger.E(e)
 						return
 					}
 				}

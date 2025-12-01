@@ -9,7 +9,7 @@ import (
 
 	comp2 "github.com/qydysky/part/component2"
 
-	log "github.com/qydysky/part/log"
+	log "github.com/qydysky/part/log/v2"
 )
 
 // 点赞30次、发送弹幕10条，可点亮勋章3天
@@ -17,7 +17,7 @@ import (
 
 func init() {
 	comp2.RegisterOrPanic[interface {
-		Init(L *log.Log_interface, Roomid int, SendDanmu func(danmu string, RoomID int) error, PreferDanmu any)
+		Init(L *log.Log, Roomid int, SendDanmu func(danmu string, RoomID int) error, PreferDanmu any)
 		Clear()
 		// 在所有可以发送点赞/弹幕的地方都加上，会评估是否需要点赞/弹幕，当prefer存在时，必然发送一条
 		Do(prefer ...string)
@@ -26,14 +26,14 @@ func init() {
 
 type keepMedalLight struct {
 	roomid       int
-	log          *log.Log_interface
+	log          *log.Log
 	sendDanmu    func(danmu string, RoomID int) error
 	preferDanmu  []any
 	hisPointTime *ring.Ring
 	l            sync.RWMutex
 }
 
-func (t *keepMedalLight) Init(L *log.Log_interface, Roomid int, SendDanmu func(danmu string, RoomID int) error, PreferDanmu any) {
+func (t *keepMedalLight) Init(L *log.Log, Roomid int, SendDanmu func(danmu string, RoomID int) error, PreferDanmu any) {
 	t.l.Lock()
 	defer t.l.Unlock()
 
@@ -88,9 +88,9 @@ func (t *keepMedalLight) Do(prefer ...string) {
 		t.getPoint(3)
 	}
 
-	t.log.L(`T: `, `保持亮牌`)
+	t.log.T(`保持亮牌`)
 	if e := t.sendDanmu(waitToSend, t.roomid); e != nil {
-		t.log.L(`E: `, e)
+		t.log.E(e)
 	}
 }
 

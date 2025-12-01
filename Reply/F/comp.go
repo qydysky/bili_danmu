@@ -5,7 +5,6 @@ import (
 	"io"
 	"io/fs"
 	"iter"
-	"net/http"
 	"time"
 
 	_ "github.com/qydysky/bili_danmu/Reply/F/ass"              //removable
@@ -24,7 +23,7 @@ import (
 	_ "github.com/qydysky/bili_danmu/Reply/F/tts"           //removable
 	_ "github.com/qydysky/bili_danmu/Reply/F/videoFastSeed" //removable
 	comp "github.com/qydysky/part/component2"
-	log "github.com/qydysky/part/log"
+	log "github.com/qydysky/part/log/v2"
 )
 
 var GenCpuPprof = comp.GetV3[interface {
@@ -32,7 +31,7 @@ var GenCpuPprof = comp.GetV3[interface {
 }](`genCpuPprof`)
 
 type TTSI interface {
-	Init(ctx context.Context, l *log.Log_interface, config any)
+	Init(ctx context.Context, l *log.Log, config any)
 	Deal(uid string, m map[string]string)
 	Clear()
 	Stop()
@@ -59,7 +58,7 @@ type DanmuMergeI interface {
 var DanmuMerge = comp.GetV3[DanmuMergeI](`danmuMerge`)
 
 type KeepMedalLightI interface {
-	Init(L *log.Log_interface, Roomid int, SendDanmu func(danmu string, RoomID int) error, PreferDanmu any)
+	Init(L *log.Log, Roomid int, SendDanmu func(danmu string, RoomID int) error, PreferDanmu any)
 	Clear()
 	Do(prefer ...string)
 }
@@ -67,7 +66,7 @@ type KeepMedalLightI interface {
 var KeepMedalLight = comp.GetV3[KeepMedalLightI](`keepMedalLight`)
 
 type RevI interface {
-	Init(l *log.Log_interface)
+	Init(l *log.Log)
 	ShowRev(roomid int, rev float64)
 }
 
@@ -75,9 +74,7 @@ var Rev = comp.GetV3[RevI](`rev`)
 
 type DanmuCountPerMinI interface {
 	// will WriteHeader
-	GetRec(savePath string, r *http.Request, w http.ResponseWriter) error
-	GetRec2(savePath string, w io.Writer) error
-	GetRec3(savePath string, w io.Writer, st, dur time.Duration) error
+	GetRec4(savePath string, points *[]int) (e error)
 	CheckRoot(dir string)
 	Rec(ctx context.Context, roomid int, savePath string) func(any)
 	Do(roomid int, msg string, uid string)
@@ -117,14 +114,14 @@ type ParseM3u8I interface {
 var ParseM3u8 = comp.GetV3(`parseM3u8`, comp.PreFuncPanic[ParseM3u8I]{})
 
 type DanmuEmotesS struct {
-	Logg *log.Log_interface
+	Logg *log.Log
 	Info []any
 	Msg  *string
 }
 
 type DanmuEmotesI interface {
 	SaveEmote(ctx context.Context, ptr struct {
-		Logg *log.Log_interface
+		Logg *log.Log
 		Info []any
 		Msg  *string
 	}) (ret any, err error)
@@ -153,7 +150,7 @@ type SaveToJsonI interface {
 var SaveToJson = comp.GetV3[SaveToJsonI](`saveToJson`)
 
 type SaveDanmuToDBI interface {
-	Init(config any, fl *log.Log_interface)
+	Init(config any, fl *log.Log)
 	Danmu(Msg string, Color string, Auth any, Uid string, Roomid int64)
 	Close() error
 }

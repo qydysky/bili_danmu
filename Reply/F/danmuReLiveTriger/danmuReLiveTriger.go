@@ -9,7 +9,7 @@ import (
 
 	c "github.com/qydysky/bili_danmu/CV"
 	comp "github.com/qydysky/part/component"
-	log "github.com/qydysky/part/log"
+	log "github.com/qydysky/part/log/v2"
 )
 
 // path
@@ -20,7 +20,7 @@ var (
 
 // 指定弹幕重启录制
 var (
-	logg      *log.Log_interface
+	logg      *log.Log
 	common    *c.Common
 	streamCut func(i int, title ...string)
 	reload    atomic.Bool
@@ -52,7 +52,7 @@ func initf(ctx context.Context, ptr DanmuReLiveTriger) (any, error) {
 			}
 		}
 		if len(l) != 0 {
-			logg.L(`T: `, `加载`, len(l), `条规则`)
+			logg.T(`加载`, len(l), `条规则`)
 		}
 	}
 	return nil, nil
@@ -68,10 +68,10 @@ func check(ctx context.Context, item Danmu) (any, error) {
 			if reload.CompareAndSwap(false, true) {
 				switch len(ss) {
 				case 1:
-					logg.L(`I: `, item.Uid, item.Msg, "请求重启录制")
+					logg.I(item.Uid, item.Msg, "请求重启录制")
 					streamCut(common.Roomid)
 				case 2:
-					logg.L(`I: `, item.Uid, ss[1], "请求重启录制带标题")
+					logg.I(item.Uid, ss[1], "请求重启录制带标题")
 					streamCut(common.Roomid, ss[1])
 				}
 				time.AfterFunc(time.Minute, func() {

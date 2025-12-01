@@ -27,7 +27,7 @@ func (t *cmd) Cmd() {
 
 	// 直播间缓存
 	var liveList = make(map[string]int)
-	cmdlog := c.C.Log.Base_add(`命令行操作`).L(`T: `, `回车查看帮助`)
+	cmdlog := c.C.Log.BaseAdd(`命令行操作`).T(`回车查看帮助`)
 	scanner := bufio.NewScanner(os.Stdin)
 
 	go func() {
@@ -64,24 +64,24 @@ func (t *cmd) Cmd() {
 				fmt.Print("\n")
 			} else if inputs[0] == 27 {
 				// 屏蔽功能键
-				cmdlog.L(`W: `, "不支持功能键")
+				cmdlog.W("不支持功能键")
 			} else if inputs[0] == 32 {
 				// 开头
-				cmdlog.L(`T: `, "指令("+inputs+")")
+				cmdlog.T("指令(" + inputs + ")")
 				//录播分段
 				if strings.Contains(inputs, ` cut`) {
 					if c.C.Roomid != 0 && reply.StreamOStatus(c.C.Roomid) {
 						reply.StreamOCut(c.C.Roomid)
 						continue
 					}
-					cmdlog.L(`W: `, "输入错误", inputs)
+					cmdlog.W("输入错误", inputs)
 					continue
 				}
 				//录制切换
 				if strings.Contains(inputs, ` rec`) {
 					if len(inputs) > 4 {
 						if v, ok := c.C.K_v.LoadV(`仅保存当前直播间流`).(bool); ok && v {
-							cmdlog.L(`W: `, "输入错误", inputs)
+							cmdlog.W("输入错误", inputs)
 							continue
 						}
 						if room, err := strconv.Atoi(inputs[4:]); err == nil {
@@ -92,9 +92,9 @@ func (t *cmd) Cmd() {
 							}
 							continue
 						}
-						cmdlog.L(`W: `, "输入错误", inputs)
+						cmdlog.W("输入错误", inputs)
 					} else if c.C.Roomid == 0 {
-						cmdlog.L(`W: `, "输入错误", inputs)
+						cmdlog.W("输入错误", inputs)
 					} else {
 						if reply.StreamOStatus(c.C.Roomid) {
 							reply.StreamOStop(c.C.Roomid)
@@ -107,7 +107,7 @@ func (t *cmd) Cmd() {
 				//进入房间
 				if strings.Contains(inputs, ` to`) {
 					if len(inputs) == 3 {
-						cmdlog.L(`W: `, "未输入进入序号")
+						cmdlog.W("未输入进入序号")
 						continue
 					}
 
@@ -117,14 +117,14 @@ func (t *cmd) Cmd() {
 						c.C.Danmu_Main_mq.Push_tag(`change_room`, room)
 						continue
 					} else {
-						cmdlog.L(`W: `, "输入错误", inputs)
+						cmdlog.W("输入错误", inputs)
 					}
 					continue
 				}
 				//直播间切换
 				if strings.Contains(inputs, ` liv`) {
 					if _, ok := c.C.Cookie.LoadV(`bili_jct`).(string); !ok {
-						cmdlog.L(`W: `, "尚未登录，未能获取关注主播")
+						cmdlog.W("尚未登录，未能获取关注主播")
 						continue
 					}
 					fmt.Print("\n")
@@ -139,7 +139,7 @@ func (t *cmd) Cmd() {
 				//直播间历史
 				if strings.Contains(inputs, ` his`) {
 					if _, ok := c.C.Cookie.LoadV(`bili_jct`).(string); !ok {
-						cmdlog.L(`W: `, "尚未登录，未能获取关注主播")
+						cmdlog.W("尚未登录，未能获取关注主播")
 						continue
 					}
 					fmt.Print("\n")
@@ -164,7 +164,7 @@ func (t *cmd) Cmd() {
 				//搜索主播
 				if strings.Contains(inputs, ` sea`) {
 					if len(inputs) == 4 {
-						cmdlog.L(`W: `, "未输入搜索内容")
+						cmdlog.W("未输入搜索内容")
 						continue
 					}
 
@@ -231,11 +231,11 @@ func (t *cmd) Cmd() {
 				//直接进入房间
 				if room, err := strconv.Atoi(inputs[1:]); err == nil {
 					// c.C.Roomid = room
-					cmdlog.L(`I: `, "进入房间", room)
+					cmdlog.I("进入房间", room)
 					c.C.Danmu_Main_mq.Push_tag(`change_room`, room)
 					continue
 				}
-				cmdlog.L(`W: `, "无效指令("+inputs+")")
+				cmdlog.W("无效指令(" + inputs + ")")
 			} else {
 				// 其余字符串
 				if c.C.Roomid == 0 {

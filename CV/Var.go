@@ -9,6 +9,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"maps"
 	"math"
 	"net"
 	"net/http"
@@ -16,6 +17,7 @@ import (
 	"net/url"
 	"os"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -29,7 +31,7 @@ import (
 	pctx "github.com/qydysky/part/ctx"
 	file "github.com/qydysky/part/file"
 	pio "github.com/qydysky/part/io"
-	log "github.com/qydysky/part/log"
+	plog "github.com/qydysky/part/log/v2"
 	mq "github.com/qydysky/part/msgq"
 	pool "github.com/qydysky/part/pool"
 	reqf "github.com/qydysky/part/reqf"
@@ -85,7 +87,7 @@ type Common struct {
 	Qn                map[int]string                   `json:"-"`            //全部直播流质量
 	AllStreamType     map[string]StreamType            `json:"-"`            //直播流类型
 	K_v               syncmap.Map                      `json:"-"`            //配置文件
-	Log               *log.Log_interface               `json:"-"`            //日志
+	Log               *plog.Log                        `json:"-"`            //日志
 	Danmu_Main_mq     *mq.Msgq                         `json:"-"`            //消息
 	ReqPool           *pool.Buf[reqf.Req]              `json:"-"`            //请求池
 	SerF              *web.WebPath                     `json:"-"`            //web服务处理
@@ -741,17 +743,7 @@ func (t *Common) Init() *Common {
 
 	{
 		v, _ := t.K_v.LoadV("日志文件输出").(string)
-		t.Log = log.New(log.Config{
-			File:   v,
-			Stdout: true,
-			Prefix_string: map[string]struct{}{
-				`T: `: log.On,
-				`I: `: log.On,
-				`N: `: log.On,
-				`W: `: log.On,
-				`E: `: log.On,
-			},
-		})
+		t.Log = plog.New(&plog.Log{File: v})
 
 		if v, ok := t.K_v.LoadV(`保存日志至db`).(map[string]any); ok && len(v) != 0 {
 			dbname, dbnameok := v["dbname"].(string)
@@ -765,7 +757,7 @@ func (t *Common) Init() *Common {
 				}
 				if createok {
 					tx := psql.BeginTx[any](db, pctx.GenTOCtx(time.Second*5))
-					tx.Do(psql.SqlFunc[any]{
+					tx.Do(&psql.SqlFunc[any]{
 						Sql:        create,
 						SkipSqlErr: true,
 					})
@@ -773,17 +765,30 @@ func (t *Common) Init() *Common {
 						panic("保存日志至db打开连接错误 " + e.Error())
 					}
 				}
-				t.Log = t.Log.LDB(dbname, db, insert, time.Second*5)
+				switch dbname {
+				case "postgres":
+					t.Log = t.Log.LDB(db, psql.PlaceHolderB, insert)
+				case "mysql":
+					t.Log = t.Log.LDB(db, psql.PlaceHolderB, insert)
+				case "sqlite":
+					t.Log = t.Log.LDB(db, psql.PlaceHolderA, insert)
+				default:
+				}
 			}
 		}
 
-		logmap := make(map[string]struct{})
-		if array, ok := t.K_v.Load(`日志显示`); ok {
-			for _, v := range array.([]any) {
-				logmap[v.(string)] = log.On
-			}
+		levelM := map[plog.Level]string{
+			plog.T: "T: ",
+			plog.I: "I: ",
+			plog.W: "W: ",
+			plog.E: "E: ",
 		}
-		t.Log = t.Log.Level(logmap)
+		if array, ok := t.K_v.Load(`日志显示`); ok {
+			maps.DeleteFunc(levelM, func(k plog.Level, v string) bool {
+				return !slices.Contains(array.([]any), any(v))
+			})
+		}
+		t.Log = t.Log.Level(levelM)
 	}
 
 	return t

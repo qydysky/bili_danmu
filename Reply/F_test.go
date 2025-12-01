@@ -31,21 +31,20 @@ func TestSaveDanmuToDB(t *testing.T) {
 		t.Fatal(e)
 	} else {
 		tx := psql.BeginTx[any](db, pctx.GenTOCtx(time.Second*5))
-		tx.Do(psql.SqlFunc[any]{Sql: "select msg as Msg from danmu"})
-		tx.AfterQF(func(_ *any, rows *sql.Rows, e *error) {
+		tx.Do(&psql.SqlFunc[any]{Sql: "select msg as Msg from danmu"})
+		tx.AfterQF(func(_ *any, rows *sql.Rows) (e error) {
 			type row struct {
 				Msg string
 			}
 
 			v, err := psql.DealRows[row](rows)
 			if err != nil {
-				*e = err
-				return
+				return err
 			}
 			if len(v) != 1 || v[0].Msg != "可能走位配合了他的压枪" {
-				*e = errors.New("no msg")
-				return
+				return errors.New("no msg")
 			}
+			return
 		})
 		if _, e := tx.Fin(); e != nil {
 			t.Fatal(e)

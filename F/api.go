@@ -15,10 +15,10 @@ var api_limit = limit.New(2, "1s", "30s") //频率限制2次/s，最大等待时
 
 // 获取当前佩戴的牌子
 func Get_weared_medal(uid, upUid int) (item J.GetWearedMedal_Data, e error) {
-	apilog := apilog.Base_add(`获取佩戴牌子`)
+	apilog := apilog.BaseAdd(`获取佩戴牌子`)
 
 	biliApi := biliApi.Inter(func(ce error) BiliApiInter {
-		apilog.L(`E: `, `biliApi组件未构建`, ce)
+		apilog.E(`biliApi组件未构建`, ce)
 		e = ce
 		return nil
 	})
@@ -27,7 +27,7 @@ func Get_weared_medal(uid, upUid int) (item J.GetWearedMedal_Data, e error) {
 	}
 
 	if err, res := biliApi.GetWearedMedal(uid, upUid); err != nil {
-		apilog.L(`E: `, err)
+		apilog.E(err)
 		e = err
 	} else {
 		item.Roominfo.RoomID = res.RoomID
@@ -45,18 +45,18 @@ func Gift_list() (list []struct {
 	Gift_num  int
 	Expire_at int
 }) {
-	apilog := apilog.Base_add(`礼物列表`)
+	apilog := apilog.BaseAdd(`礼物列表`)
 	if c.C.Roomid == 0 {
-		apilog.L(`E: `, `失败！无Roomid`)
+		apilog.E(`失败！无Roomid`)
 		return
 	}
 	if api_limit.TO() {
-		apilog.L(`E: `, `超时！`)
+		apilog.E(`超时！`)
 		return
 	} //超额请求阻塞，超时将取消
 
 	biliApi := biliApi.Inter(func(ce error) BiliApiInter {
-		apilog.L(`E: `, `biliApi组件未构建`, ce)
+		apilog.E(`biliApi组件未构建`, ce)
 		return nil
 	})
 	if biliApi == nil {
@@ -64,14 +64,14 @@ func Gift_list() (list []struct {
 	}
 
 	if !biliApi.IsLogin() {
-		apilog.L(`W: `, `未登录`)
+		apilog.W(`未登录`)
 		return
 	}
 	if err, res := biliApi.GetBagList(c.C.Roomid); err != nil {
-		apilog.L(`E: `, err)
+		apilog.E(err)
 		return
 	} else {
-		apilog.L(`T: `, `成功`)
+		apilog.T(`成功`)
 		return res
 	}
 }
@@ -93,29 +93,29 @@ func GetHisStream() (Uplist []struct {
 	Roomid     int
 	LiveStatus int
 }) {
-	apilog := apilog.Base_add(`历史直播主播`).L(`T: `, `获取中`)
+	apilog := apilog.BaseAdd(`历史直播主播`).T(`获取中`)
 
 	biliApi := biliApi.Inter(func(ce error) BiliApiInter {
-		apilog.L(`E: `, `biliApi组件未构建`, ce)
+		apilog.E(`biliApi组件未构建`, ce)
 		return nil
 	})
 	if biliApi == nil {
 		return
 	}
 
-	defer apilog.L(`T: `, `完成`)
+	defer apilog.T(`完成`)
 	//验证登录
 	if !biliApi.IsLogin() {
-		apilog.L(`T: `, `未登录`)
+		apilog.T(`未登录`)
 		return
 	}
 	if api_limit.TO() {
-		apilog.L(`E: `, `超时！`)
+		apilog.E(`超时！`)
 		return
 	} //超额请求阻塞，超时将取消
 
 	if e, res := biliApi.GetHisStream(); e != nil {
-		apilog.L(`E: `, e)
+		apilog.E(e)
 		return
 	} else {
 		Uplist = res
@@ -125,10 +125,10 @@ func GetHisStream() (Uplist []struct {
 
 // 进入房间
 func RoomEntryAction(roomId int) {
-	apilog := apilog.Base_add(`进入房间`)
+	apilog := apilog.BaseAdd(`进入房间`)
 
 	biliApi := biliApi.Inter(func(ce error) BiliApiInter {
-		apilog.L(`E: `, `biliApi组件未构建`, ce)
+		apilog.E(`biliApi组件未构建`, ce)
 		return nil
 	})
 	if biliApi == nil {
@@ -137,16 +137,16 @@ func RoomEntryAction(roomId int) {
 
 	//验证登录
 	if !biliApi.IsLogin() {
-		apilog.L(`T: `, `未登录`)
+		apilog.T(`未登录`)
 		return
 	}
 	if api_limit.TO() {
-		apilog.L(`E: `, `超时！`)
+		apilog.E(`超时！`)
 		return
 	} //超额请求阻塞，超时将取消
 
 	if e := biliApi.RoomEntryAction(roomId); e != nil {
-		apilog.L(`E: `, e)
+		apilog.E(e)
 		return
 	}
 }
@@ -157,29 +157,29 @@ func Feed_list() (Uplist []struct {
 	Title      string
 	LiveStatus int
 }) {
-	apilog := apilog.Base_add(`正在直播主播`).L(`T: `, `获取中`)
+	apilog := apilog.BaseAdd(`正在直播主播`).T(`获取中`)
 
 	biliApi := biliApi.Inter(func(ce error) BiliApiInter {
-		apilog.L(`E: `, `biliApi组件未构建`, ce)
+		apilog.E(`biliApi组件未构建`, ce)
 		return nil
 	})
 	if biliApi == nil {
 		return
 	}
 
-	defer apilog.L(`T: `, `完成`)
+	defer apilog.T(`完成`)
 	//验证登录
 	if !biliApi.IsLogin() {
-		apilog.L(`T: `, `未登录`)
+		apilog.T(`未登录`)
 		return
 	}
 	if api_limit.TO() {
-		apilog.L(`E: `, `超时！`)
+		apilog.E(`超时！`)
 		return
 	} //超额请求阻塞，超时将取消
 
 	if e, res := biliApi.GetFollowing(); e != nil {
-		apilog.L(`E: `, e)
+		apilog.E(e)
 		return
 	} else {
 		Uplist = res
@@ -193,15 +193,15 @@ func SearchUP(s string) (list []struct {
 	Uname   string
 	Is_live bool
 }) {
-	apilog := apilog.Base_add(`搜索主播`)
+	apilog := apilog.BaseAdd(`搜索主播`)
 
 	if api_limit.TO() {
-		apilog.L(`E: `, `超时！`)
+		apilog.E(`超时！`)
 		return
 	} //超额请求阻塞，超时将取消
 
 	biliApi := biliApi.Inter(func(ce error) BiliApiInter {
-		apilog.L(`E: `, `biliApi组件未构建`, ce)
+		apilog.E(`biliApi组件未构建`, ce)
 		return nil
 	})
 	if biliApi == nil {
@@ -210,7 +210,7 @@ func SearchUP(s string) (list []struct {
 
 	if e, res := biliApi.SearchUP(s); e != nil {
 		fmt.Println(e)
-		apilog.L(`E: `, e)
+		apilog.E(e)
 		return
 	} else {
 		return res
@@ -218,7 +218,7 @@ func SearchUP(s string) (list []struct {
 }
 
 func IsConnected() (ok bool) {
-	apilog := apilog.Base_add(`IsConnected`)
+	apilog := apilog.BaseAdd(`IsConnected`)
 
 	v, ok := c.C.K_v.LoadV(`网络中断不退出`).(bool)
 	if !ok || !v {
@@ -226,7 +226,7 @@ func IsConnected() (ok bool) {
 	}
 
 	biliApi := biliApi.Inter(func(ce error) BiliApiInter {
-		apilog.L(`E: `, `biliApi组件未构建`, ce)
+		apilog.E(`biliApi组件未构建`, ce)
 		return nil
 	})
 	if biliApi == nil {
@@ -234,10 +234,10 @@ func IsConnected() (ok bool) {
 	}
 
 	if err := biliApi.IsConnected(); err != nil {
-		apilog.L(`W: `, `网络中断`, err)
+		apilog.W(`网络中断`, err)
 		return false
 	}
 
-	apilog.L(`T: `, `已连接`)
+	apilog.T(`已连接`)
 	return true
 }

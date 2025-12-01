@@ -36,7 +36,7 @@ func HeadGen(datalenght, Opeation, Sequence int) []byte {
 func HeadChe(head []byte) header {
 
 	if len(head) != c.WS_PACKAGE_HEADER_TOTAL_LENGTH {
-		flog.Base_add("头部检查").L(`E: `, "输入头长度错误")
+		flog.BaseAdd("头部检查").E("输入头长度错误")
 		return header{}
 	}
 
@@ -57,10 +57,10 @@ func HeadChe(head []byte) header {
 
 // 认证生成与检查
 func HelloGen(roomid int, key string) []byte {
-	flog := flog.Base_add("认证生成")
+	flog := flog.BaseAdd("认证生成")
 
 	if roomid == 0 || key == "" {
-		flog.L(`E: `, "roomid == 0 || key == \"\"")
+		flog.E("roomid == 0 || key == \"\"")
 		return []byte("")
 	}
 

@@ -9,7 +9,7 @@ import (
 
 	c "github.com/qydysky/bili_danmu/CV"
 	comp "github.com/qydysky/part/component"
-	log "github.com/qydysky/part/log"
+	log "github.com/qydysky/part/log/v2"
 	psync "github.com/qydysky/part/sync"
 	"golang.org/x/exp/slices"
 )
@@ -26,7 +26,7 @@ type dur struct {
 }
 
 var (
-	logg        *log.Log_interface
+	logg        *log.Log
 	roomSetting map[int][]dur
 	timePoints  []int
 )
@@ -74,7 +74,7 @@ func initf(ctx context.Context, ptr *c.Common) (_ any, err error) {
 							}
 						}
 					}
-					logg.L(`T: `, "加载规则", fmt.Sprintf("%d %d条", int(roomid), len(durs)))
+					logg.T("加载规则", fmt.Sprintf("%d %d条", int(roomid), len(durs)))
 					roomSetting[int(roomid)] = durs
 				}
 			}
@@ -139,7 +139,7 @@ func setNextFunc() {
 	}
 	slices.Sort(tmp)
 
-	// logg.L(`T: `, "下个时间点", time.Second*time.Duration(tmp[0]))
+	// logg.T("下个时间点", time.Second*time.Duration(tmp[0]))
 
 	time.AfterFunc(time.Second*time.Duration(tmp[0]), func() {
 		roomId := streamCtl.C.Roomid
@@ -151,10 +151,10 @@ func setNextFunc() {
 				for _, v := range setting {
 					if v.start != 0 && math.Abs(float64(t-v.start)) < 5 {
 						if streamCtl.State(roomId) {
-							logg.L(`T: `, "切片", roomId)
+							logg.T("切片", roomId)
 							streamCtl.Cut(roomId)
 						} else {
-							logg.L(`T: `, "开始", roomId)
+							logg.T("开始", roomId)
 							streamCtl.Start(roomId)
 						}
 						time.Sleep(time.Second * 5)
@@ -162,7 +162,7 @@ func setNextFunc() {
 					}
 					if v.end != 0 && math.Abs(float64(t-v.end)) < 5 {
 						if streamCtl.State(roomId) {
-							logg.L(`T: `, "结束", roomId)
+							logg.T("结束", roomId)
 							streamCtl.End(roomId)
 						}
 						time.Sleep(time.Second * 5)
