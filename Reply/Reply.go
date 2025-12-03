@@ -1355,6 +1355,9 @@ func (t replyF) danmu(s string) {
 				skip = true
 			}
 		})
+		if skip {
+			return
+		}
 		// 附加功能 更少弹幕
 		replyFunc.LessDanmu.Run2(func(i replyFunc.LessDanmuI) {
 			if !i.Do(item.msg) {
@@ -1368,11 +1371,7 @@ func (t replyF) danmu(s string) {
 		// 表情跳过，避免破坏表情代码
 		if !item.hasEmote && IsOn("精简弹幕") {
 			replyFunc.ShortDanmu.Run2(func(i interface{ Deal(string) string }) {
-				if _msg := i.Deal(item.msg); _msg == "" {
-					danmulog.I(item.auth, ":", item.msg)
-				} else {
-					item.msg = _msg
-				}
+				item.msg = i.Deal(item.msg)
 			})
 		}
 	}
