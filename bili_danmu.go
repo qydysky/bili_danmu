@@ -352,6 +352,7 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *plog.Log, common *c.C
 				for {
 					unlock := common.Lock()
 					if len(common.WSURL) == 0 {
+						unlock()
 						break
 					}
 					wsUrl := common.WSURL[0]

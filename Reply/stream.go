@@ -10,6 +10,7 @@ import (
 	"io"
 	"iter"
 	"math"
+	"math/rand/v2"
 	"net"
 	"net/http"
 	"net/url"
@@ -357,6 +358,7 @@ func (t *M4SStream) fetchCheckStream() bool {
 			}
 			return
 		}
+		defaultSerTo = time.Minute * 15 // 默认过期15min
 	)
 	if v, ok := t.common.K_v.LoadV("直播流不使用mcdn").(bool); ok && v {
 		if reg, err := regexp.Compile(`\.mcdn\.`); err != nil {
@@ -374,6 +376,11 @@ func (t *M4SStream) fetchCheckStream() bool {
 					noSer = append(noSer, reg)
 				}
 			}
+		}
+	}
+	if v, ok := t.common.K_v.LoadV("直播流服务器默认超时").(string); ok {
+		if tmp, e := time.ParseDuration(v); e == nil && tmp > defaultSerTo {
+			defaultSerTo = tmp
 		}
 	}
 
@@ -420,7 +427,9 @@ func (t *M4SStream) fetchCheckStream() bool {
 			v.DisableAuto()
 			continue
 		}
-
+		if v.Expires.Before(time.Now()) || time.Until(v.Expires) > time.Hour*24 {
+			v.Expires = time.Now().Add(defaultSerTo + time.Duration(rand.Float64())*time.Minute)
+		}
 		// 显示使用流服务器
 		_log.I(`使用流服务器`, F.ParseHost(v.Url))
 	}
@@ -1007,11 +1016,15 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 // 移除失效源
 func (t *M4SStream) removeSer() {
 	slice.Del(&t.common.Live, func(v **c.LiveQn) (del bool) {
-		isDel := time.Now().Add(time.Minute * 2).Before((*v).ReUpTime)
-		if isDel {
-			t.log.I(`移除流服务器`, (*v).Host())
+		isErr := time.Now().Add(time.Minute * 2).Before((*v).ReUpTime)
+		isExp := time.Now().After((*v).Expires)
+		if isErr {
+			t.log.I(`移除流服务器`, (*v).Host(), `由于错误过多`)
 		}
-		return isDel
+		if isExp {
+			t.log.I(`移除流服务器`, (*v).Host(), `由于过期`)
+		}
+		return isErr || isExp
 	})
 }
 
