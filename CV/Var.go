@@ -357,6 +357,11 @@ func (t *Common) Init() *Common {
 			Format_name:   "flv",
 			Codec_name:    "hevc",
 		},
+		`fmp4A`: {
+			Protocol_name: "http_hls",
+			Format_name:   "fmp4",
+			Codec_name:    "av1",
+		},
 	}
 
 	t.Qn = map[int]string{ // no change

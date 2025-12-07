@@ -24,6 +24,7 @@ type Info interface {
 	Common() *c.Common
 	GetStreamType() string
 	GetSavePath() string
+	GetStreamCodec() string
 }
 
 type Paf struct {
@@ -40,12 +41,13 @@ type Paf struct {
 	Path            string        `json:"path"`
 	CurrentSavePath string        `json:"-"`
 	Format          string        `json:"format"`
+	Codec           string        `json:"codec"`
 	StartLiveT      string        `json:"startLiveT"`
 	OnlinesPerMin   []int         `json:"onlinesPerMin"`
 }
 
 func save(ctx context.Context, i Info) (*Paf, error) {
-	infop := _newPaf(i.Common(), i.GetSavePath(), i.GetStreamType())
+	infop := _newPaf(i.Common(), i.GetSavePath(), i.GetStreamType(), i.GetStreamCodec())
 	if e := _save(infop); e != nil {
 		return nil, e
 	}
@@ -149,7 +151,7 @@ func _save(pathInfo *Paf) error {
 	return nil
 }
 
-func _newPaf(common *c.Common, savePath, streamType string) *Paf {
+func _newPaf(common *c.Common, savePath, streamType, codec string) *Paf {
 	return &Paf{
 		Uname:           common.Uname,
 		UpUid:           common.UpUid,
@@ -160,6 +162,7 @@ func _newPaf(common *c.Common, savePath, streamType string) *Paf {
 		Path:            path.Base(savePath),
 		CurrentSavePath: savePath,
 		Format:          streamType,
+		Codec:           codec,
 		OnlinesPerMin:   []int{common.OnlineNum},
 		StartLiveT:      common.Live_Start_Time.Format(time.DateTime),
 	}

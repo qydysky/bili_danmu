@@ -60,6 +60,7 @@ type M4SStream struct {
 	config               M4SStream_Config      //配置
 	stream_last_modified time.Time             //流地址更新时间
 	stream_type          string                //流类型
+	stream_code          string                //流编码
 	stream_msg           *msgq.MsgType[[]byte] //流数据消息 tag:data
 	first_buf            []byte                //m4s起始块 or flv起始块
 	frameCount           uint                  //关键帧数量
@@ -313,6 +314,8 @@ func (t *M4SStream) fetchCheckStream() bool {
 				cuCode = `hevc`
 			} else if strings.Contains(t.common.Live[0].Codec, `avc`) {
 				cuCode = `avc`
+			} else if strings.Contains(t.common.Live[0].Codec, `av1`) {
+				cuCode = `av1`
 			} else {
 				cuCode = `unknow`
 			}
@@ -326,6 +329,8 @@ func (t *M4SStream) fetchCheckStream() bool {
 			}
 
 			switch vt {
+			case `fmp4A`:
+				pass = cuType == `m3u8` && cuCode == `av1`
 			case `fmp4H`:
 				pass = cuType == `m3u8` && cuCode == `hevc`
 			case `fmp4`:
@@ -349,6 +354,9 @@ func (t *M4SStream) fetchCheckStream() bool {
 	} else if strings.Contains(t.common.Live[0].Url, `flv`) {
 		t.stream_type = "flv"
 	}
+
+	// 保存流编码
+	t.stream_code = t.common.Live[0].Codec
 
 	var (
 		noSer  []*regexp.Regexp
@@ -1311,6 +1319,10 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 
 func (t *M4SStream) GetStreamType() string {
 	return t.stream_type
+}
+
+func (t *M4SStream) GetStreamCodec() string {
+	return t.stream_code
 }
 
 func (t *M4SStream) GetSavePath() string {
