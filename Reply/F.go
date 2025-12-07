@@ -270,6 +270,7 @@ type PlayItem struct {
 	Dur           time.Duration  `json:"-"`             // 本段时长
 	Path          string         `json:"path"`          // 自定义目录名
 	Format        string         `json:"format"`        // 格式 // 自动从Live[0]取
+	Codec         string         `json:"codec"`         // 格式 // 自动从Live[0]取
 	StartLiveT    string         `json:"startLiveT"`    // 本场起始时间 // 自动从Live[0]取
 	OnlinesPerMin []int          `json:"onlinesPerMin"` // 人数
 	Lives         []PlayItemlive `json:"lives,omitempty"`
@@ -1280,6 +1281,7 @@ func LiveDirF(liveRootDir, qref string) (e error, hasLivsJson bool, dir string, 
 							info.StartTS = fi.StartTS
 							info.StartLiveT = fi.StartLiveT
 							info.Format = fi.Format
+							info.Codec = fi.Codec
 							info.Roomid = fi.Roomid
 							info.Uname = fi.Uname
 							info.Qn = fi.Qn
@@ -1336,6 +1338,7 @@ func LiveDirF(liveRootDir, qref string) (e error, hasLivsJson bool, dir string, 
 							Dur:           info.Dur,
 							Path:          info.Path,
 							Format:        info.Format,
+							Codec:         info.Codec,
 							StartLiveT:    info.StartLiveT,
 							OnlinesPerMin: info.OnlinesPerMin,
 						})
@@ -1384,6 +1387,7 @@ func LiveDirF(liveRootDir, qref string) (e error, hasLivsJson bool, dir string, 
 						info.StartTS = fi.StartTS
 						info.StartLiveT = fi.StartLiveT
 						info.Format = fi.Format
+						info.Codec = fi.Codec
 						info.Roomid = fi.Roomid
 						info.Uname = fi.Uname
 						info.Qn = fi.Qn
@@ -1434,6 +1438,7 @@ func LiveDirF(liveRootDir, qref string) (e error, hasLivsJson bool, dir string, 
 					Dur:           info.Dur,
 					Path:          info.Path,
 					Format:        info.Format,
+					Codec:         info.Codec,
 					StartLiveT:    info.StartLiveT,
 					OnlinesPerMin: info.OnlinesPerMin,
 				})
