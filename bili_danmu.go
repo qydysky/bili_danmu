@@ -349,8 +349,12 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *plog.Log, common *c.C
 				// 获取弹幕服务器
 				F.Api.Get(common, `WSURL`)
 
-				for len(common.WSURL) != 0 {
+				for {
 					unlock := common.Lock()
+					if len(common.WSURL) == 0 {
+						unlock()
+						break
+					}
 					wsUrl := common.WSURL[0]
 					common.WSURL = common.WSURL[1:]
 					unlock()
