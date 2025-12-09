@@ -10,7 +10,6 @@ import (
 	"io"
 	"iter"
 	"math"
-	"math/rand/v2"
 	"net"
 	"net/http"
 	"net/url"
@@ -101,6 +100,14 @@ type m4s_link_item struct {
 	SerUuid      string           // 使用的流服务器uuid
 }
 
+func (t *m4s_link_item) host() string {
+	if linkUrl, e := url.Parse(t.Url); e == nil {
+		return linkUrl.Host
+	} else {
+		return ""
+	}
+}
+
 // 更换服务器
 func (t *m4s_link_item) replaceSer(v *c.LiveQn) {
 	t.SerUuid = v.Uuid
@@ -173,7 +180,15 @@ func (link *m4s_link_item) download(reqPool *pool.Buf[reqf.Req], reqConfig reqf.
 		if int64(reqConfig.Timeout) < r.UsedTime.Milliseconds()+3000 {
 			err = ActionErrFmp4DownloadCareTO.New(fmt.Sprintf("fmp4切片下载超时s(%d)或许应该大于%d", reqConfig.Timeout/1000, (r.UsedTime.Milliseconds()+4000)/1000))
 		}
+
+		// 调试，随机触发下载失败
+		// if rand.Float64() > 0.9 {
+		// 	link.status = 3 // 设置切片状态为下载完成
+		// 	link.err = errors.New("rand error")
+		// 	return link.err
+		// } else {
 		link.status = 2 // 设置切片状态为下载完成
+		// }
 		return
 	}
 }
@@ -366,7 +381,6 @@ func (t *M4SStream) fetchCheckStream() bool {
 			}
 			return
 		}
-		defaultSerTo = time.Minute * 15 // 默认过期15min
 	)
 	if v, ok := t.common.K_v.LoadV("直播流不使用mcdn").(bool); ok && v {
 		if reg, err := regexp.Compile(`\.mcdn\.`); err != nil {
@@ -384,11 +398,6 @@ func (t *M4SStream) fetchCheckStream() bool {
 					noSer = append(noSer, reg)
 				}
 			}
-		}
-	}
-	if v, ok := t.common.K_v.LoadV("直播流服务器默认超时").(string); ok {
-		if tmp, e := time.ParseDuration(v); e == nil && tmp > defaultSerTo {
-			defaultSerTo = tmp
 		}
 	}
 
@@ -435,11 +444,10 @@ func (t *M4SStream) fetchCheckStream() bool {
 			v.DisableAuto()
 			continue
 		}
-		if v.Expires.Before(time.Now()) || time.Until(v.Expires) > time.Hour*24 {
-			v.Expires = time.Now().Add(defaultSerTo + time.Duration(rand.Float64())*time.Minute)
+		if v.Valid() {
+			// 显示使用流服务器
+			_log.I(`使用流服务器`, F.ParseHost(v.Url))
 		}
-		// 显示使用流服务器
-		_log.I(`使用流服务器`, F.ParseHost(v.Url))
 	}
 
 	return t.common.ValidLive() != nil
@@ -1162,23 +1170,24 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 
 				// 故障转移
 				if download_seq[i].status == 3 {
-					if linkUrl, e := url.Parse(download_seq[i].Url); e == nil {
-						// 将此切片服务器设置停用
-						// hadDisable := t.common.DisableLiveAuto(oldHost)
-						hadDisable := t.common.DisableLiveAutoByUuid(download_seq[i].SerUuid)
-						// 从其他服务器获取此切片
-						if vl := t.common.ValidLive(); vl == nil {
-							return errors.New(`全部流服务器故障`)
-						} else {
-							download_seq[i].replaceSer(vl)
-							if !hadDisable {
-								t.log.W(`切片下载失败，故障转移`, linkUrl.Host, ` -> `, vl.Host())
-							}
-						}
-						// download_seq[i].Url = linkUrl.String()
+					// if host, e := download_seq[i].host(); e == nil {
+					// 将此切片服务器设置停用
+					// hadDisable := t.common.DisableLiveAuto(oldHost)
+					// hadDisable := t.common.DisableLiveAutoByUuid(download_seq[i].SerUuid)
+					// 从其他服务器获取此切片
+					if vl := t.common.ValidLive(); vl == nil {
+						t.log.W(`切片下载失败`, download_seq[i].Base, `无可用流服务器`)
+						return errors.New(`全部流服务器故障`)
 					} else {
-						return errors.New(`切片url错误`)
+						download_seq[i].replaceSer(vl)
+						// if !hadDisable {
+						t.log.W(`切片下载失败，故障转移`, download_seq[i].Base, ` -> `, vl.Host())
+						// }
 					}
+					// download_seq[i].Url = linkUrl.String()
+					// } else {
+					// 	return errors.New(`切片url错误`)
+					// }
 				}
 
 				done := downloadLimit.Block()
@@ -1201,7 +1210,9 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 						if reqf.IsTimeout(e) {
 							t.log.W(fmt.Sprintf("fmp4切片下载超时s或许应该大于%d", to))
 						}
-						t.log.W(`切片下载失败`, link.Base, perrors.ErrorFormat(e, perrors.ErrActionInLineFunc))
+						t.log.W(`切片下载失败`, link.Base, link.host(), perrors.ErrorFormat(e, perrors.ErrActionInLineFunc))
+						// 将此切片服务器设置停用
+						_ = t.common.DisableLiveAutoByUuid(link.SerUuid)
 					}
 				}(download_seq[i])
 				// 间隔100ms发起
