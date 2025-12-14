@@ -3,7 +3,6 @@ package recStartEnd
 import (
 	"context"
 	"errors"
-	"fmt"
 	"math"
 	"time"
 
@@ -74,7 +73,7 @@ func initf(ctx context.Context, ptr *c.Common) (_ any, err error) {
 							}
 						}
 					}
-					logg.T("加载规则", fmt.Sprintf("%d %d条", int(roomid), len(durs)))
+					logg.TF("加载规则 %d %d条", int(roomid), len(durs))
 					roomSetting[int(roomid)] = durs
 				}
 			}

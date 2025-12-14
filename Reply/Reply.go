@@ -203,7 +203,7 @@ func (t replyF) room_lock(s string) {
 		return
 	}
 	Gui_show(fmt.Sprintf("房间被封禁,解锁时间:%s", j.Expire), `0room`)
-	msglog.W(fmt.Sprintf("房间被封禁,解锁时间:%s", j.Expire))
+	msglog.WF("房间被封禁,解锁时间:%s", j.Expire)
 }
 
 // 荣耀等级提示
@@ -215,7 +215,7 @@ func (t replyF) wealth_notify(s string) {
 		return
 	}
 	Gui_show(fmt.Sprintf("当前荣耀等级 %d", j.Data.Info.Level), `0room`)
-	msglog.I(fmt.Sprintf("当前荣耀等级 %d", j.Data.Info.Level))
+	msglog.IF("当前荣耀等级 %d", j.Data.Info.Level)
 }
 
 // 登录提示

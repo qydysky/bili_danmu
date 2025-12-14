@@ -1,7 +1,6 @@
 package rev
 
 import (
-	"fmt"
 	"sync"
 	"time"
 
@@ -41,12 +40,12 @@ func (t *rev) ShowRev(roomid int, rev float64) {
 
 	if roomid != t.currentRoom {
 		if t.currentRoom != 0 {
-			t.l.I(fmt.Sprintf("%d ￥%.2f", t.currentRoom, t.currentRev))
+			t.l.IF("%d ￥%.2f", t.currentRoom, t.currentRev)
 		}
-		t.l.I(fmt.Sprintf("%d ￥%.2f", roomid, rev))
+		t.l.IF("%d ￥%.2f", roomid, rev)
 	} else if rev != t.currentRev && time.Since(t.lastShow).Minutes() > 1 {
 		t.lastShow = time.Now()
-		t.l.I(fmt.Sprintf("%d ￥%.2f", roomid, rev))
+		t.l.IF("%d ￥%.2f", roomid, rev)
 	}
 	t.currentRev = rev
 	t.currentRoom = roomid

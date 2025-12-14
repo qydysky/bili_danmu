@@ -30,9 +30,9 @@ func TestSaveDanmuToDB(t *testing.T) {
 	if db, e := sql.Open("sqlite", "danmu.sqlite3"); e != nil {
 		t.Fatal(e)
 	} else {
-		tx := psql.BeginTx[any](db, pctx.GenTOCtx(time.Second*5))
-		tx.Do(&psql.SqlFunc[any]{Sql: "select msg as Msg from danmu"})
-		tx.AfterQF(func(_ *any, rows *sql.Rows) (e error) {
+		tx := psql.BeginTx(db, pctx.GenTOCtx(time.Second*5))
+		tx.Do(&psql.SqlFunc{Sql: "select msg as Msg from danmu"})
+		tx.AfterQF(func(rows *sql.Rows) (e error) {
 			type row struct {
 				Msg string
 			}
@@ -46,7 +46,7 @@ func TestSaveDanmuToDB(t *testing.T) {
 			}
 			return
 		})
-		if _, e := tx.Fin(); e != nil {
+		if e := tx.Run(); e != nil {
 			t.Fatal(e)
 		}
 		_ = db.Close()

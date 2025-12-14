@@ -61,9 +61,7 @@ func (t *saveDanmuToDB) Init(config any, fl *log.Log) {
 				db.SetMaxIdleConns(10)
 				t.db = db
 				if createok {
-					tx := psql.BeginTx[any](db, pctx.GenTOCtx(time.Second*5))
-					tx.Do(&psql.SqlFunc[any]{Sql: create, SkipSqlErr: true})
-					if _, e := tx.Fin(); e != nil {
+					if e := psql.BeginTx(db, pctx.GenTOCtx(time.Second*5)).SimpleDo(create).Run(); !psql.HasErrTx(e, psql.ErrExec) {
 						t.fl.E(e)
 						t.state.CompareAndSwap(1, 0)
 						return
@@ -99,8 +97,8 @@ func (t *saveDanmuToDB) Danmu(Msg string, Color string, Auth any, Uid string, Ro
 				replaceF = psql.PlaceHolderA
 			}
 
-			tx := psql.BeginTx[any](t.db, pctx.GenTOCtx(time.Second*5))
-			tx.DoPlaceHolder(&psql.SqlFunc[any]{Sql: t.insert}, &DanmuI{
+			tx := psql.BeginTx(t.db, pctx.GenTOCtx(time.Second*5))
+			tx.DoPlaceHolder(&psql.SqlFunc{Sql: t.insert}, &DanmuI{
 				Date:   time.Now().Format(time.DateTime),
 				Unix:   time.Now().Unix(),
 				Msg:    Msg,
@@ -109,7 +107,7 @@ func (t *saveDanmuToDB) Danmu(Msg string, Color string, Auth any, Uid string, Ro
 				Uid:    Uid,
 				Roomid: Roomid,
 			}, replaceF)
-			tx.AfterEF(func(_ *any, result sql.Result) (e error) {
+			tx.AfterEF(func(result sql.Result) (e error) {
 				if v, err := result.RowsAffected(); err != nil {
 					return err
 				} else if v != 1 {
@@ -117,7 +115,7 @@ func (t *saveDanmuToDB) Danmu(Msg string, Color string, Auth any, Uid string, Ro
 				}
 				return
 			})
-			if _, e := tx.Fin(); e != nil {
+			if e := tx.Run(); e != nil {
 				t.fl.E(e)
 			}
 		}
