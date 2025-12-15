@@ -761,7 +761,7 @@ func (t *Common) Init() *Common {
 					panic("保存日志至db打开连接错误 " + e.Error())
 				}
 				if createok {
-					if e := psql.BeginTx(db, pctx.GenTOCtx(time.Second*5)).SimpleDo(create).Run(); !psql.HasErrTx(e, psql.ErrExec) {
+					if e := psql.BeginTx(db, pctx.GenTOCtx(time.Second*5)).SimpleDo(create).Run(); !psql.HasErrTx(e, nil, psql.ErrExec) {
 						panic("保存日志至db打开连接错误 " + e.Error())
 					}
 				}

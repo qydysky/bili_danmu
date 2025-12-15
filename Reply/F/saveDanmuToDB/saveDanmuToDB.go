@@ -3,6 +3,7 @@ package savedanmutodb
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"sync/atomic"
 	"time"
 
@@ -61,7 +62,8 @@ func (t *saveDanmuToDB) Init(config any, fl *log.Log) {
 				db.SetMaxIdleConns(10)
 				t.db = db
 				if createok {
-					if e := psql.BeginTx(db, pctx.GenTOCtx(time.Second*5)).SimpleDo(create).Run(); !psql.HasErrTx(e, psql.ErrExec) {
+					if e := psql.BeginTx(db, pctx.GenTOCtx(time.Second*5)).SimpleDo(create).Run(); !psql.HasErrTx(e, nil, psql.ErrExec) {
+						fmt.Println(e)
 						t.fl.E(e)
 						t.state.CompareAndSwap(1, 0)
 						return
@@ -77,6 +79,7 @@ func (t *saveDanmuToDB) Init(config any, fl *log.Log) {
 }
 
 func (t *saveDanmuToDB) Danmu(Msg string, Color string, Auth any, Uid string, Roomid int64) {
+	fmt.Println(t.state.Load())
 	if t.state.Load() == 2 {
 		if e := t.db.Ping(); e == nil {
 			type DanmuI struct {
@@ -97,6 +100,7 @@ func (t *saveDanmuToDB) Danmu(Msg string, Color string, Auth any, Uid string, Ro
 				replaceF = psql.PlaceHolderA
 			}
 
+			fmt.Println("ok")
 			tx := psql.BeginTx(t.db, pctx.GenTOCtx(time.Second*5))
 			tx.DoPlaceHolder(&psql.SqlFunc{Sql: t.insert}, &DanmuI{
 				Date:   time.Now().Format(time.DateTime),
