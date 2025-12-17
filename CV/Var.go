@@ -767,12 +767,11 @@ func (t *Common) Init() *Common {
 				}
 				switch dbname {
 				case "postgres":
-					t.Log = t.Log.LDB(db, psql.PlaceHolderB, insert)
+					t.Log = t.Log.LDB(psql.NewTxPool(db), psql.PlaceHolderB, insert)
 				case "mysql":
-					t.Log = t.Log.LDB(db, psql.PlaceHolderB, insert)
+					t.Log = t.Log.LDB(psql.NewTxPool(db), psql.PlaceHolderB, insert)
 				case "sqlite":
-					db.SetMaxOpenConns(1)
-					t.Log = t.Log.LDB(db, psql.PlaceHolderA, insert)
+					t.Log = t.Log.LDB(psql.NewTxPool(db).RMutex(new(sync.RWMutex)), psql.PlaceHolderA, insert)
 				default:
 				}
 			}
