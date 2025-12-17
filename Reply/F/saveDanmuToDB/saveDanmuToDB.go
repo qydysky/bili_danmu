@@ -3,7 +3,6 @@ package savedanmutodb
 import (
 	"database/sql"
 	"errors"
-	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -79,7 +78,6 @@ func (t *saveDanmuToDB) Init(config any, fl *log.Log) {
 }
 
 func (t *saveDanmuToDB) Danmu(Msg string, Color string, Auth any, Uid string, Roomid int64) {
-	fmt.Println(t.state.Load())
 	if t.state.Load() == 2 {
 		// if e := t.db.Ping(); e == nil {
 		type DanmuI struct {
