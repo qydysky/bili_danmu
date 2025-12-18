@@ -2,7 +2,6 @@ package liveOver
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	c "github.com/qydysky/bili_danmu/CV"
@@ -15,7 +14,7 @@ var Sumup = comp.NewComp(sumup)
 func sumup(ctx context.Context, ptr *c.Common) (any, error) {
 	dura := time.Since(ptr.Live_Start_Time).Round(time.Second)
 	if ptr.Live_Start_Time.IsZero() {
-		ptr.Log.Base(`功能`, `下播总结`).I(fmt.Sprintf("%d 未直播", ptr.Roomid))
+		ptr.Log.Base(`功能`, `下播总结`).IF("%d 未直播", ptr.Roomid)
 	} else {
 		var pperm = float64(ptr.Watched) / float64(dura/time.Minute)
 		var yperm = float64(ptr.Rev) / float64(dura/time.Minute)
@@ -23,7 +22,7 @@ func sumup(ctx context.Context, ptr *c.Common) (any, error) {
 		if ptr.StartT.After(ptr.Live_Start_Time) {
 			yperm = float64(ptr.Rev) / float64(time.Since(ptr.StartT).Round(time.Second)/time.Minute)
 		}
-		ptr.Log.Base(`功能`, `下播总结`).I(fmt.Sprintf("%d 时长 %s 营收 %.2f元 %.2f元/分 人数 %d人 %.2f人/分", ptr.Roomid, dura, ptr.Rev, yperm, ptr.Watched, pperm))
+		ptr.Log.Base(`功能`, `下播总结`).IF("%d 时长 %s 营收 %.2f元 %.2f元/分 人数 %d人 %.2f人/分", ptr.Roomid, dura, ptr.Rev, yperm, ptr.Watched, pperm)
 
 	}
 	return nil, nil

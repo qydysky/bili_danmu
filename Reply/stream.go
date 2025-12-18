@@ -10,7 +10,6 @@ import (
 	"io"
 	"iter"
 	"math"
-	"math/rand/v2"
 	"net"
 	"net/http"
 	"net/url"
@@ -101,6 +100,14 @@ type m4s_link_item struct {
 	SerUuid      string           // 使用的流服务器uuid
 }
 
+func (t *m4s_link_item) host() string {
+	if linkUrl, e := url.Parse(t.Url); e == nil {
+		return linkUrl.Host
+	} else {
+		return ""
+	}
+}
+
 // 更换服务器
 func (t *m4s_link_item) replaceSer(v *c.LiveQn) {
 	t.SerUuid = v.Uuid
@@ -109,7 +116,6 @@ func (t *m4s_link_item) replaceSer(v *c.LiveQn) {
 }
 
 func (t *m4s_link_item) copyTo(to *m4s_link_item) {
-	// fmt.Println("copy to ", t.Base)
 	to.Url = t.Url
 	to.isHeader = t.isHeader
 	to.Base = t.Base
@@ -173,7 +179,15 @@ func (link *m4s_link_item) download(reqPool *pool.Buf[reqf.Req], reqConfig reqf.
 		if int64(reqConfig.Timeout) < r.UsedTime.Milliseconds()+3000 {
 			err = ActionErrFmp4DownloadCareTO.New(fmt.Sprintf("fmp4切片下载超时s(%d)或许应该大于%d", reqConfig.Timeout/1000, (r.UsedTime.Milliseconds()+4000)/1000))
 		}
+
+		// 调试，随机触发下载失败
+		// if rand.Float64() > 0.95 {
+		// 	link.status = 3 // 设置切片状态为下载完成
+		// 	link.err = errors.New("rand error")
+		// 	return link.err
+		// } else {
 		link.status = 2 // 设置切片状态为下载完成
+		// }
 		return
 	}
 }
@@ -366,7 +380,6 @@ func (t *M4SStream) fetchCheckStream() bool {
 			}
 			return
 		}
-		defaultSerTo = time.Minute * 15 // 默认过期15min
 	)
 	if v, ok := t.common.K_v.LoadV("直播流不使用mcdn").(bool); ok && v {
 		if reg, err := regexp.Compile(`\.mcdn\.`); err != nil {
@@ -384,11 +397,6 @@ func (t *M4SStream) fetchCheckStream() bool {
 					noSer = append(noSer, reg)
 				}
 			}
-		}
-	}
-	if v, ok := t.common.K_v.LoadV("直播流服务器默认超时").(string); ok {
-		if tmp, e := time.ParseDuration(v); e == nil && tmp > defaultSerTo {
-			defaultSerTo = tmp
 		}
 	}
 
@@ -435,31 +443,16 @@ func (t *M4SStream) fetchCheckStream() bool {
 			v.DisableAuto()
 			continue
 		}
-		if v.Expires.Before(time.Now()) || time.Until(v.Expires) > time.Hour*24 {
-			v.Expires = time.Now().Add(defaultSerTo + time.Duration(rand.Float64())*time.Minute)
+		if v.Valid() {
+			// 显示使用流服务器
+			_log.I(`使用流服务器`, F.ParseHost(v.Url))
 		}
-		// 显示使用流服务器
-		_log.I(`使用流服务器`, F.ParseHost(v.Url))
 	}
 
 	return t.common.ValidLive() != nil
 }
 
 func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo float64) (m4s_links []*m4s_link_item, guessCount int, e error) {
-	{
-		n := t.common.ValidNum()
-		if d, ok := t.common.K_v.LoadV("fmp4获取更多服务器").(bool); ok && d && n <= 1 && len(t.common.Live) <= 5 {
-			t.log.I("获取更多服务器...")
-			if !t.fetchCheckStream() {
-				e = errors.New("全部流服务器发生故障")
-				return
-			}
-		} else if n == 0 {
-			e = errors.New("全部流服务器发生故障")
-			return
-		}
-	}
-
 	// 开始请求
 	r := t.reqPool.Get()
 	defer t.reqPool.Put(r)
@@ -497,7 +490,7 @@ func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo floa
 
 		if err := r.Reqf(rval); err != nil {
 			v.DisableAuto()
-			t.log.W(fmt.Sprintf("服务器 %s 发生故障 %s", F.ParseHost(v.Url), perrors.ErrorFormat(err, perrors.ErrActionInLineFunc)))
+			t.log.WF("服务器 %s 发生故障 %s", F.ParseHost(v.Url), perrors.ErrorFormat(err, perrors.ErrActionInLineFunc))
 			if t.common.ValidLive() == nil {
 				e = errors.New("全部流服务器发生故障")
 				break
@@ -548,7 +541,7 @@ func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo floa
 				i -= 1
 			} else {
 				// 1min后重新启用
-				t.log.W(fmt.Sprintf("服务器 %s 发生故障 %v", F.ParseHost(v.Url), err))
+				t.log.WF("服务器 %s 发生故障 %v", F.ParseHost(v.Url), err)
 				v.DisableAuto()
 				if t.common.ValidLive() == nil {
 					e = errors.New("全部切片服务器发生故障")
@@ -575,7 +568,7 @@ func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo floa
 				time.Since(lastM4s.createdTime).Seconds() > fmp4ListUpdateTo {
 				// 1min后重新启用
 				v.DisableAuto()
-				t.log.W(fmt.Sprintf("服务器 %s 发生故障 %.2f 秒未产出切片", F.ParseHost(v.Url), time.Since(lastM4s.createdTime).Seconds()))
+				t.log.WF("服务器 %s 发生故障 %.2f 秒未产出切片", F.ParseHost(v.Url), time.Since(lastM4s.createdTime).Seconds())
 				if t.common.ValidLive() == nil {
 					e = errors.New("全部切片服务器发生故障")
 					break
@@ -594,7 +587,7 @@ func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo floa
 			if (timed > 5 && nos-noe == 0) || (nos-noe > 50) {
 				// 1min后重新启用
 				v.DisableAuto()
-				t.log.W(fmt.Sprintf("服务器 %s 发生故障 %d 秒产出了 %d 切片", F.ParseHost(v.Url), int(timed), nos-noe))
+				t.log.WF("服务器 %s 发生故障 %d 秒产出了 %d 切片", F.ParseHost(v.Url), int(timed), nos-noe)
 				if t.common.ValidLive() == nil {
 					e = errors.New("全部切片服务器发生故障")
 					break
@@ -744,7 +737,7 @@ func (t *M4SStream) saveStream() (e error) {
 				ms.msg.Push_tag(`cut`, ms)
 				return true
 			}
-			t.log.T(fmt.Sprintf("%d帧后开始录制", startCount-t.frameCount))
+			t.log.TF("%d帧后开始录制", startCount-t.frameCount)
 			return false
 		})
 		defer cancelkeyFrame()
@@ -863,7 +856,6 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 						return
 					case curT := <-timer.C:
 						if curT.Unix()-leastReadUnix.Load() > readTO {
-							// t.log.W( fmt.Sprintf("%vs未接收到有效数据", readTO))
 							pctx.PutVal(cancelC, &errCtx, fmt.Errorf("%vs未接收到有效数据", readTO))
 							// 时间段内未接收到任何数据
 							return
@@ -943,7 +935,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 								continue
 							} else {
 								if l := leastReadUnix.Load(); l > 0 && time.Now().Unix()-l > readTO-5 {
-									t.log.W(fmt.Sprintf("flv断流超时s(%d)或许应该大于%d", readTO, (time.Now().Unix() - l + 5)))
+									t.log.WF("flv断流超时s(%d)或许应该大于%d", readTO, (time.Now().Unix() - l + 5))
 								}
 								// 存在有效数据
 								leastReadUnix.Store(time.Now().Unix())
@@ -1023,14 +1015,14 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 
 // 移除失效源
 func (t *M4SStream) removeSer() {
-	slice.Del(&t.common.Live, func(v **c.LiveQn) (del bool) {
-		isErr := time.Now().Add(time.Minute * 2).Before((*v).ReUpTime)
-		isExp := time.Now().After((*v).Expires)
+	slice.DelPtr(&t.common.Live, func(v *c.LiveQn) (del bool) {
+		isErr := time.Now().Before(v.ReUpTime)
+		isExp := time.Now().After(v.Expires)
 		if isErr {
-			t.log.I(`移除流服务器`, (*v).Host(), `由于错误过多`)
+			t.log.I(`移除流服务器`, v.Host(), `由于错误`)
 		}
 		if isExp {
-			t.log.I(`移除流服务器`, (*v).Host(), `由于过期`)
+			t.log.I(`移除流服务器`, v.Host(), `由于过期`)
 		}
 		return isErr || isExp
 	})
@@ -1049,9 +1041,10 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 		fmp4ListUpdateTo = 5.0
 		planSecPeriod    = 5.0
 		lastNewT         = time.Now()
+		debugLog, _      = t.common.K_v.LoadV(`debug模式`).(bool)
 	)
 
-	if v, ok := t.common.K_v.LoadV(`debug模式`).(bool); ok && v {
+	if debugLog {
 		fmp4Decoder.Debug = true
 		cancle := make(chan struct{})
 		defer close(cancle)
@@ -1063,8 +1056,8 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 				case <-time.After(time.Minute):
 				}
 				reqState := t.m4s_pool.State()
-				t.log.T(fmt.Sprintf("m4sPoolState pooled/no(%d/%d), inuse/no(%d/%d), sum(%d), qts(%.2f)",
-					reqState.Pooled, reqState.Nopooled, reqState.Inuse, reqState.Nouse, reqState.Sum, reqState.GetPerSec))
+				t.log.TF("m4sPoolState pooled/no(%d/%d), inuse/no(%d/%d), sum(%d), qts(%.2f)",
+					reqState.Pooled, reqState.Nopooled, reqState.Inuse, reqState.Nouse, reqState.Sum, reqState.GetPerSec)
 			}
 		}()
 	}
@@ -1083,11 +1076,26 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 		// 移除失效源
 		t.removeSer()
 
+		// 防止过快的下载
+		if needWaitSec := planSecPeriod - time.Since(lastNewT).Seconds(); needWaitSec > 0 {
+			time.Sleep(time.Duration(needWaitSec) * time.Second)
+		}
+
 		// 获取解析m3u8
 		{
-			// 防止过快的下载
-			if needWaitSec := planSecPeriod - time.Since(lastNewT).Seconds(); needWaitSec > 0 {
-				time.Sleep(time.Duration(needWaitSec) * time.Second)
+			// 获取更多服务器
+			{
+				n := t.common.ValidNum()
+				if d, ok := t.common.K_v.LoadV("fmp4获取更多服务器").(bool); ok && d && n <= 1 && len(t.common.Live) <= 5 {
+					t.log.I("获取更多服务器...")
+					if !t.fetchCheckStream() {
+						e = errors.New("全部流服务器发生故障")
+						break
+					}
+				} else if n == 0 {
+					e = errors.New("全部流服务器发生故障")
+					break
+				}
 			}
 
 			var m4s_links, guessCount, err = t.fetchParseM3U8(lastM4s, fmp4ListUpdateTo)
@@ -1144,76 +1152,74 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 		}
 
 		// 下载切片
-		for {
-			var downErr atomic.Bool
-			dCount := 0
-			for i := 0; i < len(download_seq); i++ {
-				// 已下载但还未移除的切片
-				if download_seq[i].status == 2 {
-					continue
-				}
-
-				// 每次最多只下载10个切片
-				if dCount >= 10 {
-					t.log.T(`延迟切片下载 数量(`, len(download_seq)-i, `)`)
-					break
-				}
-				dCount += 1
-
-				// 故障转移
-				if download_seq[i].status == 3 {
-					if linkUrl, e := url.Parse(download_seq[i].Url); e == nil {
-						// 将此切片服务器设置停用
-						// hadDisable := t.common.DisableLiveAuto(oldHost)
-						hadDisable := t.common.DisableLiveAutoByUuid(download_seq[i].SerUuid)
-						// 从其他服务器获取此切片
-						if vl := t.common.ValidLive(); vl == nil {
-							return errors.New(`全部流服务器故障`)
-						} else {
-							download_seq[i].replaceSer(vl)
-							if !hadDisable {
-								t.log.W(`切片下载失败，故障转移`, linkUrl.Host, ` -> `, vl.Host())
-							}
-						}
-						// download_seq[i].Url = linkUrl.String()
-					} else {
-						return errors.New(`切片url错误`)
-					}
-				}
-
-				done := downloadLimit.Block()
-				go func(link *m4s_link_item) {
-					defer done()
-
-					e := link.download(t.reqPool, reqf.Rval{
-						Timeout:             to * 1000,
-						CopyResponseTimeout: (to + 2) * 1000,
-						Proxy:               t.common.Proxy,
-						// change to keep-alive(default) to reuse tcp connection
-						// Header: map[string]string{
-						// 	`Connection`: `close`,
-						// },
-					})
-					if ActionErrFmp4DownloadCareTO.Catch(e) {
-						t.log.W(e.Error())
-					} else if e != nil {
-						downErr.Store(true)
-						if reqf.IsTimeout(e) {
-							t.log.W(fmt.Sprintf("fmp4切片下载超时s或许应该大于%d", to))
-						}
-						t.log.W(`切片下载失败`, link.Base, perrors.ErrorFormat(e, perrors.ErrActionInLineFunc))
-					}
-				}(download_seq[i])
-				// 间隔100ms发起
-				time.Sleep(time.Millisecond * 100)
+		for i, dCount := 0, 0; i < len(download_seq); i++ {
+			// 已下载但还未移除的切片
+			if download_seq[i].status == 2 {
+				continue
 			}
 
-			// 等待队列下载完成
-			downloadLimit.BlockAll()()
-
-			if !downErr.Load() {
+			// 每次最多只下载10个切片
+			if dCount >= 10 {
+				t.log.T(`延迟切片下载 数量(`, len(download_seq)-i, `)`)
 				break
 			}
+			dCount += 1
+
+			// 故障转移
+			if download_seq[i].status == 3 {
+				if download_seq[i].tryDownCount >= 3 {
+					t.log.W(`切片下载失败`, download_seq[i].Base, `失败次数大于3`)
+					return errors.New(`切片下载多次失败`)
+				} else if vl := t.common.ValidLive(); vl == nil {
+					t.log.W(`切片下载失败`, download_seq[i].Base, `无可用流服务器`)
+					return errors.New(`全部流服务器故障`)
+				} else {
+					// 从其他服务器获取此切片
+					t.log.W(`切片下载失败`, download_seq[i].Base, `故障转移`, vl.Host())
+					download_seq[i].replaceSer(vl)
+				}
+			}
+
+			done := downloadLimit.Block()
+			go func(link *m4s_link_item) {
+				defer done()
+
+				e := link.download(t.reqPool, reqf.Rval{
+					Timeout:             to * 1000,
+					CopyResponseTimeout: (to + 2) * 1000,
+					Proxy:               t.common.Proxy,
+					// change to keep-alive(default) to reuse tcp connection
+					// Header: map[string]string{
+					// 	`Connection`: `close`,
+					// },
+				})
+				if ActionErrFmp4DownloadCareTO.Catch(e) {
+					t.log.W(e.Error())
+				} else if e != nil {
+					// downErr.Store(true)
+					if reqf.IsTimeout(e) {
+						t.log.WF("fmp4切片下载超时s或许应该大于%d", to)
+					}
+					t.log.W(`切片下载失败`, link.Base, link.host(), perrors.ErrorFormat(e, perrors.ErrActionInLineFunc))
+					// 将此切片服务器设置停用
+					_ = t.common.DisableLiveAutoByUuid(link.SerUuid)
+				}
+			}(download_seq[i])
+			// 间隔100ms发起
+			time.Sleep(time.Millisecond * 100)
+		}
+
+		// 等待队列下载完成
+		downloadLimit.BlockAll()()
+
+		if debugLog {
+			ok := 0
+			for _, v := range download_seq {
+				if v.status == 2 {
+					ok += 1
+				}
+			}
+			t.log.TF("切片下载ok %v/%v", ok, len(download_seq))
 		}
 
 		// 传递已下载切片
@@ -1447,7 +1453,7 @@ func (t *M4SStream) Start() bool {
 					// 分段时长min
 					if tmp, ok := ms.common.K_v.LoadV("分段时长min").(float64); ok && tmp > 0 {
 						cutT := time.Duration(int64(time.Minute) * int64(tmp))
-						l.I(fmt.Sprintf("分段启动 %v", cutT))
+						l.IF("分段启动 %v", cutT)
 						defer time.AfterFunc(cutT, func() {
 							l.I(ms.common.Roomid, "ok")
 							ms.msg.Push_tag(`cut`, ms)

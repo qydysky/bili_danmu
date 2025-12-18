@@ -761,22 +761,17 @@ func (t *Common) Init() *Common {
 					panic("保存日志至db打开连接错误 " + e.Error())
 				}
 				if createok {
-					tx := psql.BeginTx[any](db, pctx.GenTOCtx(time.Second*5))
-					tx.Do(&psql.SqlFunc[any]{
-						Sql:        create,
-						SkipSqlErr: true,
-					})
-					if _, e := tx.Fin(); e != nil {
+					if e := psql.BeginTx(db, pctx.GenTOCtx(time.Second*5)).SimpleDo(create).Run(); !psql.HasErrTx(e, nil, psql.ErrExec) {
 						panic("保存日志至db打开连接错误 " + e.Error())
 					}
 				}
 				switch dbname {
 				case "postgres":
-					t.Log = t.Log.LDB(db, psql.PlaceHolderB, insert)
+					t.Log = t.Log.LDB(psql.NewTxPool(db), psql.PlaceHolderB, insert)
 				case "mysql":
-					t.Log = t.Log.LDB(db, psql.PlaceHolderB, insert)
+					t.Log = t.Log.LDB(psql.NewTxPool(db), psql.PlaceHolderB, insert)
 				case "sqlite":
-					t.Log = t.Log.LDB(db, psql.PlaceHolderA, insert)
+					t.Log = t.Log.LDB(psql.NewTxPool(db).RMutex(new(sync.RWMutex)), psql.PlaceHolderA, insert)
 				default:
 				}
 			}

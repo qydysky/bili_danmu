@@ -2,7 +2,6 @@ package F
 
 import (
 	"errors"
-	"fmt"
 	"net/url"
 	"os"
 	"strconv"
@@ -1082,7 +1081,7 @@ func (t *GetFuncV2) configStreamType(sts []struct {
 		if _, ok := t.common.Qn[t.common.Live_qn]; !ok {
 			apilog.W(`未知的清晰度`, t.common.Live_qn)
 		}
-		apilog.T(fmt.Sprintf("获取到 %d 条直播流 %s %s %s", len(t.common.Live), t.common.Qn[t.common.Live_qn], wantTypes[chosen].Format_name, wantTypes[chosen].Codec_name))
+		apilog.TF("当前有效 %d/%d 条直播流 %s %s %s", t.common.ValidNum(), len(t.common.Live), t.common.Qn[t.common.Live_qn], wantTypes[chosen].Format_name, wantTypes[chosen].Codec_name)
 	}()
 
 	// 期望类型
@@ -1141,13 +1140,11 @@ func (t *GetFuncV2) configStreamType(sts []struct {
 							Url:        v1.Host + v.BaseURL + v1.Extra,
 							CreateTime: time.Now(),
 						}
-
 						if query, e := url.ParseQuery(v1.Extra); e == nil {
 							if expires, e := strconv.Atoi(query.Get("expires")); e == nil {
 								item.Expires = time.Now().Add(time.Duration(expires * int(time.Second)))
 							}
 						}
-
 						t.common.Live = append(t.common.Live, &item)
 					}
 
