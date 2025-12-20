@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -619,7 +620,10 @@ func (t replyF) watched_change(s string) {
 	// fmt.Printf("\t观看人数:%d\n", data.Data.Num)
 	t.Watched = data.Data.Num
 	var pperm = float64(t.Watched) / float64(time.Since(t.Live_Start_Time)/time.Minute)
-	msglog.BaseAdd("房").LShow(false).I("观看人数", data.Data.Num, fmt.Sprintf(" avg:%.1f人/分", pperm))
+	if !math.IsInf(pperm, 0) {
+		pperm = 0
+	}
+	msglog.BaseAdd("房").LShow(false).IF("观看人数 %d avg:%.1f人/分", data.Data.Num, pperm)
 }
 
 // Msg-特殊礼物，当前仅观察到节奏风暴
