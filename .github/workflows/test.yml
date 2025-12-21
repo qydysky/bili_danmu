@@ -106,7 +106,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: ubuntu_go${{ matrix.go }}.zip
-        path: ./ubuntu_go${{ matrix.go }}.zip
+        path: ./demo
         
   w-build:
     name: build_windows_go
@@ -153,7 +153,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: windows_go${{ matrix.go }}.zip
-        path: ./windows_go${{ matrix.go }}.zip
+        path: ./demo
        
   mac-build:
     name: build_macos_go
@@ -200,4 +200,4 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: macos_go${{ matrix.go }}.zip
-        path: ./macos_go${{ matrix.go }}.zip
+        path: ./demo
