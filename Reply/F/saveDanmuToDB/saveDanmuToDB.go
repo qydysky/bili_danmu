@@ -3,7 +3,6 @@ package savedanmutodb
 import (
 	"database/sql"
 	"errors"
-	"sync"
 	"sync/atomic"
 	"time"
 
@@ -57,10 +56,10 @@ func (t *saveDanmuToDB) Init(config any, fl *log.Log) {
 			if db, e := sql.Open(dbname, url); e != nil {
 				t.fl.E(e)
 			} else {
-				t.db = psql.NewTxPool(db)
 				if dbname == "sqlite" {
-					t.db.RMutex(new(sync.RWMutex))
+					db.SetMaxOpenConns(1)
 				}
+				t.db = psql.NewTxPool(db)
 				if createok {
 					if e := t.db.BeginTx(pctx.GenTOCtx(time.Second * 5)).SimpleDo(create).Run(); !psql.HasErrTx(e, psql.ErrExec) {
 						t.fl.E(e)
