@@ -620,7 +620,7 @@ func (t replyF) watched_change(s string) {
 	// fmt.Printf("\t观看人数:%d\n", data.Data.Num)
 	t.Watched = data.Data.Num
 	var pperm = float64(t.Watched) / float64(time.Since(t.Live_Start_Time)/time.Minute)
-	if math.IsInf(pperm, 0) {
+	if math.IsInf(pperm, 0) || math.IsNaN(pperm) {
 		pperm = 0
 	}
 	msglog.BaseAdd("房").LShow(false).IF("观看人数 %d avg:%.1f人/分", data.Data.Num, pperm)
