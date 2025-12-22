@@ -771,7 +771,8 @@ func (t *Common) Init() *Common {
 				case "mysql":
 					t.Log = t.Log.LDB(psql.NewTxPool(db), psql.PlaceHolderB, insert)
 				case "sqlite":
-					t.Log = t.Log.LDB(psql.NewTxPool(db).RMutex(new(sync.RWMutex)), psql.PlaceHolderA, insert)
+					db.SetMaxOpenConns(1)
+					t.Log = t.Log.LDB(psql.NewTxPool(db), psql.PlaceHolderA, insert)
 				default:
 				}
 			}
