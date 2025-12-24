@@ -17,7 +17,8 @@ var msglog = c.C.Log.Base(`Msg`)
 
 // Msg类型数据处理方法map
 var Msg_map = map[string]func(replyF, string){
-	`OTHER_SLICE_LOADING_RESULT`:           nil, // 切片
+	`FULL_SCREEN_MASK_OPEN`:                replyF.fullScreenMaskOpen, // 房间全屏提示
+	`OTHER_SLICE_LOADING_RESULT`:           nil,                       // 切片
 	`PLAYURL_RELOAD_MASTER`:                nil,
 	`COLLABORATION_LIVE_POPULARITY`:        nil, // 跨房直播活跃度
 	`COLLABORATION_LIVE_WATCHED`:           nil, // 跨房直播观看数

@@ -195,6 +195,18 @@ func (t replyF) rank_changed(s string) {
 	msglog.I(tmp)
 }
 
+// 房间全屏提示
+func (t replyF) fullScreenMaskOpen(s string) {
+	msglog := msglog.BaseAdd("房")
+	var j ws_msg.FULL_SCREEN_MASK_OPEN
+	if e := json.Unmarshal([]byte(s), &j); e != nil {
+		msglog.E(e)
+		return
+	}
+	Gui_show(j.Data.Title, `0room`)
+	msglog.WF(j.Data.Title)
+}
+
 // 房间封禁提示
 func (t replyF) room_lock(s string) {
 	msglog := msglog.BaseAdd("房")
