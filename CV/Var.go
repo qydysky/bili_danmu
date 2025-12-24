@@ -746,9 +746,10 @@ func (t *Common) Init() *Common {
 		}
 	}
 
+	t.Log = plog.New()
 	{
 		v, _ := t.K_v.LoadV("日志文件输出").(string)
-		t.Log = plog.New(&plog.Log{File: v})
+		t.Log.LFile(v)
 
 		if v, ok := t.K_v.LoadV(`保存日志至db`).(map[string]any); ok && len(v) != 0 {
 			dbname, dbnameok := v["dbname"].(string)
