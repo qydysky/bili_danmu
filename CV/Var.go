@@ -84,6 +84,7 @@ type Common struct {
 	Proxy             string                           `json:"-"`            //全局代理
 	SerLocation       int                              `json:"-"`            //服务器时区
 	AcceptQn          map[int]string                   `json:"-"`            //允许的直播流质量
+	AcceptQnUpdated   time.Time                        `json:"-"`            //允许的直播流质量更新时间
 	Qn                map[int]string                   `json:"-"`            //全部直播流质量
 	AllStreamType     map[string]StreamType            `json:"-"`            //直播流类型
 	K_v               syncmap.Map                      `json:"-"`            //配置文件
@@ -227,6 +228,10 @@ func (t *Common) IsOn(key string) bool {
 	return ok && v
 }
 
+func (t *Common) QnMatched() bool {
+	return t.Live_want_qn == t.Live_qn
+}
+
 func (t *Common) Copy() *Common {
 	var c = Common{
 		Login:             t.Login,
@@ -261,17 +266,17 @@ func (t *Common) Copy() *Common {
 		Proxy:             t.Proxy,
 		SerLocation:       t.SerLocation,
 		AcceptQn:          syncmap.Copy(t.AcceptQn),
+		AcceptQnUpdated:   t.AcceptQnUpdated,
 		Qn:                syncmap.Copy(t.Qn),
-		// StreamType:        t.StreamType,
-		AllStreamType: syncmap.Copy(t.AllStreamType),
-		K_v:           t.K_v.Copy(),
-		Log:           t.Log,
-		Danmu_Main_mq: t.Danmu_Main_mq,
-		ReqPool:       t.ReqPool,
-		SerF:          t.SerF,
-		SerLimit:      t.SerLimit,
-		StartT:        t.StartT,
-		Cache:         *t.Cache.Copy(),
+		AllStreamType:     syncmap.Copy(t.AllStreamType),
+		K_v:               t.K_v.Copy(),
+		Log:               t.Log,
+		Danmu_Main_mq:     t.Danmu_Main_mq,
+		ReqPool:           t.ReqPool,
+		SerF:              t.SerF,
+		SerLimit:          t.SerLimit,
+		StartT:            t.StartT,
+		Cache:             *t.Cache.Copy(),
 	}
 
 	return &c
