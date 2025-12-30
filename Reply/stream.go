@@ -303,7 +303,7 @@ func (t *M4SStream) fetchCheckStream() bool {
 	// 直播流仅清晰度
 	if v, ok := t.common.K_v.LoadV("直播流仅清晰度").(bool); ok && v {
 		if _, ok := t.common.Qn[t.config.want_qn]; ok {
-			if t.config.want_qn != t.common.Live_qn {
+			if !t.common.QnMatched() {
 				if t.common.Login {
 					_log.W(`仅清晰度true,当前清晰度`, t.common.Qn[t.common.Live_qn])
 					return false
@@ -860,10 +860,12 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 							// 时间段内未接收到任何数据
 							return
 						}
-						if v, ok := c.C.K_v.LoadV(`直播流清晰度`).(float64); ok {
-							if t.config.want_qn != int(v) {
-								t.log.I("直播流清晰度改变:", t.common.Qn[t.config.want_qn], "=>", t.common.Qn[int(v)])
-								t.config.want_qn = int(v)
+
+						if v1, _ := c.C.K_v.LoadV(`直播流清晰度恢复`).(bool); v1 && !t.common.QnMatched() {
+							cuQn := t.common.Qn[t.common.Live_qn]
+							F.Api.Get(t.common, `AcceptQn`)
+							if n, ok := t.common.AcceptQn[t.common.Live_want_qn]; ok {
+								t.log.I("直播流清晰度改变:", cuQn, "=>", n)
 								return
 							}
 						}
@@ -1311,10 +1313,11 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 			break
 		}
 
-		if v, ok := c.C.K_v.LoadV(`直播流清晰度`).(float64); ok {
-			if t.config.want_qn != int(v) {
-				t.log.I("直播流清晰度改变:", t.common.Qn[t.config.want_qn], "=>", t.common.Qn[int(v)])
-				t.config.want_qn = int(v)
+		if v1, _ := c.C.K_v.LoadV(`直播流清晰度恢复`).(bool); v1 && !t.common.QnMatched() {
+			cuQn := t.common.Qn[t.common.Live_qn]
+			F.Api.Get(t.common, `AcceptQn`)
+			if n, ok := t.common.AcceptQn[t.common.Live_want_qn]; ok {
+				t.log.I("直播流清晰度改变:", cuQn, "=>", n)
 				return
 			}
 		}
@@ -1591,6 +1594,11 @@ func (t *M4SStream) Start() bool {
 			})()
 		}
 
+		// var testChangeQn = sync.OnceFunc(func() {
+		// 	delete(t.common.AcceptQn, 10000)
+		// 	t.config.want_qn = 10000
+		// 	t.common.Live_want_qn = 10000
+		// })
 		// 主循环
 		for !pctx.Done(t.Status) {
 			// 是否在直播
@@ -1608,6 +1616,8 @@ func (t *M4SStream) Start() bool {
 				time.Sleep(time.Second * 5)
 				continue
 			}
+
+			// testChangeQn()
 
 			// 保存流
 			err := t.saveStream()

@@ -2,6 +2,7 @@ package F
 
 import (
 	"errors"
+	"fmt"
 	"net/url"
 	"os"
 	"strconv"
@@ -19,6 +20,8 @@ import (
 	"github.com/skratchdot/open-golang/open"
 )
 
+var changeQnSec = 30 * time.Second
+
 var Api = NewGetFuncV2()
 
 type GetFuncV2 struct {
@@ -34,20 +37,20 @@ func NewGetFuncV2() *GetFuncV2 {
 	t := &GetFuncV2{api: pkf.NewKeyFunc()}
 	t.api.Reg(`CookieNoBlock`, t.isValid(`Cookie`), t.getCookieNoBlock)
 	t.api.Reg(`Cookie`, t.isValid(`Cookie`), t.getCookie)
-	t.api.Reg(`UpUid`, t.isValid(`UpUid`), t.getRoomBaseInfo, t.getInfoByRoom, t.getRoomPlayInfo, t.html)
-	t.api.Reg(`Live_Start_Time`, t.isValid(`Live_Start_Time`), t.getRoomBaseInfo, t.getInfoByRoom, t.getRoomPlayInfo, t.html)
-	t.api.Reg(`Liveing`, t.isValid(`Liveing`), t.getRoomBaseInfo, t.getInfoByRoom, t.getRoomPlayInfo, t.html)
-	t.api.Reg(`Title`, t.isValid(`Title`), t.getRoomBaseInfo, t.getInfoByRoom, t.html)
-	t.api.Reg(`Uname`, t.isValid(`Uname`), t.getRoomBaseInfo, t.getInfoByRoom, t.html)
-	t.api.Reg(`ParentAreaID`, t.isValid(`ParentAreaID`), t.getRoomBaseInfo, t.getInfoByRoom, t.html)
-	t.api.Reg(`AreaID`, t.isValid(`AreaID`), t.getRoomBaseInfo, t.getInfoByRoom, t.html)
+	t.api.Reg(`UpUid`, t.isValid(`UpUid`), t.getRoomBaseInfo, t.getInfoByRoom, t.getRoomPlayInfoLive, t.htmlLive)
+	t.api.Reg(`Live_Start_Time`, t.isValid(`Live_Start_Time`), t.getRoomBaseInfo, t.getInfoByRoom, t.getRoomPlayInfoLive, t.htmlLive)
+	t.api.Reg(`Liveing`, t.isValid(`Liveing`), t.getRoomBaseInfo, t.getInfoByRoom, t.getRoomPlayInfoLive, t.htmlLive)
+	t.api.Reg(`Title`, t.isValid(`Title`), t.getRoomBaseInfo, t.getInfoByRoom, t.htmlLive)
+	t.api.Reg(`Uname`, t.isValid(`Uname`), t.getRoomBaseInfo, t.getInfoByRoom, t.htmlLive)
+	t.api.Reg(`ParentAreaID`, t.isValid(`ParentAreaID`), t.getRoomBaseInfo, t.getInfoByRoom, t.htmlLive)
+	t.api.Reg(`AreaID`, t.isValid(`AreaID`), t.getRoomBaseInfo, t.getInfoByRoom, t.htmlLive)
 	t.api.Reg(`Roomid`, t.isValid(`Roomid`), t.getRoomBaseInfo, t.getInfoByRoom)
-	t.api.Reg(`GuardNum`, t.isValid(`GuardNum`), t.getGuardNum, t.getInfoByRoom, t.getRoomPlayInfo, t.html)
-	t.api.Reg(`Note`, t.isValid(`Note`), t.getPopularAnchorRank, t.getInfoByRoom, t.html)
-	t.api.Reg(`Locked`, t.isValid(`Locked`), t.getInfoByRoom, t.html)
-	t.api.Reg(`Live_qn`, t.isValid(`Live_qn`), t.getRoomPlayInfo, t.html)
-	t.api.Reg(`AcceptQn`, t.isValid(`AcceptQn`), t.getRoomPlayInfo, t.html)
-	t.api.Reg(`Live`, t.isValid(`Live`), t.getRoomPlayInfoByQn, t.getRoomPlayInfo, t.html)
+	t.api.Reg(`GuardNum`, t.isValid(`GuardNum`), t.getGuardNum, t.getInfoByRoom, t.getRoomPlayInfoLive, t.htmlLive)
+	t.api.Reg(`Note`, t.isValid(`Note`), t.getPopularAnchorRank, t.getInfoByRoom, t.htmlLive)
+	t.api.Reg(`Locked`, t.isValid(`Locked`), t.getInfoByRoom, t.htmlLive)
+	t.api.Reg(`Live_qn`, t.isValid(`Live_qn`), t.getRoomPlayInfoLive, t.htmlLive)
+	t.api.Reg(`AcceptQn`, t.isValid(`AcceptQn`), t.getRoomPlayInfoAccpet, t.htmlAccpet)
+	t.api.Reg(`Live`, t.isValid(`Live`), t.getRoomPlayInfoByQnLive, t.getRoomPlayInfoLive, t.htmlLive)
 	t.api.Reg(`Token`, t.isValid(`Token`), t.getDanmuInfo)
 	t.api.Reg(`WSURL`, t.isValid(`WSURL`), t.getDanmuInfo)
 	// t.api.Reg(`LIVE_BUVID`, t.isValid(`LIVE_BUVID`), t.getLiveBuvid)
@@ -471,7 +474,18 @@ func (t *GetFuncV2) getInfoByRoom() (missKey string, err error) {
 	return
 }
 
-func (t *GetFuncV2) getRoomPlayInfo() (missKey string, err error) {
+func (t *GetFuncV2) getRoomPlayInfoLive() (missKey string, err error) {
+	return t.getRoomPlayInfo(true, true)
+}
+
+func (t *GetFuncV2) getRoomPlayInfoAccpet() (missKey string, err error) {
+	if time.Since(t.common.AcceptQnUpdated) < changeQnSec {
+		return "", nil
+	}
+	return t.getRoomPlayInfo(true, false)
+}
+
+func (t *GetFuncV2) getRoomPlayInfo(updateAcceptQn bool, appendLive bool) (missKey string, err error) {
 	apilog := apilog.BaseAdd(`getRoomPlayInfo`)
 
 	biliApi := biliApi.Inter(func(ce error) BiliApiInter {
@@ -506,60 +520,34 @@ func (t *GetFuncV2) getRoomPlayInfo() (missKey string, err error) {
 			if !t.common.Liveing {
 				t.common.Live_qn = 0
 				t.common.AcceptQn = t.common.Qn
+				t.common.AcceptQnUpdated = time.Now()
 				t.common.Live = t.common.Live[:0]
 				return "", nil
 			}
 
 			//当前直播流
-			var s = make([]struct {
-				ProtocolName string
-				Format       []struct {
-					FormatName string
-					Codec      []struct {
-						CodecName string
-						CurrentQn int
-						AcceptQn  []int
-						BaseURL   string
-						URLInfo   []struct {
-							Host      string
-							Extra     string
-							StreamTTL int
-						}
-						HdrQn     any
-						DolbyType int
-						AttrName  string
-					}
-				}
-			}, len(res.Streams))
+			var s = make([]streamType, len(res.Streams))
 			for i := 0; i < len(res.Streams); i++ {
-				s[i] = struct {
-					ProtocolName string
-					Format       []struct {
-						FormatName string
-						Codec      []struct {
-							CodecName string
-							CurrentQn int
-							AcceptQn  []int
-							BaseURL   string
-							URLInfo   []struct {
-								Host      string
-								Extra     string
-								StreamTTL int
-							}
-							HdrQn     any
-							DolbyType int
-							AttrName  string
-						}
-					}
-				}(res.Streams[i])
+				s[i] = streamType(res.Streams[i])
 			}
-			t.configStreamType(s)
+			t.configStreamType(s, updateAcceptQn, appendLive)
 		}
 	}
 	return
 }
 
-func (t *GetFuncV2) html() (missKey string, err error) {
+func (t *GetFuncV2) htmlLive() (missKey string, err error) {
+	return t.html(true, true)
+}
+
+func (t *GetFuncV2) htmlAccpet() (missKey string, err error) {
+	if time.Since(t.common.AcceptQnUpdated) < changeQnSec {
+		return "", nil
+	}
+	return t.html(true, false)
+}
+
+func (t *GetFuncV2) html(updateAcceptQn bool, appendLive bool) (missKey string, err error) {
 	apilog := apilog.BaseAdd(`html`)
 
 	biliApi := biliApi.Inter(func(ce error) BiliApiInter {
@@ -601,12 +589,17 @@ func (t *GetFuncV2) html() (missKey string, err error) {
 				if !t.common.Liveing {
 					t.common.Live_qn = 0
 					t.common.AcceptQn = t.common.Qn
+					t.common.AcceptQnUpdated = time.Now()
 					t.common.Live = t.common.Live[:0]
 					return "", nil
 				}
 
 				//当前直播流
-				t.configStreamType(j.RoomInitRes.Data.PlayurlInfo.Playurl.Stream)
+				var s = make([]streamType, len(j.RoomInitRes.Data.PlayurlInfo.Playurl.Stream))
+				for i := 0; i < len(j.RoomInitRes.Data.PlayurlInfo.Playurl.Stream); i++ {
+					s[i] = streamType(j.RoomInitRes.Data.PlayurlInfo.Playurl.Stream[i])
+				}
+				t.configStreamType(s, updateAcceptQn, appendLive)
 			}
 
 			//Roominfores
@@ -697,7 +690,19 @@ func (t *GetFuncV2) getPopularAnchorRank() (missKey string, err error) {
 	return
 }
 
-func (t *GetFuncV2) getRoomPlayInfoByQn() (missKey string, err error) {
+func (t *GetFuncV2) getRoomPlayInfoByQnLive() (missKey string, err error) {
+	return t.getRoomPlayInfoByQn(true, true)
+}
+
+func (t *GetFuncV2) getRoomPlayInfoByQnAccpet() (missKey string, err error) {
+	fmt.Println(time.Since(t.common.AcceptQnUpdated))
+	if time.Since(t.common.AcceptQnUpdated) < changeQnSec {
+		return "", nil
+	}
+	return t.getRoomPlayInfoByQn(true, false)
+}
+
+func (t *GetFuncV2) getRoomPlayInfoByQn(updateAcceptQn bool, appendLive bool) (missKey string, err error) {
 	apilog := apilog.BaseAdd(`getRoomPlayInfoByQn`)
 
 	biliApi := biliApi.Inter(func(ce error) BiliApiInter {
@@ -748,54 +753,17 @@ func (t *GetFuncV2) getRoomPlayInfoByQn() (missKey string, err error) {
 			if !t.common.Liveing {
 				t.common.Live_qn = 0
 				t.common.AcceptQn = t.common.Qn
+				t.common.AcceptQnUpdated = time.Now()
 				t.common.Live = t.common.Live[:0]
 				return "", nil
 			}
 
 			//当前直播流
-			var s = make([]struct {
-				ProtocolName string
-				Format       []struct {
-					FormatName string
-					Codec      []struct {
-						CodecName string
-						CurrentQn int
-						AcceptQn  []int
-						BaseURL   string
-						URLInfo   []struct {
-							Host      string
-							Extra     string
-							StreamTTL int
-						}
-						HdrQn     any
-						DolbyType int
-						AttrName  string
-					}
-				}
-			}, len(res.Streams))
+			var s = make([]streamType, len(res.Streams))
 			for i := 0; i < len(res.Streams); i++ {
-				s[i] = struct {
-					ProtocolName string
-					Format       []struct {
-						FormatName string
-						Codec      []struct {
-							CodecName string
-							CurrentQn int
-							AcceptQn  []int
-							BaseURL   string
-							URLInfo   []struct {
-								Host      string
-								Extra     string
-								StreamTTL int
-							}
-							HdrQn     any
-							DolbyType int
-							AttrName  string
-						}
-					}
-				}(res.Streams[i])
+				s[i] = streamType(res.Streams[i])
 			}
-			t.configStreamType(s)
+			t.configStreamType(s, updateAcceptQn, appendLive)
 		}
 	}
 	return
@@ -1046,8 +1014,7 @@ func (t *GetFuncV2) silver2Coin() (missKey string, err error) {
 	return
 }
 
-// 配置直播流
-func (t *GetFuncV2) configStreamType(sts []struct {
+type streamType struct {
 	ProtocolName string
 	Format       []struct {
 		FormatName string
@@ -1066,7 +1033,10 @@ func (t *GetFuncV2) configStreamType(sts []struct {
 			AttrName  string
 		}
 	}
-}) {
+}
+
+// 配置直播流
+func (t *GetFuncV2) configStreamType(sts []streamType, updateAcceptQn, appendLive bool) {
 	var (
 		wantTypes []c.StreamType
 		chosen    = -1
@@ -1123,29 +1093,35 @@ func (t *GetFuncV2) configStreamType(sts []struct {
 						t.common.Live_want_qn = v.CurrentQn
 					}
 					//允许的清晰度
-					{
-						var tmp = make(map[int]string)
+					if appendLive || updateAcceptQn {
+						if t.common.AcceptQn == nil {
+							t.common.AcceptQn = make(map[int]string)
+						} else {
+							clear(t.common.AcceptQn)
+						}
 						for _, v := range v.AcceptQn {
 							if s, ok := t.common.Qn[v]; ok {
-								tmp[v] = s
+								t.common.AcceptQn[v] = s
 							}
 						}
-						t.common.AcceptQn = tmp
+						t.common.AcceptQnUpdated = time.Now()
 					}
 					//直播流链接
-					for _, v1 := range v.URLInfo {
-						item := c.LiveQn{
-							Uuid:       uuid.NewString(),
-							Codec:      v.CodecName,
-							Url:        v1.Host + v.BaseURL + v1.Extra,
-							CreateTime: time.Now(),
-						}
-						if query, e := url.ParseQuery(v1.Extra); e == nil {
-							if expires, e := strconv.Atoi(query.Get("expires")); e == nil {
-								item.Expires = time.Now().Add(time.Duration(expires * int(time.Second)))
+					if appendLive {
+						for _, v1 := range v.URLInfo {
+							item := c.LiveQn{
+								Uuid:       uuid.NewString(),
+								Codec:      v.CodecName,
+								Url:        v1.Host + v.BaseURL + v1.Extra,
+								CreateTime: time.Now(),
 							}
+							if query, e := url.ParseQuery(v1.Extra); e == nil {
+								if expires, e := strconv.Atoi(query.Get("expires")); e == nil {
+									item.Expires = time.Now().Add(time.Duration(expires * int(time.Second)))
+								}
+							}
+							t.common.Live = append(t.common.Live, &item)
 						}
-						t.common.Live = append(t.common.Live, &item)
 					}
 
 					// 已选定并设置好参数 退出
