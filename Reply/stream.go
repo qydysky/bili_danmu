@@ -1107,16 +1107,10 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 			var m4s_links, guessCount, err = t.fetchParseM3U8(lastM4s, fmp4ListUpdateTo)
 			if err != nil {
 				t.log.E(`获取解析m3u8发生错误`, err)
-				// if len(download_seq) != 0 {
-				// 	continue
-				// }
 				if errors.Is(err, ErrFetchParseM3U8AllFail) {
 					continue
 				}
-				// if !reqf.IsTimeout(err) {
-				// 	e = err
-				// 	break
-				// }
+				break
 			}
 
 			countInLastPeriod := len(m4s_links)
