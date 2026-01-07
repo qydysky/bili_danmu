@@ -452,6 +452,10 @@ func (t *M4SStream) fetchCheckStream() bool {
 	return t.common.ValidLive() != nil
 }
 
+var (
+	ErrFetchParseM3U8AllFail = errors.New("ErrFetchParseM3U8AllFail")
+)
+
 func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo float64) (m4s_links []*m4s_link_item, guessCount int, e error) {
 	// 开始请求
 	r := t.reqPool.Get()
@@ -492,7 +496,7 @@ func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo floa
 			v.DisableAuto()
 			t.log.WF("服务器 %s 发生故障 %s", F.ParseHost(v.Url), perrors.ErrorFormat(err, perrors.ErrActionInLineFunc))
 			if t.common.ValidLive() == nil {
-				e = errors.New("全部流服务器发生故障")
+				e = ErrFetchParseM3U8AllFail
 				break
 			}
 			continue
@@ -544,7 +548,7 @@ func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo floa
 				t.log.WF("服务器 %s 发生故障 %v", F.ParseHost(v.Url), err)
 				v.DisableAuto()
 				if t.common.ValidLive() == nil {
-					e = errors.New("全部切片服务器发生故障")
+					e = ErrFetchParseM3U8AllFail
 					break
 				}
 			}
@@ -570,7 +574,7 @@ func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo floa
 				v.DisableAuto()
 				t.log.WF("服务器 %s 发生故障 %.2f 秒未产出切片", F.ParseHost(v.Url), time.Since(lastM4s.createdTime).Seconds())
 				if t.common.ValidLive() == nil {
-					e = errors.New("全部切片服务器发生故障")
+					e = ErrFetchParseM3U8AllFail
 					break
 				}
 				continue
@@ -589,7 +593,7 @@ func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo floa
 				v.DisableAuto()
 				t.log.WF("服务器 %s 发生故障 %d 秒产出了 %d 切片", F.ParseHost(v.Url), int(timed), nos-noe)
 				if t.common.ValidLive() == nil {
-					e = errors.New("全部切片服务器发生故障")
+					e = ErrFetchParseM3U8AllFail
 					break
 				}
 				continue
@@ -623,9 +627,9 @@ func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo floa
 		return
 	}
 
-	if e != nil {
-		e = errors.New(e.Error() + " 未能找到可用流服务器")
-	}
+	// if e != nil {
+	// 	e = errors.New(e.Error() + " 未能找到可用流服务器")
+	// }
 	return
 }
 
@@ -1106,10 +1110,13 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 				// if len(download_seq) != 0 {
 				// 	continue
 				// }
-				if !reqf.IsTimeout(err) {
-					e = err
-					break
+				if errors.Is(err, ErrFetchParseM3U8AllFail) {
+					continue
 				}
+				// if !reqf.IsTimeout(err) {
+				// 	e = err
+				// 	break
+				// }
 			}
 
 			countInLastPeriod := len(m4s_links)
