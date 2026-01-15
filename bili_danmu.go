@@ -371,7 +371,7 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *plog.Log, common *c.C
 		danmulog.T("连接 " + v)
 		u, _ := url.Parse(v)
 		ws_c, err := ws.New_client(&ws.Client{
-			BufSize:           150,
+			// BufSize:           150,
 			Url:               v,
 			RTOMs:             (heartinterval + 5) * 1000,
 			WTOMs:             (heartinterval + 5) * 1000,
@@ -390,17 +390,17 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *plog.Log, common *c.C
 			},
 		})
 		if err != nil {
-			danmulog.E("连接错误", err)
+			danmulog.E("初始化连接错误", err)
 			continue
 		}
 		wsmsg, err := ws_c.Handle()
 		if err != nil {
-			danmulog.E("连接错误", err)
+			danmulog.E("尝试连接错误", err)
 			continue
 		}
 		if ws_c.Isclose() {
 			if err := ws_c.Error(); err != nil {
-				danmulog.E("连接错误", err)
+				danmulog.E("连接时错误", err)
 			}
 			continue
 		}
@@ -578,7 +578,7 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *plog.Log, common *c.C
 			}
 
 			if err := ws_c.Error(); err != nil {
-				danmulog.E("连接错误", err)
+				danmulog.E("结束连接错误", err)
 			}
 
 			cancelfunc()
