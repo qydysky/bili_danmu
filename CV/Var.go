@@ -1016,8 +1016,7 @@ func DefaultHttpFunc(c *Common, w http.ResponseWriter, r *http.Request, method .
 		return true
 	}
 	//method
-	if !web.IsMethod(r, method...) {
-		web.WithStatusCode(w, http.StatusMethodNotAllowed)
+	if !web.MethodFiliter(w, r, method...) {
 		return true
 	}
 	//limit

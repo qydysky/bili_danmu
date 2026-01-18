@@ -29,7 +29,6 @@ import (
 	videoInfo "github.com/qydysky/bili_danmu/Reply/F/videoInfo"
 	send "github.com/qydysky/bili_danmu/Send"
 
-	compress "github.com/qydysky/part/compress"
 	pctx "github.com/qydysky/part/ctx"
 	perrors "github.com/qydysky/part/errors"
 	file "github.com/qydysky/part/file"
@@ -322,14 +321,13 @@ func (t *PlayItemlive) getLiveDir(pareDir string) (string, error) {
 }
 
 type PlayCut struct {
-	Title      string         `json:"title"`
-	LiveDir    string         `json:"liveDir,omitempty"`
-	liveDirExp *regexp.Regexp `json:"-"`
-	St         string         `json:"st,omitempty"`
-	stt        time.Duration  `json:"-"`
-	Et         string         `json:"et,omitempty"`
-	ett        time.Duration  `json:"-"`
-	Dur        string         `json:"dur,omitempty"`
+	Title   string        `json:"title"`
+	LiveDir string        `json:"liveDir,omitempty"`
+	St      string        `json:"st,omitempty"`
+	stt     time.Duration `json:"-"`
+	Et      string        `json:"et,omitempty"`
+	ett     time.Duration `json:"-"`
+	Dur     string        `json:"dur,omitempty"`
 }
 
 func (t *PlayCut) MarshalJSON() ([]byte, error) {
@@ -368,23 +366,8 @@ func (t *PlayCut) UnmarshalJSON(b []byte) (e error) {
 		if t.ett > 0 && tmp.Dur == "" {
 			t.Dur = (t.ett - t.stt).String()
 		}
-		t.liveDirExp, _ = regexp.Compile(t.LiveDir)
 	}
 	return
-}
-
-func (t *PlayCut) getLiveDir(pareDir string) (string, error) {
-	if t.liveDirExp == nil {
-		return pareDir + "/" + t.LiveDir, nil
-	} else if dirs, err := file.Open(pareDir + "/").DirFiles(func(fi os.FileInfo) bool {
-		return !t.liveDirExp.MatchString(fi.Name())
-	}); err != nil {
-		return pareDir + "/" + t.LiveDir, err
-	} else if len(dirs) != 1 {
-		return t.LiveDir, ErrMultiDirMatched
-	} else {
-		return dirs[0], nil
-	}
 }
 
 func init() {
@@ -460,10 +443,9 @@ func init() {
 				return
 			}
 
-			b, _ := f.ReadAll(humanize.KByte, 10*humanize.MByte)
-			b, _ = compress.InGzip(b, 1)
-			w.Header().Set("Content-Encoding", "gzip")
-			_, _ = w.Write(b)
+			wf, close := pweb.WithEncoding(w, r)
+			_ = f.CopyToIoWriter(wf, pio.CopyConfig{})
+			_ = close()
 		})
 
 		// 直播流文件弹幕统计apis
