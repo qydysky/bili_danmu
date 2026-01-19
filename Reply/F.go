@@ -308,15 +308,15 @@ func (t *PlayItemlive) UnmarshalJSON(b []byte) (e error) {
 
 func (t *PlayItemlive) getLiveDir(pareDir string) (string, error) {
 	if t.liveDirExp == nil {
-		return pareDir + "/" + t.LiveDir, nil
+		return t.LiveDir, nil
 	} else if dirs, err := file.Open(pareDir + "/").DirFiles(func(fi os.FileInfo) bool {
 		return !t.liveDirExp.MatchString(fi.Name())
 	}); err != nil {
-		return pareDir + "/" + t.LiveDir, err
+		return t.LiveDir, err
 	} else if len(dirs) != 1 {
 		return t.LiveDir, ErrMultiDirMatched
 	} else {
-		return dirs[0], nil
+		return dirs[0].SelfName(), nil
 	}
 }
 
@@ -499,7 +499,7 @@ func init() {
 								for j, live := range ps.Range(playlists[0].Lives) {
 									if liveDir, e := live.getLiveDir(dir); e != nil {
 										flog.W("获取弹幕统计", e)
-									} else if e := dcpmi.GetRec4(liveDir, &points); e != nil {
+									} else if e := dcpmi.GetRec4(dir+"/"+liveDir, &points); e != nil {
 										if !errors.Is(e, os.ErrNotExist) {
 											flog.W("获取弹幕统计", e)
 										}
@@ -696,7 +696,7 @@ func init() {
 								if liveDir, err := live.getLiveDir(dir); err != nil {
 									return err
 								} else {
-									f := dei.GetEmotesDir(liveDir)
+									f := dei.GetEmotesDir(dir + "/" + liveDir)
 									defer f.Close()
 									if f, e := f.Open(strings.TrimPrefix(r.URL.Path, spath+"emots/")); e != nil {
 										if errors.Is(e, fs.ErrNotExist) {
@@ -1067,12 +1067,12 @@ func init() {
 						nodur := dur == 0
 						for i := 0; i < len(playlist.Lives) && (nodur || dur > 0); i++ {
 							if liveDir, err := playlist.Lives[i].getLiveDir(dir); err != nil {
-								flog.W(`解析节目单失败`, liveDir, err)
+								flog.W(`解析节目单失败`, dir+"/"+liveDir, err)
 								w.WriteHeader(http.StatusServiceUnavailable)
 								return
 							} else {
-								if fi, e := videoInfo.Get.Run(context.Background(), liveDir); e != nil {
-									flog.W(`读取节目单元数据失败`, liveDir, e)
+								if fi, e := videoInfo.Get.Run(context.Background(), dir+"/"+liveDir); e != nil {
+									flog.W(`读取节目单元数据失败`, dir+"/"+liveDir, e)
 									w.WriteHeader(http.StatusServiceUnavailable)
 									return
 								} else if sst > fi.Dur {
@@ -1082,7 +1082,7 @@ func init() {
 									if i == len(playlist.Lives)-1 && !nodur && sdur != 0 {
 										dur = min(dur, sdur)
 									}
-									readFile(w, "./", liveDir+"/", sst, dur, skipHeader, true, &rangeHeaderNum)
+									readFile(w, dir+"/", liveDir+"/", sst, dur, skipHeader, true, &rangeHeaderNum)
 									skipHeader = true
 									if !nodur {
 										dur -= (fi.Dur - sst)
@@ -1182,20 +1182,20 @@ func init() {
 							for i, live := range playlist.Lives {
 								st, dur := parseDuration(live.StartT), parseDuration(live.Dur)
 								if liveDir, err := live.getLiveDir(dir); err != nil {
-									flog.W(`解析节目单失败`, liveDir, err)
+									flog.W(`解析节目单失败`, dir+"/"+liveDir, err)
 									w.WriteHeader(http.StatusServiceUnavailable)
 									return
 								} else {
 									// 列表中间的必须填入时长，如未填入，尝试从元数据中获取
 									if dur == 0 && i < len(playlist.Lives)-1 {
-										if fi, e := videoInfo.Get.Run(context.Background(), liveDir); e != nil {
-											flog.W(`读取节目单元数据失败`, liveDir, e)
+										if fi, e := videoInfo.Get.Run(context.Background(), dir+"/"+liveDir); e != nil {
+											flog.W(`读取节目单元数据失败`, dir+"/"+liveDir, e)
 											return
 										} else {
 											dur = fi.Dur
 										}
 									}
-									if e := reg(liveDir+"/0.csv", st, dur); e != nil {
+									if e := reg(dir+"/"+liveDir+"/0.csv", st, dur); e != nil {
 										flog.W(`加载节目单弹幕失败`, e)
 										return
 									}
@@ -1327,9 +1327,9 @@ func LiveDirF(liveRootDir, qref string) (e error, hasLivsJson bool, dir string, 
 							e = ErrPlaylistParse.NewErr(err)
 							return
 						} else {
-							fi, e := videoInfo.Get.Run(context.Background(), liveDir)
+							fi, e := videoInfo.Get.Run(context.Background(), dir+"/"+liveDir)
 							if e != nil {
-								flog.W(`读取节目单元数据失败`, liveDir, e)
+								flog.W(`读取节目单元数据失败`, dir+"/"+liveDir, e)
 								break
 							}
 							// 根据cut 的 LiveDir 重新计算开始时刻
@@ -1388,7 +1388,7 @@ func LiveDirF(liveRootDir, qref string) (e error, hasLivsJson bool, dir string, 
 			} else {
 				dir = filepath.Dir(liveRootDir + "/" + qref)
 				for i, n := 0, len(fs); i < n; i++ {
-					if info, err := videoInfo.Get.Run(context.Background(), fs[i]); err != nil {
+					if info, err := videoInfo.Get.Run(context.Background(), dir+"/"+fs[i].SelfName()); err != nil {
 						if !errors.Is(err, os.ErrNotExist) {
 							e = ErrPlayInfoRead.NewErr(err)
 						}
@@ -1438,9 +1438,9 @@ func LiveDirF(liveRootDir, qref string) (e error, hasLivsJson bool, dir string, 
 						flog.W(`解析节目单失败`, liveDir, err)
 						return
 					} else {
-						fi, err := videoInfo.Get.Run(context.Background(), liveDir)
+						fi, err := videoInfo.Get.Run(context.Background(), dir+"/"+liveDir)
 						if err != nil {
-							flog.W(`读取节目单元数据失败`, liveDir, err)
+							flog.W(`读取节目单元数据失败`, dir+"/"+liveDir, err)
 							return
 						}
 						// 根据cut 的 LiveDir 重新计算开始时刻
