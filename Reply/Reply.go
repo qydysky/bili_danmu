@@ -705,13 +705,14 @@ func (t replyF) room_change(s string) {
 		ctx, cancle := context.WithTimeout(context.Background(), time.Second*time.Duration(tryS))
 		roomChangeFC.FlashWithCallback(cancle)
 
-		go func(ctx context.Context, roomid int, oldTitle string) {
+		go func(ctx context.Context, roomid int) {
 			for t.Roomid == roomid {
 				select {
 				case <-ctx.Done():
 					msglog.BaseAdd("房").W(`指定时长内标题未修改，可能需要调大标题修改检测s`)
 					return
 				case <-time.After(time.Second * 30):
+					oldTitle := t.Title
 					F.Api.Get(t.Common, `Title`)
 					if t.Roomid == roomid && t.Title != oldTitle {
 						setTitle(t.Title)
@@ -722,7 +723,7 @@ func (t replyF) room_change(s string) {
 					}
 				}
 			}
-		}(ctx, t.Roomid, t.Title)
+		}(ctx, t.Roomid)
 	}
 }
 
