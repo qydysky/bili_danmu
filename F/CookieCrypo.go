@@ -11,6 +11,7 @@ import (
 	pca "github.com/qydysky/part/crypto/asymmetric"
 	pcs "github.com/qydysky/part/crypto/symmetric"
 	file "github.com/qydysky/part/file"
+	unsafe "github.com/qydysky/part/unsafe"
 )
 
 // 公私钥加密
@@ -45,14 +46,14 @@ func CookieGet(path string) []byte {
 		clog.E(`cookie读取错误`, e)
 		return []byte{}
 	} else {
-		switch string(d[:6]) {
+		switch unsafe.B2S(d[:6]) {
 		case `t=nol;`:
 			cookie = d[6:]
 			return d[6:]
 		case `t=pem;`:
 			cookieB = d[6:]
 		default:
-			clog.E(`未知的cookie保存格式:`, string(d[:6]))
+			clog.E(`未知的cookie保存格式:`, unsafe.B2S(d[:6]))
 			return []byte{}
 		}
 	}
@@ -125,7 +126,7 @@ func CookieSet(path string, source []byte) {
 		} else {
 			f := file.New(path, 0, true)
 			_ = f.Delete()
-			_, _ = f.Write(append([]byte("t=nol;"), source...))
+			_, _ = f.Write(append(unsafe.S2B("t=nol;"), source...))
 			return
 		}
 	}
@@ -140,7 +141,8 @@ func CookieSet(path string, source []byte) {
 		} else {
 			f := file.New(path, 0, true)
 			_ = f.Delete()
-			_, _ = f.Write(append([]byte("t=pem;"), pca.Pack(b, ext)...))
+			_, _ = f.Write(unsafe.S2B("t=pem;"))
+			_, _ = f.Write(pca.Pack(b, ext))
 		}
 	}
 }

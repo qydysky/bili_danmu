@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	comp "github.com/qydysky/part/component2"
+	unsafe "github.com/qydysky/part/unsafe"
 )
 
 type TargetInterface interface {
@@ -51,19 +52,19 @@ func (t parseM3u8) Parse(respon []byte, lastNo int) (m4sLink iter.Seq[interface 
 	M4sLink() string
 }], redirectUrl string, err error) {
 	// base64解码
-	if len(respon) != 0 && !bytes.Contains(respon, []byte("#")) {
-		respon, err = base64.StdEncoding.DecodeString(string(respon))
+	if len(respon) != 0 && !bytes.Contains(respon, []byte{'#'}) {
+		respon, err = base64.StdEncoding.DecodeString(unsafe.B2S(respon))
 		if err != nil {
 			return
 		}
 	}
 
-	m3u := bytes.Split(respon, []byte("\n"))
+	m3u := bytes.Split(respon, []byte{'\n'})
 	var maxqn = -1
 	for i := 0; i < len(m3u); i++ {
 		if bytes.HasPrefix(m3u[i], extXStreamInf) {
 			// m3u8 指向新连接
-			tmp := strings.TrimSpace(string(m3u[i+1]))
+			tmp := strings.TrimSpace(unsafe.B2S(m3u[i+1]))
 			if redirectUrl == "" {
 				redirectUrl = tmp
 			}
@@ -100,14 +101,14 @@ func (t parseM3u8) Parse(respon []byte, lastNo int) (m4sLink iter.Seq[interface 
 					if lastNo != 0 {
 						continue
 					}
-					e := bytes.Index(line[16:], []byte(`"`)) + 16
-					m4sLink = string(line[16:e])
+					e := bytes.Index(line[16:], []byte{'"'}) + 16
+					m4sLink = unsafe.B2S(line[16:e])
 					isHeader = true
 				} else {
 					continue
 				}
 			} else {
-				m4sLink = string(line)
+				m4sLink = unsafe.B2S(line)
 			}
 
 			if !isHeader {

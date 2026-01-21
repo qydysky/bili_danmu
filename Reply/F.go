@@ -38,6 +38,7 @@ import (
 	ps "github.com/qydysky/part/slice"
 	pweb "github.com/qydysky/part/web"
 	websocket "github.com/qydysky/part/websocket"
+	unsafe "github.com/qydysky/part/unsafe"
 )
 
 /*
@@ -1119,8 +1120,8 @@ func init() {
 					StreamWs.Interface().Pull_tag(map[string]func(websocket.Uinterface) (disable bool){
 						`recv`: func(u websocket.Uinterface) bool {
 							if bytes.Equal(u.Data[:2], []byte("%S")) && len(u.Data) > 0 {
-								flog.BaseAdd(`流服务弹幕`).I(string(u.Data[2:]))
-								Msg_senddanmu(string(u.Data[2:]))
+								flog.BaseAdd(`流服务弹幕`).I(unsafe.B2S(u.Data[2:]))
+								Msg_senddanmu(unsafe.B2S(u.Data[2:]))
 							}
 							return false
 						},

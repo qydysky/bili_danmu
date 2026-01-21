@@ -39,6 +39,7 @@ import (
 	syncmap "github.com/qydysky/part/sync"
 	sys "github.com/qydysky/part/sys"
 	web "github.com/qydysky/part/web"
+	unsafe "github.com/qydysky/part/unsafe"
 	_ "modernc.org/sqlite" //removable
 )
 
@@ -440,9 +441,9 @@ func (t *Common) Init() *Common {
 			panic(e)
 		} else {
 			fmt.Println("公钥：")
-			fmt.Println(string(pem.EncodeToMemory(pub)))
+			fmt.Println(unsafe.B2S(pem.EncodeToMemory(pub)))
 			fmt.Println("私钥：")
-			fmt.Println(string(pem.EncodeToMemory(pri)))
+			fmt.Println(unsafe.B2S(pem.EncodeToMemory(pri)))
 			fmt.Println("请复制以上公私钥并另存为文件,可以在cookie加密公钥、cookie解密私钥中使用")
 			os.Exit(0)
 		}
@@ -658,7 +659,7 @@ func (t *Common) Init() *Common {
 					return
 				}
 				for ip := range sys.GetIpByCidr() {
-					if _, e := w.Write([]byte(ip.String() + "\n")); e != nil {
+					if _, e := w.Write(unsafe.S2B(ip.String() + "\n")); e != nil {
 						return
 					}
 				}

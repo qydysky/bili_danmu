@@ -6,6 +6,7 @@ import (
 
 	c "github.com/qydysky/bili_danmu/CV"
 	pstrings "github.com/qydysky/part/strings"
+	"github.com/qydysky/part/unsafe"
 )
 
 var flog = c.C.Log.Base(`F/F.go`)
@@ -83,7 +84,7 @@ func HelloGen(roomid int, key string) []byte {
 
 	buffer.Write(HeadGen(len(obj), c.WS_OP_USER_AUTHENTICATION, c.WS_HEADER_DEFAULT_SEQUENCE))
 
-	buffer.Write([]byte(obj))
+	buffer.Write(unsafe.S2B(obj))
 
 	return buffer.Bytes()
 }
@@ -99,7 +100,7 @@ func HelloChe(r []byte) bool {
 
 	buffer.Write(HeadGen(len(obj), c.WS_OP_CONNECT_SUCCESS, c.WS_HEADER_DEFAULT_SEQUENCE))
 
-	buffer.Write([]byte(obj))
+	buffer.Write(unsafe.S2B(obj))
 
 	h := buffer.Bytes()
 
@@ -126,7 +127,7 @@ func Heartbeat() ([]byte, int) {
 
 	buffer.Write(HeadGen(len(obj), c.WS_OP_HEARTBEAT, c.WS_HEADER_DEFAULT_SEQUENCE))
 
-	buffer.Write([]byte(obj))
+	buffer.Write(unsafe.S2B(obj))
 
 	return buffer.Bytes(), heartBeatInterval
 }

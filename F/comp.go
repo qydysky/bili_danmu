@@ -8,6 +8,7 @@ import (
 	cmp "github.com/qydysky/part/component2"
 	reqf "github.com/qydysky/part/reqf"
 	psync "github.com/qydysky/part/sync"
+	"github.com/qydysky/part/unsafe"
 )
 
 var biliApi = cmp.GetV3("github.com/qydysky/bili_danmu/F.biliApi", cmp.PreFuncCu[BiliApiInter]{
@@ -21,8 +22,8 @@ var biliApi = cmp.GetV3("github.com/qydysky/bili_danmu/F.biliApi", cmp.PreFuncCu
 			savepath = tmp
 		}
 		ba.SetCookiesCallback(func(cookies []*http.Cookie) {
-			CookieSet(savepath, []byte(reqf.Cookies_List_2_String(cookies))) //cookie 存入文件
-			psync.StoreAll(c.C.Cookie, reqf.Cookies_List_2_Map(cookies))     //cookie 存入全局变量
+			CookieSet(savepath, unsafe.S2B(reqf.Cookies_List_2_String(cookies))) //cookie 存入文件
+			psync.StoreAll(c.C.Cookie, reqf.Cookies_List_2_Map(cookies))         //cookie 存入全局变量
 		})
 		return ba
 	},

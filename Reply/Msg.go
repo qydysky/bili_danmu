@@ -16,7 +16,7 @@ import (
 var msglog = c.C.Log.Base(`Msg`)
 
 // Msg类型数据处理方法map
-var Msg_map = map[string]func(replyF, string){
+var Msg_map = map[string]func(replyF, []byte){
 	`ROOM_CONTENT_AUDIT_REPORT`:            nil,
 	`FULL_SCREEN_MASK_OPEN`:                replyF.fullScreenMaskOpen, // 房间全屏提示
 	`OTHER_SLICE_LOADING_RESULT`:           nil,                       // 切片
@@ -202,9 +202,9 @@ func Msg(replyFS replyF, b []byte) {
 	}
 	if F, ok := Msg_map[tmp.Cmd]; ok {
 		if F != nil {
-			F(replyFS, string(b))
+			F(replyFS, b)
 		}
 	} else {
-		replyFS.defaultMsg(string(b))
+		replyFS.defaultMsg(b)
 	}
 }

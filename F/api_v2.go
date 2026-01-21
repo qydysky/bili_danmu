@@ -16,6 +16,7 @@ import (
 	file "github.com/qydysky/part/file"
 	pkf "github.com/qydysky/part/keyFunc"
 	reqf "github.com/qydysky/part/reqf"
+	unsafe "github.com/qydysky/part/unsafe"
 	qr "github.com/skip2/go-qrcode"
 	"github.com/skratchdot/open-golang/open"
 )
@@ -139,7 +140,7 @@ func (t *GetFuncV2) getCookie() (missKey string, err error) {
 	}()
 
 	if file.IsExist(savepath) { //读取cookie文件
-		if cookieString := string(CookieGet(savepath)); cookieString != `` {
+		if cookieString := unsafe.B2S(CookieGet(savepath)); cookieString != `` {
 			biliApi.SetCookies(reqf.Cookies_String_2_List(cookieString)) //cookie 存入biliApi
 			if biliApi.IsLogin() {
 				if e, res := biliApi.GetNav(); e != nil {
@@ -280,7 +281,7 @@ func (t *GetFuncV2) getCookieNoBlock() (missKey string, err error) {
 	}
 
 	if file.IsExist(savepath) { //读取cookie文件
-		if cookieString := string(CookieGet(savepath)); cookieString != `` {
+		if cookieString := unsafe.B2S(CookieGet(savepath)); cookieString != `` {
 			biliApi.SetCookies(reqf.Cookies_String_2_List(cookieString)) //cookie 存入biliApi
 			if biliApi.IsLogin() {
 				if e, res := biliApi.GetNav(); e != nil {
