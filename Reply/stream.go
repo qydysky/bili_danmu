@@ -522,16 +522,26 @@ func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo floa
 			lastNo, _ = lastM4s.getNo()
 		}
 
-		var (
-			rg iter.Seq[interface {
-				IsHeader() bool
-				M4sLink() string
-			}]
-			redirectUrl string
-		)
+		var redirectUrl string
 		if err := r.Respon(func(b []byte) (err error) {
 			replyFunc.ParseM3u8.Run2(func(pmi replyFunc.ParseM3u8I) {
+				var rg iter.Seq[interface {
+					IsHeader() bool
+					M4sLink() string
+				}]
 				rg, redirectUrl, err = pmi.Parse(b, lastNo)
+				if rg != nil {
+					for m4sLinkI := range rg {
+						//将切片添加到返回切片数组
+						p := t.getM4s()
+						p.SerUuid = v.Uuid
+						p.Url = F.ResolveReferenceLast(v.Url, m4sLinkI.M4sLink()+"?trid="+F.ParseQuery(v.Url, "trid="))
+						p.Base = m4sLinkI.M4sLink()
+						p.isHeader = m4sLinkI.IsHeader()
+						p.createdTime = time.Now()
+						m4s_links = append(m4s_links, p)
+					}
+				}
 			})
 			return
 		}); err != nil {
@@ -554,17 +564,6 @@ func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo floa
 				}
 			}
 			continue
-		} else {
-			for m4sLinkI := range rg {
-				//将切片添加到返回切片数组
-				p := t.getM4s()
-				p.SerUuid = v.Uuid
-				p.Url = F.ResolveReferenceLast(v.Url, m4sLinkI.M4sLink()+"?trid="+F.ParseQuery(v.Url, "trid="))
-				p.Base = m4sLinkI.M4sLink()
-				p.isHeader = m4sLinkI.IsHeader()
-				p.createdTime = time.Now()
-				m4s_links = append(m4s_links, p)
-			}
 		}
 
 		if len(m4s_links) == 0 {
