@@ -1357,8 +1357,10 @@ func LiveDirF(liveRootDir, qref string) (e error, hasLivsJson bool, dir string, 
 								}
 							}
 							if j == 0 {
-								info.StartT = fi.StartT
-								info.StartTS = fi.StartTS
+								sts, _ := time.Parse(time.DateTime, fi.StartT)
+								sts = sts.Add(st)
+								info.StartT = sts.Format(time.DateTime)
+								info.StartTS = sts.Unix()
 								info.StartLiveT = fi.StartLiveT
 								info.Format = fi.Format
 								info.Codec = fi.Codec
@@ -1483,8 +1485,10 @@ func LiveDirF(liveRootDir, qref string) (e error, hasLivsJson bool, dir string, 
 							}
 						}
 						if j == 0 {
-							info.StartT = fi.StartT
-							info.StartTS = fi.StartTS
+							sts, _ := time.Parse(time.DateTime, fi.StartT)
+							sts = sts.Add(st)
+							info.StartT = sts.Format(time.DateTime)
+							info.StartTS = sts.Unix()
 							info.StartLiveT = fi.StartLiveT
 							info.Format = fi.Format
 							info.Codec = fi.Codec
