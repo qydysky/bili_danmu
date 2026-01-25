@@ -520,7 +520,7 @@ func init() {
 										}()
 										totalDur += live.infoDur
 										for i := 0; i < dur && float64(totalNum) < totalDur.Minutes(); i++ {
-											if i > 0 {
+											if totalNum > 0 || i > 0 {
 												_, _ = w.Write([]byte(","))
 											}
 											_, _ = w.Write([]byte(strconv.Itoa(points[st+i])))
