@@ -102,13 +102,13 @@ func (t parseM3u8) Parse(respon []byte, lastNo int) (m4sLink iter.Seq[interface 
 						continue
 					}
 					e := bytes.Index(line[16:], []byte{'"'}) + 16
-					m4sLink = unsafe.B2S(line[16:e])
+					m4sLink = string(line[16:e])
 					isHeader = true
 				} else {
 					continue
 				}
 			} else {
-				m4sLink = unsafe.B2S(line)
+				m4sLink = string(line)
 			}
 
 			if !isHeader {

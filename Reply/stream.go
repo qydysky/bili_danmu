@@ -453,10 +453,15 @@ func (t *M4SStream) fetchCheckStream() bool {
 }
 
 var (
-	ErrFetchParseM3U8AllFail = errors.New("ErrFetchParseM3U8AllFail")
+	ErrM3U8Get           = perrors.Action("ErrM3U8Get")
+	ErrM3U8Parse         = perrors.Action("ErrM3U8Parse")
+	ErrM3U8NoUpdate      = perrors.Action("ErrM3U8NoUpdate")
+	ErrM3U8TooManyUpdate = perrors.Action("ErrM3U8TooManyUpdate")
+	ErrM3U8AllFail       = perrors.Action("ErrM3U8AllFail")
 )
 
-func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo float64) (m4s_links []*m4s_link_item, guessCount int, e error) {
+// 当正常时， err = nil
+func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo, fmp4ListGetTo float64) (m4s_links []*m4s_link_item, guessCount int, e error) {
 	// 开始请求
 	r := t.reqPool.Get()
 	defer t.reqPool.Put(r)
@@ -474,7 +479,7 @@ func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo floa
 		// 设置请求参数
 		rval := reqf.Rval{
 			Url:     v.Url,
-			Timeout: int(fmp4ListUpdateTo+2) * 1000,
+			Timeout: int(fmp4ListGetTo) * 1000,
 			Proxy:   c.C.Proxy,
 			Header: map[string]string{
 				`Host`:            F.ParseHost(v.Url),
@@ -496,15 +501,16 @@ func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo floa
 		if err := r.Reqf(rval); err != nil {
 			v.DisableAuto()
 			l.WF("服务器 %s 发生故障 %s", F.ParseHost(v.Url), perrors.ErrorFormat(err, perrors.ErrActionInLineFunc))
+			e = perrors.Join(e, ErrM3U8Get)
 			if t.common.ValidLive() == nil {
-				e = ErrFetchParseM3U8AllFail
-				break
+				return
 			}
 			continue
 		}
 
 		if r.ResStatusCode() == http.StatusNotModified {
 			l.T(`hls未更改`)
+			e = nil
 			return
 		}
 
@@ -558,9 +564,9 @@ func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo floa
 				// 1min后重新启用
 				l.WF("服务器 %s 发生故障 %v", F.ParseHost(v.Url), err)
 				v.DisableAuto()
+				e = perrors.Join(e, ErrM3U8Parse)
 				if t.common.ValidLive() == nil {
-					e = ErrFetchParseM3U8AllFail
-					break
+					return
 				}
 			}
 			continue
@@ -573,13 +579,13 @@ func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo floa
 				// 1min后重新启用
 				v.DisableAuto()
 				l.WF("服务器 %s 发生故障 %.2f 秒未产出切片", F.ParseHost(v.Url), time.Since(lastM4s.createdTime).Seconds())
+				e = perrors.Join(e, ErrM3U8NoUpdate)
 				if t.common.ValidLive() == nil {
-					e = ErrFetchParseM3U8AllFail
-					break
+					return
 				}
 				continue
 			}
-			// fmt.Println("->", "empty", lastNo)
+			e = nil
 			return
 		}
 
@@ -588,17 +594,19 @@ func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo floa
 			timed := m4s_links[len(m4s_links)-1].createdTime.Sub(lastM4s.createdTime).Seconds()
 			nos, _ := m4s_links[len(m4s_links)-1].getNo()
 			noe := lastNo
-			if (timed > 5 && nos-noe == 0) || (nos-noe > 50) {
+			if nos-noe > 50 {
 				// 1min后重新启用
 				v.DisableAuto()
 				l.WF("服务器 %s 发生故障 %d 秒产出了 %d 切片", F.ParseHost(v.Url), int(timed), nos-noe)
+				e = perrors.Join(e, ErrM3U8TooManyUpdate)
 				if t.common.ValidLive() == nil {
-					e = ErrFetchParseM3U8AllFail
-					break
+					return
 				}
 				continue
 			}
 		}
+
+		e = nil
 
 		// 首次下载
 		if lastM4s == nil {
@@ -627,9 +635,7 @@ func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo floa
 		return
 	}
 
-	// if e != nil {
-	// 	e = errors.New(e.Error() + " 未能找到可用流服务器")
-	// }
+	e = ErrM3U8AllFail
 	return
 }
 
@@ -1038,16 +1044,18 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 
 	var (
 		// 同时下载数限制
-		downloadLimit    = funcCtrl.NewBlockFuncN(3)
-		buf              = slice.New[byte]()
-		fmp4Decoder      = NewFmp4Decoder()
-		keyframe         = slice.New[byte]()
-		lastM4s          *m4s_link_item
-		to               = 5
-		fmp4ListUpdateTo = 5.0
-		planSecPeriod    = 5.0
-		lastNewT         = time.Now()
-		debugLog, _      = t.common.K_v.LoadV(`debug模式`).(bool)
+		downloadLimit       = funcCtrl.NewBlockFuncN(3)
+		buf                 = slice.New[byte]()
+		fmp4Decoder         = NewFmp4Decoder()
+		keyframe            = slice.New[byte]()
+		lastM4s             *m4s_link_item
+		to                  = 5
+		fmp4ListUpdateTo    = 5.0
+		fmp4AllListUpdateTo = 5.0
+		fmp4ListGetTo       = 5.0
+		planSecPeriod       = 5.0
+		lastNewT            = time.Now()
+		debugLog, _         = t.common.K_v.LoadV(`debug模式`).(bool)
 	)
 
 	if debugLog {
@@ -1075,6 +1083,12 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 	}
 	if v, ok := t.common.K_v.LoadV(`fmp4列表更新超时s`).(float64); ok && fmp4ListUpdateTo < v {
 		fmp4ListUpdateTo = v
+	}
+	if v, ok := t.common.K_v.LoadV(`fmp4列表无更新超时s`).(float64); ok && fmp4AllListUpdateTo < v {
+		fmp4AllListUpdateTo = v
+	}
+	if v, ok := t.common.K_v.LoadV(`fmp4列表获取超时s`).(float64); ok && fmp4ListGetTo < v {
+		fmp4ListGetTo = v
 	}
 
 	// 下载循环
@@ -1104,21 +1118,34 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 				}
 			}
 
-			var m4s_links, guessCount, err = t.fetchParseM3U8(lastM4s, fmp4ListUpdateTo)
+			var m4s_links, guessCount, err = t.fetchParseM3U8(lastM4s, fmp4ListUpdateTo, fmp4ListGetTo)
 			if err != nil {
-				t.logg().E(`获取解析m3u8发生错误`, err)
-				if errors.Is(err, ErrFetchParseM3U8AllFail) {
+				t.logg().E(`获取解析m3u8发生错误`, perrors.ErrorFormat(err, perrors.ErrActionInLineFunc))
+
+				// 没有服务器可用，尝试获取更多服务器
+				if errors.Is(err, ErrM3U8AllFail) {
 					continue
 				}
-				break
+
+				// 获取错误，或许是网络问题，尝试获取更多服务器
+				if errors.Is(err, ErrM3U8Get) {
+					continue
+				}
+
+				// 解析错误 || 产出切片过多
+				if errors.Is(err, ErrM3U8Parse) || errors.Is(err, ErrM3U8TooManyUpdate) {
+					break
+				}
+
+				// 其他情况 ErrM3U8NoUpdate
 			}
 
 			countInLastPeriod := len(m4s_links)
 			secInLastPeriod := time.Since(lastNewT).Seconds()
 			if countInLastPeriod != 0 {
 				lastNewT = time.Now()
-			} else if secInLastPeriod > fmp4ListUpdateTo {
-				// fmp4ListUpdateTo秒未产出切片
+			} else if secInLastPeriod > fmp4AllListUpdateTo {
+				// fmp4AllListUpdateTo秒未产出切片
 				e = fmt.Errorf("%.2f 秒未产出切片", secInLastPeriod)
 				t.logg().E("获取解析m3u8发生错误", e)
 				break
