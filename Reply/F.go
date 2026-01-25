@@ -1330,12 +1330,20 @@ func LiveDirF(liveRootDir, qref string) (e error, hasLivsJson bool, dir string, 
 								flog.W(`读取节目单元数据失败`, dir+"/"+liveDir, e)
 								break
 							}
+
+							st, dur := parseDuration(live.StartT), parseDuration(live.Dur)
+							live.infoDur = fi.Dur - st
+							if dur > 0 {
+								live.infoDur = min(live.infoDur, dur)
+							}
+							info.Dur += live.infoDur
+
 							// 根据cut 的 LiveDir 重新计算开始时刻
 							for _, cut := range ps.Range(info.Cuts) {
 								if cut.LiveDir == "" {
 									continue
 								} else if !strings.Contains(liveDir, cut.LiveDir) {
-									cut.stt += fi.Dur
+									cut.stt += live.infoDur
 								} else {
 									cut.St = fmt.Sprint(cut.stt)
 									cut.LiveDir = ""
@@ -1360,15 +1368,13 @@ func LiveDirF(liveRootDir, qref string) (e error, hasLivsJson bool, dir string, 
 								info.UpUid = fi.UpUid
 							}
 							// if j == len(info.Lives)-1 {
-							info.EndT = fi.EndT
-							info.EndTS = fi.EndTS
+							end := func() time.Time {
+								sts, _ := time.Parse(time.DateTime, info.StartT)
+								return sts.Add(st + info.Dur)
+							}()
+							info.EndT = end.Format(time.DateTime)
+							info.EndTS = end.Unix()
 							// }
-							st, dur := parseDuration(live.StartT), parseDuration(live.Dur)
-							live.infoDur = fi.Dur - st
-							if dur > 0 && live.infoDur > dur {
-								live.infoDur = dur
-							}
-							info.Dur += live.infoDur
 							sst, sdur := int(st.Minutes()), int(dur.Minutes())
 							if sst < 0 {
 								sst = 0
@@ -1452,12 +1458,18 @@ func LiveDirF(liveRootDir, qref string) (e error, hasLivsJson bool, dir string, 
 							flog.W(`读取节目单元数据失败`, dir+"/"+liveDir, err)
 							return
 						}
+						st, dur := parseDuration(live.StartT), parseDuration(live.Dur)
+						live.infoDur = fi.Dur - st
+						if dur > 0 {
+							live.infoDur = min(live.infoDur, dur)
+						}
+						info.Dur += live.infoDur
 						// 根据cut 的 LiveDir 重新计算开始时刻
 						for _, cut := range ps.Range(info.Cuts) {
 							if cut.LiveDir == "" {
 								continue
 							} else if !strings.Contains(liveDir, cut.LiveDir) {
-								cut.stt += fi.Dur
+								cut.stt += live.infoDur
 							} else {
 								cut.St = fmt.Sprint(cut.stt)
 								cut.LiveDir = ""
@@ -1481,16 +1493,12 @@ func LiveDirF(liveRootDir, qref string) (e error, hasLivsJson bool, dir string, 
 							info.Qn = fi.Qn
 							info.UpUid = fi.UpUid
 						}
-						// if j == len(info.Lives)-1 {
-						info.EndT = fi.EndT
-						info.EndTS = fi.EndTS
-						// }
-						st, dur := parseDuration(live.StartT), parseDuration(live.Dur)
-						live.infoDur = fi.Dur - st
-						if dur > 0 && live.infoDur > dur {
-							live.infoDur = dur
-						}
-						info.Dur += live.infoDur
+						end := func() time.Time {
+							sts, _ := time.Parse(time.DateTime, info.StartT)
+							return sts.Add(st + info.Dur)
+						}()
+						info.EndT = end.Format(time.DateTime)
+						info.EndTS = end.Unix()
 						sst, sdur := int(st.Minutes()), int(dur.Minutes())
 						if sst < 0 {
 							sst = 0
