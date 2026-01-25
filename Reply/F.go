@@ -1363,9 +1363,13 @@ func LiveDirF(liveRootDir, qref string) (e error, hasLivsJson bool, dir string, 
 							info.EndT = fi.EndT
 							info.EndTS = fi.EndTS
 							// }
-							live.infoDur = min(fi.Dur-parseDuration(live.StartT), parseDuration(live.Dur))
+							st, dur := parseDuration(live.StartT), parseDuration(live.Dur)
+							live.infoDur = fi.Dur - st
+							if dur > 0 && live.infoDur > dur {
+								live.infoDur = dur
+							}
 							info.Dur += live.infoDur
-							sst, sdur := int(parseDuration(live.StartT).Minutes()), int(parseDuration(live.Dur).Minutes())
+							sst, sdur := int(st.Minutes()), int(dur.Minutes())
 							if sst < 0 {
 								sst = 0
 							} else if sst > len(fi.OnlinesPerMin) {
@@ -1481,9 +1485,13 @@ func LiveDirF(liveRootDir, qref string) (e error, hasLivsJson bool, dir string, 
 						info.EndT = fi.EndT
 						info.EndTS = fi.EndTS
 						// }
-						live.infoDur = min(fi.Dur-parseDuration(live.StartT), parseDuration(live.Dur))
+						st, dur := parseDuration(live.StartT), parseDuration(live.Dur)
+						live.infoDur = fi.Dur - st
+						if dur > 0 && live.infoDur > dur {
+							live.infoDur = dur
+						}
 						info.Dur += live.infoDur
-						sst, sdur := int(parseDuration(live.StartT).Minutes()), int(parseDuration(live.Dur).Minutes())
+						sst, sdur := int(st.Minutes()), int(dur.Minutes())
 						if sst < 0 {
 							sst = 0
 						} else if sst > len(fi.OnlinesPerMin) {
