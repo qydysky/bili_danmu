@@ -36,9 +36,9 @@ import (
 	pio "github.com/qydysky/part/io"
 	plog "github.com/qydysky/part/log/v2"
 	ps "github.com/qydysky/part/slice"
+	unsafe "github.com/qydysky/part/unsafe"
 	pweb "github.com/qydysky/part/web"
 	websocket "github.com/qydysky/part/websocket"
-	unsafe "github.com/qydysky/part/unsafe"
 )
 
 /*
@@ -265,15 +265,15 @@ type PlayItem struct {
 	Qn            string         `json:"qn"`            // 画质 // 自动从Live[0]取
 	Name          string         `json:"name"`          // 自定义标题
 	StartT        string         `json:"startT"`        // 本段起始时间 // 自动从Live[0]取
-	StartTS       int64          `json:"-"`             // 本段起始时间unix
+	StartTS       int64          `json:"-"`             // 本段起始时间unix // 自动从Live取
 	EndT          string         `json:"endT"`          // 本段停止时间 // 自动从Live[len(Live)-1]取
-	EndTS         int64          `json:"-"`             // 本段停止时间unix
-	Dur           time.Duration  `json:"-"`             // 本段时长
+	EndTS         int64          `json:"-"`             // 本段停止时间unix // 自动从Live取
+	Dur           time.Duration  `json:"-"`             // 本段时长 // 自动从Live取
 	Path          string         `json:"path"`          // 自定义目录名
 	Format        string         `json:"format"`        // 格式 // 自动从Live[0]取
 	Codec         string         `json:"codec"`         // 格式 // 自动从Live[0]取
 	StartLiveT    string         `json:"startLiveT"`    // 本场起始时间 // 自动从Live[0]取
-	OnlinesPerMin []int          `json:"onlinesPerMin"` // 人数
+	OnlinesPerMin []int          `json:"onlinesPerMin"` // 人数 // 自动从Live取
 	Lives         []PlayItemlive `json:"lives,omitempty"`
 	Cuts          []PlayCut      `json:"cuts,omitempty"`
 }
@@ -497,7 +497,7 @@ func init() {
 									totalDur time.Duration
 									totalNum int
 								)
-								for j, live := range ps.Range(playlists[0].Lives) {
+								for _, live := range ps.Range(playlists[0].Lives) {
 									if liveDir, e := live.getLiveDir(dir); e != nil {
 										flog.W("获取弹幕统计", e)
 									} else if e := dcpmi.GetRec4(dir+"/"+liveDir, &points); e != nil {
@@ -520,15 +520,12 @@ func init() {
 										}()
 										totalDur += live.infoDur
 										for i := 0; i < dur && float64(totalNum) < totalDur.Minutes(); i++ {
+											if i > 0 {
+												_, _ = w.Write([]byte(","))
+											}
 											_, _ = w.Write([]byte(strconv.Itoa(points[st+i])))
 											totalNum += 1
-											if i != dur-1 && float64(totalNum) < totalDur.Minutes() {
-												_, _ = w.Write([]byte{','})
-											}
 										}
-									}
-									if j < len(playlists[0].Lives)-1 {
-										_, _ = w.Write([]byte(","))
 									}
 								}
 							} else {
@@ -1344,6 +1341,13 @@ func LiveDirF(liveRootDir, qref string) (e error, hasLivsJson bool, dir string, 
 									cut.LiveDir = ""
 								}
 							}
+							if info.EndTS > 0 {
+								if diff := info.EndTS - fi.StartTS; diff < -1 {
+									flog.W(`拼接节目单元数据`, dir+"/"+liveDir, `早于上个视频结束时间s`, diff)
+								} else if diff > 1 {
+									flog.W(`拼接节目单元数据`, dir+"/"+liveDir, `晚于上个视频结束时间s`, diff)
+								}
+							}
 							if j == 0 {
 								info.StartT = fi.StartT
 								info.StartTS = fi.StartTS
@@ -1355,10 +1359,10 @@ func LiveDirF(liveRootDir, qref string) (e error, hasLivsJson bool, dir string, 
 								info.Qn = fi.Qn
 								info.UpUid = fi.UpUid
 							}
-							if j == len(info.Lives)-1 {
-								info.EndT = fi.EndT
-								info.EndTS = fi.EndTS
-							}
+							// if j == len(info.Lives)-1 {
+							info.EndT = fi.EndT
+							info.EndTS = fi.EndTS
+							// }
 							live.infoDur = fi.Dur
 							info.Dur += fi.Dur
 							sst, sdur := int(parseDuration(live.StartT).Minutes()), int(parseDuration(live.Dur).Minutes())
@@ -1455,6 +1459,13 @@ func LiveDirF(liveRootDir, qref string) (e error, hasLivsJson bool, dir string, 
 								cut.LiveDir = ""
 							}
 						}
+						if info.EndTS > 0 {
+							if diff := info.EndTS - fi.StartTS; diff < -1 {
+								flog.W(`拼接节目单元数据`, dir+"/"+liveDir, `早于上个视频结束时间s`, diff)
+							} else if diff > 1 {
+								flog.W(`拼接节目单元数据`, dir+"/"+liveDir, `晚于上个视频结束时间s`, diff)
+							}
+						}
 						if j == 0 {
 							info.StartT = fi.StartT
 							info.StartTS = fi.StartTS
@@ -1466,10 +1477,10 @@ func LiveDirF(liveRootDir, qref string) (e error, hasLivsJson bool, dir string, 
 							info.Qn = fi.Qn
 							info.UpUid = fi.UpUid
 						}
-						if j == len(info.Lives)-1 {
-							info.EndT = fi.EndT
-							info.EndTS = fi.EndTS
-						}
+						// if j == len(info.Lives)-1 {
+						info.EndT = fi.EndT
+						info.EndTS = fi.EndTS
+						// }
 						live.infoDur = fi.Dur
 						info.Dur += fi.Dur
 						sst, sdur := int(parseDuration(live.StartT).Minutes()), int(parseDuration(live.Dur).Minutes())
