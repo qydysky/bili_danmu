@@ -1363,8 +1363,8 @@ func LiveDirF(liveRootDir, qref string) (e error, hasLivsJson bool, dir string, 
 							info.EndT = fi.EndT
 							info.EndTS = fi.EndTS
 							// }
-							live.infoDur = fi.Dur
-							info.Dur += fi.Dur
+							live.infoDur = min(fi.Dur-parseDuration(live.StartT), parseDuration(live.Dur))
+							info.Dur += live.infoDur
 							sst, sdur := int(parseDuration(live.StartT).Minutes()), int(parseDuration(live.Dur).Minutes())
 							if sst < 0 {
 								sst = 0
@@ -1481,8 +1481,8 @@ func LiveDirF(liveRootDir, qref string) (e error, hasLivsJson bool, dir string, 
 						info.EndT = fi.EndT
 						info.EndTS = fi.EndTS
 						// }
-						live.infoDur = fi.Dur
-						info.Dur += fi.Dur
+						live.infoDur = min(fi.Dur-parseDuration(live.StartT), parseDuration(live.Dur))
+						info.Dur += live.infoDur
 						sst, sdur := int(parseDuration(live.StartT).Minutes()), int(parseDuration(live.Dur).Minutes())
 						if sst < 0 {
 							sst = 0
