@@ -124,9 +124,11 @@ func CookieSet(path string, source []byte) {
 				pub = d
 			}
 		} else {
-			f := file.New(path, 0, true)
+			f := file.Open(path)
 			_ = f.Delete()
-			_, _ = f.Write(append(unsafe.S2B("t=nol;"), source...))
+			_, _ = f.Write(unsafe.S2B("t=nol;"))
+			_, _ = f.Write(source)
+			_ = f.Close()
 			return
 		}
 	}
@@ -139,10 +141,11 @@ func CookieSet(path string, source []byte) {
 			clog.E(e)
 			return
 		} else {
-			f := file.New(path, 0, true)
+			f := file.Open(path)
 			_ = f.Delete()
 			_, _ = f.Write(unsafe.S2B("t=pem;"))
 			_, _ = f.Write(pca.Pack(b, ext))
+			_ = f.Close()
 		}
 	}
 }
