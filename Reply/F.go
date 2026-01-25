@@ -1372,7 +1372,7 @@ func LiveDirF(liveRootDir, qref string) (e error, hasLivsJson bool, dir string, 
 							// if j == len(info.Lives)-1 {
 							end := func() time.Time {
 								sts, _ := time.Parse(time.DateTime, info.StartT)
-								return sts.Add(st + info.Dur)
+								return sts.Add(info.Dur)
 							}()
 							info.EndT = end.Format(time.DateTime)
 							info.EndTS = end.Unix()
@@ -1499,7 +1499,7 @@ func LiveDirF(liveRootDir, qref string) (e error, hasLivsJson bool, dir string, 
 						}
 						end := func() time.Time {
 							sts, _ := time.Parse(time.DateTime, info.StartT)
-							return sts.Add(st + info.Dur)
+							return sts.Add(info.Dur)
 						}()
 						info.EndT = end.Format(time.DateTime)
 						info.EndTS = end.Unix()
