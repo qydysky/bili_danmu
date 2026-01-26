@@ -6,6 +6,7 @@ import (
 	"iter"
 	"math"
 	"reflect"
+	unsafe "github.com/qydysky/part/unsafe"
 )
 
 type Pd struct {
@@ -59,7 +60,7 @@ func NewPdDecoder() *PdDecoder {
 	}
 }
 func (t *PdDecoder) LoadBase64S(buf string) *PdDecoder {
-	return t.LoadBase64B([]byte(buf))
+	return t.LoadBase64B(unsafe.S2B(buf))
 }
 func (t *PdDecoder) LoadBase64B(buf []byte) *PdDecoder {
 	if l := base64.StdEncoding.DecodedLen(len(buf)); cap(t.buf) < l {
@@ -119,7 +120,7 @@ func (t *PdDecoder) UnmarshalRaw(v any) error {
 	rt := rv.Type().Elem()
 	rv = reflect.Indirect(rv)
 	for i := 0; i < rt.NumField(); i++ {
-		pdk := []byte(rt.Field(i).Tag.Get(t.pdTag))
+		pdk := unsafe.S2B(rt.Field(i).Tag.Get(t.pdTag))
 		pdki := uint32(0)
 		for j := 0; j < len(pdk); j++ {
 			if pdk[j] < 48 || pdk[j] > 57 {
@@ -148,7 +149,7 @@ func (t *PdDecoder) UnmarshalRaw(v any) error {
 					return ErrValUnSupportFieldType
 				}
 			case reflect.String:
-				rv.SetString(string(pd.Bytes()))
+				rv.SetString(unsafe.B2S(pd.Bytes()))
 			case reflect.Int, reflect.Int32, reflect.Int64:
 				rv.SetInt(int64(pd.Uint32()))
 			case reflect.Uint, reflect.Uint32, reflect.Uint64:

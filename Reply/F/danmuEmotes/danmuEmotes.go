@@ -21,6 +21,7 @@ import (
 	phash "github.com/qydysky/part/hash"
 	log "github.com/qydysky/part/log/v2"
 	reqf "github.com/qydysky/part/reqf"
+	unsafe "github.com/qydysky/part/unsafe"
 )
 
 type TargetInterface interface {
@@ -111,7 +112,7 @@ func (t *danmuEmotes) SaveEmote(ctx context.Context, ptr struct {
 				var E struct {
 					Emots map[string]any `json:"emots"`
 				}
-				if e := json.Unmarshal([]byte(extrab), &E); e != nil {
+				if e := json.Unmarshal(unsafe.S2B(extrab), &E); e != nil {
 					return nil, e
 				} else {
 					for k, v := range E.Emots {
@@ -180,7 +181,7 @@ func (t *danmuEmotes) Hashr(s string) (r string) {
 			layer -= 1
 		}
 	}
-	return string(rr)
+	return unsafe.B2S(rr)
 }
 
 func (t *danmuEmotes) PackEmotes(dir string) error {
@@ -268,7 +269,7 @@ func loadCsv(savePath string, filename ...string) iter.Seq[Data] {
 			if e := csvf.ReadUntilV2(&line, []byte{'\n'}, humanize.KByte, humanize.MByte); len(line) != 0 {
 				lined := bytes.SplitN(line, []byte{','}, 3)
 				if len(lined) == 3 {
-					if t, e := strconv.ParseFloat(string(lined[0]), 64); e == nil {
+					if t, e := strconv.ParseFloat(unsafe.B2S(lined[0]), 64); e == nil {
 						if e := json.Unmarshal(lined[2], &data); e == nil {
 							data.Time = t
 							if data.Style.Color == "" {

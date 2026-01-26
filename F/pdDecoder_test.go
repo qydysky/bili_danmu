@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"testing"
+
+	unsafe "github.com/qydysky/part/unsafe"
 )
 
 func TestS(t *testing.T) {
@@ -55,7 +57,7 @@ func TestU(t *testing.T) {
 	ss := S{}
 
 	decoder := NewPdDecoder()
-	if e := decoder.UnmarshalBase64B([]byte(base64S), &ss); e != nil {
+	if e := decoder.UnmarshalBase64B(unsafe.S2B(base64S), &ss); e != nil {
 		t.Fatal(e)
 	}
 	if ss.MsgType != 1 || ss.Uname != "别死在火星上" {
@@ -83,7 +85,7 @@ func TestU2(t *testing.T) {
 	ss := InteractWord{}
 
 	decoder := NewPdDecoder()
-	if e := decoder.UnmarshalBase64B([]byte(base64S), &ss); e != nil {
+	if e := decoder.UnmarshalBase64B(unsafe.S2B(base64S), &ss); e != nil {
 		t.Fatal(e)
 	}
 	if ss.MsgType != 1 {
@@ -121,6 +123,6 @@ func BenchmarkJson(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = json.Unmarshal([]byte(base64S), &InteractWord{})
+		_ = json.Unmarshal(unsafe.S2B(base64S), &InteractWord{})
 	}
 }

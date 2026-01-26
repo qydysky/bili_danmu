@@ -14,6 +14,7 @@ import (
 	pe "github.com/qydysky/part/errors"
 	pool "github.com/qydysky/part/pool"
 	slice "github.com/qydysky/part/slice"
+	unsafe "github.com/qydysky/part/unsafe"
 )
 
 var (
@@ -875,12 +876,6 @@ func decode(buf []byte) (m *[]ie, recycle func(*[]ie), err error) {
 				}
 				return
 			}
-			// if reSyncI := bytes.Index(buf[cu:], []byte(reSyncboxName)); reSyncI != -1 {
-			// 	cu += reSyncI - 4
-			// 	m = m[:0]
-			// 	continue
-			// }
-			// err = ErrCantResync.WithReason(E.Error() + "> 未能reSync")
 			err = E
 			return
 		}
@@ -909,7 +904,7 @@ var (
 func searchBox(buf []byte, cu *int) (boxName string, i int, e int, err error) {
 	i = *cu
 	e = i + int(F.Btoiv2(buf, *cu, fmp4BoxLenSize))
-	boxNameU := unique.Make(string(buf[*cu+fmp4BoxLenSize : *cu+fmp4BoxLenSize+fmp4BoxNameSize]))
+	boxNameU := unique.Make(unsafe.B2S(buf[*cu+fmp4BoxLenSize : *cu+fmp4BoxLenSize+fmp4BoxNameSize]))
 	boxName = boxNameU.Value()
 	isPureBoxOrNeedSkip, ok := boxs[boxNameU]
 	if !ok {

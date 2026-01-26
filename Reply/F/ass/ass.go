@@ -13,6 +13,7 @@ import (
 	"github.com/dustin/go-humanize"
 	comp "github.com/qydysky/part/component2"
 	file "github.com/qydysky/part/file"
+	unsafe "github.com/qydysky/part/unsafe"
 )
 
 var (
@@ -108,7 +109,7 @@ func (t *Ass) ToAss(savePath string, filename ...string) {
 	var write bool
 	for line := range loadCsv(savePath, strings.Split(append(filename, "0.ass")[0], `.`)[0]+".csv") {
 		if !write {
-			_, _ = f.Write([]byte(t.header))
+			_, _ = f.Write(unsafe.S2B(t.header))
 			write = true
 		}
 
@@ -164,7 +165,7 @@ func loadCsv(savePath string, filename ...string) iter.Seq[Data] {
 			if e := csvf.ReadUntilV2(&line, []byte{'\n'}, humanize.KByte, humanize.MByte); len(line) != 0 {
 				lined := bytes.SplitN(line, []byte{','}, 3)
 				if len(lined) == 3 {
-					if t, e := strconv.ParseFloat(string(lined[0]), 64); e == nil {
+					if t, e := strconv.ParseFloat(unsafe.B2S(lined[0]), 64); e == nil {
 						if e := json.Unmarshal(lined[2], &data); e == nil {
 							data.Time = t
 							if data.Style.Color == "" {

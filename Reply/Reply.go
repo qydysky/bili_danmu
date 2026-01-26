@@ -24,6 +24,7 @@ import (
 	funcCtrl "github.com/qydysky/part/funcCtrl"
 	pool "github.com/qydysky/part/pool"
 	pstrings "github.com/qydysky/part/strings"
+	unsafe "github.com/qydysky/part/unsafe"
 )
 
 var reply_log = c.C.Log.Base(`Reply`)
@@ -166,15 +167,15 @@ var danmuPool = pool.New(pool.PoolFunc[danmuReuseS]{
 }, 100)
 
 // 默认未识别Msg
-func (t replyF) defaultMsg(s string) {
-	msglog.BaseAdd("Unknow").W(s)
+func (t replyF) defaultMsg(s []byte) {
+	msglog.BaseAdd("Unknow").W(unsafe.B2S(s))
 }
 
 // 排名变动
-func (t replyF) rank_changed(s string) {
+func (t replyF) rank_changed(s []byte) {
 	msglog := msglog.BaseAdd("房")
 	var j ws_msg.RANK_CHANGED
-	if e := json.Unmarshal([]byte(s), &j); e != nil {
+	if e := json.Unmarshal(s, &j); e != nil {
 		msglog.E(e)
 		return
 	}
@@ -196,10 +197,10 @@ func (t replyF) rank_changed(s string) {
 }
 
 // 房间全屏提示
-func (t replyF) fullScreenMaskOpen(s string) {
+func (t replyF) fullScreenMaskOpen(s []byte) {
 	msglog := msglog.BaseAdd("房")
 	var j ws_msg.FULL_SCREEN_MASK_OPEN
-	if e := json.Unmarshal([]byte(s), &j); e != nil {
+	if e := json.Unmarshal(s, &j); e != nil {
 		msglog.E(e)
 		return
 	}
@@ -208,10 +209,10 @@ func (t replyF) fullScreenMaskOpen(s string) {
 }
 
 // 房间封禁提示
-func (t replyF) room_lock(s string) {
+func (t replyF) room_lock(s []byte) {
 	msglog := msglog.BaseAdd("房")
 	var j ws_msg.ROOM_LOCK
-	if e := json.Unmarshal([]byte(s), &j); e != nil {
+	if e := json.Unmarshal(s, &j); e != nil {
 		msglog.E(e)
 		return
 	}
@@ -220,10 +221,10 @@ func (t replyF) room_lock(s string) {
 }
 
 // 荣耀等级提示
-func (t replyF) wealth_notify(s string) {
+func (t replyF) wealth_notify(s []byte) {
 	msglog := msglog.BaseAdd("房")
 	var j ws_msg.WEALTH_NOTIFY
-	if e := json.Unmarshal([]byte(s), &j); e != nil {
+	if e := json.Unmarshal(s, &j); e != nil {
 		msglog.E(e)
 		return
 	}
@@ -232,10 +233,10 @@ func (t replyF) wealth_notify(s string) {
 }
 
 // 登录提示
-func (t replyF) log_in_notice(s string) {
+func (t replyF) log_in_notice(s []byte) {
 	msglog := msglog.BaseAdd("房")
 	var j ws_msg.LOG_IN_NOTICE
-	if e := json.Unmarshal([]byte(s), &j); e != nil {
+	if e := json.Unmarshal(s, &j); e != nil {
 		msglog.E(e)
 		return
 	}
@@ -244,10 +245,10 @@ func (t replyF) log_in_notice(s string) {
 }
 
 // 超管切直播
-func (t replyF) cut_off(s string) {
+func (t replyF) cut_off(s []byte) {
 	msglog := msglog.BaseAdd("房", "超管")
 	var j ws_msg.CUT_OFF
-	if e := json.Unmarshal([]byte(s), &j); e != nil {
+	if e := json.Unmarshal(s, &j); e != nil {
 		msglog.E(e)
 		return
 	}
@@ -266,10 +267,10 @@ func (t replyF) cut_off(s string) {
 }
 
 // 大乱斗pk开始
-func (t replyF) pk_lottery_start(s string) {
+func (t replyF) pk_lottery_start(s []byte) {
 	msglog := msglog.BaseAdd("大乱斗")
 	var j ws_msg.PK_LOTTERY_START
-	if e := json.Unmarshal([]byte(s), &j); e != nil {
+	if e := json.Unmarshal(s, &j); e != nil {
 		msglog.E(e)
 		return
 	}
@@ -278,10 +279,10 @@ func (t replyF) pk_lottery_start(s string) {
 }
 
 // 连麦人状态
-func (t replyF) voice_join_status(s string) {
+func (t replyF) voice_join_status(s []byte) {
 	msglog := msglog.BaseAdd("连麦")
 	var j ws_msg.VOICE_JOIN_STATUS
-	if e := json.Unmarshal([]byte(s), &j); e != nil {
+	if e := json.Unmarshal(s, &j); e != nil {
 		msglog.E(e)
 		return
 	}
@@ -294,10 +295,10 @@ func (t replyF) voice_join_status(s string) {
 }
 
 // 连麦等待
-func (t replyF) voice_join_room_count_info(s string) {
+func (t replyF) voice_join_room_count_info(s []byte) {
 	msglog := msglog.BaseAdd("连麦")
 	var j ws_msg.VOICE_JOIN_ROOM_COUNT_INFO
-	if e := json.Unmarshal([]byte(s), &j); e != nil {
+	if e := json.Unmarshal(s, &j); e != nil {
 		msglog.E(e)
 		return
 	}
@@ -306,10 +307,10 @@ func (t replyF) voice_join_room_count_info(s string) {
 }
 
 // 大乱斗pk状态
-func (t replyF) pk_battle_process_new(s string) {
+func (t replyF) pk_battle_process_new(s []byte) {
 	msglog := msglog.BaseAdd("大乱斗")
 	var j ws_msg.PK_BATTLE_PROCESS_NEW
-	if e := json.Unmarshal([]byte(s), &j); e != nil {
+	if e := json.Unmarshal(s, &j); e != nil {
 		msglog.E(e)
 		return
 	}
@@ -320,10 +321,10 @@ func (t replyF) pk_battle_process_new(s string) {
 }
 
 // msg-特别礼物
-func (t replyF) vtr_gift_lottery(s string) {
+func (t replyF) vtr_gift_lottery(s []byte) {
 	msglog := msglog.BaseAdd("特别礼物")
 	var j ws_msg.VTR_GIFT_LOTTERY
-	if e := json.Unmarshal([]byte(s), &j); e != nil {
+	if e := json.Unmarshal(s, &j); e != nil {
 		msglog.E(e)
 		return
 	}
@@ -339,7 +340,7 @@ func (t replyF) vtr_gift_lottery(s string) {
 }
 
 // msg-直播间进入信息，此处用来提示关注
-func (t replyF) interact_word(s string) {
+func (t replyF) interact_word(s []byte) {
 	J := struct {
 		Data struct {
 			Pb      string `json:"pb"`
@@ -347,7 +348,7 @@ func (t replyF) interact_word(s string) {
 			Uname   string `json:"uname" pd:"2"`
 		} `json:"data"`
 	}{}
-	if e := json.Unmarshal([]byte(s), &J); e != nil {
+	if e := json.Unmarshal(s, &J); e != nil {
 		return
 	}
 	if e := F.UnmarshalBase64S(J.Data.Pb, &(J.Data)); e != nil {
@@ -368,7 +369,7 @@ func (t replyF) interact_word(s string) {
 }
 
 // Msg-天选之人开始
-func (t replyF) anchor_lot_start(s string) {
+func (t replyF) anchor_lot_start(s []byte) {
 	J := struct {
 		Data struct {
 			AwardName any `json:"award_name"`
@@ -387,7 +388,7 @@ func (t replyF) anchor_lot_start(s string) {
 }
 
 // Msg-天选之人结束
-func (t replyF) anchor_lot_award(s string) {
+func (t replyF) anchor_lot_award(s []byte) {
 	J := struct {
 		Data struct {
 			AwardName  any `json:"award_name"`
@@ -418,11 +419,11 @@ func (t replyF) anchor_lot_award(s string) {
 }
 
 // msg-通常是大航海购买续费
-func (t replyF) user_toast_msg(s string) {
+func (t replyF) user_toast_msg(s []byte) {
 	msglog := msglog.BaseAdd("礼", "大航海")
 
 	var j ws_msg.USER_TOAST_MSG
-	if e := json.Unmarshal([]byte(s), &j); e != nil {
+	if e := json.Unmarshal(s, &j); e != nil {
 		msglog.E(e)
 		return
 	}
@@ -605,13 +606,13 @@ func (t replyF) heartbeat(s int) {
 }
 
 // Msg-房间特殊活动
-func (t replyF) win_activity(s string) {
+func (t replyF) win_activity(s []byte) {
 	J := struct {
 		Data struct {
 			Title any `json:"title"`
 		} `json:"data"`
 	}{}
-	if e := json.Unmarshal([]byte(s), &J); e != nil {
+	if e := json.Unmarshal(s, &J); e != nil {
 		return
 	}
 	fmt.Println("活动", J.Data.Title, "已开启")
@@ -619,12 +620,12 @@ func (t replyF) win_activity(s string) {
 }
 
 // Msg-观看人数
-func (t replyF) watched_change(s string) {
+func (t replyF) watched_change(s []byte) {
 	if v, ok := t.K_v.LoadV("下播后不记录人气观看人数").(bool); ok && v && !t.Liveing {
 		return
 	}
 	var data ws_msg.WATCHED_CHANGE
-	_ = json.Unmarshal([]byte(s), &data)
+	_ = json.Unmarshal(s, &data)
 	// fmt.Printf("\t观看人数:%d\n", watched)
 	if data.Data.Num == t.Watched {
 		return
@@ -669,10 +670,10 @@ func (t replyF) watched_change(s string) {
 var roomChangeFC funcCtrl.FlashFunc
 
 // Msg-房间信息改变，标题等
-func (t replyF) room_change(s string) {
+func (t replyF) room_change(s []byte) {
 	var type_item ws_msg.ROOM_CHANGE
 
-	if e := json.Unmarshal([]byte(s), &type_item); e != nil {
+	if e := json.Unmarshal(s, &type_item); e != nil {
 		msglog.E(e)
 	}
 
@@ -705,13 +706,14 @@ func (t replyF) room_change(s string) {
 		ctx, cancle := context.WithTimeout(context.Background(), time.Second*time.Duration(tryS))
 		roomChangeFC.FlashWithCallback(cancle)
 
-		go func(ctx context.Context, roomid int, oldTitle string) {
+		go func(ctx context.Context, roomid int) {
 			for t.Roomid == roomid {
 				select {
 				case <-ctx.Done():
 					msglog.BaseAdd("房").W(`指定时长内标题未修改，可能需要调大标题修改检测s`)
 					return
 				case <-time.After(time.Second * 30):
+					oldTitle := t.Title
 					F.Api.Get(t.Common, `Title`)
 					if t.Roomid == roomid && t.Title != oldTitle {
 						setTitle(t.Title)
@@ -722,58 +724,56 @@ func (t replyF) room_change(s string) {
 					}
 				}
 			}
-		}(ctx, t.Roomid, t.Title)
+		}(ctx, t.Roomid)
 	}
 }
 
 // Msg-超管警告
-func (t replyF) warning(s string) {
+func (t replyF) warning(s []byte) {
 	var type_item ws_msg.WARNING
 
-	if e := json.Unmarshal([]byte(s), &type_item); e != nil {
+	if e := json.Unmarshal(s, &type_item); e != nil {
 		msglog.E(e)
 	}
 
-	s, _ = pstrings.UnescapeUnicode(type_item.Msg)
+	var s1, _ = pstrings.UnescapeUnicode(type_item.Msg)
 
-	Gui_show(s, "0room")
+	Gui_show(s1, "0room")
 
-	msglog.BaseAdd("房", "超管").I(s)
+	msglog.BaseAdd("房", "超管").I(s1)
 }
 
 // Msg-为主播点赞了
-func (t replyF) like_info_v3_click(s string) {
+func (t replyF) like_info_v3_click(s []byte) {
 	var type_item ws_msg.LIKE_INFO_V3_CLICK
 
-	if e := json.Unmarshal([]byte(s), &type_item); e != nil {
+	if e := json.Unmarshal(s, &type_item); e != nil {
 		msglog.E(e)
 	}
-	s = type_item.Data.Uname + type_item.Data.LikeText
 
-	Gui_show(s, "0room")
+	Gui_show(type_item.Data.Uname+type_item.Data.LikeText, "0room")
 
 	msglog.BaseAdd("房").I(s)
 }
 
 // Msg-小提示窗口
-func (t replyF) little_tips(s string) {
+func (t replyF) little_tips(s []byte) {
 	var type_item ws_msg.LITTLE_TIPS
 
-	if e := json.Unmarshal([]byte(s), &type_item); e != nil {
+	if e := json.Unmarshal(s, &type_item); e != nil {
 		msglog.E(e)
 	}
-	s = type_item.Data.Msg
 
-	Gui_show(s, "0room")
+	Gui_show(type_item.Data.Msg, "0room")
 
-	msglog.BaseAdd("房").I(s)
+	msglog.BaseAdd("房").I(type_item.Data.Msg)
 }
 
 // Msg-人气排名
 // func (t replyF) popular_rank_changed(s string) {
 // 	var type_item ws_msg.POPULAR_RANK_CHANGED
 
-// 	if e := json.Unmarshal([]byte(s), &type_item); e != nil {
+// 	if e := json.Unmarshal(s, &type_item); e != nil {
 // 		msglog.E(e)
 // 	}
 // 	s = fmt.Sprintf("人气排行 %d", type_item.Data.Rank)
@@ -784,11 +784,11 @@ func (t replyF) little_tips(s string) {
 // }
 
 // Msg-开始了视频连线
-func (t replyF) video_connection_join_start(s string) {
+func (t replyF) video_connection_join_start(s []byte) {
 	msglog := msglog.BaseAdd("房").LShow(false)
 
 	var j ws_msg.VIDEO_CONNECTION_JOIN_START
-	if e := json.Unmarshal([]byte(s), &j); e != nil {
+	if e := json.Unmarshal(s, &j); e != nil {
 		msglog.E(e)
 	}
 
@@ -800,11 +800,11 @@ func (t replyF) video_connection_join_start(s string) {
 }
 
 // Msg-结束了视频连线
-func (t replyF) video_connection_join_end(s string) {
+func (t replyF) video_connection_join_end(s []byte) {
 	msglog := msglog.BaseAdd("房").LShow(false)
 
 	var j ws_msg.VIDEO_CONNECTION_JOIN_END
-	if e := json.Unmarshal([]byte(s), &j); e != nil {
+	if e := json.Unmarshal(s, &j); e != nil {
 		msglog.E(e)
 	}
 
@@ -816,11 +816,11 @@ func (t replyF) video_connection_join_end(s string) {
 }
 
 // Msg-视频连线状态改变
-func (t replyF) video_connection_msg(s string) {
+func (t replyF) video_connection_msg(s []byte) {
 	msglog := msglog.BaseAdd("房").LShow(false)
 
 	var j ws_msg.VIDEO_CONNECTION_MSG
-	if e := json.Unmarshal([]byte(s), &j); e != nil {
+	if e := json.Unmarshal(s, &j); e != nil {
 		msglog.E(e)
 	}
 
@@ -832,11 +832,11 @@ func (t replyF) video_connection_msg(s string) {
 }
 
 // Msg-活动标题改变v2
-func (t replyF) activity_banner_change_v2(s string) {
+func (t replyF) activity_banner_change_v2(s []byte) {
 	msglog := msglog.BaseAdd("房").LShow(false)
 
 	var j ws_msg.ACTIVITY_BANNER_CHANGE_V2
-	if e := json.Unmarshal([]byte(s), &j); e != nil {
+	if e := json.Unmarshal(s, &j); e != nil {
 		msglog.E(e)
 	}
 
@@ -852,11 +852,11 @@ func (t replyF) activity_banner_change_v2(s string) {
 }
 
 // Msg-礼物处理
-func (t replyF) send_gift(s string) {
+func (t replyF) send_gift(s []byte) {
 	msglog := msglog.BaseAdd("礼").LShow(false)
 
 	var j ws_msg.SEND_GIFT
-	if e := json.Unmarshal([]byte(s), &j); e != nil {
+	if e := json.Unmarshal(s, &j); e != nil {
 		msglog.E(e)
 	}
 
@@ -929,12 +929,12 @@ func (t replyF) send_gift(s string) {
 }
 
 // Msg-房间封禁信息
-func (t replyF) room_block_msg(s string) {
+func (t replyF) room_block_msg(s []byte) {
 
 	J := struct {
 		Uname string `json:"uname"`
 	}{}
-	if e := json.Unmarshal([]byte(s), &J); e != nil {
+	if e := json.Unmarshal(s, &J); e != nil {
 		return
 	}
 
@@ -944,11 +944,11 @@ func (t replyF) room_block_msg(s string) {
 }
 
 // Msg-房间准备信息，通常出现在下播而不出现在开播
-func (t replyF) preparing(s string) {
+func (t replyF) preparing(s []byte) {
 	msglog := msglog.BaseAdd("房", "下播")
 
 	var type_item ws_msg.PREPARING
-	if err := json.Unmarshal([]byte(s), &type_item); err != nil {
+	if err := json.Unmarshal(s, &type_item); err != nil {
 		msglog.E(err)
 		return
 	} else {
@@ -968,11 +968,11 @@ func (t replyF) preparing(s string) {
 }
 
 // Msg-房间开播信息
-func (t replyF) live(s string) {
+func (t replyF) live(s []byte) {
 	msglog := msglog.BaseAdd("房", "开播")
 
 	var type_item ws_msg.LIVE
-	if err := json.Unmarshal([]byte(s), &type_item); err != nil {
+	if err := json.Unmarshal(s, &type_item); err != nil {
 		msglog.E(err)
 		return
 	} else {
@@ -1009,11 +1009,11 @@ func (t replyF) live(s string) {
 // Msg-超级留言处理
 var sc_buf = make(map[int]struct{})
 
-func (t replyF) super_chat_message(s string) {
+func (t replyF) super_chat_message(s []byte) {
 	msglog := msglog.BaseAdd("礼", "SC")
 
 	var j ws_msg.SUPER_CHAT_MESSAGE
-	if e := json.Unmarshal([]byte(s), &j); e != nil {
+	if e := json.Unmarshal(s, &j); e != nil {
 		msglog.E(e)
 	}
 
@@ -1088,11 +1088,11 @@ func (t replyF) super_chat_message(s string) {
 }
 
 // Msg-热门榜获得v2
-func (t replyF) hot_rank_settlement_v2(s string) {
+func (t replyF) hot_rank_settlement_v2(s []byte) {
 	msglog := msglog.BaseAdd("房")
 
 	var type_item ws_msg.HOT_RANK_SETTLEMENT_V2
-	if e := json.Unmarshal([]byte(s), &type_item); e != nil {
+	if e := json.Unmarshal(s, &type_item); e != nil {
 		msglog.E(e)
 	}
 	var tmp = `获得:`
@@ -1113,11 +1113,11 @@ func (t replyF) hot_rank_settlement_v2(s string) {
 }
 
 // Msg-老板打赏新礼物红包
-func (t replyF) popularity_red_pocket_new(s string) {
+func (t replyF) popularity_red_pocket_new(s []byte) {
 	msglog := msglog.BaseAdd("礼", "礼物红包")
 
 	var type_item ws_msg.POPULARITY_RED_POCKET_NEW
-	if e := json.Unmarshal([]byte(s), &type_item); e != nil {
+	if e := json.Unmarshal(s, &type_item); e != nil {
 		msglog.E(e)
 	}
 	var tmp = type_item.Data.Uname + type_item.Data.Action + strconv.Itoa(type_item.Data.Num) + `个` + type_item.Data.GiftName
@@ -1134,11 +1134,11 @@ func (t replyF) popularity_red_pocket_new(s string) {
 }
 
 // Msg-老板打赏礼物红包
-func (t replyF) popularity_red_pocket_start(s string) {
+func (t replyF) popularity_red_pocket_start(s []byte) {
 	msglog := msglog.BaseAdd("礼", "礼物红包")
 
 	var type_item ws_msg.POPULARITY_RED_POCKET_START
-	if e := json.Unmarshal([]byte(s), &type_item); e != nil {
+	if e := json.Unmarshal(s, &type_item); e != nil {
 		msglog.E(e)
 	}
 	var tmp = type_item.Data.SenderName + `送出了礼物红包`
@@ -1152,11 +1152,11 @@ func (t replyF) popularity_red_pocket_start(s string) {
 }
 
 // Msg-小消息
-func (t replyF) little_message_box(s string) {
+func (t replyF) little_message_box(s []byte) {
 	msglog := msglog.BaseAdd("系统")
 
 	var type_item ws_msg.LITTLE_MESSAGE_BOX
-	if e := json.Unmarshal([]byte(s), &type_item); e != nil {
+	if e := json.Unmarshal(s, &type_item); e != nil {
 		msglog.E(e)
 	}
 	if type_item.Data.Msg != `` {
@@ -1165,11 +1165,11 @@ func (t replyF) little_message_box(s string) {
 }
 
 // Msg-粉丝牌切换
-func (t replyF) messagebox_user_medal_change(s string) {
+func (t replyF) messagebox_user_medal_change(s []byte) {
 	msglog := msglog.BaseAdd("房")
 
 	var type_item ws_msg.MESSAGEBOX_USER_MEDAL_CHANGE
-	if e := json.Unmarshal([]byte(s), &type_item); e != nil {
+	if e := json.Unmarshal(s, &type_item); e != nil {
 		msglog.E(e)
 	}
 	if type_item.Data.Medal_name != `` {
@@ -1178,14 +1178,14 @@ func (t replyF) messagebox_user_medal_change(s string) {
 }
 
 // Msg-进入特效
-func (t replyF) entry_effect(s string) {
+func (t replyF) entry_effect(s []byte) {
 
 	var res struct {
 		Data struct {
 			Copy_writing string `json:"copy_writing"`
 		} `json:"data"`
 	}
-	if e := json.Unmarshal([]byte(s), &res); e != nil {
+	if e := json.Unmarshal(s, &res); e != nil {
 		msglog.E(e)
 	}
 
@@ -1229,7 +1229,7 @@ func (t replyF) entry_effect(s string) {
 }
 
 // Msg-房间禁言
-func (t replyF) roomsilent(s string) {
+func (t replyF) roomsilent(s []byte) {
 	msglog := msglog.BaseAdd("房")
 
 	J := struct {
@@ -1237,7 +1237,7 @@ func (t replyF) roomsilent(s string) {
 			Level int `json:"level"`
 		} `json:"data"`
 	}{}
-	if e := json.Unmarshal([]byte(s), &J); e != nil {
+	if e := json.Unmarshal(s, &J); e != nil {
 		return
 	}
 
@@ -1261,10 +1261,10 @@ type Danmu_item struct {
 	roomid   int //to avoid danmu show when room has changed
 }
 
-func (t replyF) danmu(s string) {
+func (t replyF) danmu(s []byte) {
 	j := danmuPool.Get()
 
-	if e := json.Unmarshal([]byte(s), j); e != nil {
+	if e := json.Unmarshal(s, j); e != nil {
 		msglog.E(e)
 	}
 

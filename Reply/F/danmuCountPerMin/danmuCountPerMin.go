@@ -18,6 +18,7 @@ import (
 	file "github.com/qydysky/part/file"
 	part "github.com/qydysky/part/io"
 	msgq "github.com/qydysky/part/msgq"
+	"github.com/qydysky/part/unsafe"
 	pweb "github.com/qydysky/part/web"
 )
 
@@ -98,7 +99,7 @@ func (t *danmuCountPerMin) GetRec3(savePath string, w io.Writer, std, durd time.
 		dur = len(ls) - st
 	}
 	for i := 0; i < dur; i++ {
-		_, _ = w.Write([]byte(strconv.Itoa(ls[st+i])))
+		_, _ = w.Write(unsafe.S2B(strconv.Itoa(ls[st+i])))
 		if i != dur-1 {
 			_, _ = w.Write([]byte{','})
 		}
