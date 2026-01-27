@@ -283,37 +283,39 @@ var (
 	ErrMultiDirMatched = perrors.Action("ErrMultiDirMatched")
 )
 
-func (t *PlayItem) getLiveDir(pareDir string) error {
-	for dir := range file.Open(pareDir + "/").DirFilesRange(func(fi os.FileInfo) bool {
-		return !fi.IsDir()
-	}) {
-		for _, live := range t.Lives {
-			if live.liveDirExp == nil || !live.liveDirExp.MatchString(dir.Name()) {
-				continue
-			} else if live.liveDirExpRes {
-				return ErrMultiDirMatched.New(live.LiveDir + "匹配结果不唯一")
-			} else {
-				live.liveDirExpRes = true
-				live.LiveDir = dir.SelfName()
-			}
-		}
+func getLiveDir[T PlayItem | *PlayItem](pareDir string, playitems ...T) error {
+	if len(playitems) == 0 {
+		return nil
 	}
-	return nil
-}
 
-func getLiveDir(playitems []PlayItem, pareDir string) error {
 	for dir := range file.Open(pareDir + "/").DirFilesRange(func(fi os.FileInfo) bool {
 		return !fi.IsDir()
 	}) {
-		for _, playitem := range playitems {
-			for _, live := range playitem.Lives {
-				if live.liveDirExp == nil || !live.liveDirExp.MatchString(dir.Name()) {
-					continue
-				} else if live.liveDirExpRes {
-					return ErrMultiDirMatched.New(live.LiveDir + "匹配结果不唯一")
-				} else {
-					live.liveDirExpRes = true
-					live.LiveDir = dir.SelfName()
+		switch any(playitems[0]).(type) {
+		case PlayItem:
+			for _, playitem := range ps.Range(any(playitems).([]PlayItem)) {
+				for _, live := range ps.Range(playitem.Lives) {
+					if live.liveDirExp == nil || !live.liveDirExp.MatchString(dir.Name()) {
+						continue
+					} else if live.liveDirExpRes && live.LiveDir != dir.SelfName() {
+						return ErrMultiDirMatched.New(live.LiveDir + "匹配结果不唯一")
+					} else {
+						live.liveDirExpRes = true
+						live.LiveDir = dir.SelfName()
+					}
+				}
+			}
+		case *PlayItem:
+			for _, playitem := range any(playitems).([]*PlayItem) {
+				for _, live := range ps.Range(playitem.Lives) {
+					if live.liveDirExp == nil || !live.liveDirExp.MatchString(dir.Name()) {
+						continue
+					} else if live.liveDirExpRes && live.LiveDir != dir.SelfName() {
+						return ErrMultiDirMatched.New(live.LiveDir + "匹配结果不唯一")
+					} else {
+						live.liveDirExpRes = true
+						live.LiveDir = dir.SelfName()
+					}
 				}
 			}
 		}
@@ -519,41 +521,36 @@ func init() {
 							var points []int
 							_, _ = w.Write([]byte("["))
 							if hasLivsJson {
-								// 节目单
-								if err := playlists[0].getLiveDir(dir); err != nil {
-									flog.W(`获取弹幕统计`, perrors.ErrorFormat(err, perrors.ErrActionInLineFunc))
-								} else {
-									var (
-										totalDur time.Duration
-										totalNum int
-									)
-									for _, live := range playlists[0].Lives {
-										if e := dcpmi.GetRec4(dir+"/"+live.LiveDir, &points); e != nil {
-											if !errors.Is(e, os.ErrNotExist) {
-												flog.W("获取弹幕统计", e)
+								var (
+									totalDur time.Duration
+									totalNum int
+								)
+								for _, live := range playlists[0].Lives {
+									if e := dcpmi.GetRec4(dir+"/"+live.LiveDir, &points); e != nil {
+										if !errors.Is(e, os.ErrNotExist) {
+											flog.W("获取弹幕统计", e)
+										}
+										break
+									} else {
+										st, dur := func() (st, dur int) {
+											st, dur = int(parseDuration(live.StartT).Minutes()), int(parseDuration(live.Dur).Minutes())
+											if st < 0 {
+												st = 0
+											} else if st > len(points) {
+												st = len(points)
 											}
-											break
-										} else {
-											st, dur := func() (st, dur int) {
-												st, dur = int(parseDuration(live.StartT).Minutes()), int(parseDuration(live.Dur).Minutes())
-												if st < 0 {
-													st = 0
-												} else if st > len(points) {
-													st = len(points)
-												}
-												if dur <= 0 || st+dur > len(points) {
-													dur = len(points) - st
-												}
-												return
-											}()
-											totalDur += live.infoDur
-											for i := 0; i < dur && float64(totalNum) < totalDur.Minutes(); i++ {
-												if totalNum > 0 || i > 0 {
-													_, _ = w.Write([]byte(","))
-												}
-												_, _ = w.Write([]byte(strconv.Itoa(points[st+i])))
-												totalNum += 1
+											if dur <= 0 || st+dur > len(points) {
+												dur = len(points) - st
 											}
+											return
+										}()
+										totalDur += live.infoDur
+										for i := 0; i < dur && float64(totalNum) < totalDur.Minutes(); i++ {
+											if totalNum > 0 || i > 0 {
+												_, _ = w.Write([]byte(","))
+											}
+											_, _ = w.Write([]byte(strconv.Itoa(points[st+i])))
+											totalNum += 1
 										}
 									}
 								}
@@ -717,7 +714,7 @@ func init() {
 						w.WriteHeader(http.StatusNotFound)
 					} else {
 						switch e := replyFunc.DanmuEmotes.Run(func(dei replyFunc.DanmuEmotesI) error {
-							if err := playlist.getLiveDir(dir); err != nil {
+							if err := getLiveDir(dir, playlist); err != nil {
 								return err
 							}
 							for _, live := range playlist.Lives {
@@ -1082,7 +1079,7 @@ func init() {
 						w.WriteHeader(http.StatusNotFound)
 						return
 					} else {
-						if err := playlist.getLiveDir(dir); err != nil {
+						if err := getLiveDir(dir, playlist); err != nil {
 							flog.W(`解析节目单失败`, dir, perrors.ErrorFormat(err, perrors.ErrActionInLineFunc))
 							w.WriteHeader(http.StatusServiceUnavailable)
 							return
@@ -1197,7 +1194,7 @@ func init() {
 						return
 					} else {
 						if s, closeF := websocket.Plays(func(reg func(filepath string, start, dur time.Duration) error) {
-							if err := playlist.getLiveDir(dir); err != nil {
+							if err := getLiveDir(dir, playlist); err != nil {
 								flog.W(`解析节目单失败`, dir, perrors.ErrorFormat(err, perrors.ErrActionInLineFunc))
 								w.WriteHeader(http.StatusServiceUnavailable)
 								return
@@ -1345,7 +1342,7 @@ func LiveDirF(liveRootDir, qref string) (e error, hasLivsJson bool, dir string, 
 				return
 			} else {
 				// 从子live里获取信息
-				if err := getLiveDir(refs, dir); err != nil {
+				if err := getLiveDir(dir, refs...); err != nil {
 					e = ErrPlaylistParse.NewErr(err)
 					return
 				}
@@ -1479,7 +1476,7 @@ func LiveDirF(liveRootDir, qref string) (e error, hasLivsJson bool, dir string, 
 				return
 			}
 			// 从子live里获取信息
-			if err := refs[0].getLiveDir(dir); err != nil {
+			if err := getLiveDir(dir, refs[0]); err != nil {
 				e = ErrPlaylistParse.NewErr(err)
 				return
 			}
