@@ -165,13 +165,25 @@ func (link *m4s_link_item) download(reqPool *pool.Buf[reqf.Req], reqConfig reqf.
 
 	r := reqPool.Get()
 	defer reqPool.Put(r)
+	raw := pio.NewPipe()
+	reqConfig.Async = true
+	reqConfig.SaveToPipe = raw
 	reqConfig.Url = link.Url
+	reqConfig.NoResponse = true
 
-	if e := r.Reqf(reqConfig); e != nil && !errors.Is(e, io.EOF) {
-		link.status = 3 // 设置切片状态为下载失败
-		link.err = e
-		return e
-	} else if e = r.Respon(link.data.Append); e != nil {
+	_ = r.Reqf(reqConfig)
+	for {
+		if _, e := slice.AsioReaderBuf(link.data, raw); e != nil {
+			if !errors.Is(e, io.EOF) {
+				link.status = 3 // 设置切片状态为下载失败
+				link.err = e
+				return e
+			} else {
+				break
+			}
+		}
+	}
+	if e := r.Wait(); e != nil && !errors.Is(e, io.EOF) {
 		link.status = 3 // 设置切片状态为下载失败
 		link.err = e
 		return e
