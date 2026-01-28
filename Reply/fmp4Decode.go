@@ -855,6 +855,7 @@ var (
 	iesPool       = pool.NewPoolBlocks[ie]()
 )
 
+// buf can not mod until recycle
 func decode(buf []byte) (m *[]ie, recycle func(*[]ie), err error) {
 	var cu int
 
@@ -896,10 +897,12 @@ var (
 	ErrUnkownBox = pe.New("ErrUnkownBox")
 )
 
+// buf can not mod
 func searchBox(buf []byte, cu *int) (boxName string, i int, e int, err error) {
 	i = *cu
 	e = i + int(F.Btoiv2(buf, *cu, fmp4BoxLenSize))
-	isPureBoxOrNeedSkip, ok := boxs[unsafe.B2S(buf[*cu+fmp4BoxLenSize:*cu+fmp4BoxLenSize+fmp4BoxNameSize])]
+	boxName = unsafe.B2S(buf[*cu+fmp4BoxLenSize : *cu+fmp4BoxLenSize+fmp4BoxNameSize])
+	isPureBoxOrNeedSkip, ok := boxs[boxName]
 	if !ok {
 		err = ErrUnkownBox.WithReason(fmt.Sprintf("未知包: hex(%x%x%x%x)", boxName[0], boxName[1], boxName[2], boxName[3]))
 	} else if e > len(buf) {
