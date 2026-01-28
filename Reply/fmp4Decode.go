@@ -7,7 +7,6 @@ import (
 	"math"
 	"sync"
 	"time"
-	"unique"
 
 	"github.com/dustin/go-humanize"
 	F "github.com/qydysky/bili_danmu/F"
@@ -31,28 +30,28 @@ var (
 	ActionCheckTFail      pe.Action = `CheckTFail`
 )
 
-var boxs map[unique.Handle[string]]bool
+var boxs map[string]bool
 
 func init() {
-	boxs = make(map[unique.Handle[string]]bool)
+	boxs = make(map[string]bool)
 	//isPureBox? || need to skip?
-	boxs[unique.Make("ftyp")] = true
-	boxs[unique.Make("moov")] = false
-	boxs[unique.Make("mvhd")] = true
-	boxs[unique.Make("trak")] = false
-	boxs[unique.Make("tkhd")] = true
-	boxs[unique.Make("mdia")] = false
-	boxs[unique.Make("mdhd")] = true
-	boxs[unique.Make("hdlr")] = true
-	boxs[unique.Make("minf")] = false || true
-	boxs[unique.Make("mvex")] = false || true
-	boxs[unique.Make("moof")] = false
-	boxs[unique.Make("mfhd")] = true
-	boxs[unique.Make("traf")] = false
-	boxs[unique.Make("tfhd")] = true
-	boxs[unique.Make("tfdt")] = true
-	boxs[unique.Make("trun")] = true
-	boxs[unique.Make("mdat")] = true
+	boxs["ftyp"] = true
+	boxs["moov"] = false
+	boxs["mvhd"] = true
+	boxs["trak"] = false
+	boxs["tkhd"] = true
+	boxs["mdia"] = false
+	boxs["mdhd"] = true
+	boxs["hdlr"] = true
+	boxs["minf"] = false || true
+	boxs["mvex"] = false || true
+	boxs["moof"] = false
+	boxs["mfhd"] = true
+	boxs["traf"] = false
+	boxs["tfhd"] = true
+	boxs["tfdt"] = true
+	boxs["trun"] = true
+	boxs["mdat"] = true
 }
 
 type ie struct {
@@ -900,9 +899,7 @@ var (
 func searchBox(buf []byte, cu *int) (boxName string, i int, e int, err error) {
 	i = *cu
 	e = i + int(F.Btoiv2(buf, *cu, fmp4BoxLenSize))
-	boxNameU := unique.Make(unsafe.B2S(buf[*cu+fmp4BoxLenSize : *cu+fmp4BoxLenSize+fmp4BoxNameSize]))
-	boxName = boxNameU.Value()
-	isPureBoxOrNeedSkip, ok := boxs[boxNameU]
+	isPureBoxOrNeedSkip, ok := boxs[unsafe.B2S(buf[*cu+fmp4BoxLenSize:*cu+fmp4BoxLenSize+fmp4BoxNameSize])]
 	if !ok {
 		err = ErrUnkownBox.WithReason(fmt.Sprintf("未知包: hex(%x%x%x%x)", boxName[0], boxName[1], boxName[2], boxName[3]))
 	} else if e > len(buf) {
