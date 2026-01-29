@@ -1,4 +1,4 @@
-package Reply
+package decoder
 
 import (
 	"errors"
@@ -99,6 +99,21 @@ type Fmp4Decoder struct {
 	Debug   bool
 }
 
+var Fmp4DecoderPool = pool.New(pool.PoolFunc[Fmp4Decoder]{
+	New: func() *Fmp4Decoder {
+		return &Fmp4Decoder{
+			traks: make(map[int]*trak),
+			buf:   slice.New[byte](),
+		}
+	},
+	Reuse: func(fd *Fmp4Decoder) *Fmp4Decoder {
+		clear(fd.traks)
+		fd.buf.Reset()
+		return fd
+	},
+}, -1)
+
+// Deprecated:use Fmp4DecoderPool
 func NewFmp4Decoder() *Fmp4Decoder {
 	return &Fmp4Decoder{
 		traks: make(map[int]*trak),
@@ -106,6 +121,7 @@ func NewFmp4Decoder() *Fmp4Decoder {
 	}
 }
 
+// Deprecated:use Fmp4DecoderPool
 func NewFmp4DecoderWithBufsize(size int) *Fmp4Decoder {
 	return &Fmp4Decoder{
 		traks: make(map[int]*trak),
@@ -677,7 +693,7 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...dealFMp4) (cu int, err error) {
 	return
 }
 
-// Deprecated: 效率低于GenFastSeed+CutSeed
+// Deprecated:效率低于GenFastSeed+CutSeed
 func (t *Fmp4Decoder) Cut(reader io.Reader, startT, duration time.Duration, w io.Writer, skipHeader, writeLastBuf bool) (err error) {
 	return t.CutSeed(reader, startT, duration, w, nil, nil, skipHeader, writeLastBuf)
 }

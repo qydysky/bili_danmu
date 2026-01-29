@@ -31,6 +31,7 @@ import (
 
 	replyFunc "github.com/qydysky/bili_danmu/Reply/F"
 	videoInfo "github.com/qydysky/bili_danmu/Reply/F/videoInfo"
+	decoder "github.com/qydysky/bili_danmu/Reply/decoder"
 	pctx "github.com/qydysky/part/ctx"
 	perrors "github.com/qydysky/part/errors"
 	file "github.com/qydysky/part/file"
@@ -259,43 +260,43 @@ func NewM4SStream(c *c.Common) (*M4SStream, error) {
 	return t, nil
 }
 
-// Deprecated: use NewM4SStream
-func (t *M4SStream) LoadConfig(common *c.Common) (e error) {
-	t.common = common
-	t.log = common.Log.Base(`直播流保存`)
+// use NewM4SStream
+// func (t *M4SStream) LoadConfig(common *c.Common) (e error) {
+// 	t.common = common
+// 	t.log = common.Log.Base(`直播流保存`)
 
-	//读取配置
-	if path, ok := common.K_v.LoadV("直播流保存位置").(string); ok {
-		if path, err := filepath.Abs(path); err == nil {
-			if fs, err := os.Stat(path); err != nil {
-				if errors.Is(err, os.ErrNotExist) {
-					if err := os.Mkdir(path, os.ModePerm); err != nil {
-						return errors.New(`直播流保存位置错误` + err.Error())
-					}
-				} else {
-					return errors.New(`直播流保存位置错误` + err.Error())
-				}
-			} else if !fs.IsDir() {
-				return errors.New(`直播流保存位置不是目录`)
-			}
-			t.config.save_path = path
-		} else {
-			return errors.New(`直播流保存位置错误` + err.Error())
-		}
-	} else {
-		return errors.New(`未配置直播流保存位置`)
-	}
-	if v, ok := common.K_v.LoadV(`直播流保存到文件`).(bool); ok {
-		t.config.save_to_file = v
-	}
-	if v, ok := common.K_v.LoadV(`直播流清晰度`).(float64); ok {
-		t.config.want_qn = int(v)
-	}
-	if v, ok := common.K_v.LoadV(`直播流类型`).(string); ok {
-		t.config.want_type = v
-	}
-	return
-}
+// 	//读取配置
+// 	if path, ok := common.K_v.LoadV("直播流保存位置").(string); ok {
+// 		if path, err := filepath.Abs(path); err == nil {
+// 			if fs, err := os.Stat(path); err != nil {
+// 				if errors.Is(err, os.ErrNotExist) {
+// 					if err := os.Mkdir(path, os.ModePerm); err != nil {
+// 						return errors.New(`直播流保存位置错误` + err.Error())
+// 					}
+// 				} else {
+// 					return errors.New(`直播流保存位置错误` + err.Error())
+// 				}
+// 			} else if !fs.IsDir() {
+// 				return errors.New(`直播流保存位置不是目录`)
+// 			}
+// 			t.config.save_path = path
+// 		} else {
+// 			return errors.New(`直播流保存位置错误` + err.Error())
+// 		}
+// 	} else {
+// 		return errors.New(`未配置直播流保存位置`)
+// 	}
+// 	if v, ok := common.K_v.LoadV(`直播流保存到文件`).(bool); ok {
+// 		t.config.save_to_file = v
+// 	}
+// 	if v, ok := common.K_v.LoadV(`直播流清晰度`).(float64); ok {
+// 		t.config.want_qn = int(v)
+// 	}
+// 	if v, ok := common.K_v.LoadV(`直播流类型`).(string); ok {
+// 		t.config.want_type = v
+// 	}
+// 	return
+// }
 
 func (t *M4SStream) getFirstBuf() []byte {
 	if t == nil {
@@ -724,8 +725,6 @@ func (t *M4SStream) genSavepath(log *log.Log) (cupath string) {
 	return cupath
 }
 
-var ErrDecode = perrors.Action("ErrDecode")
-
 func (t *M4SStream) saveStream() (e error) {
 	// 清除初始值
 	t.first_buf = nil
@@ -904,7 +903,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 					buff       = slice.New[byte](humanize.MByte * 100)
 					keyframe   = slice.New[byte]()
 					buf        = make([]byte, humanize.MByte)
-					flvDecoder = NewFlvDecoder()
+					flvDecoder = decoder.NewFlvDecoder()
 					flvInited  = false
 				)
 
@@ -1058,7 +1057,6 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 		// 同时下载数限制
 		downloadLimit       = funcCtrl.NewBlockFuncN(3)
 		buf                 = slice.New[byte]()
-		fmp4Decoder         = NewFmp4Decoder()
 		keyframe            = slice.New[byte]()
 		lastM4s             *m4s_link_item
 		to                  = 5
@@ -1069,6 +1067,8 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 		lastNewT            = time.Now()
 		debugLog, _         = t.common.K_v.LoadV(`debug模式`).(bool)
 	)
+	var fmp4Decoder = decoder.Fmp4DecoderPool.Get()
+	defer decoder.Fmp4DecoderPool.Put(fmp4Decoder)
 
 	if debugLog {
 		fmp4Decoder.Debug = true
@@ -1279,10 +1279,10 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 						cu.status = 3
 						break
 					} else {
-						for _, trak := range fmp4Decoder.traks {
-							// fmt.Println(`T: `, "找到trak:", string(trak.handlerType), trak.trackID, trak.timescale)
-							t.logg().T("找到trak:", string(trak.handlerType), trak.trackID, trak.timescale)
-						}
+						// for _, trak := range fmp4Decoder.traks {
+						// 	// fmt.Println(`T: `, "找到trak:", string(trak.handlerType), trak.trackID, trak.timescale)
+						// 	t.logg().T("找到trak:", string(trak.handlerType), trak.trackID, trak.timescale)
+						// }
 						t.first_buf = make([]byte, len(front_buf))
 						copy(t.first_buf, front_buf)
 						t.msg.Push_tag(`load`, t)
@@ -1577,13 +1577,14 @@ func (t *M4SStream) Start() bool {
 
 						switch saveType {
 						case `mp4`:
-							fmp4Decoder := NewFmp4DecoderWithBufsize(humanize.MByte * 100)
+							fmp4Decoder := decoder.Fmp4DecoderPool.Get()
+							defer decoder.Fmp4DecoderPool.Put(fmp4Decoder)
 							if v, ok := ms.common.K_v.LoadV(`fmp4音视频时间戳容差s`).(float64); ok && v > 0.1 {
 								fmp4Decoder.AVTDiff = v
 							}
 							dealer = fmp4Decoder
 						case `flv`:
-							flvDecoder := NewFlvDecoder()
+							flvDecoder := decoder.NewFlvDecoder()
 							if v, ok := ms.common.K_v.LoadV(`flv音视频时间戳容差ms`).(float64); ok && v > 100 {
 								flvDecoder.Diff = v
 							}

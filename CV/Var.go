@@ -38,8 +38,8 @@ import (
 	psql "github.com/qydysky/part/sql"
 	syncmap "github.com/qydysky/part/sync"
 	sys "github.com/qydysky/part/sys"
-	web "github.com/qydysky/part/web"
 	unsafe "github.com/qydysky/part/unsafe"
+	web "github.com/qydysky/part/web"
 	_ "modernc.org/sqlite" //removable
 )
 
@@ -293,29 +293,29 @@ func (t *Common) DisableLiveAutoByUuid(uuid string) (hadDisable bool) {
 	return
 }
 
-// Deprecated: 存在缺陷
-func (t *Common) DisableLiveAuto(host string) (hadDisable bool) {
-	for i := 0; i < len(t.Live); i++ {
-		if liveUrl, e := url.Parse(t.Live[i].Url); e == nil {
-			if host == liveUrl.Host {
-				return t.Live[i].DisableAuto()
-			}
-		}
-	}
-	return
-}
+// 存在缺陷
+// func (t *Common) DisableLiveAuto(host string) (hadDisable bool) {
+// 	for i := 0; i < len(t.Live); i++ {
+// 		if liveUrl, e := url.Parse(t.Live[i].Url); e == nil {
+// 			if host == liveUrl.Host {
+// 				return t.Live[i].DisableAuto()
+// 			}
+// 		}
+// 	}
+// 	return
+// }
 
-// Deprecated: 存在缺陷
-func (t *Common) DisableLive(host string, reUpTime time.Time) {
-	for i := 0; i < len(t.Live); i++ {
-		if liveUrl, e := url.Parse(t.Live[i].Url); e == nil {
-			if host == liveUrl.Host {
-				t.Live[i].ReUpTime = reUpTime
-				break
-			}
-		}
-	}
-}
+// 存在缺陷
+// func (t *Common) DisableLive(host string, reUpTime time.Time) {
+// 	for i := 0; i < len(t.Live); i++ {
+// 		if liveUrl, e := url.Parse(t.Live[i].Url); e == nil {
+// 			if host == liveUrl.Host {
+// 				t.Live[i].ReUpTime = reUpTime
+// 				break
+// 			}
+// 		}
+// 	}
+// }
 
 func (t *Common) ValidNum() (num int) {
 	for i := 0; i < len(t.Live); i++ {

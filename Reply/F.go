@@ -27,6 +27,7 @@ import (
 	replyFunc "github.com/qydysky/bili_danmu/Reply/F"
 	"github.com/qydysky/bili_danmu/Reply/F/danmuXml"
 	videoInfo "github.com/qydysky/bili_danmu/Reply/F/videoInfo"
+	"github.com/qydysky/bili_danmu/Reply/decoder"
 	send "github.com/qydysky/bili_danmu/Send"
 
 	pctx "github.com/qydysky/part/ctx"
@@ -891,14 +892,15 @@ func init() {
 					switch videoType {
 					case "flv":
 						w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=\"%d.flv\"", time.Now().Unix()))
-						flvDecoder := NewFlvDecoder()
+						flvDecoder := decoder.NewFlvDecoder()
 						if v, ok := c.C.K_v.LoadV(`flv音视频时间戳容差ms`).(float64); ok && v > 100 {
 							flvDecoder.Diff = v
 						}
 						cuter = flvDecoder
 					case "mp4":
 						w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=\"%d.mp4\"", time.Now().Unix()))
-						fmp4Decoder := NewFmp4Decoder()
+						fmp4Decoder := decoder.Fmp4DecoderPool.Get()
+						defer decoder.Fmp4DecoderPool.Put(fmp4Decoder)
 						if v, ok := c.C.K_v.LoadV(`debug模式`).(bool); ok && v {
 							fmp4Decoder.Debug = true
 						}
