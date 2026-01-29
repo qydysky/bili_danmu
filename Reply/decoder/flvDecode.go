@@ -1,4 +1,4 @@
-package Reply
+package decoder
 
 import (
 	"errors"
@@ -265,7 +265,7 @@ func (t *FlvDecoder) oneF(buf []byte, w ...dealFFlv) (dropOffset int, err error)
 	return
 }
 
-// Deprecated: 效率低于GenFastSeed+CutSeed
+// Deprecated:效率低于GenFastSeed+CutSeed
 func (t *FlvDecoder) Cut(reader io.Reader, startT, duration time.Duration, w io.Writer, skipHeader, writeLastBuf bool) (err error) {
 	return t.CutSeed(reader, startT, duration, w, nil, nil, skipHeader, writeLastBuf)
 }

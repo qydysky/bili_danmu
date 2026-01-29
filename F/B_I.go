@@ -106,21 +106,21 @@ func Btoui32v2(b []byte, offset int) (r uint32) {
 	return r
 }
 
-// Deprecated: uses Btoi32v2
-func Btoi32(b []byte, offset int) (r int32) {
-	s := 4
-	bu := make([]byte, s)
-	l := len(b) - offset
-	if l > s {
-		l = s
-	}
-	for i := 0; i < s && i < l; i++ {
-		bu[i+s-l] = b[offset+i]
-	}
+// uses Btoi32v2
+// func Btoi32(b []byte, offset int) (r int32) {
+// 	s := 4
+// 	bu := make([]byte, s)
+// 	l := len(b) - offset
+// 	if l > s {
+// 		l = s
+// 	}
+// 	for i := 0; i < s && i < l; i++ {
+// 		bu[i+s-l] = b[offset+i]
+// 	}
 
-	//binary.BigEndian.Uint32
-	return int32((uint32(bu[3]) | uint32(bu[2])<<8 | uint32(bu[1])<<16 | uint32(bu[0])<<24))
-}
+// 	//binary.BigEndian.Uint32
+// 	return int32((uint32(bu[3]) | uint32(bu[2])<<8 | uint32(bu[1])<<16 | uint32(bu[0])<<24))
+// }
 
 // 当len(b)<4时， 将在左侧补0; >4时，从左向右读4位后面忽略
 func Btoi32v2(b []byte, offset int) (r int32) {
@@ -161,21 +161,21 @@ func Btoi16v2(b []byte, offset int) (r int16) {
 	return r
 }
 
-// Deprecated: use Btoi16v2
-func Btoi16(b []byte, offset int) int16 {
-	s := 2
-	bu := make([]byte, s)
-	l := len(b) - offset
-	if l > s {
-		l = s
-	}
-	for i := 0; i < s && i < l; i++ {
-		bu[i+s-l] = b[offset+i]
-	}
+// use Btoi16v2
+// func Btoi16(b []byte, offset int) int16 {
+// 	s := 2
+// 	bu := make([]byte, s)
+// 	l := len(b) - offset
+// 	if l > s {
+// 		l = s
+// 	}
+// 	for i := 0; i < s && i < l; i++ {
+// 		bu[i+s-l] = b[offset+i]
+// 	}
 
-	//binary.BigEndian.Uint16
-	return int16(uint16(bu[1]) | uint16(bu[0])<<8)
-}
+// 	//binary.BigEndian.Uint16
+// 	return int16(uint16(bu[1]) | uint16(bu[0])<<8)
+// }
 
 // Depercated: use Btoi64v2
 func Btoi64(b []byte, offset int) int64 {

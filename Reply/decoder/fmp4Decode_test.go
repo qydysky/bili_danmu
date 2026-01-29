@@ -1,4 +1,4 @@
-package Reply
+package decoder
 
 import (
 	"errors"
