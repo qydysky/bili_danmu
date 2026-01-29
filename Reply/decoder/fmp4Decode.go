@@ -11,6 +11,7 @@ import (
 	"github.com/dustin/go-humanize"
 	F "github.com/qydysky/bili_danmu/F"
 	pe "github.com/qydysky/part/errors"
+	pio "github.com/qydysky/part/io"
 	pool "github.com/qydysky/part/pool"
 	slice "github.com/qydysky/part/slice"
 	unsafe "github.com/qydysky/part/unsafe"
@@ -587,7 +588,8 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...dealFMp4) (cu int, err error) {
 					if keyframeMoof {
 						if v, e := sbuf.HadModified(bufModified); e == nil && v && !sbuf.IsEmpty() {
 							if haveKeyframe && len(w) > 0 {
-								err = w[0](video.getT(), cu, sbuf)
+								// pio.WrapIoWriteTo 实现io.WriteTo避免分配复制缓存
+								err = w[0](video.getT(), cu, pio.WrapIoWriteTo(sbuf))
 								dropKeyFrame(m[0].i)
 								return ErrNormal
 							}
@@ -667,7 +669,8 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...dealFMp4) (cu int, err error) {
 					if keyframeMoof {
 						if v, e := sbuf.HadModified(bufModified); e == nil && v && !sbuf.IsEmpty() {
 							if haveKeyframe && len(w) > 0 {
-								err = w[0](video.getT(), cu, sbuf)
+								// pio.WrapIoWriteTo 实现io.WriteTo避免分配复制缓存
+								err = w[0](video.getT(), cu, pio.WrapIoWriteTo(sbuf))
 								dropKeyFrame(m[0].i)
 								return ErrNormal
 							}
