@@ -101,11 +101,13 @@ type Fmp4Decoder struct {
 }
 
 var Fmp4DecoderPool = pool.New(pool.PoolFunc[Fmp4Decoder]{
-	New: func() *Fmp4Decoder {
-		return &Fmp4Decoder{
+	New: func() (fd *Fmp4Decoder) {
+		fd = &Fmp4Decoder{
 			traks: make(map[int]*trak),
 			buf:   slice.New[byte](),
 		}
+		fd.buf.ExpandCapTo(4096)
+		return
 	},
 	Reuse: func(fd *Fmp4Decoder) *Fmp4Decoder {
 		clear(fd.traks)

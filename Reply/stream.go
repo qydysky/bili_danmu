@@ -1570,39 +1570,41 @@ func (t *M4SStream) Start() bool {
 
 					//PusherToFile fin genFastSeed
 					if disableFastSeed, ok := ms.common.K_v.LoadV("禁用快速索引生成").(bool); !ok || !disableFastSeed {
-						type deal interface {
-							GenFastSeed(reader io.Reader, save func(seedTo time.Duration, cuIndex int64) error) (err error)
-						}
-						var dealer deal
-
-						switch saveType {
-						case `mp4`:
-							fmp4Decoder := decoder.Fmp4DecoderPool.Get()
-							defer decoder.Fmp4DecoderPool.Put(fmp4Decoder)
-							if v, ok := ms.common.K_v.LoadV(`fmp4音视频时间戳容差s`).(float64); ok && v > 0.1 {
-								fmp4Decoder.AVTDiff = v
+						func() {
+							type deal interface {
+								GenFastSeed(reader io.Reader, save func(seedTo time.Duration, cuIndex int64) error) (err error)
 							}
-							dealer = fmp4Decoder
-						case `flv`:
-							flvDecoder := decoder.NewFlvDecoder()
-							if v, ok := ms.common.K_v.LoadV(`flv音视频时间戳容差ms`).(float64); ok && v > 100 {
-								flvDecoder.Diff = v
-							}
-							dealer = flvDecoder
-						default:
-						}
+							var dealer deal
 
-						if dealer != nil {
-							_ = replyFunc.VideoFastSeed.Run(func(vfsi replyFunc.VideoFastSeedI) error {
-								f := file.Open(path)
-								if sf, e := vfsi.InitSav(path + ".fastSeed"); e != nil {
-									l.BaseAdd(`GenFastSeed`).E(path, e)
-								} else if e := dealer.GenFastSeed(f, sf); e != nil && !errors.Is(e, io.EOF) {
-									l.BaseAdd(`GenFastSeed`).E(path, e)
+							switch saveType {
+							case `mp4`:
+								fmp4Decoder := decoder.Fmp4DecoderPool.Get()
+								defer decoder.Fmp4DecoderPool.Put(fmp4Decoder)
+								if v, ok := ms.common.K_v.LoadV(`fmp4音视频时间戳容差s`).(float64); ok && v > 0.1 {
+									fmp4Decoder.AVTDiff = v
 								}
-								return f.Close()
-							})
-						}
+								dealer = fmp4Decoder
+							case `flv`:
+								flvDecoder := decoder.NewFlvDecoder()
+								if v, ok := ms.common.K_v.LoadV(`flv音视频时间戳容差ms`).(float64); ok && v > 100 {
+									flvDecoder.Diff = v
+								}
+								dealer = flvDecoder
+							default:
+							}
+
+							if dealer != nil {
+								_ = replyFunc.VideoFastSeed.Run(func(vfsi replyFunc.VideoFastSeedI) error {
+									f := file.Open(path)
+									if sf, e := vfsi.InitSav(path + ".fastSeed"); e != nil {
+										l.BaseAdd(`GenFastSeed`).E(path, e)
+									} else if e := dealer.GenFastSeed(f, sf); e != nil && !errors.Is(e, io.EOF) {
+										l.BaseAdd(`GenFastSeed`).E(path, e)
+									}
+									return f.Close()
+								})
+							}
+						}()
 					}
 
 					//指定房间录制回调
