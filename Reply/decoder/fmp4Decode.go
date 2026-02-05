@@ -117,11 +117,13 @@ var Fmp4DecoderPool = pool.New(pool.PoolFunc[Fmp4Decoder]{
 }, -1)
 
 // Deprecated:use Fmp4DecoderPool
-func NewFmp4Decoder() *Fmp4Decoder {
-	return &Fmp4Decoder{
+func NewFmp4Decoder() (fd *Fmp4Decoder) {
+	fd = &Fmp4Decoder{
 		traks: make(map[int]*trak),
 		buf:   slice.New[byte](),
 	}
+	fd.buf.ExpandCapTo(4096)
+	return
 }
 
 // Deprecated:use Fmp4DecoderPool
