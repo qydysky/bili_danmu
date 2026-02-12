@@ -106,7 +106,7 @@ var Fmp4DecoderPool = pool.New(pool.PoolFunc[Fmp4Decoder]{
 			traks: make(map[int]*trak),
 			buf:   slice.New[byte](),
 		}
-		fd.buf.ExpandCapTo(humanize.MByte * 3)
+		fd.buf.ExpandCapTo(humanize.MByte * 5)
 		return
 	},
 	Reuse: func(fd *Fmp4Decoder) *Fmp4Decoder {

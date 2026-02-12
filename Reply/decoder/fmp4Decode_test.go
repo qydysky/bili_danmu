@@ -87,7 +87,9 @@ func Test_Mp4Cut(t *testing.T) {
 	}
 
 	e := NewFmp4Decoder().Cut(f, time.Minute*30, time.Second*20, cutf.File(), false, false)
-	t.Log(perrors.ErrorFormat(e))
+	if !errors.Is(e, io.EOF) {
+		t.Fatal(perrors.ErrorFormat(e))
+	}
 }
 
 func Test_Mp4GenFastSeed(t *testing.T) {
@@ -106,7 +108,9 @@ func Test_Mp4GenFastSeed(t *testing.T) {
 	e = NewFmp4Decoder().GenFastSeed(f, func(seedTo time.Duration, cuIndex int64) error {
 		return sf(seedTo, cuIndex)
 	})
-	t.Log(perrors.ErrorFormat(e))
+	if !errors.Is(e, io.EOF) {
+		t.Fatal(perrors.ErrorFormat(e))
+	}
 
 	// VideoFastSeed.BeforeGet("testdata/1.fastSeed")
 	// {

@@ -903,7 +903,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 					flvInited  = false
 				)
 
-				buff.ExpandCapTo(humanize.MByte * 3)
+				buff.ExpandCapTo(humanize.MByte * 5)
 
 				if v, ok := c.C.K_v.LoadV(`flv音视频时间戳容差ms`).(float64); ok && v > 100 {
 					flvDecoder.Diff = v
