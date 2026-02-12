@@ -1086,6 +1086,10 @@ func init() {
 							w.WriteHeader(http.StatusServiceUnavailable)
 							return
 						}
+						flog.T(r.RemoteAddr, `接入录播`)
+						defer func(ts time.Time) {
+							flog.T(r.RemoteAddr, `断开录播`, time.Since(ts))
+						}(time.Now())
 						sst, sdur, skipHeader := parseDuration(playlist.Lives[0].StartT)+st, parseDuration(playlist.Lives[len(playlist.Lives)-1].Dur), false
 						nodur := dur == 0
 						for i := 0; i < len(playlist.Lives) && (nodur || dur > 0); i++ {
