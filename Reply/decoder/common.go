@@ -6,4 +6,7 @@ import (
 	_ "github.com/qydysky/bili_danmu/Reply/F/videoFastSeed" //removable
 )
 
-var ErrDecode = perrors.Action("ErrDecode")
+var (
+	ErrDecode      = perrors.Action("ErrDecode")
+	ErrBufOverflow = perrors.Action("ErrBufOverflow")
+)

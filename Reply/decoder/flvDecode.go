@@ -296,10 +296,7 @@ func (t *FlvDecoder) CutSeed(reader io.Reader, startT, duration time.Duration, w
 		n, e := reader.Read(buf)
 		if n == 0 && errors.Is(e, io.EOF) {
 			if buff.Size() > 0 {
-				buf, ulock := buff.GetPureBufRLock()
-				_, _ = w.Write(buf)
-				ulock()
-				buff.Reset()
+				_, _ = w.Write(buff.GetPureBuf())
 			}
 			return io.EOF
 		}

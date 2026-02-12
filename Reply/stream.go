@@ -162,6 +162,7 @@ func (link *m4s_link_item) download(reqPool *pool.Buf[reqf.Req], reqConfig reqf.
 	link.status = 1 // 设置切片状态为正在下载
 	link.err = nil
 	link.tryDownCount += 1
+
 	link.data.Reset()
 
 	r := reqPool.Get()
@@ -173,15 +174,11 @@ func (link *m4s_link_item) download(reqPool *pool.Buf[reqf.Req], reqConfig reqf.
 	reqConfig.NoResponse = true
 
 	_ = r.Reqf(reqConfig)
-	for {
-		if _, e := slice.AsioReaderBuf(link.data, raw); e != nil {
-			if !errors.Is(e, io.EOF) {
-				link.status = 3 // 设置切片状态为下载失败
-				link.err = e
-				return e
-			} else {
-				break
-			}
+	if _, e := link.data.ReadFrom(raw); e != nil {
+		if !errors.Is(e, io.EOF) {
+			link.status = 3 // 设置切片状态为下载失败
+			link.err = e
+			return e
 		}
 	}
 	if e := r.Wait(); e != nil && !errors.Is(e, io.EOF) {
@@ -900,31 +897,32 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 				defer cancel()
 
 				var (
-					buff       = slice.New[byte](humanize.MByte * 100)
+					buff       = slice.New[byte]()
 					keyframe   = slice.New[byte]()
-					buf        = make([]byte, humanize.MByte)
 					flvDecoder = decoder.NewFlvDecoder()
 					flvInited  = false
 				)
+
+				buff.ExpandCapTo(humanize.MByte * 3)
 
 				if v, ok := c.C.K_v.LoadV(`flv音视频时间戳容差ms`).(float64); ok && v > 100 {
 					flvDecoder.Diff = v
 				}
 
 				for {
-					if n, e := pipe.Read(buf); e != nil {
-						if !errors.Is(e, io.ErrClosedPipe) {
+					if buff.Size() == buff.Cap() {
+						pctx.PutVal(cancelC, &errCtx, errors.New("[decoder]buf overflow"))
+					}
+					if n, e := pipe.Read(buff.GetRawBuf(buff.Size(), min(buff.Size()+humanize.MByte, buff.Cap()))); e != nil {
+						if !errors.Is(e, io.ErrClosedPipe) && !errors.Is(e, io.EOF) {
 							pctx.PutVal(cancelC, &errCtx, e)
 						}
 						break
-					} else if e = buff.Append(buf[:n]); e != nil {
-						pctx.PutVal(cancelC, &errCtx, e)
-						break
+					} else {
+						buff.AddSize(n)
 					}
 					if !flvInited {
-						buf, unlock := buff.GetPureBufRLock()
-						frontBuf, dropOffset, err := flvDecoder.Init(buf)
-						unlock()
+						frontBuf, dropOffset, err := flvDecoder.Init(buff.GetPureBuf())
 
 						if err != nil {
 							// l.E(err)
@@ -942,9 +940,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 							t.msg.Push_tag(`load`, t)
 						}
 					} else {
-						buf, unlock := buff.GetPureBufRLock()
-						dropOffset, err := flvDecoder.SearchStreamFrame(buf, keyframe)
-						unlock()
+						dropOffset, err := flvDecoder.SearchStreamFrame(buff.GetPureBuf(), keyframe)
 
 						if err != nil {
 							// l.E(err)
@@ -963,10 +959,9 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 								// 存在有效数据
 								leastReadUnix.Store(time.Now().Unix())
 
-								buf, unlock := keyframe.GetPureBufRLock()
+								buf := keyframe.GetPureBuf()
 								t.bootBufPush(buf)
 								t.stream_msg.PushLock_tag(`data`, buf)
-								unlock()
 
 								keyframe.Reset()
 								t.frameCount += 1
@@ -975,7 +970,6 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 						}
 					}
 				}
-				buf = nil
 				buff.Reset()
 			}()
 
@@ -1271,9 +1265,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 
 			if cu.isInit() {
 				{
-					buf, unlock := cu.data.GetPureBufRLock()
-					front_buf, _, e := fmp4Decoder.Init(buf)
-					unlock()
+					front_buf, _, e := fmp4Decoder.Init(cu.data.GetPureBuf())
 					if e != nil {
 						t.logg().E(e, `重试!`)
 						cu.status = 3
@@ -1303,9 +1295,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 				t.logg().E(e)
 			}
 
-			buff, unlock := buf.GetPureBufRLock()
-			last_available_offset, err := fmp4Decoder.SearchStreamFrame(buff, keyframe)
-			unlock()
+			last_available_offset, err := fmp4Decoder.SearchStreamFrame(buf.GetPureBuf(), keyframe)
 
 			if err != nil && !errors.Is(err, io.EOF) {
 				// 发生解码错误，移除切片，禁用切片服务器
@@ -1327,10 +1317,9 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 
 			// 传递关键帧
 			if !keyframe.IsEmpty() {
-				keyframeBuf, unlock := keyframe.GetPureBufRLock()
+				keyframeBuf := keyframe.GetPureBuf()
 				t.bootBufPush(keyframeBuf)
 				t.stream_msg.PushLock_tag(`data`, keyframeBuf)
-				unlock()
 				keyframe.Reset()
 				t.frameCount += 1
 				t.msg.Push_tag(`keyFrame`, t)

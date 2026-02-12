@@ -106,7 +106,7 @@ var Fmp4DecoderPool = pool.New(pool.PoolFunc[Fmp4Decoder]{
 			traks: make(map[int]*trak),
 			buf:   slice.New[byte](),
 		}
-		fd.buf.ExpandCapTo(4096)
+		fd.buf.ExpandCapTo(humanize.MByte * 3)
 		return
 	},
 	Reuse: func(fd *Fmp4Decoder) *Fmp4Decoder {
@@ -733,12 +733,14 @@ func (t *Fmp4Decoder) CutSeed(reader io.Reader, startT, duration time.Duration, 
 		fmt.Printf("cut startT: %v duration: %v\n", startT, duration)
 	}
 	for c := 0; err == nil && !over; c++ {
-		n, e := slice.AsioReaderBuf(t.buf, reader)
+		if t.buf.Size() == t.buf.Cap() {
+			return ErrBufOverflow
+		}
+		n, e := reader.Read(t.buf.GetRawBuf(t.buf.Size(), min(t.buf.Size()+humanize.MByte, t.buf.Cap())))
+		t.buf.AddSize(n)
 		if n == 0 && errors.Is(e, io.EOF) {
 			if t.buf.Size() > 0 {
-				buf, ulock := t.buf.GetPureBufRLock()
-				_, _ = w.Write(buf)
-				ulock()
+				_, _ = w.Write(t.buf.GetPureBuf())
 				t.buf.Reset()
 			}
 			return io.EOF
@@ -800,11 +802,15 @@ func (t *Fmp4Decoder) GenFastSeed(reader io.Reader, save func(seedTo time.Durati
 	firstFT := -1.0
 
 	for c := 0; err == nil; c++ {
-		n, e := slice.AsioReaderBuf(t.buf, reader)
+		if t.buf.Size() == t.buf.Cap() {
+			return ErrBufOverflow
+		}
+		n, e := reader.Read(t.buf.GetRawBuf(t.buf.Size(), min(t.buf.Size()+humanize.MByte, t.buf.Cap())))
+		t.buf.AddSize(n)
 		if n == 0 && errors.Is(e, io.EOF) {
 			return io.EOF
 		}
-		totalRead += n
+		totalRead += int(n)
 		if !init {
 			if frontBuf, _, e := t.Init(t.buf.GetPureBuf()); e != nil {
 				return pe.New(e.Error(), ActionInitFmp4)

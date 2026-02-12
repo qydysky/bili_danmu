@@ -4,7 +4,7 @@ go 1.25
 
 require (
 	github.com/mdp/qrterminal/v3 v3.2.0
-	github.com/qydysky/part v0.28.20260204175650
+	github.com/qydysky/part v0.28.20260212182730
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966
 	golang.org/x/text v0.31.0 // indirect
