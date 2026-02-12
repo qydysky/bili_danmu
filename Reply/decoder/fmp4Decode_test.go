@@ -151,5 +151,7 @@ func Test_Mp4CutSeed(t *testing.T) {
 	}
 
 	e = NewFmp4Decoder().CutSeed(f, time.Minute*30, time.Second*20, cutf.File(), f, gf, false, false)
-	t.Log(perrors.ErrorFormat(e))
+	if !errors.Is(e, io.EOF) {
+		t.Fatal(perrors.ErrorFormat(e))
+	}
 }

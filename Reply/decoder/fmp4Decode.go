@@ -118,21 +118,14 @@ var Fmp4DecoderPool = pool.New(pool.PoolFunc[Fmp4Decoder]{
 
 // Deprecated:use Fmp4DecoderPool
 func NewFmp4Decoder() (fd *Fmp4Decoder) {
-	fd = &Fmp4Decoder{
-		traks: make(map[int]*trak),
-		buf:   slice.New[byte](),
-	}
-	fd.buf.ExpandCapTo(4096)
-	return
+	return Fmp4DecoderPool.Get()
 }
 
 // Deprecated:use Fmp4DecoderPool
-func NewFmp4DecoderWithBufsize(size int) *Fmp4Decoder {
-	return &Fmp4Decoder{
-		traks: make(map[int]*trak),
-		buf:   slice.New[byte](size),
-	}
-}
+// func NewFmp4DecoderWithBufsize(size int) *Fmp4Decoder {
+// 	f := Fmp4DecoderPool.Get()
+// 	return f
+// }
 
 func (t *Fmp4Decoder) Init(buf []byte) (b []byte, dropOffset int, err error) {
 	var ftypI, ftypE, moovI, moovE int
