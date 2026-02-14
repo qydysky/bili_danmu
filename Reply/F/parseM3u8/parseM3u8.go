@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	comp "github.com/qydysky/part/component2"
+	ps "github.com/qydysky/part/slice"
 	unsafe "github.com/qydysky/part/unsafe"
 )
 
@@ -59,15 +60,17 @@ func (t parseM3u8) Parse(respon []byte, lastNo int) (m4sLink iter.Seq[interface 
 		}
 	}
 
-	m3u := bytes.Split(respon, []byte{'\n'})
-	var maxqn = -1
-	for i := 0; i < len(m3u); i++ {
-		if bytes.HasPrefix(m3u[i], extXStreamInf) {
-			// m3u8 指向新连接
-			tmp := strings.TrimSpace(unsafe.B2S(m3u[i+1]))
-			if redirectUrl == "" {
-				redirectUrl = tmp
-			}
+	var (
+		maxqn            = -1
+		hasExtXStreamInf = false
+	)
+
+	ps.Split(respon, []byte{'\n'}, func(s []byte) bool {
+		if len(s) == 0 {
+			return true
+		}
+		if hasExtXStreamInf {
+			tmp := strings.TrimSpace(unsafe.B2S(s))
 			if qn, e := strconv.Atoi(ParseQuery(tmp, "qn=")); e == nil {
 				if maxqn < qn {
 					maxqn = qn
@@ -75,8 +78,13 @@ func (t parseM3u8) Parse(respon []byte, lastNo int) (m4sLink iter.Seq[interface 
 				}
 			}
 			err = ErrRedirect
+			hasExtXStreamInf = false
 		}
-	}
+		if bytes.HasPrefix(s, extXStreamInf) {
+			hasExtXStreamInf = true
+		}
+		return true
+	})
 	if t.IsErrRedirect(err) {
 		return
 	}
@@ -85,10 +93,9 @@ func (t parseM3u8) Parse(respon []byte, lastNo int) (m4sLink iter.Seq[interface 
 		IsHeader() bool
 		M4sLink() string
 	}) bool) {
-		for i := 0; i < len(m3u); i++ {
-			line := m3u[i]
+		ps.Split(respon, []byte{'\n'}, func(line []byte) bool {
 			if len(line) == 0 {
-				continue
+				return true
 			}
 
 			var (
@@ -99,13 +106,13 @@ func (t parseM3u8) Parse(respon []byte, lastNo int) (m4sLink iter.Seq[interface 
 			if line[0] == '#' {
 				if bytes.HasPrefix(line, extXMap) {
 					if lastNo != 0 {
-						continue
+						return true
 					}
 					e := bytes.Index(line[16:], []byte{'"'}) + 16
 					m4sLink = string(line[16:e])
 					isHeader = true
 				} else {
-					continue
+					return true
 				}
 			} else {
 				m4sLink = string(line)
@@ -114,7 +121,7 @@ func (t parseM3u8) Parse(respon []byte, lastNo int) (m4sLink iter.Seq[interface 
 			if !isHeader {
 				// 只增加新的切片
 				if no, _ := strconv.Atoi(m4sLink[:len(m4sLink)-4]); lastNo >= no {
-					continue
+					return true
 				}
 			}
 
@@ -122,9 +129,10 @@ func (t parseM3u8) Parse(respon []byte, lastNo int) (m4sLink iter.Seq[interface 
 				header: isHeader,
 				link:   m4sLink,
 			}) {
-				break
+				return false
 			}
-		}
+			return true
+		})
 	}
 	return
 }
