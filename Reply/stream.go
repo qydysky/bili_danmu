@@ -1391,7 +1391,7 @@ func (t *M4SStream) Start() bool {
 	}
 
 	// 实例回调
-	t.msg = msgq.NewType[*M4SStream](time.Second * 5)
+	t.msg = msgq.NewType[*M4SStream]()
 	t.msg.Push_tag(`start`, t)
 	if t.Callback_start != nil {
 		if e := t.Callback_start(t); e != nil {
