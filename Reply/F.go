@@ -885,6 +885,7 @@ func init() {
 					type decodeCuter interface {
 						CutSeed(reader io.Reader, startT time.Duration, duration time.Duration, w io.Writer, seeker io.Seeker, getIndex func(seedTo time.Duration) (int64, error), skipHeader, writeLastBuf bool) (err error)
 						Cut(reader io.Reader, startT time.Duration, duration time.Duration, w io.Writer, skipHeader, writeLastBuf bool) (err error)
+						GenFastSeed(reader io.Reader, save func(seedTo time.Duration, cuIndex int64) error) (err error)
 					}
 
 					var cuter decodeCuter
@@ -933,8 +934,31 @@ func init() {
 								flog.I(e)
 							}
 						}
-					} else if e := cuter.Cut(f, startT, duration, res, skipHeader, writeLastBuf); e != nil && !errors.Is(e, io.EOF) {
-						flog.I(e)
+					} else {
+						if e := replyFunc.VideoFastSeed.Run(func(vfsi replyFunc.VideoFastSeedI) error {
+							flog := flog.BaseAdd("重生成索引")
+							f := file.Open(videoDir + "0." + videoType)
+							if sf, e := vfsi.InitSav(videoDir + "0." + videoType + ".fastSeed"); e != nil {
+								flog.E(e)
+							} else if e := cuter.GenFastSeed(f, sf); e != nil && !errors.Is(e, io.EOF) {
+								flog.E(e)
+							}
+							f.Close()
+
+							if gf, e := vfsi.InitGet(videoDir + "0." + videoType + ".fastSeed"); e != nil {
+								flog.E(e)
+								return e
+							} else if e := cuter.CutSeed(f, startT, duration, res, f, gf, skipHeader, writeLastBuf); e != nil && !errors.Is(e, io.EOF) {
+								flog.E(e)
+								return e
+							}
+							return nil
+						}); e != nil {
+							flog.E(e)
+							if e := cuter.Cut(f, startT, duration, res, skipHeader, writeLastBuf); e != nil && !errors.Is(e, io.EOF) {
+								flog.I(e)
+							}
+						}
 					}
 				} else if e := f.CopyToIoWriter(w, pio.CopyConfig{BytePerSec: speed, SkipByte: *offsetByte}); e != nil {
 					flog.I(perrors.ErrorFormat(e, perrors.ErrActionInLineFunc))
