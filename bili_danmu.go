@@ -460,16 +460,21 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *plog.Log, common *c.C
 			},
 		})
 
-		//30s获取一次人气
+		//30s获取一次心跳人气
 		go func() {
-			danmulog.T("获取人气")
+			danmulog.T("获取心跳人气")
 			for !ws_c.Isclose() {
+				heartBeatSendT := time.Now()
 				wsmsg.Push_tag(`send`, &ws.WsMsg{
 					Msg: func(f func([]byte) error) error {
 						return f(heartbeatmsg)
 					},
 				})
 				time.Sleep(time.Millisecond * time.Duration(heartinterval*1000))
+				if common.HeartBeatT.IsZero() || common.HeartBeatT.Sub(heartBeatSendT) > time.Second*5 {
+					danmulog.W("心跳响应超时，重新进入房间")
+					common.Danmu_Main_mq.Push_tag(`flash_room`, nil)
+				}
 			}
 		}()
 

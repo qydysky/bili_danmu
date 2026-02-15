@@ -96,6 +96,7 @@ type Common struct {
 	SerLimit          *web.Limits                      `json:"-"`            //Web服务连接限制
 	StartT            time.Time                        `json:"-"`            //启动时间
 	Cache             syncmap.MapExceeded[string, any] `json:"-"`            //缓存
+	HeartBeatT        time.Time                        `json:"-"`            //心跳响应时间
 	l                 sync.RWMutex                     `json:"-"`
 	buf               []byte                           `json:"-"`
 }
@@ -122,6 +123,7 @@ func (t *Common) MarshalJSON() ([]byte, error) {
 		Login         bool      `json:"login"`
 		Note          string    `json:"note"`
 		LiveStartTime string    `json:"liveStartTime"`
+		HeartBeatT    string    `json:"heartBeatT"`
 		Liveing       bool      `json:"liveing"`
 	}{
 		Live:          append([]*LiveQn{}, t.Live...),
@@ -140,6 +142,7 @@ func (t *Common) MarshalJSON() ([]byte, error) {
 		Note:          t.Note,
 		LiveStartTime: t.Live_Start_Time.Format(time.RFC3339),
 		Liveing:       t.Liveing,
+		HeartBeatT:    t.HeartBeatT.Format(time.RFC3339),
 	})
 }
 
@@ -278,6 +281,7 @@ func (t *Common) Copy() *Common {
 		SerLimit:          t.SerLimit,
 		StartT:            t.StartT,
 		Cache:             *t.Cache.Copy(),
+		HeartBeatT:        t.HeartBeatT,
 	}
 
 	return &c

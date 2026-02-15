@@ -527,6 +527,8 @@ var (
 )
 
 func (t replyF) heartbeat(s int) {
+	t.HeartBeatT = time.Now()
+	
 	if v, ok := t.K_v.LoadV("下播后不记录人气观看人数").(bool); ok && v && !t.Liveing {
 		return
 	}
