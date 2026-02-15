@@ -117,9 +117,9 @@ var Fmp4DecoderPool = pool.New(pool.PoolFunc[Fmp4Decoder]{
 }, -1)
 
 // Deprecated:use Fmp4DecoderPool
-func NewFmp4Decoder() (fd *Fmp4Decoder) {
-	return Fmp4DecoderPool.Get()
-}
+// func NewFmp4Decoder() (fd *Fmp4Decoder) {
+// 	return Fmp4DecoderPool.Get()
+// }
 
 // Deprecated:use Fmp4DecoderPool
 // func NewFmp4DecoderWithBufsize(size int) *Fmp4Decoder {
