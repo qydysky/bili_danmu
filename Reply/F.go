@@ -938,12 +938,13 @@ func init() {
 						if e := replyFunc.VideoFastSeed.Run(func(vfsi replyFunc.VideoFastSeedI) error {
 							flog := flog.BaseAdd("重生成索引")
 							f := file.Open(videoDir + "0." + videoType)
+							defer f.Close()
 							if sf, e := vfsi.InitSav(videoDir + "0." + videoType + ".fastSeed"); e != nil {
 								flog.E(e)
 							} else if e := cuter.GenFastSeed(f, sf); e != nil && !errors.Is(e, io.EOF) {
 								flog.E(e)
 							}
-							f.Close()
+							f.Seek(0, int(file.AtOrigin))
 
 							if gf, e := vfsi.InitGet(videoDir + "0." + videoType + ".fastSeed"); e != nil {
 								flog.E(e)
