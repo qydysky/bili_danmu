@@ -31,6 +31,7 @@ import (
 
 	replyFunc "github.com/qydysky/bili_danmu/Reply/F"
 	videoInfo "github.com/qydysky/bili_danmu/Reply/F/videoInfo"
+	decoder "github.com/qydysky/bili_danmu/Reply/decoder"
 	pctx "github.com/qydysky/part/ctx"
 	perrors "github.com/qydysky/part/errors"
 	file "github.com/qydysky/part/file"
@@ -87,6 +88,21 @@ type M4SStream_Config struct {
 	save_to_file bool   //保存到文件
 }
 
+// 初始化池
+var m4sPool = pool.New(
+	pool.PoolFunc[m4s_link_item]{
+		New: func() *m4s_link_item {
+			return &m4s_link_item{
+				data: slice.New[byte](),
+			}
+		},
+		Reuse: func(t *m4s_link_item) *m4s_link_item {
+			return t.reset()
+		},
+	},
+	50,
+)
+
 type m4s_link_item struct {
 	Url          string           // m4s链接
 	Base         string           // m4s文件名
@@ -96,7 +112,6 @@ type m4s_link_item struct {
 	tryDownCount int              // 下载次数 当=3时，不再下载，忽略此块
 	data         *slice.Buf[byte] // 下载的数据
 	createdTime  time.Time        // 创建时间
-	pooledTime   time.Time        // 到pool时间
 	SerUuid      string           // 使用的流服务器uuid
 }
 
@@ -161,17 +176,26 @@ func (link *m4s_link_item) download(reqPool *pool.Buf[reqf.Req], reqConfig reqf.
 	link.status = 1 // 设置切片状态为正在下载
 	link.err = nil
 	link.tryDownCount += 1
+
 	link.data.Reset()
 
 	r := reqPool.Get()
 	defer reqPool.Put(r)
+	raw := pio.NewPipe()
+	reqConfig.Async = true
+	reqConfig.SaveToPipe = raw
 	reqConfig.Url = link.Url
+	reqConfig.NoResponse = true
 
-	if e := r.Reqf(reqConfig); e != nil && !errors.Is(e, io.EOF) {
-		link.status = 3 // 设置切片状态为下载失败
-		link.err = e
-		return e
-	} else if e = r.Respon(link.data.Append); e != nil {
+	_ = r.Reqf(reqConfig)
+	if _, e := link.data.ReadFrom(raw); e != nil {
+		if !errors.Is(e, io.EOF) {
+			link.status = 3 // 设置切片状态为下载失败
+			link.err = e
+			return e
+		}
+	}
+	if e := r.Wait(); e != nil && !errors.Is(e, io.EOF) {
 		link.status = 3 // 设置切片状态为下载失败
 		link.err = e
 		return e
@@ -247,43 +271,43 @@ func NewM4SStream(c *c.Common) (*M4SStream, error) {
 	return t, nil
 }
 
-// Deprecated: use NewM4SStream
-func (t *M4SStream) LoadConfig(common *c.Common) (e error) {
-	t.common = common
-	t.log = common.Log.Base(`直播流保存`)
+// use NewM4SStream
+// func (t *M4SStream) LoadConfig(common *c.Common) (e error) {
+// 	t.common = common
+// 	t.log = common.Log.Base(`直播流保存`)
 
-	//读取配置
-	if path, ok := common.K_v.LoadV("直播流保存位置").(string); ok {
-		if path, err := filepath.Abs(path); err == nil {
-			if fs, err := os.Stat(path); err != nil {
-				if errors.Is(err, os.ErrNotExist) {
-					if err := os.Mkdir(path, os.ModePerm); err != nil {
-						return errors.New(`直播流保存位置错误` + err.Error())
-					}
-				} else {
-					return errors.New(`直播流保存位置错误` + err.Error())
-				}
-			} else if !fs.IsDir() {
-				return errors.New(`直播流保存位置不是目录`)
-			}
-			t.config.save_path = path
-		} else {
-			return errors.New(`直播流保存位置错误` + err.Error())
-		}
-	} else {
-		return errors.New(`未配置直播流保存位置`)
-	}
-	if v, ok := common.K_v.LoadV(`直播流保存到文件`).(bool); ok {
-		t.config.save_to_file = v
-	}
-	if v, ok := common.K_v.LoadV(`直播流清晰度`).(float64); ok {
-		t.config.want_qn = int(v)
-	}
-	if v, ok := common.K_v.LoadV(`直播流类型`).(string); ok {
-		t.config.want_type = v
-	}
-	return
-}
+// 	//读取配置
+// 	if path, ok := common.K_v.LoadV("直播流保存位置").(string); ok {
+// 		if path, err := filepath.Abs(path); err == nil {
+// 			if fs, err := os.Stat(path); err != nil {
+// 				if errors.Is(err, os.ErrNotExist) {
+// 					if err := os.Mkdir(path, os.ModePerm); err != nil {
+// 						return errors.New(`直播流保存位置错误` + err.Error())
+// 					}
+// 				} else {
+// 					return errors.New(`直播流保存位置错误` + err.Error())
+// 				}
+// 			} else if !fs.IsDir() {
+// 				return errors.New(`直播流保存位置不是目录`)
+// 			}
+// 			t.config.save_path = path
+// 		} else {
+// 			return errors.New(`直播流保存位置错误` + err.Error())
+// 		}
+// 	} else {
+// 		return errors.New(`未配置直播流保存位置`)
+// 	}
+// 	if v, ok := common.K_v.LoadV(`直播流保存到文件`).(bool); ok {
+// 		t.config.save_to_file = v
+// 	}
+// 	if v, ok := common.K_v.LoadV(`直播流清晰度`).(float64); ok {
+// 		t.config.want_qn = int(v)
+// 	}
+// 	if v, ok := common.K_v.LoadV(`直播流类型`).(string); ok {
+// 		t.config.want_type = v
+// 	}
+// 	return
+// }
 
 func (t *M4SStream) getFirstBuf() []byte {
 	if t == nil {
@@ -712,8 +736,6 @@ func (t *M4SStream) genSavepath(log *log.Log) (cupath string) {
 	return cupath
 }
 
-var ErrDecode = perrors.Action("ErrDecode")
-
 func (t *M4SStream) saveStream() (e error) {
 	// 清除初始值
 	t.first_buf = nil
@@ -889,31 +911,32 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 				defer cancel()
 
 				var (
-					buff       = slice.New[byte](humanize.MByte * 100)
+					buff       = slice.New[byte]()
 					keyframe   = slice.New[byte]()
-					buf        = make([]byte, humanize.MByte)
-					flvDecoder = NewFlvDecoder()
+					flvDecoder = decoder.NewFlvDecoder()
 					flvInited  = false
 				)
+
+				buff.ExpandCapTo(humanize.MByte * 5)
 
 				if v, ok := c.C.K_v.LoadV(`flv音视频时间戳容差ms`).(float64); ok && v > 100 {
 					flvDecoder.Diff = v
 				}
 
 				for {
-					if n, e := pipe.Read(buf); e != nil {
-						if !errors.Is(e, io.ErrClosedPipe) {
+					if buff.Size() == buff.Cap() {
+						pctx.PutVal(cancelC, &errCtx, errors.New("[decoder]buf overflow"))
+					}
+					if n, e := pipe.Read(buff.GetRawBuf(buff.Size(), min(buff.Size()+humanize.MByte, buff.Cap()))); e != nil {
+						if !errors.Is(e, io.ErrClosedPipe) && !errors.Is(e, io.EOF) {
 							pctx.PutVal(cancelC, &errCtx, e)
 						}
 						break
-					} else if e = buff.Append(buf[:n]); e != nil {
-						pctx.PutVal(cancelC, &errCtx, e)
-						break
+					} else {
+						buff.AddSize(n)
 					}
 					if !flvInited {
-						buf, unlock := buff.GetPureBufRLock()
-						frontBuf, dropOffset, err := flvDecoder.Init(buf)
-						unlock()
+						frontBuf, dropOffset, err := flvDecoder.Init(buff.GetPureBuf())
 
 						if err != nil {
 							// l.E(err)
@@ -931,9 +954,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 							t.msg.Push_tag(`load`, t)
 						}
 					} else {
-						buf, unlock := buff.GetPureBufRLock()
-						dropOffset, err := flvDecoder.SearchStreamFrame(buf, keyframe)
-						unlock()
+						dropOffset, err := flvDecoder.SearchStreamFrame(buff.GetPureBuf(), keyframe)
 
 						if err != nil {
 							// l.E(err)
@@ -952,10 +973,9 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 								// 存在有效数据
 								leastReadUnix.Store(time.Now().Unix())
 
-								buf, unlock := keyframe.GetPureBufRLock()
+								buf := keyframe.GetPureBuf()
 								t.bootBufPush(buf)
 								t.stream_msg.PushLock_tag(`data`, buf)
-								unlock()
 
 								keyframe.Reset()
 								t.frameCount += 1
@@ -964,7 +984,6 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 						}
 					}
 				}
-				buf = nil
 				buff.Reset()
 			}()
 
@@ -1046,7 +1065,6 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 		// 同时下载数限制
 		downloadLimit       = funcCtrl.NewBlockFuncN(3)
 		buf                 = slice.New[byte]()
-		fmp4Decoder         = NewFmp4Decoder()
 		keyframe            = slice.New[byte]()
 		lastM4s             *m4s_link_item
 		to                  = 5
@@ -1057,6 +1075,8 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 		lastNewT            = time.Now()
 		debugLog, _         = t.common.K_v.LoadV(`debug模式`).(bool)
 	)
+	var fmp4Decoder = decoder.Fmp4DecoderPool.Get()
+	defer decoder.Fmp4DecoderPool.Put(fmp4Decoder)
 
 	if debugLog {
 		fmp4Decoder.Debug = true
@@ -1259,18 +1279,16 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 
 			if cu.isInit() {
 				{
-					buf, unlock := cu.data.GetPureBufRLock()
-					front_buf, _, e := fmp4Decoder.Init(buf)
-					unlock()
+					front_buf, _, e := fmp4Decoder.Init(cu.data.GetPureBuf())
 					if e != nil {
 						t.logg().E(e, `重试!`)
 						cu.status = 3
 						break
 					} else {
-						for _, trak := range fmp4Decoder.traks {
-							// fmt.Println(`T: `, "找到trak:", string(trak.handlerType), trak.trackID, trak.timescale)
-							t.logg().T("找到trak:", string(trak.handlerType), trak.trackID, trak.timescale)
-						}
+						// for _, trak := range fmp4Decoder.traks {
+						// 	// fmt.Println(`T: `, "找到trak:", string(trak.handlerType), trak.trackID, trak.timescale)
+						// 	t.logg().T("找到trak:", string(trak.handlerType), trak.trackID, trak.timescale)
+						// }
 						t.first_buf = make([]byte, len(front_buf))
 						copy(t.first_buf, front_buf)
 						t.msg.Push_tag(`load`, t)
@@ -1291,9 +1309,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 				t.logg().E(e)
 			}
 
-			buff, unlock := buf.GetPureBufRLock()
-			last_available_offset, err := fmp4Decoder.SearchStreamFrame(buff, keyframe)
-			unlock()
+			last_available_offset, err := fmp4Decoder.SearchStreamFrame(buf.GetPureBuf(), keyframe)
 
 			if err != nil && !errors.Is(err, io.EOF) {
 				// 发生解码错误，移除切片，禁用切片服务器
@@ -1315,10 +1331,9 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 
 			// 传递关键帧
 			if !keyframe.IsEmpty() {
-				keyframeBuf, unlock := keyframe.GetPureBufRLock()
+				keyframeBuf := keyframe.GetPureBuf()
 				t.bootBufPush(keyframeBuf)
 				t.stream_msg.PushLock_tag(`data`, keyframeBuf)
-				unlock()
 				keyframe.Reset()
 				t.frameCount += 1
 				t.msg.Push_tag(`keyFrame`, t)
@@ -1390,7 +1405,7 @@ func (t *M4SStream) Start() bool {
 	}
 
 	// 实例回调
-	t.msg = msgq.NewType[*M4SStream](time.Second * 5)
+	t.msg = msgq.NewType[*M4SStream]()
 	t.msg.Push_tag(`start`, t)
 	if t.Callback_start != nil {
 		if e := t.Callback_start(t); e != nil {
@@ -1412,26 +1427,7 @@ func (t *M4SStream) Start() bool {
 		t.reqPool = t.common.ReqPool
 
 		// 初始化池
-		t.m4s_pool = pool.New(
-			pool.PoolFunc[m4s_link_item]{
-				New: func() *m4s_link_item {
-					return &m4s_link_item{
-						data: slice.New[byte](),
-					}
-				},
-				InUse: func(t *m4s_link_item) bool {
-					return t.createdTime.After(t.pooledTime) || time.Now().Before(t.pooledTime.Add(time.Second*10))
-				},
-				Reuse: func(t *m4s_link_item) *m4s_link_item {
-					return t.reset()
-				},
-				Pool: func(t *m4s_link_item) *m4s_link_item {
-					t.pooledTime = time.Now()
-					return t
-				},
-			},
-			50,
-		)
+		t.m4s_pool = m4sPool
 
 		// 初始化切片消息
 		t.stream_msg = msgq.NewType[[]byte]()
@@ -1558,38 +1554,41 @@ func (t *M4SStream) Start() bool {
 
 					//PusherToFile fin genFastSeed
 					if disableFastSeed, ok := ms.common.K_v.LoadV("禁用快速索引生成").(bool); !ok || !disableFastSeed {
-						type deal interface {
-							GenFastSeed(reader io.Reader, save func(seedTo time.Duration, cuIndex int64) error) (err error)
-						}
-						var dealer deal
-
-						switch saveType {
-						case `mp4`:
-							fmp4Decoder := NewFmp4DecoderWithBufsize(humanize.MByte * 100)
-							if v, ok := ms.common.K_v.LoadV(`fmp4音视频时间戳容差s`).(float64); ok && v > 0.1 {
-								fmp4Decoder.AVTDiff = v
+						func() {
+							type deal interface {
+								GenFastSeed(reader io.Reader, save func(seedTo time.Duration, cuIndex int64) error) (err error)
 							}
-							dealer = fmp4Decoder
-						case `flv`:
-							flvDecoder := NewFlvDecoder()
-							if v, ok := ms.common.K_v.LoadV(`flv音视频时间戳容差ms`).(float64); ok && v > 100 {
-								flvDecoder.Diff = v
-							}
-							dealer = flvDecoder
-						default:
-						}
+							var dealer deal
 
-						if dealer != nil {
-							_ = replyFunc.VideoFastSeed.Run(func(vfsi replyFunc.VideoFastSeedI) error {
-								f := file.Open(path)
-								if sf, e := vfsi.InitSav(path + ".fastSeed"); e != nil {
-									l.BaseAdd(`GenFastSeed`).E(path, e)
-								} else if e := dealer.GenFastSeed(f, sf); e != nil && !errors.Is(e, io.EOF) {
-									l.BaseAdd(`GenFastSeed`).E(path, e)
+							switch saveType {
+							case `mp4`:
+								fmp4Decoder := decoder.Fmp4DecoderPool.Get()
+								defer decoder.Fmp4DecoderPool.Put(fmp4Decoder)
+								if v, ok := ms.common.K_v.LoadV(`fmp4音视频时间戳容差s`).(float64); ok && v > 0.1 {
+									fmp4Decoder.AVTDiff = v
 								}
-								return f.Close()
-							})
-						}
+								dealer = fmp4Decoder
+							case `flv`:
+								flvDecoder := decoder.NewFlvDecoder()
+								if v, ok := ms.common.K_v.LoadV(`flv音视频时间戳容差ms`).(float64); ok && v > 100 {
+									flvDecoder.Diff = v
+								}
+								dealer = flvDecoder
+							default:
+							}
+
+							if dealer != nil {
+								_ = replyFunc.VideoFastSeed.Run(func(vfsi replyFunc.VideoFastSeedI) error {
+									f := file.Open(path)
+									if sf, e := vfsi.InitSav(path + ".fastSeed"); e != nil {
+										l.BaseAdd(`GenFastSeed`).E(path, e)
+									} else if e := dealer.GenFastSeed(f, sf); e != nil && !errors.Is(e, io.EOF) {
+										l.BaseAdd(`GenFastSeed`).E(path, e)
+									}
+									return f.Close()
+								})
+							}
+						}()
 					}
 
 					//指定房间录制回调

@@ -60,6 +60,10 @@ func (t *videoFastSeed) SavIndex(ms time.Duration, cuIndex int64) error {
 	if !t.initSav {
 		return ErrNoInitSav
 	}
+	// 时间戳为0时，GetIndex获取总会到下个不为0的位置，故0可以忽略
+	if ms == 0 {
+		return nil
+	}
 	f := file.New(t.filepath, -1, false)
 	defer f.CloseErr()
 	if _, e := f.WriteRaw(Itob64(ms.Milliseconds()), false); e != nil {

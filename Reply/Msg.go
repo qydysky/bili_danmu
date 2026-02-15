@@ -17,6 +17,7 @@ var msglog = c.C.Log.Base(`Msg`)
 
 // Msg类型数据处理方法map
 var Msg_map = map[string]func(replyF, []byte){
+	`CNY_HOT_RANK`:                         nil, // 房间助手
 	`ROOM_CONTENT_AUDIT_REPORT`:            nil,
 	`FULL_SCREEN_MASK_OPEN`:                replyF.fullScreenMaskOpen, // 房间全屏提示
 	`OTHER_SLICE_LOADING_RESULT`:           nil,                       // 切片

@@ -1,4 +1,4 @@
-package Reply
+package decoder
 
 import (
 	"errors"
@@ -28,7 +28,8 @@ func Test_deal(t *testing.T) {
 	buf := make([]byte, humanize.MByte)
 	buff := slice.New[byte]()
 	max := 0
-	fmp4Decoder := NewFmp4Decoder()
+	fmp4Decoder := Fmp4DecoderPool.Get()
+	defer Fmp4DecoderPool.Put(fmp4Decoder)
 
 	for c := 0; true; c++ {
 		n, e := f.Read(buf)
@@ -86,8 +87,13 @@ func Test_Mp4Cut(t *testing.T) {
 		t.Log("test file not exist")
 	}
 
-	e := NewFmp4Decoder().Cut(f, time.Minute*30, time.Second*20, cutf.File(), false, false)
-	t.Log(perrors.ErrorFormat(e))
+	fmp4Decoder := Fmp4DecoderPool.Get()
+	defer Fmp4DecoderPool.Put(fmp4Decoder)
+
+	e := fmp4Decoder.Cut(f, time.Minute*30, time.Second*20, cutf.File(), false, false)
+	if !errors.Is(e, io.EOF) {
+		t.Fatal(perrors.ErrorFormat(e))
+	}
 }
 
 func Test_Mp4GenFastSeed(t *testing.T) {
@@ -103,10 +109,15 @@ func Test_Mp4GenFastSeed(t *testing.T) {
 		t.Fatal(e)
 	}
 
-	e = NewFmp4Decoder().GenFastSeed(f, func(seedTo time.Duration, cuIndex int64) error {
+	fmp4Decoder := Fmp4DecoderPool.Get()
+	defer Fmp4DecoderPool.Put(fmp4Decoder)
+
+	e = fmp4Decoder.GenFastSeed(f, func(seedTo time.Duration, cuIndex int64) error {
 		return sf(seedTo, cuIndex)
 	})
-	t.Log(perrors.ErrorFormat(e))
+	if !errors.Is(e, io.EOF) {
+		t.Fatal(perrors.ErrorFormat(e))
+	}
 
 	// VideoFastSeed.BeforeGet("testdata/1.fastSeed")
 	// {
@@ -150,6 +161,11 @@ func Test_Mp4CutSeed(t *testing.T) {
 		t.Fatal(e)
 	}
 
-	e = NewFmp4Decoder().CutSeed(f, time.Minute*30, time.Second*20, cutf.File(), f, gf, false, false)
-	t.Log(perrors.ErrorFormat(e))
+	fmp4Decoder := Fmp4DecoderPool.Get()
+	defer Fmp4DecoderPool.Put(fmp4Decoder)
+
+	e = fmp4Decoder.CutSeed(f, time.Minute*30, time.Second*20, cutf.File(), f, gf, false, false)
+	if !errors.Is(e, io.EOF) {
+		t.Fatal(perrors.ErrorFormat(e))
+	}
 }

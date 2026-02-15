@@ -510,28 +510,28 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *plog.Log, common *c.C
 			// 处理各种指令
 			var cancelfunc = common.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
 				`interrupt`: func(_ any) (disable bool) {
-					loopCancel()
+					reply.StreamOStopAll() //停止录制
 					exitSign = true
 					danmulog.I("停止，等待服务器断开连接")
+					loopCancel()
 					ws_c.Close()
-					reply.StreamOStopAll() //停止录制
 					return true
 				},
 				`exit_room`: func(_ any) bool { //退出当前房间
-					loopCancel()
 					reply.StreamOStop(common.Roomid)
-					danmulog.I("退出房间", common.Roomid)
 					c.C.Roomid = 0
+					danmulog.I("退出房间", common.Roomid)
+					loopCancel()
 					ws_c.Close()
 					return true
 				},
 				`change_room`: func(roomid any) bool { //换房时退出当前房间
 					c.C.Roomid = roomid.(int)
-					loopCancel()
-					ws_c.Close()
 					if v, ok := common.K_v.LoadV(`仅保存当前直播间流`).(bool); ok && v {
 						reply.StreamOStopOther(c.C.Roomid) //停止其他房间录制
 					}
+					loopCancel()
+					ws_c.Close()
 					return true
 				},
 				`flash_room`: func(_ any) bool { //重进房时退出当前房间

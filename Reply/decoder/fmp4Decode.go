@@ -1,4 +1,4 @@
-package Reply
+package decoder
 
 import (
 	"errors"
@@ -7,11 +7,11 @@ import (
 	"math"
 	"sync"
 	"time"
-	"unique"
 
 	"github.com/dustin/go-humanize"
 	F "github.com/qydysky/bili_danmu/F"
 	pe "github.com/qydysky/part/errors"
+	pio "github.com/qydysky/part/io"
 	pool "github.com/qydysky/part/pool"
 	slice "github.com/qydysky/part/slice"
 	unsafe "github.com/qydysky/part/unsafe"
@@ -31,28 +31,28 @@ var (
 	ActionCheckTFail      pe.Action = `CheckTFail`
 )
 
-var boxs map[unique.Handle[string]]bool
+var boxs map[string]bool
 
 func init() {
-	boxs = make(map[unique.Handle[string]]bool)
+	boxs = make(map[string]bool)
 	//isPureBox? || need to skip?
-	boxs[unique.Make("ftyp")] = true
-	boxs[unique.Make("moov")] = false
-	boxs[unique.Make("mvhd")] = true
-	boxs[unique.Make("trak")] = false
-	boxs[unique.Make("tkhd")] = true
-	boxs[unique.Make("mdia")] = false
-	boxs[unique.Make("mdhd")] = true
-	boxs[unique.Make("hdlr")] = true
-	boxs[unique.Make("minf")] = false || true
-	boxs[unique.Make("mvex")] = false || true
-	boxs[unique.Make("moof")] = false
-	boxs[unique.Make("mfhd")] = true
-	boxs[unique.Make("traf")] = false
-	boxs[unique.Make("tfhd")] = true
-	boxs[unique.Make("tfdt")] = true
-	boxs[unique.Make("trun")] = true
-	boxs[unique.Make("mdat")] = true
+	boxs["ftyp"] = true
+	boxs["moov"] = false
+	boxs["mvhd"] = true
+	boxs["trak"] = false
+	boxs["tkhd"] = true
+	boxs["mdia"] = false
+	boxs["mdhd"] = true
+	boxs["hdlr"] = true
+	boxs["minf"] = false || true
+	boxs["mvex"] = false || true
+	boxs["moof"] = false
+	boxs["mfhd"] = true
+	boxs["traf"] = false
+	boxs["tfhd"] = true
+	boxs["tfdt"] = true
+	boxs["trun"] = true
+	boxs["mdat"] = true
 }
 
 type ie struct {
@@ -100,19 +100,32 @@ type Fmp4Decoder struct {
 	Debug   bool
 }
 
-func NewFmp4Decoder() *Fmp4Decoder {
-	return &Fmp4Decoder{
-		traks: make(map[int]*trak),
-		buf:   slice.New[byte](),
-	}
-}
+var Fmp4DecoderPool = pool.New(pool.PoolFunc[Fmp4Decoder]{
+	New: func() (fd *Fmp4Decoder) {
+		fd = &Fmp4Decoder{
+			traks: make(map[int]*trak),
+			buf:   slice.New[byte](),
+		}
+		fd.buf.ExpandCapTo(humanize.MByte * 5)
+		return
+	},
+	Reuse: func(fd *Fmp4Decoder) *Fmp4Decoder {
+		clear(fd.traks)
+		fd.buf.Reset()
+		return fd
+	},
+}, -1)
 
-func NewFmp4DecoderWithBufsize(size int) *Fmp4Decoder {
-	return &Fmp4Decoder{
-		traks: make(map[int]*trak),
-		buf:   slice.New[byte](size),
-	}
-}
+// Deprecated:use Fmp4DecoderPool
+// func NewFmp4Decoder() (fd *Fmp4Decoder) {
+// 	return Fmp4DecoderPool.Get()
+// }
+
+// Deprecated:use Fmp4DecoderPool
+// func NewFmp4DecoderWithBufsize(size int) *Fmp4Decoder {
+// 	f := Fmp4DecoderPool.Get()
+// 	return f
+// }
 
 func (t *Fmp4Decoder) Init(buf []byte) (b []byte, dropOffset int, err error) {
 	var ftypI, ftypE, moovI, moovE int
@@ -572,7 +585,8 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...dealFMp4) (cu int, err error) {
 					if keyframeMoof {
 						if v, e := sbuf.HadModified(bufModified); e == nil && v && !sbuf.IsEmpty() {
 							if haveKeyframe && len(w) > 0 {
-								err = w[0](video.getT(), cu, sbuf)
+								// pio.WrapIoWriteTo 实现io.WriteTo避免分配复制缓存
+								err = w[0](video.getT(), cu, pio.WrapIoWriteTo(sbuf))
 								dropKeyFrame(m[0].i)
 								return ErrNormal
 							}
@@ -652,7 +666,8 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...dealFMp4) (cu int, err error) {
 					if keyframeMoof {
 						if v, e := sbuf.HadModified(bufModified); e == nil && v && !sbuf.IsEmpty() {
 							if haveKeyframe && len(w) > 0 {
-								err = w[0](video.getT(), cu, sbuf)
+								// pio.WrapIoWriteTo 实现io.WriteTo避免分配复制缓存
+								err = w[0](video.getT(), cu, pio.WrapIoWriteTo(sbuf))
 								dropKeyFrame(m[0].i)
 								return ErrNormal
 							}
@@ -678,13 +693,12 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...dealFMp4) (cu int, err error) {
 	return
 }
 
-// Deprecated: 效率低于GenFastSeed+CutSeed
+// Deprecated:效率低于GenFastSeed+CutSeed
 func (t *Fmp4Decoder) Cut(reader io.Reader, startT, duration time.Duration, w io.Writer, skipHeader, writeLastBuf bool) (err error) {
 	return t.CutSeed(reader, startT, duration, w, nil, nil, skipHeader, writeLastBuf)
 }
 
 func (t *Fmp4Decoder) CutSeed(reader io.Reader, startT, duration time.Duration, w io.Writer, seeker io.Seeker, getIndex func(seedTo time.Duration) (int64, error), skipHeader, writeLastBuf bool) (err error) {
-	buf := make([]byte, humanize.MByte*3)
 	init := false
 	seek := false
 	over := false
@@ -712,17 +726,18 @@ func (t *Fmp4Decoder) CutSeed(reader io.Reader, startT, duration time.Duration, 
 		fmt.Printf("cut startT: %v duration: %v\n", startT, duration)
 	}
 	for c := 0; err == nil && !over; c++ {
-		n, e := reader.Read(buf)
+		if t.buf.Size() == t.buf.Cap() {
+			return ErrBufOverflow
+		}
+		n, e := reader.Read(t.buf.GetRawBuf(t.buf.Size(), min(t.buf.Size()+humanize.MByte, t.buf.Cap())))
+		t.buf.AddSize(n)
 		if n == 0 && errors.Is(e, io.EOF) {
 			if t.buf.Size() > 0 {
-				buf, ulock := t.buf.GetPureBufRLock()
-				_, _ = w.Write(buf)
-				ulock()
+				_, _ = w.Write(t.buf.GetPureBuf())
 				t.buf.Reset()
 			}
 			return io.EOF
 		}
-		err = t.buf.Append(buf[:n])
 
 		if !init {
 			if frontBuf, _, e := t.Init(t.buf.GetPureBuf()); e != nil {
@@ -776,23 +791,26 @@ func (t *Fmp4Decoder) GenFastSeed(reader io.Reader, save func(seedTo time.Durati
 	t.buf.Reset()
 
 	totalRead := 0
-	buf := make([]byte, humanize.MByte*3)
 	init := false
 	firstFT := -1.0
 
 	for c := 0; err == nil; c++ {
-		n, e := reader.Read(buf)
+		if t.buf.Size() == t.buf.Cap() {
+			return ErrBufOverflow
+		}
+		n, e := reader.Read(t.buf.GetRawBuf(t.buf.Size(), min(t.buf.Size()+humanize.MByte, t.buf.Cap())))
+		t.buf.AddSize(n)
 		if n == 0 && errors.Is(e, io.EOF) {
 			return io.EOF
 		}
-		totalRead += n
-		err = t.buf.Append(buf[:n])
+		totalRead += int(n)
 		if !init {
-			if frontBuf, _, e := t.Init(t.buf.GetPureBuf()); e != nil {
+			if frontBuf, dropOffset, e := t.Init(t.buf.GetPureBuf()); e != nil {
 				return pe.New(e.Error(), ActionInitFmp4)
 			} else if len(frontBuf) == 0 {
 				continue
 			} else {
+				_ = t.buf.RemoveFront(dropOffset)
 				init = true
 			}
 		} else {
@@ -860,6 +878,7 @@ var (
 	iesPool       = pool.NewPoolBlocks[ie]()
 )
 
+// buf can not mod until recycle
 func decode(buf []byte) (m *[]ie, recycle func(*[]ie), err error) {
 	var cu int
 
@@ -901,12 +920,12 @@ var (
 	ErrUnkownBox = pe.New("ErrUnkownBox")
 )
 
+// buf can not mod
 func searchBox(buf []byte, cu *int) (boxName string, i int, e int, err error) {
 	i = *cu
 	e = i + int(F.Btoiv2(buf, *cu, fmp4BoxLenSize))
-	boxNameU := unique.Make(unsafe.B2S(buf[*cu+fmp4BoxLenSize : *cu+fmp4BoxLenSize+fmp4BoxNameSize]))
-	boxName = boxNameU.Value()
-	isPureBoxOrNeedSkip, ok := boxs[boxNameU]
+	boxName = unsafe.B2S(buf[*cu+fmp4BoxLenSize : *cu+fmp4BoxLenSize+fmp4BoxNameSize])
+	isPureBoxOrNeedSkip, ok := boxs[boxName]
 	if !ok {
 		err = ErrUnkownBox.WithReason(fmt.Sprintf("未知包: hex(%x%x%x%x)", boxName[0], boxName[1], boxName[2], boxName[3]))
 	} else if e > len(buf) {
