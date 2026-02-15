@@ -805,11 +805,12 @@ func (t *Fmp4Decoder) GenFastSeed(reader io.Reader, save func(seedTo time.Durati
 		}
 		totalRead += int(n)
 		if !init {
-			if frontBuf, _, e := t.Init(t.buf.GetPureBuf()); e != nil {
+			if frontBuf, dropOffset, e := t.Init(t.buf.GetPureBuf()); e != nil {
 				return pe.New(e.Error(), ActionInitFmp4)
 			} else if len(frontBuf) == 0 {
 				continue
 			} else {
+				_ = t.buf.RemoveFront(dropOffset)
 				init = true
 			}
 		} else {

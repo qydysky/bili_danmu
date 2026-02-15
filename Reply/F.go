@@ -919,26 +919,12 @@ func init() {
 						res := pio.WriterWithConfig(w, pio.CopyConfig{BytePerSec: speed, SkipByte: *offsetByte})
 
 						// fastSeed
-						if file.IsExist(videoDir + "0." + videoType + ".fastSeed") {
-							if e := replyFunc.VideoFastSeed.Run(func(vfsi replyFunc.VideoFastSeedI) error {
-								if gf, e := vfsi.InitGet(videoDir + "0." + videoType + ".fastSeed"); e != nil {
-									flog.E(e)
-									return e
-								} else if e := cuter.CutSeed(f, startT, duration, res, f, gf, skipHeader, writeLastBuf); e != nil && !errors.Is(e, io.EOF) {
-									flog.E(e)
-									return e
-								}
-								return nil
-							}); e != nil {
-								flog.E(e)
-								if e := cuter.Cut(f, startT, duration, res, skipHeader, writeLastBuf); e != nil && !errors.Is(e, io.EOF) {
-									flog.I(e)
-								}
-							}
-						} else {
-							if e := replyFunc.VideoFastSeed.Run(func(vfsi replyFunc.VideoFastSeedI) error {
+						if e := replyFunc.VideoFastSeed.Run(func(vfsi replyFunc.VideoFastSeedI) error {
+
+							f := file.Open(videoDir + "0." + videoType)
+
+							if !file.IsExist(videoDir + "0." + videoType + ".fastSeed") {
 								flog := flog.BaseAdd("重生成索引")
-								f := file.Open(videoDir + "0." + videoType)
 								defer f.Close()
 								if sf, e := vfsi.InitSav(videoDir + "0." + videoType + ".fastSeed"); e != nil {
 									flog.E(e)
@@ -946,20 +932,20 @@ func init() {
 									flog.E(e)
 								}
 								f.Seek(0, int(file.AtOrigin))
+							}
 
-								if gf, e := vfsi.InitGet(videoDir + "0." + videoType + ".fastSeed"); e != nil {
-									flog.E(e)
-									return e
-								} else if e := cuter.CutSeed(f, startT, duration, res, f, gf, skipHeader, writeLastBuf); e != nil && !errors.Is(e, io.EOF) {
-									flog.E(e)
-									return e
-								}
-								return nil
-							}); e != nil {
+							if gf, e := vfsi.InitGet(videoDir + "0." + videoType + ".fastSeed"); e != nil {
 								flog.E(e)
-								if e := cuter.Cut(f, startT, duration, res, skipHeader, writeLastBuf); e != nil && !errors.Is(e, io.EOF) {
-									flog.I(e)
-								}
+								return e
+							} else if e := cuter.CutSeed(f, startT, duration, res, f, gf, skipHeader, writeLastBuf); e != nil && !errors.Is(e, io.EOF) {
+								flog.E(e)
+								return e
+							}
+							return nil
+						}); e != nil {
+							flog.E(e)
+							if e := cuter.Cut(f, startT, duration, res, skipHeader, writeLastBuf); e != nil && !errors.Is(e, io.EOF) {
+								flog.I(e)
 							}
 						}
 					}()
