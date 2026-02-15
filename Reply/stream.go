@@ -88,6 +88,21 @@ type M4SStream_Config struct {
 	save_to_file bool   //保存到文件
 }
 
+// 初始化池
+var m4sPool = pool.New(
+	pool.PoolFunc[m4s_link_item]{
+		New: func() *m4s_link_item {
+			return &m4s_link_item{
+				data: slice.New[byte](),
+			}
+		},
+		Reuse: func(t *m4s_link_item) *m4s_link_item {
+			return t.reset()
+		},
+	},
+	50,
+)
+
 type m4s_link_item struct {
 	Url          string           // m4s链接
 	Base         string           // m4s文件名
@@ -97,7 +112,6 @@ type m4s_link_item struct {
 	tryDownCount int              // 下载次数 当=3时，不再下载，忽略此块
 	data         *slice.Buf[byte] // 下载的数据
 	createdTime  time.Time        // 创建时间
-	pooledTime   time.Time        // 到pool时间
 	SerUuid      string           // 使用的流服务器uuid
 }
 
@@ -1413,26 +1427,7 @@ func (t *M4SStream) Start() bool {
 		t.reqPool = t.common.ReqPool
 
 		// 初始化池
-		t.m4s_pool = pool.New(
-			pool.PoolFunc[m4s_link_item]{
-				New: func() *m4s_link_item {
-					return &m4s_link_item{
-						data: slice.New[byte](),
-					}
-				},
-				InUse: func(t *m4s_link_item) bool {
-					return t.createdTime.After(t.pooledTime) || time.Now().Before(t.pooledTime.Add(time.Second*10))
-				},
-				Reuse: func(t *m4s_link_item) *m4s_link_item {
-					return t.reset()
-				},
-				Pool: func(t *m4s_link_item) *m4s_link_item {
-					t.pooledTime = time.Now()
-					return t
-				},
-			},
-			50,
-		)
+		t.m4s_pool = m4sPool
 
 		// 初始化切片消息
 		t.stream_msg = msgq.NewType[[]byte]()
