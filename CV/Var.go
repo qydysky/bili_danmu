@@ -123,7 +123,7 @@ func (t *Common) MarshalJSON() ([]byte, error) {
 		Login         bool      `json:"login"`
 		Note          string    `json:"note"`
 		LiveStartTime string    `json:"liveStartTime"`
-		HeartBeatT    string    `json:"heartBeatT"`
+		HeartBeatTime string    `json:"heartBeatTime"`
 		Liveing       bool      `json:"liveing"`
 	}{
 		Live:          append([]*LiveQn{}, t.Live...),
@@ -142,7 +142,7 @@ func (t *Common) MarshalJSON() ([]byte, error) {
 		Note:          t.Note,
 		LiveStartTime: t.Live_Start_Time.Format(time.RFC3339),
 		Liveing:       t.Liveing,
-		HeartBeatT:    t.HeartBeatT.Format(time.RFC3339),
+		HeartBeatTime: t.HeartBeatT.Format(time.RFC3339),
 	})
 }
 
