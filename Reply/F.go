@@ -157,7 +157,7 @@ func StreamOCut(roomid int) (setTitle func(title ...string)) {
 }
 
 // 进入房间发送弹幕
-func Entry_danmu(common *c.Common) {
+func EntryDanmu(common *c.Common) {
 	flog := flog.BaseAdd(`进房弹幕`)
 
 	//检查与切换粉丝牌，只在cookie存在时启用
@@ -168,12 +168,13 @@ func Entry_danmu(common *c.Common) {
 		return
 	}
 	if v, _ := common.K_v.LoadV(`进房弹幕_仅发首日弹幕`).(bool); v {
-		res, e := F.Get_weared_medal(common.Uid, common.UpUid)
-		if e != nil {
+		if func() (skip bool) {
+			defer common.Lock()()
+			skip = common.EntryDanmuT.IsZero() || time.Now().Day() == common.EntryDanmuT.Day()
+			common.EntryDanmuT = time.Now()
 			return
-		}
-		if res.TodayIntimacy > 0 {
-			flog.T(`今日已发弹幕`)
+		}() {
+			flog.T(`初次启动或今日已发弹幕`)
 			return
 		}
 	}

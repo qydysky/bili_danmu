@@ -249,7 +249,7 @@ func Start(rootCtx context.Context) {
 						//每日兑换硬币
 						F.Api.Get(c.C, `Silver2Coin`)
 						//附加功能 每日发送弹幕
-						reply.Entry_danmu(c.C)
+						reply.EntryDanmu(c.C)
 						//附加功能 自动发送即将过期礼物
 						reply.AutoSend_silver_gift(c.C)
 					}()
@@ -498,7 +498,7 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *plog.Log, common *c.C
 		}
 		{ //附加功能 进房间发送弹幕 直播流保存 每日签到
 			F.RoomEntryAction(common.Roomid)
-			reply.Entry_danmu(common)
+			reply.EntryDanmu(common)
 			// go F.Dosign()
 			if _, e := recStartEnd.RecStartCheck.Run(ctx, common); e == nil {
 				reply.StreamOStart(common.Roomid)

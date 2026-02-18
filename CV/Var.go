@@ -97,6 +97,7 @@ type Common struct {
 	StartT            time.Time                        `json:"-"`            //启动时间
 	Cache             syncmap.MapExceeded[string, any] `json:"-"`            //缓存
 	RepleyT           time.Time                        `json:"-"`            //websocket最新的响应时间
+	EntryDanmuT       time.Time                        `json:"-"`            //进入房间弹幕的最后发送时间
 	l                 sync.RWMutex                     `json:"-"`
 	buf               []byte                           `json:"-"`
 }
