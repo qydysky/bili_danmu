@@ -463,6 +463,12 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *plog.Log, common *c.C
 		//30s获取一次心跳人气
 		go func() {
 			danmulog.T("获取心跳人气")
+
+			replayTO := 300.0
+			if tmp, _ := c.C.K_v.LoadV("消息响应超时s").(float64); tmp > replayTO || tmp == -1 {
+				replayTO = tmp
+			}
+
 			for !ws_c.Isclose() {
 				heartBeatSendT := time.Now()
 				wsmsg.Push_tag(`send`, &ws.WsMsg{
@@ -471,10 +477,9 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *plog.Log, common *c.C
 					},
 				})
 				time.Sleep(time.Millisecond * time.Duration(heartinterval*1000))
-				if common.HeartBeatT.IsZero() {
-					danmulog.WF("心跳无响应，重新进入房间")
-					common.Danmu_Main_mq.Push_tag(`flash_room`, nil)
-				} else if to := common.HeartBeatT.Sub(heartBeatSendT); to > time.Second*5 {
+				if common.RepleyT.IsZero() {
+					danmulog.WF("心跳无响应")
+				} else if to := common.RepleyT.Sub(heartBeatSendT).Seconds(); replayTO > 0 && to > replayTO {
 					danmulog.WF("心跳响应超时(%v)，重新进入房间", to)
 					common.Danmu_Main_mq.Push_tag(`flash_room`, nil)
 				}

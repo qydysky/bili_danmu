@@ -118,6 +118,8 @@ func Reply(common *c.Common, b []byte) {
 	replyFS := replyF{common}
 	defer replyFS.Lock()()
 
+	replyFS.RepleyT = time.Now()
+
 	for len(b) != 0 {
 		head := F.HeadChe(b[:c.WS_PACKAGE_HEADER_TOTAL_LENGTH])
 		if int(head.PackL) > len(b) {
@@ -527,8 +529,6 @@ var (
 )
 
 func (t replyF) heartbeat(s int) {
-	t.HeartBeatT = time.Now()
-	
 	if v, ok := t.K_v.LoadV("下播后不记录人气观看人数").(bool); ok && v && !t.Liveing {
 		return
 	}
