@@ -464,8 +464,8 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *plog.Log, common *c.C
 		go func() {
 			danmulog.T("获取心跳人气")
 
-			replayTO := 300.0
-			if tmp, _ := c.C.K_v.LoadV("消息响应超时s").(float64); tmp > replayTO || tmp == -1 {
+			replayTO := -1.0
+			if tmp, _ := c.C.K_v.LoadV("消息响应超时s").(float64); tmp >= 300 || tmp == -1 {
 				replayTO = tmp
 			}
 
