@@ -249,7 +249,7 @@ func Start(rootCtx context.Context) {
 						//每日兑换硬币
 						F.Api.Get(c.C, `Silver2Coin`)
 						//附加功能 每日发送弹幕
-						reply.Entry_danmu(c.C)
+						reply.EntryDanmu(c.C)
 						//附加功能 自动发送即将过期礼物
 						reply.AutoSend_silver_gift(c.C)
 					}()
@@ -323,7 +323,7 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *plog.Log, common *c.C
 				// 附加功能 保持牌子点亮
 				if reply.IsOn(`保持牌子亮着`) && common.Wearing_FansMedal != 0 {
 					replyFunc.KeepMedalLight.Run2(func(kmli replyFunc.KeepMedalLightI) {
-						kmli.Init(danmulog.Base("保持牌子点亮"), common.Roomid, send.Danmu_s, c.C.K_v.LoadV(`进房弹幕_内容`))
+						kmli.Init(danmulog.Base("保持牌子点亮"), common.Roomid, send.Danmu_s, []any{}) // 不传入默认发送弹幕，使用点赞
 					})
 				} else {
 					replyFunc.KeepMedalLight.Run2(func(kmli replyFunc.KeepMedalLightI) {
@@ -460,16 +460,32 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *plog.Log, common *c.C
 			},
 		})
 
-		//30s获取一次人气
+		//30s获取一次心跳人气
 		go func() {
-			danmulog.T("获取人气")
+			danmulog.T("获取心跳人气")
+
+			replayTO := -1.0
+			if tmp, _ := c.C.K_v.LoadV("消息响应超时s").(float64); tmp >= 300 || tmp == -1 {
+				replayTO = tmp
+			}
+
 			for !ws_c.Isclose() {
+				heartBeatSendT := time.Now()
 				wsmsg.Push_tag(`send`, &ws.WsMsg{
 					Msg: func(f func([]byte) error) error {
 						return f(heartbeatmsg)
 					},
 				})
 				time.Sleep(time.Millisecond * time.Duration(heartinterval*1000))
+				if lastReplyT := func() time.Time {
+					defer common.Lock()()
+					return common.RepleyT
+				}(); lastReplyT.IsZero() {
+					danmulog.WF("心跳无响应")
+				} else if to := lastReplyT.Sub(heartBeatSendT).Seconds(); replayTO > 0 && to > replayTO {
+					danmulog.WF("心跳响应超时(%v)，重新进入房间", to)
+					common.Danmu_Main_mq.Push_tag(`flash_room`, nil)
+				}
 			}
 		}()
 
@@ -485,7 +501,7 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *plog.Log, common *c.C
 		}
 		{ //附加功能 进房间发送弹幕 直播流保存 每日签到
 			F.RoomEntryAction(common.Roomid)
-			reply.Entry_danmu(common)
+			reply.EntryDanmu(common)
 			// go F.Dosign()
 			if _, e := recStartEnd.RecStartCheck.Run(ctx, common); e == nil {
 				reply.StreamOStart(common.Roomid)

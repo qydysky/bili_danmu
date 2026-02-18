@@ -28,7 +28,7 @@
     "gtk_头像获取等待最大数量": 30,
     "save_to_json-help": "保存消息设置,将所有消息保存为json文件,输入文件名(带后缀),启用会带来性能损耗",
     "save_to_json": "",
-    "进房弹幕-help": "进入房间发送弹幕，似乎屏蔽了一些字符",
+    "进房弹幕-help": "进入房间发送弹幕，当 进房弹幕_内容 为空时，不发送",
     "进房弹幕_内容": [
         "(｀・ω・´)",
         "(〜￣△￣)〜",
@@ -277,5 +277,7 @@
             "mp4":["ffmpeg","-loglevel","error","-f","mp4","-i","pipe:","-f","lavfi","-i","color=c=black","-map","0:a","-acodec","copy","-map","1:v","-vcodec","h264","-g","30","-f","mp4","-movflags","frag_keyframe+empty_moov+default_base_moof","pipe:"],
             "flv":["ffmpeg","-loglevel","error","-f","flv","-i","pipe:","-f","lavfi","-i","color=c=black","-map","0:a","-acodec","copy","-map","1:v","-vcodec","h264","-g","30","-f","flv","pipe:"]
       }
-    }
+    },
+    "消息响应超时s-help": "websocket消息超过n秒未响应时，重新连接。默认值-1，小于300的正值无效，为-1时不重新连接",
+    "消息响应超时s": -1
 }
