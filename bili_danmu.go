@@ -477,9 +477,12 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *plog.Log, common *c.C
 					},
 				})
 				time.Sleep(time.Millisecond * time.Duration(heartinterval*1000))
-				if common.RepleyT.IsZero() {
+				if lastReplyT := func() time.Time {
+					defer common.Lock()()
+					return common.RepleyT
+				}(); lastReplyT.IsZero() {
 					danmulog.WF("心跳无响应")
-				} else if to := common.RepleyT.Sub(heartBeatSendT).Seconds(); replayTO > 0 && to > replayTO {
+				} else if to := lastReplyT.Sub(heartBeatSendT).Seconds(); replayTO > 0 && to > replayTO {
 					danmulog.WF("心跳响应超时(%v)，重新进入房间", to)
 					common.Danmu_Main_mq.Push_tag(`flash_room`, nil)
 				}
