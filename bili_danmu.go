@@ -323,7 +323,7 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *plog.Log, common *c.C
 				// 附加功能 保持牌子点亮
 				if reply.IsOn(`保持牌子亮着`) && common.Wearing_FansMedal != 0 {
 					replyFunc.KeepMedalLight.Run2(func(kmli replyFunc.KeepMedalLightI) {
-						kmli.Init(danmulog.Base("保持牌子点亮"), common.Roomid, send.Danmu_s, c.C.K_v.LoadV(`进房弹幕_内容`))
+						kmli.Init(danmulog.Base("保持牌子点亮"), common.Roomid, send.Danmu_s, []any{}) // 不传入默认发送弹幕，使用点赞
 					})
 				} else {
 					replyFunc.KeepMedalLight.Run2(func(kmli replyFunc.KeepMedalLightI) {
