@@ -11,7 +11,7 @@ import (
 
 type TargetInterface interface {
 	InitGet(fastSeedFilePath string) (getIndex func(seedTo time.Duration) (int64, error), e error)
-	InitSav(fastSeedFilePath string) (savIndex func(seedTo time.Duration, cuIndex int64) error, e error)
+	InitSav(fastSeedFilePath string) (savIndex func(seedTo time.Duration, cuIndex int64) error, delete func(), e error)
 }
 
 func init() {
@@ -44,7 +44,7 @@ func (v videoFastSeed) InitGet(fastSeedFilePath string) (getIndex func(seedTo ti
 	return t.GetIndex, nil
 }
 
-func (v videoFastSeed) InitSav(fastSeedFilePath string) (savIndex func(seedTo time.Duration, cuIndex int64) error, e error) {
+func (v videoFastSeed) InitSav(fastSeedFilePath string) (savIndex func(seedTo time.Duration, cuIndex int64) error, delete func(), e error) {
 	t := videoFastSeed{}
 	t.filepath = fastSeedFilePath
 	f := file.Open(t.filepath)
@@ -53,7 +53,11 @@ func (v videoFastSeed) InitSav(fastSeedFilePath string) (savIndex func(seedTo ti
 		_ = f.Delete()
 	}
 	t.initSav = true
-	return t.SavIndex, nil
+	return t.SavIndex, func() {
+		if f.IsExist() {
+			_ = f.Delete()
+		}
+	}, nil
 }
 
 func (t *videoFastSeed) SavIndex(ms time.Duration, cuIndex int64) error {

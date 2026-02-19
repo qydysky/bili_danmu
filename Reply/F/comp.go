@@ -98,7 +98,7 @@ var Danmuji = comp.GetV3[DanmujiI](`danmuji`)
 
 type VideoFastSeedI interface {
 	InitGet(fastSeedFilePath string) (getIndex func(seedTo time.Duration) (int64, error), e error)
-	InitSav(fastSeedFilePath string) (savIndex func(seedTo time.Duration, cuIndex int64) error, e error)
+	InitSav(fastSeedFilePath string) (savIndex func(seedTo time.Duration, cuIndex int64) error, delete func(), e error)
 }
 
 var VideoFastSeed = comp.GetV3[VideoFastSeedI](`videoFastSeed`)

@@ -1580,10 +1580,11 @@ func (t *M4SStream) Start() bool {
 							if dealer != nil {
 								_ = replyFunc.VideoFastSeed.Run(func(vfsi replyFunc.VideoFastSeedI) error {
 									f := file.Open(path)
-									if sf, e := vfsi.InitSav(path + ".fastSeed"); e != nil {
+									if sf, delete, e := vfsi.InitSav(path + ".fastSeed"); e != nil {
 										l.BaseAdd(`GenFastSeed`).E(path, e)
 									} else if e := dealer.GenFastSeed(f, sf); e != nil && !errors.Is(e, io.EOF) {
 										l.BaseAdd(`GenFastSeed`).E(path, e)
+										delete()
 									}
 									return f.Close()
 								})
