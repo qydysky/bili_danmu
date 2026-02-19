@@ -136,7 +136,7 @@ func Reply(common *c.Common, b []byte) {
 			})
 		case c.WS_OP_HEARTBEAT_REPLY: //心跳响应
 			Heart(replyFS, contain)
-			return //忽略剩余内容
+			return //忽略剩余内容 [object Object]
 		default:
 			reply_log.W("unknow reply", contain)
 		}

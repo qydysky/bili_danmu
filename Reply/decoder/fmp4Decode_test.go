@@ -99,12 +99,12 @@ func Test_Mp4Cut(t *testing.T) {
 func Test_Mp4GenFastSeed(t *testing.T) {
 	var VideoFastSeed = comp.GetV3[interface {
 		InitGet(fastSeedFilePath string) (getIndex func(seedTo time.Duration) (int64, error), e error)
-		InitSav(fastSeedFilePath string) (savIndex func(seedTo time.Duration, cuIndex int64) error, e error)
+		InitSav(fastSeedFilePath string) (savIndex func(seedTo time.Duration, cuIndex int64) error, delete func(), e error)
 	}](`videoFastSeed`).Inter()
 
 	f := file.Open("testdata/0.mp4")
 	defer f.CloseErr()
-	sf, e := VideoFastSeed.InitSav("testdata/0.fastSeed")
+	sf, _, e := VideoFastSeed.InitSav("testdata/0.fastSeed")
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -153,7 +153,7 @@ func Test_Mp4CutSeed(t *testing.T) {
 
 	var VideoFastSeed = comp.GetV3[interface {
 		InitGet(fastSeedFilePath string) (getIndex func(seedTo time.Duration) (int64, error), e error)
-		InitSav(fastSeedFilePath string) (savIndex func(seedTo time.Duration, cuIndex int64) error, e error)
+		InitSav(fastSeedFilePath string) (savIndex func(seedTo time.Duration, cuIndex int64) error, delete func(), e error)
 	}](`videoFastSeed`).Inter()
 
 	gf, e := VideoFastSeed.InitGet("testdata/0.fastSeed")

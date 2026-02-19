@@ -82,12 +82,12 @@ func Test_FLVCut(t *testing.T) {
 func Test_FLVGenFastSeed(t *testing.T) {
 	var VideoFastSeed = comp.GetV3[interface {
 		InitGet(fastSeedFilePath string) (getIndex func(seedTo time.Duration) (int64, error), e error)
-		InitSav(fastSeedFilePath string) (savIndex func(seedTo time.Duration, cuIndex int64) error, e error)
+		InitSav(fastSeedFilePath string) (savIndex func(seedTo time.Duration, cuIndex int64) error, delete func(), e error)
 	}](`videoFastSeed`).Inter()
 
 	f := file.Open("testdata/0.flv")
 	defer f.CloseErr()
-	sf, e := VideoFastSeed.InitSav("testdata/0.flv.fastSeed")
+	sf, delete, e := VideoFastSeed.InitSav("testdata/0.flv.fastSeed")
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -100,6 +100,7 @@ func Test_FLVGenFastSeed(t *testing.T) {
 		return sf(seedTo, cuIndex)
 	})
 	if e != nil && !errors.Is(e, io.EOF) {
+		delete()
 		t.Fatal(e)
 	}
 	// t.Log(perrors.ErrorFormat(e))
@@ -127,7 +128,7 @@ func Test_FLVCutSeed(t *testing.T) {
 
 	var VideoFastSeed = comp.GetV3[interface {
 		InitGet(fastSeedFilePath string) (getIndex func(seedTo time.Duration) (int64, error), e error)
-		InitSav(fastSeedFilePath string) (savIndex func(seedTo time.Duration, cuIndex int64) error, e error)
+		InitSav(fastSeedFilePath string) (savIndex func(seedTo time.Duration, cuIndex int64) error, delete func(), e error)
 	}](`videoFastSeed`).Inter()
 
 	gf, e := VideoFastSeed.InitGet("testdata/0.flv.fastSeed")
