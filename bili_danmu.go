@@ -127,6 +127,17 @@ func Start(rootCtx context.Context) {
 		}); err != nil {
 			danmulog.Base("功能", "指定弹幕重启录制").E(err)
 		}
+
+		// 附加功能 保持牌子点亮
+		if reply.IsOn(`保持牌子亮着`) {
+			replyFunc.KeepMedalLight.Run2(func(kmli replyFunc.KeepMedalLightI) {
+				kmli.Init(danmulog.Base("保持牌子点亮"), send.Danmu_s, c.C.K_v.LoadV("保持亮牌弹幕")) // 保持亮牌弹幕
+			})
+		} else {
+			replyFunc.KeepMedalLight.Run2(func(kmli replyFunc.KeepMedalLightI) {
+				kmli.Clear()
+			})
+		}
 		// pgo gen
 		if file, ok := c.C.K_v.LoadV("生成pgo").(string); ok {
 			replyFunc.GenCpuPprof.Run2(func(inter interface {
@@ -323,11 +334,7 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *plog.Log, common *c.C
 				// 附加功能 保持牌子点亮
 				if reply.IsOn(`保持牌子亮着`) && common.Wearing_FansMedal != 0 {
 					replyFunc.KeepMedalLight.Run2(func(kmli replyFunc.KeepMedalLightI) {
-						kmli.Init(danmulog.Base("保持牌子点亮"), common.Roomid, send.Danmu_s, common.K_v.LoadV("保持亮牌弹幕")) // 保持亮牌弹幕
-					})
-				} else {
-					replyFunc.KeepMedalLight.Run2(func(kmli replyFunc.KeepMedalLightI) {
-						kmli.Clear()
+						kmli.SetRoomid(common.Roomid)
 					})
 				}
 				if reply.IsOn(`相似弹幕忽略`) {
