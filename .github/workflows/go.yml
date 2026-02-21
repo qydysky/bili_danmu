@@ -88,7 +88,6 @@ jobs:
     - name: Build
       run: |
         git rev-parse --short HEAD > CV/VERSION
-        git log --oneline $(git describe --tags --abbrev=0)~1..HEAD > CV/VERSION_DIFF
         cd demo
         go get .
         GOEXPERIMENT=greenteagc,jsonv2 CGO_ENABLED=0 go build -pgo=auto -v -buildmode=exe main.go

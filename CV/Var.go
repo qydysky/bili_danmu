@@ -46,9 +46,6 @@ import (
 //go:embed VERSION
 var version string
 
-//go:embed VERSION_DIFF
-var versionDiff string
-
 type StreamType struct {
 	Protocol_name string
 	Format_name   string
@@ -59,7 +56,6 @@ type Common struct {
 	InIdle            bool                             `json:"-"`            //闲置中？
 	PID               int                              `json:"-"`            //进程id
 	Version           string                           `json:"-"`            //版本
-	VersionDiff       []string                         `json:"-"`            //版本差异
 	Uid               int                              `json:"-"`            //client uid
 	Login             bool                             `json:"login"`        //登录
 	Live              []*LiveQn                        `json:"live"`         //直播流链接
@@ -247,7 +243,6 @@ func (t *Common) Copy() *Common {
 		InIdle:            t.InIdle,
 		PID:               t.PID,
 		Version:           t.Version,
-		VersionDiff:       t.VersionDiff,
 		Uid:               t.Uid,
 		Live:              t.Live,
 		Live_qn:           t.Live_qn,
@@ -349,7 +344,6 @@ func (t *Common) ValidLive() *LiveQn {
 func (t *Common) Init() *Common {
 	t.PID = os.Getpid()
 	t.Version = strings.TrimSpace(version)
-	t.VersionDiff = strings.Split(versionDiff, "\n")
 	t.StartT = time.Now()
 	t.Cookie = &syncmap.Map{}
 
@@ -711,10 +705,9 @@ func (t *Common) Init() *Common {
 				_, timeOffset := time.Now().Zone()
 
 				ResStruct{0, "ok", map[string]any{
-					"pid":         t.PID,
-					"version":     t.Version,
-					"versionDiff": t.VersionDiff,
-					"goVersion":   runtime.Version(),
+					"pid":       t.PID,
+					"version":   t.Version,
+					"goVersion": runtime.Version(),
 					"timeInfo": map[string]any{
 						"timeZone":           timeOffset,
 						"biliServerTimeZone": t.SerLocation,
