@@ -58,8 +58,10 @@ type DanmuMergeI interface {
 var DanmuMerge = comp.GetV3[DanmuMergeI](`danmuMerge`)
 
 type KeepMedalLightI interface {
-	Init(L *log.Log, Roomid int, SendDanmu func(danmu string, RoomID int) error, PreferDanmu any)
+	Init(L *log.Log, SendDanmu func(danmu string, RoomID int) error, PreferDanmu any)
+	SetRoomid(Roomid int)
 	Clear()
+	// 在所有可以发送点赞/弹幕的地方都加上，会评估是否需要点赞/弹幕，当prefer存在时，必然发送一条
 	Do(prefer ...string)
 }
 

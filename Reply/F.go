@@ -167,21 +167,24 @@ func EntryDanmu(common *c.Common) {
 		flog.T(`无粉丝牌`)
 		return
 	}
-	if v, _ := common.K_v.LoadV(`进房弹幕_仅发首日弹幕`).(bool); v {
-		if func() (skip bool) {
-			defer common.Lock()()
-			skip = common.EntryDanmuT.IsZero() || time.Now().Day() == common.EntryDanmuT.Day()
-			common.EntryDanmuT = time.Now()
-			return
-		}() {
-			flog.T(`初次启动或今日已发弹幕`)
-			return
-		}
-	}
 	if array, ok := common.K_v.LoadV(`进房弹幕_内容`).([]any); ok && len(array) != 0 {
+		if v, _ := common.K_v.LoadV(`进房弹幕_仅发首日弹幕`).(bool); v {
+			if func() (skip bool) {
+				defer common.Lock()()
+				skip = common.EntryDanmuT.IsZero() || time.Now().Day() == common.EntryDanmuT.Day()
+				common.EntryDanmuT = time.Now()
+				return
+			}() {
+				flog.T(`初次启动或今日已发弹幕`)
+				return
+			}
+		}
 		replyFunc.KeepMedalLight.Run2(func(kmli replyFunc.KeepMedalLightI) {
 			kmli.Do(array[p.Rand().MixRandom(0, int64(len(array)-1))].(string))
 		})
+	} else {
+		flog.T(`进房弹幕_内容为空，不发送`)
+		return
 	}
 }
 

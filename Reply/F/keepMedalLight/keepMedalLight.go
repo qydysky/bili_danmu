@@ -17,7 +17,8 @@ import (
 
 func init() {
 	comp2.RegisterOrPanic[interface {
-		Init(L *log.Log, Roomid int, SendDanmu func(danmu string, RoomID int) error, PreferDanmu any)
+		Init(L *log.Log, SendDanmu func(danmu string, RoomID int) error, PreferDanmu any)
+		SetRoomid(Roomid int)
 		Clear()
 		// 在所有可以发送点赞/弹幕的地方都加上，会评估是否需要点赞/弹幕，当prefer存在时，必然发送一条
 		Do(prefer ...string)
@@ -29,21 +30,27 @@ type keepMedalLight struct {
 	log          *log.Log
 	sendDanmu    func(danmu string, RoomID int) error
 	preferDanmu  []any
-	hisPointTime *ring.Ring
+	hisPointTime map[int]*ring.Ring
 	l            sync.RWMutex
 }
 
-func (t *keepMedalLight) Init(L *log.Log, Roomid int, SendDanmu func(danmu string, RoomID int) error, PreferDanmu any) {
+func (t *keepMedalLight) Init(L *log.Log, SendDanmu func(danmu string, RoomID int) error, PreferDanmu any) {
+	t.l.Lock()
+	defer t.l.Unlock()
+
+	t.log = L
+	t.sendDanmu = SendDanmu
+	t.hisPointTime = make(map[int]*ring.Ring)
+	if ds, ok := PreferDanmu.([]any); ok {
+		t.preferDanmu = append(t.preferDanmu, ds...)
+	}
+}
+
+func (t *keepMedalLight) SetRoomid(Roomid int) {
 	t.l.Lock()
 	defer t.l.Unlock()
 
 	t.roomid = Roomid
-	t.log = L
-	t.sendDanmu = SendDanmu
-	t.hisPointTime = ring.New(30)
-	if ds, ok := PreferDanmu.([]any); ok {
-		t.preferDanmu = append(t.preferDanmu, ds...)
-	}
 }
 
 func (t *keepMedalLight) Clear() {
@@ -61,15 +68,18 @@ func (t *keepMedalLight) Do(prefer ...string) {
 	if t.roomid == 0 || t.sendDanmu == nil {
 		return
 	}
+	if _, ok := t.hisPointTime[t.roomid]; !ok {
+		t.hisPointTime[t.roomid] = ring.New(30)
+	}
 
 	var waitToSend string
 
 	if len(prefer) > 0 {
 		waitToSend = prefer[0]
-	} else if d, ok := t.hisPointTime.Value.(time.Time); ok && time.Since(d) < time.Hour*24 {
+	} else if d, ok := t.hisPointTime[t.roomid].Value.(time.Time); ok && time.Since(d) < time.Hour*24 {
 		// 环中最后一个时间在1天内
 		return
-	} else if d, ok := t.hisPointTime.Prev().Value.(time.Time); ok && time.Since(d) < time.Second*100 {
+	} else if d, ok := t.hisPointTime[t.roomid].Prev().Value.(time.Time); ok && time.Since(d) < time.Second*100 {
 		// 100s最多发一次
 		return
 	} else if len(t.preferDanmu) > 0 {
@@ -96,7 +106,7 @@ func (t *keepMedalLight) Do(prefer ...string) {
 
 func (t *keepMedalLight) getPoint(n int) {
 	for range n {
-		t.hisPointTime.Value = time.Now()
-		t.hisPointTime = t.hisPointTime.Next()
+		t.hisPointTime[t.roomid].Value = time.Now()
+		t.hisPointTime[t.roomid] = t.hisPointTime[t.roomid].Next()
 	}
 }
