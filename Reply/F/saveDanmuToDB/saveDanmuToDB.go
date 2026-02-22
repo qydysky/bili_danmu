@@ -21,7 +21,7 @@ func init() {
 		Init(config any, fl *log.Log)
 		Danmu(Msg string, Color string, Auth any, Uid string, Roomid int64)
 		Close() error
-	}](`saveDanmuToDB`, &saveDanmuToDB{})
+	}](`saveDanmuToDB`, new(saveDanmuToDB))
 }
 
 type saveDanmuToDB struct {

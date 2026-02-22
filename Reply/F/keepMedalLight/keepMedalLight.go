@@ -22,7 +22,7 @@ func init() {
 		Clear()
 		// 在所有可以发送点赞/弹幕的地方都加上，会评估是否需要点赞/弹幕，当prefer存在时，必然发送一条
 		Do(prefer ...string)
-	}](`keepMedalLight`, &keepMedalLight{})
+	}](`keepMedalLight`, new(keepMedalLight))
 }
 
 type keepMedalLight struct {

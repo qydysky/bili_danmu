@@ -52,7 +52,7 @@ func (t *brotliDecoder) Decode(b []byte, offset int) (buf []byte, err error) {
 
 var brotliDecoders = pool.New(pool.PoolFunc[brotliDecoder]{
 	New: func() *brotliDecoder {
-		t := &brotliDecoder{}
+		t := new(brotliDecoder)
 		t.i = bytes.NewReader(nil)
 		t.d = brotli.NewReader(t.i)
 		t.o = bytes.NewBuffer(nil)
@@ -158,7 +158,7 @@ type danmuReuseS struct {
 
 var danmuPool = pool.New(pool.PoolFunc[danmuReuseS]{
 	New: func() (s *danmuReuseS) {
-		s = &danmuReuseS{}
+		s = new(danmuReuseS)
 		return
 	},
 	Reuse: func(drs *danmuReuseS) *danmuReuseS {

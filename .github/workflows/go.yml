@@ -20,12 +20,12 @@ jobs:
       GH_TOKEN: ${{ github.token }}
     steps:
     - name: Set up Go${{ matrix.go }}
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@v6
       with:
         go-version: ${{ matrix.go }}
 
     - name: Check out code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         lfs: true
 
@@ -73,12 +73,12 @@ jobs:
       GH_TOKEN: ${{ github.token }}
     steps:
     - name: Set up Go${{ matrix.go }}
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@v6
       with:
         go-version: ${{ matrix.go }}
 
     - name: Check out code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         lfs: true
 
@@ -90,7 +90,7 @@ jobs:
         git rev-parse --short HEAD > CV/VERSION
         cd demo
         go get .
-        GOEXPERIMENT=greenteagc,jsonv2 CGO_ENABLED=0 go build -pgo=auto -v -buildmode=exe main.go
+        GOEXPERIMENT=jsonv2 CGO_ENABLED=0 go build -pgo=auto -v -buildmode=exe main.go
       
     - name: zip
       run: zip -q -r ubuntu_go${{ matrix.go }}.zip demo
@@ -110,12 +110,12 @@ jobs:
       GH_TOKEN: ${{ github.token }}
     steps:
     - name: Set up Go${{ matrix.go }}
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@v6
       with:
         go-version: ${{ matrix.go }}
 
     - name: Check out code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         lfs: true
 
@@ -129,7 +129,7 @@ jobs:
         cd demo
         set CGO_ENABLED=0
         go get .
-        set GOEXPERIMENT=greenteagc,jsonv2
+        set GOEXPERIMENT=jsonv2
         go build -pgo=auto -v -buildmode=exe main.go
         
     - name: zip
@@ -150,12 +150,12 @@ jobs:
       GH_TOKEN: ${{ github.token }}
     steps:
     - name: Set up Go${{ matrix.go }}
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@v6
       with:
         go-version: ${{ matrix.go }}
 
     - name: Check out code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         lfs: true
 
@@ -169,7 +169,7 @@ jobs:
         cd demo
         set CGO_ENABLED=0
         go get .
-        GOEXPERIMENT=greenteagc,jsonv2 go build -pgo=auto -v -buildmode=exe main.go
+        GOEXPERIMENT=jsonv2 go build -pgo=auto -v -buildmode=exe main.go
         
     - name: zip
       run: zip -q -r macos_go${{ matrix.go }}.zip demo

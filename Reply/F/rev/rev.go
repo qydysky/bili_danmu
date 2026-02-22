@@ -12,7 +12,7 @@ func init() {
 	comp.RegisterOrPanic[interface {
 		Init(l *log.Log)
 		ShowRev(roomid int, rev float64)
-	}](`rev`, &rev{})
+	}](`rev`, new(rev))
 }
 
 type rev struct {

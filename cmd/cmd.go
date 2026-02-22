@@ -18,7 +18,7 @@ import (
 func init() {
 	_ = comp.Register[interface {
 		Cmd()
-	}](`cmd`, &cmd{})
+	}](`cmd`, new(cmd))
 }
 
 type cmd struct{}

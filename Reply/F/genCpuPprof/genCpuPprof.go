@@ -16,7 +16,7 @@ import (
 func init() {
 	comp.RegisterOrPanic[interface {
 		Start(ctx context.Context, file string) (any, error)
-	}](`genCpuPprof`, &pp{})
+	}](`genCpuPprof`, new(pp))
 }
 
 type pp struct {
