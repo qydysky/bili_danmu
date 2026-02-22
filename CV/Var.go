@@ -393,7 +393,7 @@ func (t *Common) Init() *Common {
 		80:    "流畅",
 	}
 
-	t.Danmu_Main_mq = mq.New(time.Second*5, time.Second*90)
+	t.Danmu_Main_mq = mq.New()
 
 	go func() { //日期变化
 		var old = time.Now().Hour()
