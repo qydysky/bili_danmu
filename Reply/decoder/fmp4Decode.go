@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/dustin/go-humanize"
+	cv "github.com/qydysky/bili_danmu/CV"
 	F "github.com/qydysky/bili_danmu/F"
 	pe "github.com/qydysky/part/errors"
 	pio "github.com/qydysky/part/io"
@@ -106,7 +107,11 @@ var Fmp4DecoderPool = pool.New(pool.PoolFunc[Fmp4Decoder]{
 			traks: make(map[int]*trak),
 			buf:   slice.New[byte](),
 		}
-		fd.buf.ExpandCapTo(humanize.MByte * 5)
+		bufsize := 7.0
+		if tmp, _ := cv.C.K_v.LoadV(`fmp4解码缓存MB`).(float64); tmp > bufsize {
+			bufsize = tmp
+		}
+		fd.buf.ExpandCapTo(int(humanize.MByte * bufsize))
 		return
 	},
 	Reuse: func(fd *Fmp4Decoder) *Fmp4Decoder {
@@ -705,6 +710,7 @@ func (t *Fmp4Decoder) CutSeed(reader io.Reader, startT, duration time.Duration, 
 	startTM := startT.Seconds()
 	durationM := duration.Seconds()
 	firstFT := -1.0
+	maxBufSize := 0
 
 	t.buflock.Lock()
 	defer t.buflock.Unlock()
@@ -724,13 +730,17 @@ func (t *Fmp4Decoder) CutSeed(reader io.Reader, startT, duration time.Duration, 
 
 	if t.Debug {
 		fmt.Printf("cut startT: %v duration: %v\n", startT, duration)
+		defer func() {
+			fmt.Printf("cut startT: %v duration: %v maxBufSize: %v\n", startT, duration, maxBufSize)
+		}()
 	}
-	for c := 0; err == nil && !over; c++ {
+	for err == nil && !over {
 		if t.buf.Size() == t.buf.Cap() {
-			return ErrBufOverflow
+			return ErrBufOverflow.New("尝试调大`fmp4解码缓存MB`")
 		}
 		n, e := reader.Read(t.buf.GetRawBuf(t.buf.Size(), min(t.buf.Size()+humanize.MByte, t.buf.Cap())))
 		t.buf.AddSize(n)
+		maxBufSize = max(maxBufSize, t.buf.Size())
 		if n == 0 && errors.Is(e, io.EOF) {
 			if t.buf.Size() > 0 {
 				_, _ = w.Write(t.buf.GetPureBuf())
@@ -740,12 +750,10 @@ func (t *Fmp4Decoder) CutSeed(reader io.Reader, startT, duration time.Duration, 
 		}
 
 		if !init {
-			if frontBuf, _, e := t.Init(t.buf.GetPureBuf()); e != nil {
+			if frontBuf, dropOffset, e := t.Init(t.buf.GetPureBuf()); e != nil {
 				return pe.New(e.Error(), ActionInitFmp4)
 			} else {
-				if len(frontBuf) == 0 {
-					continue
-				} else {
+				if len(frontBuf) != 0 {
 					init = true
 					if !skipHeader {
 						if t.Debug {
@@ -753,6 +761,9 @@ func (t *Fmp4Decoder) CutSeed(reader io.Reader, startT, duration time.Duration, 
 						}
 						_, err = w.Write(frontBuf)
 					}
+				}
+				if dropOffset > 0 {
+					_ = t.buf.RemoveFront(dropOffset)
 				}
 			}
 		} else {
@@ -793,13 +804,15 @@ func (t *Fmp4Decoder) GenFastSeed(reader io.Reader, save func(seedTo time.Durati
 	totalRead := 0
 	init := false
 	firstFT := -1.0
+	maxBufSize := 0
 
 	for c := 0; err == nil; c++ {
 		if t.buf.Size() == t.buf.Cap() {
-			return ErrBufOverflow
+			return ErrBufOverflow.New("尝试调大`fmp4解码缓存MB`")
 		}
 		n, e := reader.Read(t.buf.GetRawBuf(t.buf.Size(), min(t.buf.Size()+humanize.MByte, t.buf.Cap())))
 		t.buf.AddSize(n)
+		maxBufSize = max(maxBufSize, t.buf.Size())
 		if n == 0 && errors.Is(e, io.EOF) {
 			return io.EOF
 		}

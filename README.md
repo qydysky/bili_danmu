@@ -39,7 +39,7 @@
 - [x] 排行榜
 
 #### 当前支持功能
-以下内容可能过时，点击查看[功能配置](https://github.com/qydysky/bili_danmu/blob/master/demo/config/config_K_v.json)
+以下内容可能过时，点击查看[功能配置](https://github.com/qydysky/bili_danmu/blob/master/main/config/config_K_v.json)
 - [x] 直播流、弹幕回放服务
 - [x] 每天自动发送将要过期的银瓜子礼物(默认发送3天内过期的)
 - [x] 保持当前已点亮的粉丝牌总是点亮
@@ -189,10 +189,10 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: lifecycle-demo
+  name: lifecycle-main
 spec:
   containers:
-  - name: lifecycle-demo-container
+  - name: lifecycle-main-container
     image: bili
     lifecycle:
       preStop:
@@ -407,7 +407,7 @@ curl -s http://{主机名}:11000/ip/ | awk '/240:?/'
 
 从而避免对原表情产生修改，且避免不同环境对文件名支持的差异。
 
-注意：需要配套更新`demo/html/artPlayer`下的资源
+注意：需要配套更新`main/html/artPlayer`下的资源
 
 保存的表情可以通过`http://{Web服务地址}{直播Web服务路径}emots/{md5}.png`获取。
 
@@ -746,9 +746,9 @@ config_K_v.json
 使用此配置，可以在有新配置项时，默认使用新配置项而保持之前其他的配置。
 
 #### 表情发送
-当`demo/config/config_K_v.json`中`弹幕_识别表情代码`为`true`时，发送特定的文字将发送表情。
+当`main/config/config_K_v.json`中`弹幕_识别表情代码`为`true`时，发送特定的文字将发送表情。
 
-在`demo/config/config_danmu_official.json`中可找到支持的特殊文字
+在`main/config/config_danmu_official.json`中可找到支持的特殊文字
 
 如，命令行输入点赞回车：
 ```
@@ -765,7 +765,7 @@ I: 2022/09/15 02:23:23 Msg [qydysky丶 : 赞]
 ```
 
 #### 流保存、弹幕ass、弹幕回放文件
-以下内容可能过时，点击查看[配置](https://github.com/qydysky/bili_danmu/blob/master/demo/config/config_K_v.json#L55)
+以下内容可能过时，点击查看[配置](https://github.com/qydysky/bili_danmu/blob/master/main/config/config_K_v.json#L55)
 
 ```json
 "直播流清晰度-help": "清晰度可选-1:不保存 0:默认 20000:4K 10000:原画 400:蓝光 250:超清 150:高清 80:流畅,无提供所选清晰度时，使用低一档清晰度",
@@ -837,7 +837,7 @@ Ass默认`utf-8`编码，在录播结束时生成，可以配合`指定房间录
 #### 直播流回放Web服务
 启动Web流服务，为下载的直播流提供局域网内的流服务，提供flv、hls/mp4格式流。
 
-在`demo/config/config_K_v.json`中可找到配置项，`0.0.0.0`:开放至局域网 `127.0.0.1`:仅本机。
+在`main/config/config_K_v.json`中可找到配置项，`0.0.0.0`:开放至局域网 `127.0.0.1`:仅本机。
 
 ```
     "Web服务地址":"0.0.0.0:10000",
@@ -967,11 +967,11 @@ Ass默认`utf-8`编码，在录播结束时生成，可以配合`指定房间录
   - [xqq/mpegts.js](https://github.com/xqq/mpegts.js)
 - hls-html播放器
   - [bytedance/xgplayer](https://github.com/bytedance/xgplayer)
-  - [videojs/video.js](https://github.com/videojs/video.js)([demo](https://videojs-http-streaming.netlify.app))
-  - [video-dev/hls.js@v1.0.7+](https://hls-js-10780deb-25d8-41d3-b164-bc334c8dd47f.netlify.app/demo/)
+  - [videojs/video.js](https://github.com/videojs/video.js)([main](https://videojs-http-streaming.netlify.app))
+  - [video-dev/hls.js@v1.0.7+](https://hls-js-10780deb-25d8-41d3-b164-bc334c8dd47f.netlify.app/main/)
 - mp4-html播放器
   - [bytedance/xgplayer](https://github.com/bytedance/xgplayer)
-  - [videojs/video.js](https://github.com/videojs/video.js)([demo](https://videojs-http-streaming.netlify.app))
+  - [videojs/video.js](https://github.com/videojs/video.js)([main](https://videojs-http-streaming.netlify.app))
 - 客户端播放器
   - [mpv](https://mpv.io/)
   - [MXPlayer](https://sites.google.com/site/mxvpen/home)
@@ -1069,7 +1069,7 @@ Asaki大人 开心鸭鸭杀 直播中
 还支持登录、搜索主播直播间、查看历史记录、查看关注的直播间、保存直播流等功能
 
 #### cookie加密
-在(>0.16.9)，添加对于`mlkem`的算法支持，`-genKey`默认将产生`mlkem`算法公私钥。保留对`X25519`算法(<=0.16.9)产生的cookie加解密的支持，`demo/`下的(public.pem)(private.pem)默认更新为`mlkem`格式。
+在(>0.16.9)，添加对于`mlkem`的算法支持，`-genKey`默认将产生`mlkem`算法公私钥。保留对`X25519`算法(<=0.16.9)产生的cookie加解密的支持，`main/`下的(public.pem)(private.pem)默认更新为`mlkem`格式。
 
 如需更新密钥（如从`X25519`转换到`mlkem`），而不重新登陆，参考如下步骤：
 
@@ -1082,14 +1082,14 @@ Asaki大人 开心鸭鸭杀 直播中
 
 *使用X25519和chacha20poly1305*(>v0.14.15) 保护cookie.txt
 
-在`demo/config/config_K_v.json`中可找到配置项
+在`main/config/config_K_v.json`中可找到配置项
 ```
 "cookie加密公钥":"public.pem",
 "cookie解密私钥":"private.pem"
 ```
 - 当配置了公钥路径后，cookie将被加密(若公钥无效，将会导致cookie无法储存)。若未配置私钥路径，则每次启动都会要求输入私钥路径。(若私钥无效，将会导致cookie被清除)
 - 当未配置公钥路径(空字符串)，cookie将明文储存。
-- 默认使用了`demo/`下的(public.pem)(private.pem)进行加密，使用时注意自行生成公私钥并按照上述说明使用
+- 默认使用了`main/`下的(public.pem)(private.pem)进行加密，使用时注意自行生成公私钥并按照上述说明使用
 
 注意，每次更换设置(设置或未设置公钥)，cookie会失效。
 
@@ -1147,12 +1147,12 @@ kuDE/k1SerQNHYP7oBVRsw==
 #### 私信
 在登录后，可以使用私信
 
-私信配置在`demo/config/config_K_v.json`有说明
+私信配置在`main/config/config_K_v.json`有说明
 
 #### 语音
 调用tts默认使用ffplay,安装[ffmpeg](http://ffmpeg.org/download.html)
 
-或使用其他程序：可在`demo/config/config_K_v.json`中编辑调用的程序及附加选项
+或使用其他程序：可在`main/config/config_K_v.json`中编辑调用的程序及附加选项
 ```
 config_K_v.json
 默认
@@ -1169,7 +1169,7 @@ config_K_v.json
 ```
 release默认编译tts
 
-总开关,自定义响应的事件可在`demo/config/config_tts.json`中编辑。{}为传递过来的变量，将会按设定替换。最后未使用的{}会全部删除。下例：`ABC购买 1个月舰长`。
+总开关,自定义响应的事件可在`main/config/config_tts.json`中编辑。{}为传递过来的变量，将会按设定替换。最后未使用的{}会全部删除。下例：`ABC购买 1个月舰长`。
 ```
 ...
 "0buyguide-help": "大航海 {username}:用户 {op_name}:购买方式 {role_name}:大航海类型 {num}:个数 {unit}:时间单位",
@@ -1186,7 +1186,7 @@ release默认编译tts
 }
 ```
 
-在`demo/config/config_K_v.json`中可选使用的服务api
+在`main/config/config_K_v.json`中可选使用的服务api
 ```
     "TTS_服务器-help": "baidu:百度翻译合成 youdao:有道TTS",
     "TTS_服务器": "youdao",
@@ -1217,8 +1217,8 @@ release默认编译tts
 release 由于某些[原因](https://github.com/golang/go/issues/57328#issuecomment-1353413399)，Linux默认不编译gtk界面 Windows默认不编译
 ```
 编译命令
-cd demo
-go build -v -tags `gtk` -o demo.exe -i main.go
+cd main
+go build -v -tags `gtk` -o main.exe -i main.go
 ```
 
 #### 弹幕处理/响应
@@ -1226,7 +1226,7 @@ go build -v -tags `gtk` -o demo.exe -i main.go
 
 - 反射弹幕机
 
-启动时加载，当弹幕内容与`demo/config_auto_reply.json`中所设键名相同时，在登录的情况下，会自动发送对应值的弹幕
+启动时加载，当弹幕内容与`main/config_auto_reply.json`中所设键名相同时，在登录的情况下，会自动发送对应值的弹幕
 
 - 相同合并
 
@@ -1240,7 +1240,7 @@ go build -v -tags `gtk` -o demo.exe -i main.go
 
 当与上条弹幕具有相同开头的开头时，重复的部分会用...替代
 
-仅对显示效果进行处理，而不处理输出到日志。更多设置见`demo/config/config_F.json`
+仅对显示效果进行处理，而不处理输出到日志。更多设置见`main/config/config_F.json`
 
 ### 运行 
 #### 方法
@@ -1248,18 +1248,18 @@ go build -v -tags `gtk` -o demo.exe -i main.go
 
 下载安装[golang](https://go.dev/)/[golangCN](https://golang.google.cn/)
 
-clone/下载本项目。进入`demo`目录(文件夹)，运行：
+clone/下载本项目。进入`main`目录(文件夹)，运行：
 ```
 linux: CGO_ENABLED=0 go build .
 windows: set CGO_ENABLED=0;go build .
 ```
-再运行生成的`demo.exe`或`demo`
+再运行生成的`main.exe`或`main`
 
 2. 即时编译
 
 下载安装[golang](https://go.dev/)/[golangCN](https://golang.google.cn/)
 
-clone/下载本项目。进入`demo`目录(文件夹)，运行：
+clone/下载本项目。进入`main`目录(文件夹)，运行：
 ```
 linux: CGO_ENABLED=0 go run . [-r 房间ID] [-ckv 自定义config_K_v.json] [-genKey] [-stop]
 windows: set CGO_ENABLED=0;go run . [-r 房间ID] [-ckv 自定义config_K_v.json] [-genKey] [-stop]
@@ -1276,7 +1276,7 @@ apt-get update && apt-get install -y ca-certificates openssl
 
 下载安装[golang](https://go.dev/)/[golangCN](https://golang.google.cn/)
 
-clone/下载本项目。进入`demo`目录(文件夹)，运行：
+clone/下载本项目。进入`main`目录(文件夹)，运行：
 ```
 set GOOS=linux
 set CGO_ENABLED=0
@@ -1287,7 +1287,7 @@ go build .
 
 4. github编译
 
-前往[releases](https://github.com/qydysky/bili_danmu/releases)页下载对应系统版本。解压后进入`demo`目录(文件夹)，运行`main`(`main.exe`)。
+前往[releases](https://github.com/qydysky/bili_danmu/releases)页下载对应系统版本。解压后进入`main`目录(文件夹)，运行`main`(`main.exe`)。
 ```
 ./main [-r 房间ID] [-ckv 自定义config_K_v.json] [-genKey] [-stop]
 ./main.exe [-r 房间ID] [-ckv 自定义config_K_v.json] [-genKey] [-stop]
@@ -1302,7 +1302,7 @@ go build .
 * 部分功能(如签到、发送弹幕、获取原画等)**需要在`cookie路径`下对应位置放置有效`cookie.txt`才可用** 或 **运行时按提示使用扫码登录成功后才可用(登录信息会保存在`cookie路径`中)**(`cookie路径`(>v0.14.26)默认为程序目录下的`cookie.txt`)
 * 在golang1.20+，由于某些[原因](https://github.com/golang/go/issues/57328#issuecomment-1353413399)，你可能需要在构建时添加`CGO_ENABLED=0`
 * 由于通常是发现功能不正常时，才会检查b站是否更新，又因日常录播并不会使用到全部功能，所以并不能确保全部功能都能正常运行
-* 离线编译：release版本将包含`vendor`压缩文件(>v0.15.7)。下载源代码及vendor压缩文件，解压后将`vendor`文件夹放置在`go.mod`同级目录时，你可以在`demo`文件夹使用`go build -mod=vendor -v .`进行离线构建
+* 离线编译：release版本将包含`vendor`压缩文件(>v0.15.7)。下载源代码及vendor压缩文件，解压后将`vendor`文件夹放置在`go.mod`同级目录时，你可以在`main`文件夹使用`go build -mod=vendor -v .`进行离线构建
 
   源代码链接: `https://github.com/qydysky/bili_danmu/archive/refs/tags/{version}.zip`
 
@@ -1311,7 +1311,7 @@ go build .
 * 组件优化：从源代码编译时，可以将各文件中存在的import项注释（存在`//`注释的），对应的组件将不会编译。这会使对应功能缺失，但能有效减少产物大小。
 
   例如：
-  注释所有`//removable`后，在demo目录下，使用下述命令编译时，产物将由17.9M->10M(v0.20.3时)
+  注释所有`//removable`后，在main目录下，使用下述命令编译时，产物将由17.9M->10M(v0.20.3时)
   ```
   CGO_ENABLED=0  go build -ldflags="-s -w" -trimpath -buildvcs=false -v -buildmode=exe  .
   ```
@@ -1328,7 +1328,7 @@ go build .
 #### 命令窗口(以下为截取)
 ```
 //启动
-qydysky@DESKTOP-5CV1EFA:~/程序/git/go/src/github.com/qydysky/bili_danmu/demo$ go run main.go -r 21320551
+qydysky@DESKTOP-5CV1EFA:~/程序/git/go/src/github.com/qydysky/bili_danmu/main$ go run main.go -r 21320551
 I: 2021/02/18 20:33:09 api 小心心加密 [如需加密，会自动打开 http://127.0.0.1:33673]
 I: 2021/02/18 20:33:09 api 小心心加密 [启动]
 PID:14544

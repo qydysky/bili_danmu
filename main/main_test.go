@@ -13,7 +13,7 @@ import (
 	file "github.com/qydysky/part/file"
 )
 
-// go test -run ^TestMain$ github.com/qydysky/bili_danmu/demo -race -count=1 -v -r xxx
+// go test -run ^TestMain$ github.com/qydysky/bili_danmu/main -race -count=1 -v -r xxx
 func TestMain(m *testing.T) {
 	fl := file.Open("danmu.log")
 	_ = fl.Delete()

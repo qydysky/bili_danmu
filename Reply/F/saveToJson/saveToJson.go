@@ -14,7 +14,7 @@ func init() {
 		Init(path any)
 		Write(data *[]byte)
 		Close()
-	}](`saveToJson`, &saveToJson{})
+	}](`saveToJson`, new(saveToJson))
 }
 
 type saveToJson struct {

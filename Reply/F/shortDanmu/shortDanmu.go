@@ -9,7 +9,7 @@ import (
 func init() {
 	comp.RegisterOrPanic[interface {
 		Deal(string) string
-	}](`shortDanmu`, &shortdanmu{})
+	}](`shortDanmu`, new(shortdanmu))
 }
 
 type shortdanmu struct {

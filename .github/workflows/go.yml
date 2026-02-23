@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go: [ '1.25' ]
+        go: [ '1.26' ]
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
@@ -68,7 +68,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go: [ '1.25' ]
+        go: [ '1.26' ]
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
@@ -88,12 +88,12 @@ jobs:
     - name: Build
       run: |
         git rev-parse --short HEAD > CV/VERSION
-        cd demo
+        cd main
         go get .
-        GOEXPERIMENT=greenteagc,jsonv2 CGO_ENABLED=0 go build -pgo=auto -v -buildmode=exe main.go
+        GOEXPERIMENT=jsonv2 CGO_ENABLED=0 go build -pgo=auto -v -buildmode=exe main.go
       
     - name: zip
-      run: zip -q -r ubuntu_go${{ matrix.go }}.zip demo
+      run: zip -q -r ubuntu_go${{ matrix.go }}.zip main
 
     - name: Upload a Release Asset
       run: |
@@ -105,7 +105,7 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        go: [ '1.25' ]
+        go: [ '1.26' ]
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
@@ -126,14 +126,14 @@ jobs:
     - name: Build
       run: |
         git rev-parse --short HEAD > CV/VERSION
-        cd demo
+        cd main
         set CGO_ENABLED=0
         go get .
-        set GOEXPERIMENT=greenteagc,jsonv2
+        set GOEXPERIMENT=jsonv2
         go build -pgo=auto -v -buildmode=exe main.go
         
     - name: zip
-      run: .\7za.exe a -r .\windows_go${{ matrix.go }}.zip ./demo
+      run: .\7za.exe a -r .\windows_go${{ matrix.go }}.zip ./main
 
     - name: Upload a Release Asset
       run: |
@@ -145,7 +145,7 @@ jobs:
     runs-on: macos-latest
     strategy:
       matrix:
-        go: [ '1.25' ]
+        go: [ '1.26' ]
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
@@ -166,13 +166,13 @@ jobs:
     - name: Build
       run: |
         git rev-parse --short HEAD > CV/VERSION
-        cd demo
+        cd main
         set CGO_ENABLED=0
         go get .
-        GOEXPERIMENT=greenteagc,jsonv2 go build -pgo=auto -v -buildmode=exe main.go
+        GOEXPERIMENT=jsonv2 go build -pgo=auto -v -buildmode=exe main.go
         
     - name: zip
-      run: zip -q -r macos_go${{ matrix.go }}.zip demo
+      run: zip -q -r macos_go${{ matrix.go }}.zip main
 
     - name: Upload a Release Asset
       run: |

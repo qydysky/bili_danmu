@@ -111,7 +111,7 @@ func BenchmarkXxx(b *testing.B) {
 	d := NewPdDecoder()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = d.Unmarshal(base64S, &InteractWord{})
+		_ = d.Unmarshal(base64S, new(InteractWord))
 	}
 }
 
@@ -123,6 +123,6 @@ func BenchmarkJson(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = json.Unmarshal(unsafe.S2B(base64S), &InteractWord{})
+		_ = json.Unmarshal(unsafe.S2B(base64S), new(InteractWord))
 	}
 }
