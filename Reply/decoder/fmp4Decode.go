@@ -740,12 +740,10 @@ func (t *Fmp4Decoder) CutSeed(reader io.Reader, startT, duration time.Duration, 
 		}
 
 		if !init {
-			if frontBuf, _, e := t.Init(t.buf.GetPureBuf()); e != nil {
+			if frontBuf, dropOffset, e := t.Init(t.buf.GetPureBuf()); e != nil {
 				return pe.New(e.Error(), ActionInitFmp4)
 			} else {
-				if len(frontBuf) == 0 {
-					continue
-				} else {
+				if len(frontBuf) != 0 {
 					init = true
 					if !skipHeader {
 						if t.Debug {
@@ -753,6 +751,9 @@ func (t *Fmp4Decoder) CutSeed(reader io.Reader, startT, duration time.Duration, 
 						}
 						_, err = w.Write(frontBuf)
 					}
+				}
+				if dropOffset > 0 {
+					t.buf.RemoveFront(dropOffset)
 				}
 			}
 		} else {
