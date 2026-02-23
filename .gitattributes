@@ -1,1 +1,1 @@
-demo/default.pgo filter=lfs diff=lfs merge=lfs -text
+main/default.pgo filter=lfs diff=lfs merge=lfs -text

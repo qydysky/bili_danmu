@@ -106,7 +106,7 @@ var Fmp4DecoderPool = pool.New(pool.PoolFunc[Fmp4Decoder]{
 			traks: make(map[int]*trak),
 			buf:   slice.New[byte](),
 		}
-		fd.buf.ExpandCapTo(humanize.MByte * 5)
+		fd.buf.ExpandCapTo(humanize.MByte * 10)
 		return
 	},
 	Reuse: func(fd *Fmp4Decoder) *Fmp4Decoder {
@@ -725,7 +725,7 @@ func (t *Fmp4Decoder) CutSeed(reader io.Reader, startT, duration time.Duration, 
 	if t.Debug {
 		fmt.Printf("cut startT: %v duration: %v\n", startT, duration)
 	}
-	for c := 0; err == nil && !over; c++ {
+	for err == nil && !over {
 		if t.buf.Size() == t.buf.Cap() {
 			return ErrBufOverflow
 		}
@@ -753,7 +753,7 @@ func (t *Fmp4Decoder) CutSeed(reader io.Reader, startT, duration time.Duration, 
 					}
 				}
 				if dropOffset > 0 {
-					t.buf.RemoveFront(dropOffset)
+					_ = t.buf.RemoveFront(dropOffset)
 				}
 			}
 		} else {

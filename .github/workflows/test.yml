@@ -87,12 +87,12 @@ jobs:
     - name: Build
       run: |
         git rev-parse --short HEAD > CV/VERSION
-        cd demo
+        cd main
         go get .
         GOEXPERIMENT=jsonv2 CGO_ENABLED=0 go build -pgo=auto -v -buildmode=exe main.go
       
     - name: zip
-      run: zip -q -r ubuntu_go${{ matrix.go }}.zip demo
+      run: zip -q -r ubuntu_go${{ matrix.go }}.zip main
 
     - name: VirusTotal Scan
       uses: crazy-max/ghaction-virustotal@v4
@@ -105,7 +105,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: ubuntu_go${{ matrix.go }}.zip
-        path: ./demo
+        path: ./main
         
   w-build:
     name: build_windows_go
@@ -132,14 +132,14 @@ jobs:
     - name: Build
       run: |
         git rev-parse --short HEAD > CV/VERSION
-        cd demo
+        cd main
         go get .
         set CGO_ENABLED=0
         set GOEXPERIMENT=jsonv2
         go build -pgo=auto -v -buildmode=exe main.go
         
     - name: zip
-      run: .\7za.exe a -r .\windows_go${{ matrix.go }}.zip ./demo
+      run: .\7za.exe a -r .\windows_go${{ matrix.go }}.zip ./main
 
     - name: VirusTotal Scan
       uses: crazy-max/ghaction-virustotal@v4
@@ -152,7 +152,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: windows_go${{ matrix.go }}.zip
-        path: ./demo
+        path: ./main
        
   mac-build:
     name: build_macos_go
@@ -179,14 +179,14 @@ jobs:
     - name: Build
       run: |
         git rev-parse --short HEAD > CV/VERSION
-        cd demo
+        cd main
         go get .
         set CGO_ENABLED=0
         set GOEXPERIMENT=jsonv2
         go build -pgo=auto -v -buildmode=exe main.go
         
     - name: zip
-      run: zip -q -r macos_go${{ matrix.go }}.zip demo
+      run: zip -q -r macos_go${{ matrix.go }}.zip main
 
     - name: VirusTotal Scan
       uses: crazy-max/ghaction-virustotal@v4
@@ -199,4 +199,4 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: macos_go${{ matrix.go }}.zip
-        path: ./demo
+        path: ./main
