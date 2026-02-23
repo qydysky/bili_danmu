@@ -48,6 +48,8 @@ github.com/qydysky/brotli v0.0.0-20250531004300-54adcf96cc4a h1:OSIFTKGKsOLYycbo
 github.com/qydysky/brotli v0.0.0-20250531004300-54adcf96cc4a/go.mod h1:cI8/gy/wjy2Eb+p2IUj2ZuDnC8R5Vrx3O0VMPvMvphA=
 github.com/qydysky/part v0.28.20260222160522 h1:U7cOg4zv78ZE3/UwByWoTVmsEw5bfcsIg8CycR7iWKQ=
 github.com/qydysky/part v0.28.20260222160522/go.mod h1:yG6c1GmRQ/ksaCbNpPlRqztHrjJBCBBovvrj380eMsk=
+github.com/qydysky/part v0.28.20260223110033 h1:wHzt0DjvuAsA6vJspvod6k06q09wQxntfzvKroERHFk=
+github.com/qydysky/part v0.28.20260223110033/go.mod h1:yG6c1GmRQ/ksaCbNpPlRqztHrjJBCBBovvrj380eMsk=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec h1:W09IVJc94icq4NjY3clb7Lk8O1qJ8BdBEF8z0ibU0rE=
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec/go.mod h1:qqbHyh8v60DhA7CoWK5oRCqLrMHRGoxYCSS9EjAz6Eo=
 github.com/shirou/gopsutil v3.21.11+incompatible h1:+1+c1VGhc88SSonWP6foOcLhvnKlUeu/erjjvaPEYiI=
