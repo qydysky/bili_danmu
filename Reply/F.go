@@ -933,17 +933,17 @@ func init() {
 								if sf, delete, e := vfsi.InitSav(videoDir + "0." + videoType + ".fastSeed"); e != nil {
 									flog.E(e)
 								} else if e := cuter.GenFastSeed(f, sf); e != nil && !errors.Is(e, io.EOF) {
-									flog.E(e)
+									flog.E(perrors.ErrorFormat(e, perrors.ErrActionInLineFunc))
 									delete()
 								}
-								f.Seek(0, int(file.AtOrigin))
+								_, _ = f.Seek(0, int(file.AtOrigin))
 							}
 
 							if gf, e := vfsi.InitGet(videoDir + "0." + videoType + ".fastSeed"); e != nil {
 								flog.E(e)
 								return e
 							} else if e := cuter.CutSeed(f, startT, duration, res, f, gf, skipHeader, writeLastBuf); e != nil && !errors.Is(e, io.EOF) {
-								flog.E(e)
+								flog.E(perrors.ErrorFormat(e, perrors.ErrActionInLineFunc))
 								return e
 							}
 							return nil

@@ -1583,7 +1583,7 @@ func (t *M4SStream) Start() bool {
 									if sf, delete, e := vfsi.InitSav(path + ".fastSeed"); e != nil {
 										l.BaseAdd(`GenFastSeed`).E(path, e)
 									} else if e := dealer.GenFastSeed(f, sf); e != nil && !errors.Is(e, io.EOF) {
-										l.BaseAdd(`GenFastSeed`).E(path, e)
+										l.BaseAdd(`GenFastSeed`).E(path, perrors.ErrorFormat(e, perrors.ErrActionInLineFunc))
 										delete()
 									}
 									return f.Close()
