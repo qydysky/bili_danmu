@@ -63,7 +63,10 @@ func Start(rootCtx context.Context) {
 		signal.Notify(interrupt, syscall.SIGINT, syscall.SIGTERM)
 		danmulog.I("3s内2次ctrl+c退出")
 		for {
-			<-interrupt
+			select {
+			case <-interrupt:
+			case <-rootCtx.Done():
+			}
 			c.C.Danmu_Main_mq.Push_tag(`interrupt`, nil)
 			select {
 			case <-interrupt:
@@ -285,7 +288,7 @@ func Start(rootCtx context.Context) {
 				return actual, loaded
 			})
 
-			exitSign = entryRoom(rootCtx, ctx, danmulog.BaseAdd(common.Roomid), common)
+			exitSign = entryRoom(ctx, danmulog.BaseAdd(common.Roomid), common)
 
 			cancelfunc()
 			common.InIdle = true
@@ -301,7 +304,7 @@ func Start(rootCtx context.Context) {
 	}
 }
 
-func entryRoom(rootCtx, mainCtx context.Context, danmulog *plog.Log, common *c.Common) (exitSign bool) {
+func entryRoom(mainCtx context.Context, danmulog *plog.Log, common *c.Common) (exitSign bool) {
 	var (
 		heartbeatmsg, heartinterval                        = F.Heartbeat()
 		loopCtx, loopCancel                                = context.WithTimeout(mainCtx, time.Hour*3)
@@ -346,27 +349,29 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *plog.Log, common *c.C
 						ldi.Unset()
 					})
 				}
-				//tts
-				defer func() {
-					replyFunc.TTS.Run2(func(t replyFunc.TTSI) {
-						t.Clear()
-					})
-				}()
 				danmulog.I("连接到房间", common.Roomid)
 				// 获取弹幕服务器
 				F.Api.Get(common, `WSURL`)
 
 				for {
-					unlock := common.Lock()
-					if len(common.WSURL) == 0 {
-						unlock()
-						break
-					}
-					wsUrl := common.WSURL[0]
-					common.WSURL = common.WSURL[1:]
-					unlock()
-					if !yield(wsUrl) {
+					if wsUrl := func() (wsUrl string) {
+						defer common.Lock()()
+						if len(common.WSURL) != 0 {
+							wsUrl = common.WSURL[0]
+							common.WSURL = common.WSURL[1:]
+						}
 						return
+					}(); wsUrl == "" {
+						break
+					} else {
+						exitRoom := !yield(wsUrl)
+						//tts 清空待处理
+						replyFunc.TTS.Run2(func(t replyFunc.TTSI) {
+							t.Clear()
+						})
+						if exitRoom {
+							return
+						}
 					}
 				}
 			}
@@ -593,9 +598,6 @@ func entryRoom(rootCtx, mainCtx context.Context, danmulog *plog.Log, common *c.C
 				case <-ctx.Done():
 					common.Danmu_Main_mq.Push_tag(`flash_room`, nil)
 				case <-c:
-				case <-rootCtx.Done():
-					common.Danmu_Main_mq.Push_tag(`interrupt`, nil)
-					<-c
 				}
 				cancel()
 			}
