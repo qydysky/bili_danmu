@@ -74,7 +74,7 @@ func (t parseM3u8) Parse(respon []byte, lastNo int) (m4sLink iter.Seq[interface 
 			if qn, e := strconv.Atoi(ParseQuery(tmp, "qn=")); e == nil {
 				if maxqn < qn {
 					maxqn = qn
-					redirectUrl = tmp
+					redirectUrl = unsafe.B2S([]byte(tmp)) //allocs
 				}
 			}
 			err = ErrRedirect
