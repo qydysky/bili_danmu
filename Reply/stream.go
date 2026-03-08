@@ -1791,7 +1791,7 @@ func (t *M4SStream) PusherToHttp(plog *log.Log, conn net.Conn, w http.ResponseWr
 								return err
 							}
 							defer func() {
-								plog.W(r.RemoteAddr, cmd.Wait())
+								plog.W(F.GetRemoteIp(r), cmd.Wait())
 							}()
 						}
 					}
@@ -1881,15 +1881,15 @@ func (t *M4SStream) PusherToHttp(plog *log.Log, conn net.Conn, w http.ResponseWr
 			_ = conn.SetWriteDeadline(time.Now().Add(time.Second * 30))
 			if cmdI != nil {
 				if _, err := cmdI.Write(b); err != nil {
-					plog.W(r.RemoteAddr, err)
+					plog.W(F.GetRemoteIp(r), err)
 					cancel(err)
 					return true
 				}
 			} else if n, err := w.Write(b); err != nil || n == 0 {
 				if errors.Is(err, pio.ErrCacheWriterBusy) {
-					plog.I(r.RemoteAddr, "回放缓存跳过，或许应该增加`直播流实时回放缓存`")
+					plog.I(F.GetRemoteIp(r), "回放缓存跳过，或许应该增加`直播流实时回放缓存`")
 				} else {
-					plog.W(r.RemoteAddr, err)
+					plog.W(F.GetRemoteIp(r), err)
 					cancel(err)
 					return true
 				}

@@ -382,7 +382,7 @@ func entryRoom(mainCtx context.Context, danmulog *plog.Log, common *c.Common) (e
 		//ws启动
 		danmulog.T("连接 " + v)
 		u, _ := url.Parse(v)
-		ws_c, err := ws.New_client(&ws.Client{
+		ws_c, err := ws.NewClient(&ws.Client{
 			// BufSize:           150,
 			Url:               v,
 			RTOMs:             (heartinterval + 5) * 1000,

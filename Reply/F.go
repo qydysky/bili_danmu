@@ -221,7 +221,7 @@ func AutoSend_silver_gift(common *c.Common) {
 }
 
 // 直播Web服务口
-var StreamWs = websocket.New_server()
+var StreamWs = websocket.NewServer()
 
 func SendStreamWs(item *Danmu_item) {
 	var msg string
@@ -1037,11 +1037,11 @@ func init() {
 				// 推送数据
 				{
 					startFunc := func(_ *M4SStream) error {
-						flog.T(r.RemoteAddr, `接入直播`)
+						flog.T(F.GetRemoteIp(r), `接入直播`)
 						return nil
 					}
 					stopFunc := func(_ *M4SStream) error {
-						flog.T(r.RemoteAddr, `断开直播`)
+						flog.T(F.GetRemoteIp(r), `断开直播`)
 						return nil
 					}
 
@@ -1089,9 +1089,9 @@ func init() {
 					w.WriteHeader(http.StatusServiceUnavailable)
 					return
 				} else if !hasLivsJson {
-					flog.T(r.RemoteAddr, `接入录播`)
+					flog.T(F.GetRemoteIp(r), `接入录播`)
 					defer func(ts time.Time) {
-						flog.T(r.RemoteAddr, `断开录播`, time.Since(ts))
+						flog.T(F.GetRemoteIp(r), `断开录播`, time.Since(ts))
 					}(time.Now())
 					readFile(w, dir+"/", "/", st, dur, false, true, &rangeHeaderNum)
 				} else {
@@ -1104,9 +1104,9 @@ func init() {
 							w.WriteHeader(http.StatusServiceUnavailable)
 							return
 						}
-						flog.T(r.RemoteAddr, `接入录播`)
+						flog.T(F.GetRemoteIp(r), `接入录播`)
 						defer func(ts time.Time) {
-							flog.T(r.RemoteAddr, `断开录播`, time.Since(ts))
+							flog.T(F.GetRemoteIp(r), `断开录播`, time.Since(ts))
 						}(time.Now())
 						sst, sdur, skipHeader := parseDuration(playlist.Lives[0].StartT)+st, parseDuration(playlist.Lives[len(playlist.Lives)-1].Dur), false
 						nodur := dur == 0

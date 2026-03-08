@@ -401,7 +401,7 @@ func (t *tts) xf(msg string) error {
 			if wsUrl, err := assembleAuthUrl("wss://tts-api.xfyun.cn/v2/tts", t.xfKey, t.xfSecret); err != nil {
 				return err
 			} else {
-				xfwsClient, _ := ws.New_client(&ws.Client{
+				xfwsClient, _ := ws.NewClient(&ws.Client{
 					Url:   wsUrl,
 					Proxy: c.C.Proxy,
 					Header: map[string]string{

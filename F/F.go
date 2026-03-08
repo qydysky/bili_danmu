@@ -2,6 +2,7 @@ package F
 
 import (
 	"bytes"
+	"net/http"
 	"strconv"
 
 	c "github.com/qydysky/bili_danmu/CV"
@@ -209,4 +210,12 @@ func ResolveReferenceLast(rawURL, ref string) string {
 	}
 
 	return rawURL[:s+1] + ref
+}
+
+func GetRemoteIp(r *http.Request) string {
+	if rip := r.Header.Get("X-Real-IP"); rip == "" {
+		return r.RemoteAddr
+	} else {
+		return rip
+	}
 }
