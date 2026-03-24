@@ -24,8 +24,8 @@ import (
 	phash "github.com/qydysky/part/hash"
 	limit "github.com/qydysky/part/limit"
 	log "github.com/qydysky/part/log/v2"
+	prand "github.com/qydysky/part/rand"
 	reqf "github.com/qydysky/part/reqf"
-	pstrings "github.com/qydysky/part/strings"
 	sync "github.com/qydysky/part/sync"
 	sys "github.com/qydysky/part/sys"
 	ws "github.com/qydysky/part/websocket"
@@ -291,7 +291,7 @@ func (t *tts) youdao(msg string) error {
 			`q`:            msg,
 			`langType`:     "zh-CHS",
 			`youdaoappKey`: t.youdaoId,
-			`salt`:         pstrings.Rand(1, 8),
+			`salt`:         prand.Rand[string](prand.TypeNum, 8),
 		}
 		postS string
 	)
