@@ -40,10 +40,10 @@ import (
 	log "github.com/qydysky/part/log/v2"
 	msgq "github.com/qydysky/part/msgq"
 	pool "github.com/qydysky/part/pool"
+	prand "github.com/qydysky/part/rand"
 	reqf "github.com/qydysky/part/reqf"
 	signal "github.com/qydysky/part/signal"
 	slice "github.com/qydysky/part/slice"
-	pstring "github.com/qydysky/part/strings"
 	psync "github.com/qydysky/part/sync"
 	pu "github.com/qydysky/part/util"
 	pweb "github.com/qydysky/part/web"
@@ -724,7 +724,7 @@ func (t *M4SStream) genSavepath(log *log.Log) (cupath string) {
 		t.common.Roomid,
 		t.common.Live_qn,
 		w.Sum(nil)[:3],
-		pstring.Rand(2, 3))
+		prand.Rand[string](prand.TypeNum|prand.TypeLow|prand.TypeUpp, 3))
 
 	t.currentSavePath = cupath
 

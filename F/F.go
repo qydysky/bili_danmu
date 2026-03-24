@@ -6,7 +6,7 @@ import (
 	"strconv"
 
 	c "github.com/qydysky/bili_danmu/CV"
-	pstrings "github.com/qydysky/part/strings"
+	prand "github.com/qydysky/part/rand"
 	"github.com/qydysky/part/unsafe"
 )
 
@@ -75,7 +75,7 @@ func HelloGen(roomid int, key string) []byte {
 	}
 
 	obj += `,"support_ack":` + c.SupportAck +
-		`,"queue_uuid":"` + pstrings.Rand(pstrings.LowNumber, 8) +
+		`,"queue_uuid":"` + prand.Rand[string](prand.TypeLow, 8) +
 		`","scene":"` + c.Scene +
 		`","platform":"` + c.Platform +
 		`","type":` + strconv.Itoa(c.Type) +
