@@ -51,7 +51,7 @@ jobs:
       uses: codecov/codecov-action@v6
       with:
         token: ${{secrets.CODECOV_TOKEN}}
-        file: coverage
+        files: coverage
       
     - name: zip
       run: zip -q -r vendor.zip vendor
@@ -94,13 +94,6 @@ jobs:
     - name: zip
       run: zip -q -r ubuntu_go${{ matrix.go }}.zip main
 
-    - name: VirusTotal Scan
-      uses: crazy-max/ghaction-virustotal@v4
-      with:
-        vt_api_key: ${{ secrets.VT_API_KEY }}
-        files: |
-          ./ubuntu_go${{ matrix.go }}.zip
-
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v7
       with:
@@ -141,13 +134,6 @@ jobs:
     - name: zip
       run: .\7za.exe a -r .\windows_go${{ matrix.go }}.zip ./main
 
-    - name: VirusTotal Scan
-      uses: crazy-max/ghaction-virustotal@v4
-      with:
-        vt_api_key: ${{ secrets.VT_API_KEY }}
-        files: |
-          ./windows_go${{ matrix.go }}.zip
-
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v7
       with:
@@ -187,13 +173,6 @@ jobs:
         
     - name: zip
       run: zip -q -r macos_go${{ matrix.go }}.zip main
-
-    - name: VirusTotal Scan
-      uses: crazy-max/ghaction-virustotal@v4
-      with:
-        vt_api_key: ${{ secrets.VT_API_KEY }}
-        files: |
-          ./macos_go${{ matrix.go }}.zip
 
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v7
