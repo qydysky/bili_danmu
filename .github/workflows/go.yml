@@ -20,12 +20,12 @@ jobs:
       GH_TOKEN: ${{ github.token }}
     steps:
     - name: Set up Go${{ matrix.go }}
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@v6
       with:
         go-version: ${{ matrix.go }}
 
     - name: Check out code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         lfs: true
 
@@ -46,7 +46,7 @@ jobs:
         CGO_ENABLED=1 go test -v --cover -coverprofile=coverage -race -count=1 ./...
 
     - name: Codecov
-      uses: codecov/codecov-action@v4
+      uses: codecov/codecov-action@v6
       with:
         token: ${{secrets.CODECOV_TOKEN}}
         file: coverage
@@ -73,12 +73,12 @@ jobs:
       GH_TOKEN: ${{ github.token }}
     steps:
     - name: Set up Go${{ matrix.go }}
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@v6
       with:
         go-version: ${{ matrix.go }}
 
     - name: Check out code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         lfs: true
 
@@ -110,12 +110,12 @@ jobs:
       GH_TOKEN: ${{ github.token }}
     steps:
     - name: Set up Go${{ matrix.go }}
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@v6
       with:
         go-version: ${{ matrix.go }}
 
     - name: Check out code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         lfs: true
 
@@ -150,12 +150,12 @@ jobs:
       GH_TOKEN: ${{ github.token }}
     steps:
     - name: Set up Go${{ matrix.go }}
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@v6
       with:
         go-version: ${{ matrix.go }}
 
     - name: Check out code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         lfs: true
 
