@@ -1467,163 +1467,161 @@ func (t *M4SStream) Start() bool {
 
 		if t.config.save_to_file {
 			var fc funcCtrl.FlashFunc
-			defer t.msg.Pull_tag_async(map[string]func(*M4SStream) (disable bool){
-				`cut`: func(ms *M4SStream) (disable bool) {
-					ms.cutNum.Add(1)
-					l := ms.logg().BaseAdd("切片")
-					// 有时尚未初始化接收到新的cut信号，导致保存失败。可能在开播信号重复发出出现
-					if ms.frameCount < defaultStartCount {
-						l.I("尚未接收到帧、跳过")
-						return false
-					}
+			defer t.msg.Pull_tag_async_only(`cut`, func(ms *M4SStream) (disable bool) {
+				ms.cutNum.Add(1)
+				l := ms.logg().BaseAdd("切片")
+				// 有时尚未初始化接收到新的cut信号，导致保存失败。可能在开播信号重复发出出现
+				if ms.frameCount < defaultStartCount {
+					l.I("尚未接收到帧、跳过")
+					return false
+				}
 
-					ctx1, done := pctx.WithWait(mainCtx, 3, time.Second*30)
-					defer func() {
+				ctx1, done := pctx.WithWait(mainCtx, 3, time.Second*30)
+				defer func() {
+					_ = done(true)
+				}()
+
+				// 分段时长min
+				if tmp, ok := ms.common.K_v.LoadV("分段时长min").(float64); ok && tmp > 0 {
+					cutT := time.Duration(int64(time.Minute) * int64(tmp))
+					l.IF("分段启动 %v", cutT)
+					defer time.AfterFunc(cutT, func() {
+						l.I(ms.common.Roomid, "ok")
+						ms.msg.Push_tag(`cut`, ms)
+					}).Stop()
+				}
+
+				defer ms.msg.Pull_tag(map[string]func(*M4SStream) (disable bool){
+					// 当closefile时，取消录制
+					`closefile`: func(ms *M4SStream) (disable bool) {
 						_ = done(true)
+						return true
+					},
+					// 当stopRec时，取消录制
+					`stopRec`: func(ms *M4SStream) (disable bool) {
+						_ = done(true)
+						return true
+					},
+				})()
+
+				savePath := ms.genSavepath(l)
+				saveType := ms.GetStreamType()
+
+				startf := func(_ *M4SStream) error {
+					l.T(`开始`)
+					//弹幕分值统计
+					replyFunc.DanmuCountPerMin.Run2(func(dcpmi replyFunc.DanmuCountPerMinI) {
+						dcpmi.Rec(ctx1, ms.common.Roomid, savePath)(ms.common.K_v.LoadV("弹幕分值"))
+					})
+					return nil
+				}
+				readyf := func(_ *M4SStream) error {
+					// 当cut时，取消上次录制
+					fc.FlashWithCallback(func() {
+						// wait all goroutine exit
+						if e := done(true); e != nil {
+							l.E(e)
+						}
+					})
+					return nil
+				}
+				stopf := func(_ *M4SStream) error {
+					l.T(`结束`)
+					return nil
+				}
+
+				// 移除历史流
+				if err := ms.removeStream(); err != nil {
+					l.BaseAdd(`removeStream`).W(err)
+				}
+
+				// savestate
+				if e, _ := videoInfo.Save.Run(ctx1, ms); e != nil {
+					l.BaseAdd(`videoInfo`).E(e)
+				}
+
+				// 保存弹幕
+				go StartRecDanmu(ctx1, l, savePath)
+
+				// 保存视频流
+				path := savePath + `0.` + saveType
+				startT := time.Now()
+				if e := ms.PusherToFile(ctx1, path, PusherEvent{startf, readyf, stopf}); e != nil {
+					l.BaseAdd(`PusherToFile`).E(e)
+				}
+				duration := time.Since(startT)
+
+				//PusherToFile fin genFastSeed
+				if disableFastSeed, ok := ms.common.K_v.LoadV("禁用快速索引生成").(bool); !ok || !disableFastSeed {
+					func() {
+						type deal interface {
+							GenFastSeed(reader io.Reader, save func(seedTo time.Duration, cuIndex int64) error) (err error)
+						}
+						var dealer deal
+
+						switch saveType {
+						case `mp4`:
+							fmp4Decoder := decoder.Fmp4DecoderPool.Get()
+							defer decoder.Fmp4DecoderPool.Put(fmp4Decoder)
+							if v, ok := ms.common.K_v.LoadV(`fmp4音视频时间戳容差s`).(float64); ok && v > 0.1 {
+								fmp4Decoder.AVTDiff = v
+							}
+							dealer = fmp4Decoder
+						case `flv`:
+							flvDecoder := decoder.NewFlvDecoder()
+							if v, ok := ms.common.K_v.LoadV(`flv音视频时间戳容差ms`).(float64); ok && v > 100 {
+								flvDecoder.Diff = v
+							}
+							dealer = flvDecoder
+						default:
+						}
+
+						if dealer != nil {
+							_ = replyFunc.VideoFastSeed.Run(func(vfsi replyFunc.VideoFastSeedI) error {
+								f := file.Open(path)
+								if sf, delete, e := vfsi.InitSav(path + ".fastSeed"); e != nil {
+									l.BaseAdd(`GenFastSeed`).E(path, e)
+								} else if e := dealer.GenFastSeed(f, sf); e != nil && !errors.Is(e, io.EOF) {
+									l.BaseAdd(`GenFastSeed`).E(path, perrors.ErrorFormat(e, perrors.ErrActionInLineFunc))
+									delete()
+								}
+								return f.Close()
+							})
+						}
 					}()
+				}
 
-					// 分段时长min
-					if tmp, ok := ms.common.K_v.LoadV("分段时长min").(float64); ok && tmp > 0 {
-						cutT := time.Duration(int64(time.Minute) * int64(tmp))
-						l.IF("分段启动 %v", cutT)
-						defer time.AfterFunc(cutT, func() {
-							l.I(ms.common.Roomid, "ok")
-							ms.msg.Push_tag(`cut`, ms)
-						}).Stop()
-					}
-
-					defer ms.msg.Pull_tag(map[string]func(*M4SStream) (disable bool){
-						// 当closefile时，取消录制
-						`closefile`: func(ms *M4SStream) (disable bool) {
-							_ = done(true)
-							return true
-						},
-						// 当stopRec时，取消录制
-						`stopRec`: func(ms *M4SStream) (disable bool) {
-							_ = done(true)
-							return true
-						},
-					})()
-
-					savePath := ms.genSavepath(l)
-					saveType := ms.GetStreamType()
-
-					startf := func(_ *M4SStream) error {
-						l.T(`开始`)
-						//弹幕分值统计
-						replyFunc.DanmuCountPerMin.Run2(func(dcpmi replyFunc.DanmuCountPerMinI) {
-							dcpmi.Rec(ctx1, ms.common.Roomid, savePath)(ms.common.K_v.LoadV("弹幕分值"))
-						})
-						return nil
-					}
-					readyf := func(_ *M4SStream) error {
-						// 当cut时，取消上次录制
-						fc.FlashWithCallback(func() {
-							// wait all goroutine exit
-							if e := done(true); e != nil {
-								l.E(e)
-							}
-						})
-						return nil
-					}
-					stopf := func(_ *M4SStream) error {
-						l.T(`结束`)
-						return nil
-					}
-
-					// 移除历史流
-					if err := ms.removeStream(); err != nil {
-						l.BaseAdd(`removeStream`).W(err)
-					}
-
-					// savestate
-					if e, _ := videoInfo.Save.Run(ctx1, ms); e != nil {
-						l.BaseAdd(`videoInfo`).E(e)
-					}
-
-					// 保存弹幕
-					go StartRecDanmu(ctx1, l, savePath)
-
-					// 保存视频流
-					path := savePath + `0.` + saveType
-					startT := time.Now()
-					if e := ms.PusherToFile(ctx1, path, PusherEvent{startf, readyf, stopf}); e != nil {
-						l.BaseAdd(`PusherToFile`).E(e)
-					}
-					duration := time.Since(startT)
-
-					//PusherToFile fin genFastSeed
-					if disableFastSeed, ok := ms.common.K_v.LoadV("禁用快速索引生成").(bool); !ok || !disableFastSeed {
-						func() {
-							type deal interface {
-								GenFastSeed(reader io.Reader, save func(seedTo time.Duration, cuIndex int64) error) (err error)
-							}
-							var dealer deal
-
-							switch saveType {
-							case `mp4`:
-								fmp4Decoder := decoder.Fmp4DecoderPool.Get()
-								defer decoder.Fmp4DecoderPool.Put(fmp4Decoder)
-								if v, ok := ms.common.K_v.LoadV(`fmp4音视频时间戳容差s`).(float64); ok && v > 0.1 {
-									fmp4Decoder.AVTDiff = v
-								}
-								dealer = fmp4Decoder
-							case `flv`:
-								flvDecoder := decoder.NewFlvDecoder()
-								if v, ok := ms.common.K_v.LoadV(`flv音视频时间戳容差ms`).(float64); ok && v > 100 {
-									flvDecoder.Diff = v
-								}
-								dealer = flvDecoder
-							default:
-							}
-
-							if dealer != nil {
-								_ = replyFunc.VideoFastSeed.Run(func(vfsi replyFunc.VideoFastSeedI) error {
-									f := file.Open(path)
-									if sf, delete, e := vfsi.InitSav(path + ".fastSeed"); e != nil {
-										l.BaseAdd(`GenFastSeed`).E(path, e)
-									} else if e := dealer.GenFastSeed(f, sf); e != nil && !errors.Is(e, io.EOF) {
-										l.BaseAdd(`GenFastSeed`).E(path, perrors.ErrorFormat(e, perrors.ErrActionInLineFunc))
-										delete()
-									}
-									return f.Close()
-								})
-							}
-						}()
-					}
-
-					//指定房间录制回调
-					if v, ok := ms.common.K_v.LoadV("指定房间录制回调").([]any); ok && len(v) > 0 {
-						l := l.Base(`录制回调`)
-						for i := 0; i < len(v); i++ {
-							if vm, ok := v[i].(map[string]any); ok {
-								if roomid, ok := vm["roomid"].(float64); ok && int(roomid) == ms.common.Roomid {
-									var (
-										durationS, _ = vm["durationS"].(float64)
-										after, _     = vm["after"].([]any)
-									)
-									if len(after) >= 2 && durationS >= 0 && duration.Seconds() > durationS {
-										var cmds []string
-										for i := 0; i < len(after); i++ {
-											if cmd, ok := after[i].(string); ok && cmd != "" {
-												cmds = append(cmds, strings.ReplaceAll(cmd, "{type}", saveType))
-											}
+				//指定房间录制回调
+				if v, ok := ms.common.K_v.LoadV("指定房间录制回调").([]any); ok && len(v) > 0 {
+					l := l.Base(`录制回调`)
+					for i := 0; i < len(v); i++ {
+						if vm, ok := v[i].(map[string]any); ok {
+							if roomid, ok := vm["roomid"].(float64); ok && int(roomid) == ms.common.Roomid {
+								var (
+									durationS, _ = vm["durationS"].(float64)
+									after, _     = vm["after"].([]any)
+								)
+								if len(after) >= 2 && durationS >= 0 && duration.Seconds() > durationS {
+									var cmds []string
+									for i := 0; i < len(after); i++ {
+										if cmd, ok := after[i].(string); ok && cmd != "" {
+											cmds = append(cmds, strings.ReplaceAll(cmd, "{type}", saveType))
 										}
-
-										cmd := exec.Command(cmds[0], cmds[1:]...)
-										cmd.Dir = savePath
-										l.I("启动", cmd.Args)
-										if e := cmd.Run(); e != nil {
-											l.E(e)
-										}
-										l.I("结束")
 									}
+
+									cmd := exec.Command(cmds[0], cmds[1:]...)
+									cmd.Dir = savePath
+									l.I("启动", cmd.Args)
+									if e := cmd.Run(); e != nil {
+										l.E(e)
+									}
+									l.I("结束")
 								}
 							}
 						}
 					}
-					return false
-				},
+				}
+				return false
 			})()
 		}
 

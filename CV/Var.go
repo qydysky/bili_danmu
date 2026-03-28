@@ -735,7 +735,7 @@ func (t *Common) Init() *Common {
 					},
 					"common": streams,
 				},
-				}.Write(w)
+				}.Write(w, r)
 			})
 		}
 
@@ -1003,7 +1003,7 @@ type ResStruct struct {
 	Data    any    `json:"data"`
 }
 
-func (t ResStruct) Write(w http.ResponseWriter) []byte {
+func (t ResStruct) Write(w http.ResponseWriter, r *http.Request) []byte {
 	w.Header().Set("Content-Type", "application/json")
 	data, e := json.MarshalIndent(t, "", "    ")
 	if e != nil {
@@ -1012,7 +1012,9 @@ func (t ResStruct) Write(w http.ResponseWriter) []byte {
 		t.Message = e.Error()
 		data, _ = json.Marshal(t)
 	}
-	_, _ = w.Write(data)
+	sw, close := web.WithEncoding(w, r)
+	defer close()
+	_, _ = sw.Write(data)
 	return data
 }
 
