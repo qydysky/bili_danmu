@@ -23,12 +23,12 @@ jobs:
         go: [ '1.26' ]
     steps:
     - name: Set up Go${{ matrix.go }}
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@v6
       with:
         go-version: ${{ matrix.go }}
 
     - name: Check out code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         lfs: true
 
@@ -48,16 +48,16 @@ jobs:
         CGO_ENABLED=1 go test -v --cover -coverprofile=coverage -race -count=1 ./...
 
     - name: Codecov
-      uses: codecov/codecov-action@v4
+      uses: codecov/codecov-action@v6
       with:
         token: ${{secrets.CODECOV_TOKEN}}
-        file: coverage
+        files: coverage
       
     - name: zip
       run: zip -q -r vendor.zip vendor
       
     - name: Upload a Build Artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: vendor.zip
         path: ./vendor.zip
@@ -71,12 +71,12 @@ jobs:
         go: [ '1.26' ]
     steps:
     - name: Set up Go${{ matrix.go }}
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@v6
       with:
         go-version: ${{ matrix.go }}
 
     - name: Check out code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         lfs: true
 
@@ -94,15 +94,8 @@ jobs:
     - name: zip
       run: zip -q -r ubuntu_go${{ matrix.go }}.zip main
 
-    - name: VirusTotal Scan
-      uses: crazy-max/ghaction-virustotal@v4
-      with:
-        vt_api_key: ${{ secrets.VT_API_KEY }}
-        files: |
-          ./ubuntu_go${{ matrix.go }}.zip
-
     - name: Upload a Build Artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: ubuntu_go${{ matrix.go }}.zip
         path: ./main
@@ -116,12 +109,12 @@ jobs:
         go: [ '1.26' ]
     steps:
     - name: Set up Go${{ matrix.go }}
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@v6
       with:
         go-version: ${{ matrix.go }}
 
     - name: Check out code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         lfs: true
 
@@ -141,15 +134,8 @@ jobs:
     - name: zip
       run: .\7za.exe a -r .\windows_go${{ matrix.go }}.zip ./main
 
-    - name: VirusTotal Scan
-      uses: crazy-max/ghaction-virustotal@v4
-      with:
-        vt_api_key: ${{ secrets.VT_API_KEY }}
-        files: |
-          ./windows_go${{ matrix.go }}.zip
-
     - name: Upload a Build Artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: windows_go${{ matrix.go }}.zip
         path: ./main
@@ -163,12 +149,12 @@ jobs:
         go: [ '1.26' ]
     steps:
     - name: Set up Go${{ matrix.go }}
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@v6
       with:
         go-version: ${{ matrix.go }}
 
     - name: Check out code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         lfs: true
 
@@ -188,15 +174,8 @@ jobs:
     - name: zip
       run: zip -q -r macos_go${{ matrix.go }}.zip main
 
-    - name: VirusTotal Scan
-      uses: crazy-max/ghaction-virustotal@v4
-      with:
-        vt_api_key: ${{ secrets.VT_API_KEY }}
-        files: |
-          ./macos_go${{ matrix.go }}.zip
-
     - name: Upload a Build Artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: macos_go${{ matrix.go }}.zip
         path: ./main
