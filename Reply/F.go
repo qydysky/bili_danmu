@@ -509,8 +509,10 @@ func init() {
 				return
 			}
 			w.Header().Set("Content-Type", "application/json")
+			ew, close := pweb.WithEncoding(w, r)
+			defer close()
 
-			_, _ = w.Write([]byte("{"))
+			_, _ = ew.Write([]byte("{"))
 			for i, qref := range refs {
 				if qref == "" {
 					continue
@@ -520,11 +522,11 @@ func init() {
 					flog.I("路径解码失败", qref, perrors.ErrorFormat(e, perrors.ErrActionInLineFunc))
 					continue
 				} else {
-					_, _ = w.Write([]byte(`"` + qref + `":`))
+					_, _ = ew.Write([]byte(`"` + qref + `":`))
 					if qref != `now` {
 						if e := replyFunc.DanmuCountPerMin.Run(func(dcpmi replyFunc.DanmuCountPerMinI) error {
 							var points []int
-							_, _ = w.Write([]byte("["))
+							_, _ = ew.Write([]byte("["))
 							if hasLivsJson {
 								var (
 									totalDur time.Duration
@@ -552,9 +554,9 @@ func init() {
 										totalDur += live.infoDur
 										for i := 0; i < dur && float64(totalNum) < totalDur.Minutes(); i++ {
 											if totalNum > 0 || i > 0 {
-												_, _ = w.Write([]byte(","))
+												_, _ = ew.Write([]byte(","))
 											}
-											_, _ = w.Write([]byte(strconv.Itoa(points[st+i])))
+											_, _ = ew.Write([]byte(strconv.Itoa(points[st+i])))
 											totalNum += 1
 										}
 									}
@@ -566,27 +568,27 @@ func init() {
 									}
 								} else {
 									for i := 0; i < len(points); i++ {
-										_, _ = w.Write([]byte(strconv.Itoa(points[i])))
+										_, _ = ew.Write([]byte(strconv.Itoa(points[i])))
 										if i != len(points)-1 {
-											_, _ = w.Write([]byte{','})
+											_, _ = ew.Write([]byte{','})
 										}
 									}
 								}
 							}
-							_, _ = w.Write([]byte("]"))
+							_, _ = ew.Write([]byte("]"))
 							return nil
 						}); e != nil {
-							_, _ = w.Write([]byte("[]"))
+							_, _ = ew.Write([]byte("[]"))
 						}
 					} else {
-						_, _ = w.Write([]byte("[]"))
+						_, _ = ew.Write([]byte("[]"))
 					}
 					if i < len(refs)-1 {
-						_, _ = w.Write([]byte(","))
+						_, _ = ew.Write([]byte(","))
 					}
 				}
 			}
-			_, _ = w.Write([]byte("}"))
+			_, _ = ew.Write([]byte("}"))
 		})
 
 		// 实时回放模式api
@@ -605,7 +607,7 @@ func init() {
 					}
 				}
 			}
-			c.ResStruct{Code: 0, Message: "ok", Data: ms}.Write(w)
+			c.ResStruct{Code: 0, Message: "ok", Data: ms}.Write(w, r)
 		})
 
 		// 直播流文件列表api
@@ -615,7 +617,7 @@ func init() {
 			}
 
 			if liveRootDir == "" {
-				c.ResStruct{Code: -1, Message: "直播流保存位置无效", Data: nil}.Write(w)
+				c.ResStruct{Code: -1, Message: "直播流保存位置无效", Data: nil}.Write(w, r)
 				flog.W(`直播流保存位置无效`)
 				return
 			}
@@ -678,7 +680,7 @@ func init() {
 			if size >= 0 {
 				playlists = playlists[:min(size, len(playlists))]
 			}
-			c.ResStruct{Code: 0, Message: "ok", Data: playlists}.Write(w)
+			c.ResStruct{Code: 0, Message: "ok", Data: playlists}.Write(w, r)
 		})
 
 		// 表情
@@ -807,19 +809,23 @@ func init() {
 				w.Header().Set("content-type", "text/html")
 			}
 
-			f := file.New(p, 0, true).CheckRoot(s)
+			f := file.New(p, 0, false).CheckRoot(s)
 			if !f.IsExist() {
 				w.WriteHeader(http.StatusNotFound)
 				return
 			}
+			defer f.Close()
 
 			// mod
 			if info, e := f.Stat(); e == nil && pweb.NotModified(r, w, info.ModTime()) {
 				return
 			}
 
-			b, _ := f.ReadAll(humanize.KByte, humanize.MByte)
-			_, _ = w.Write(b)
+			ew, close := pweb.WithEncoding(w, r)
+			defer close()
+			pio.Copy(f, ew, pio.CopyConfig{})
+			// b, _ := f.ReadAll(humanize.KByte, humanize.MByte)
+			// _, _ = w.Write(b)
 		})
 
 		// 对于经过代理层，有可能浏览器标签页已经关闭，但代理层不关闭连接，导致连接不能释放
