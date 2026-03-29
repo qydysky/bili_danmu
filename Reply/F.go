@@ -659,6 +659,8 @@ func init() {
 					filepath.Base(currentStreamO.GetSavePath()) == t.Path {
 					t.Name = "Now: " + t.Name
 					t.Path = "now"
+					// 使用当前观看人数
+					t.OnlinesPerMin = []int{currentStreamO.Common().OnlineNum}
 				}
 				return (uname != "" && uname != t.Uname) || (startT != "" && !strings.HasPrefix(t.StartT, startT)) || (startLiveT != "" && !strings.HasPrefix(t.StartLiveT, startLiveT))
 			})
