@@ -17,6 +17,7 @@ var msglog = c.C.Log.Base(`Msg`)
 
 // Msg类型数据处理方法map
 var Msg_map = map[string]func(replyF, []byte){
+	`WIDGET_GIFT_STAR_PROCESS_V2`:          nil, // 礼物
 	`COLLABORATION_LIVE_INFO`:              nil, // 联合直播提示
 	`CNY_HOT_RANK`:                         nil, // 房间助手
 	`ROOM_CONTENT_AUDIT_REPORT`:            nil,
