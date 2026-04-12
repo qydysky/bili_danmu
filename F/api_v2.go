@@ -12,7 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/mdp/qrterminal/v3"
 	c "github.com/qydysky/bili_danmu/CV"
-	pe "github.com/qydysky/part/errors"
+	pe "github.com/qydysky/part/errors/v2"
 	file "github.com/qydysky/part/file"
 	pkf "github.com/qydysky/part/keyFunc"
 	reqf "github.com/qydysky/part/reqf"

@@ -16,7 +16,7 @@ import (
 	"github.com/dustin/go-humanize"
 	c "github.com/qydysky/bili_danmu/CV"
 	comp "github.com/qydysky/part/component2"
-	pe "github.com/qydysky/part/errors"
+	pe "github.com/qydysky/part/errors/v2"
 	file "github.com/qydysky/part/file"
 	phash "github.com/qydysky/part/hash"
 	log "github.com/qydysky/part/log/v2"
