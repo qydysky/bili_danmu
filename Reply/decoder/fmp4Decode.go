@@ -24,7 +24,7 @@ var (
 )
 
 var (
-	ActFmp4, _ = pe.Action[struct {
+	ActFmp4 = pe.Action[struct {
 		InitFmp4        pe.Error
 		GetIndexFmp4    pe.Error
 		GenFastSeedFmp4 pe.Error
@@ -557,7 +557,7 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...dealFMp4) (cu int, err error) {
 		return 0, e
 	}
 
-	var ActNormal, _ = pe.Action[struct {
+	var ActNormal = pe.Action[struct {
 		Ok pe.Error
 	}](`ActNormal`)
 
@@ -890,7 +890,7 @@ func deals(ies *[]ie, dealIEs []dealIE) (err error) {
 }
 
 var (
-	ActFmp4Decode, _ = pe.Action[struct {
+	ActFmp4Decode = pe.Action[struct {
 		ErrMisBox     pe.Error
 		ErrCantResync pe.Error
 		ErrUnkownBox  pe.Error

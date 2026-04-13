@@ -34,7 +34,7 @@ var (
 	ErrTagSize          = errors.New("ErrTagSize")
 	ErrSignLost         = errors.New("ErrSignLost")
 
-	ActFlv, _ = pe.Action[struct {
+	ActFlv = pe.Action[struct {
 		InitFlv        pe.Error
 		GetIndexFlv    pe.Error
 		GenFastSeedFlv pe.Error

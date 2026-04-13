@@ -6,9 +6,7 @@ import (
 	_ "github.com/qydysky/bili_danmu/Reply/F/videoFastSeed" //removable
 )
 
-var (
-	ActDecoder, _ = pe.Action[struct {
-		Decode      pe.Error
-		BufOverflow pe.Error
-	}](`ActDecoder`)
-)
+var ActDecoder = pe.Action[struct {
+	Decode      pe.Error
+	BufOverflow pe.Error
+}](`ActDecoder`)

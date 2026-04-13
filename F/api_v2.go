@@ -181,7 +181,7 @@ func (t *GetFuncV2) getCookie() (missKey string, err error) {
 	//获取二维码
 	if err, imgUrl, QrcodeKey := biliApi.LoginQrCode(); err != nil {
 		apilog.E(err)
-		return "", pkf.ErrNextMethod.NewErr(err)
+		return "", pe.Join(pkf.ActKeyFunc.ErrNextMethod, err)
 	} else {
 		img_url = imgUrl
 		oauth = QrcodeKey
@@ -245,7 +245,7 @@ func (t *GetFuncV2) getCookie() (missKey string, err error) {
 
 			if err, code := biliApi.LoginQrPoll(oauth); err != nil {
 				apilog.E(err)
-				return "", pkf.ErrNextMethod.NewErr(err)
+				return "", pe.Join(pkf.ActKeyFunc.ErrNextMethod, err)
 			} else if code == 0 {
 				if cookies := biliApi.GetCookies(); len(cookies) != 0 {
 					if e, uid := biliApi.GetCookie(`DedeUserID`); e == nil { //cookie中无DedeUserID
@@ -318,7 +318,7 @@ func (t *GetFuncV2) getCookieNoBlock() (missKey string, err error) {
 	//获取二维码
 	if err, imgUrl, QrcodeKey := biliApi.LoginQrCode(); err != nil {
 		apilog.E(err)
-		return "", pkf.ErrNextMethod.NewErr(err)
+		return "", pe.Join(pkf.ActKeyFunc.ErrNextMethod, err)
 	} else {
 		img_url = imgUrl
 		oauth = QrcodeKey
@@ -413,7 +413,7 @@ func (t *GetFuncV2) getRoomBaseInfo() (missKey string, err error) {
 	//使用其他api
 	if err, res := biliApi.GetRoomBaseInfo(t.common.Roomid); err != nil {
 		apilog.E(err)
-		return "", pkf.ErrNextMethod.NewErr(err)
+		return "", pe.Join(pkf.ActKeyFunc.ErrNextMethod, err)
 	} else {
 		t.common.UpUid = res.UpUid
 		t.common.Uname = res.Uname
@@ -455,7 +455,7 @@ func (t *GetFuncV2) getInfoByRoom() (missKey string, err error) {
 	//使用其他api
 	if err, res := biliApi.GetInfoByRoom(t.common.Roomid); err != nil {
 		apilog.E(err)
-		return "", pkf.ErrNextMethod.NewErr(err)
+		return "", pe.Join(pkf.ActKeyFunc.ErrNextMethod, err)
 	} else {
 		t.common.UpUid = res.UpUid
 		t.common.Uname = res.Uname
@@ -506,7 +506,7 @@ func (t *GetFuncV2) getRoomPlayInfo(updateAcceptQn bool, appendLive bool) (missK
 	{
 		if err, res := biliApi.GetRoomPlayInfo(t.common.Roomid, 0); err != nil {
 			apilog.E(err)
-			return "", pkf.ErrNextMethod.NewErr(err)
+			return "", pe.Join(pkf.ActKeyFunc.ErrNextMethod, err)
 		} else {
 			//主播uid
 			t.common.UpUid = res.UpUid
@@ -569,7 +569,7 @@ func (t *GetFuncV2) html(updateAcceptQn bool, appendLive bool) (missKey string, 
 
 		if err, j := biliApi.LiveHtml(t.common.Roomid); err != nil {
 			apilog.E(err)
-			return "", pkf.ErrNextMethod.NewErr(err)
+			return "", pe.Join(pkf.ActKeyFunc.ErrNextMethod, err)
 		} else {
 			//Roominitres
 			{
@@ -870,7 +870,7 @@ func (t *GetFuncV2) checkSwitchFansMedal() (missKey string, err error) {
 	{
 		if err, medal_list := biliApi.GetFansMedal(t.common.Roomid, t.common.UpUid); err != nil {
 			apilog.E(err)
-			return "", pkf.ErrNextMethod.NewErr(err)
+			return "", pe.Join(pkf.ActKeyFunc.ErrNextMethod, err)
 		} else {
 			for _, v := range medal_list {
 				if v.TargetID != t.common.UpUid {

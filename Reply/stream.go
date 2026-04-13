@@ -169,8 +169,9 @@ func (t *m4s_link_item) getNo() (int, error) {
 }
 
 var (
-	ActFmp4Download, ActFmp4DownloadM = pe.Action[struct {
+	ActFmp4Download = pe.Action[struct {
 		CareTO pe.Error
+		m      pe.Method
 	}](`ActFmp4Download`)
 )
 
@@ -477,7 +478,7 @@ func (t *M4SStream) fetchCheckStream() bool {
 }
 
 var (
-	ActM3U8, _ = pe.Action[struct {
+	ActM3U8 = pe.Action[struct {
 		Get           pe.Error
 		Parse         pe.Error
 		NoUpdate      pe.Error
@@ -1245,7 +1246,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 					// 	`Connection`: `close`,
 					// },
 				})
-				if ActFmp4DownloadM.InAction(e) {
+				if ActFmp4Download.m.InAction(e) {
 					t.logg().W(e.Error())
 				} else if e != nil {
 					// downErr.Store(true)

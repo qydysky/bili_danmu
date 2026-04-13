@@ -285,7 +285,7 @@ type PlayItem struct {
 }
 
 var (
-	ActGetLiveDir, _ = pe.Action[struct {
+	ActGetLiveDir = pe.Action[struct {
 		MultiMatched pe.Error
 	}]("ActGetLiveDir")
 )
@@ -1320,7 +1320,7 @@ func parseDuration(s string) (t time.Duration) {
 }
 
 var (
-	ActLiveDirF, _ = pe.Action[struct {
+	ActLiveDirF = pe.Action[struct {
 		ErrUrl           pe.Error
 		ErrNoDir         pe.Error
 		ErrPlaylistRead  pe.Error

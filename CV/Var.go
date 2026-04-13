@@ -234,7 +234,7 @@ func (t *Common) IsOn(key string) bool {
 	return ok && v
 }
 
-var ActQnMatch, ActQnMatchM = pe.Action[struct {
+var ActQnMatch = pe.Action[struct {
 	NoLogin   pe.Error
 	NoMatched pe.Error
 }](`ActQnMatch`)
