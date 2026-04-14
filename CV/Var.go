@@ -29,6 +29,7 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib" //removable
 	pca "github.com/qydysky/part/crypto/asymmetric"
 	pctx "github.com/qydysky/part/ctx"
+	pe "github.com/qydysky/part/errors/v2"
 	file "github.com/qydysky/part/file"
 	pio "github.com/qydysky/part/io"
 	plog "github.com/qydysky/part/log/v2"
@@ -233,8 +234,19 @@ func (t *Common) IsOn(key string) bool {
 	return ok && v
 }
 
-func (t *Common) QnMatched() bool {
-	return t.Live_want_qn == t.Live_qn
+var ActQnMatch = pe.Action[struct {
+	NoLogin   pe.Error
+	NoMatched pe.Error
+}](`ActQnMatch`)
+
+func (t *Common) QnMatched() error {
+	if !t.Login {
+		return ActQnMatch.NoLogin
+	} else if t.Live_want_qn != t.Live_qn {
+		return ActQnMatch.NoMatched
+	} else {
+		return nil
+	}
 }
 
 func (t *Common) Copy() *Common {

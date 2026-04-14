@@ -9,7 +9,7 @@ import (
 
 	"github.com/dustin/go-humanize"
 	comp "github.com/qydysky/part/component2"
-	perrors "github.com/qydysky/part/errors"
+	pe "github.com/qydysky/part/errors/v2"
 	file "github.com/qydysky/part/file"
 	slice "github.com/qydysky/part/slice"
 )
@@ -92,7 +92,7 @@ func Test_Mp4Cut(t *testing.T) {
 
 	e := fmp4Decoder.Cut(f, time.Minute*30, time.Second*20, cutf.File(), false, false)
 	if !errors.Is(e, io.EOF) {
-		t.Fatal(perrors.ErrorFormat(e))
+		t.Fatal(pe.ErrorFormat(e))
 	}
 }
 
@@ -116,7 +116,7 @@ func Test_Mp4GenFastSeed(t *testing.T) {
 		return sf(seedTo, cuIndex)
 	})
 	if !errors.Is(e, io.EOF) {
-		t.Fatal(perrors.ErrorFormat(e))
+		t.Fatal(pe.ErrorFormat(e))
 	}
 
 	// VideoFastSeed.BeforeGet("testdata/1.fastSeed")
@@ -167,6 +167,6 @@ func Test_Mp4CutSeed(t *testing.T) {
 	fmp4Decoder.Debug = true
 	e = fmp4Decoder.CutSeed(f, time.Minute*30, time.Second*20, cutf.File(), f, gf, false, false)
 	if !errors.Is(e, io.EOF) {
-		t.Fatal(perrors.ErrorFormat(e, perrors.ErrActionInLineFunc))
+		t.Fatal(pe.ErrorFormat(e, pe.ErrActionInLineFunc))
 	}
 }

@@ -9,7 +9,7 @@ import (
 
 	"github.com/dustin/go-humanize"
 	comp "github.com/qydysky/part/component2"
-	perrors "github.com/qydysky/part/errors"
+	pe "github.com/qydysky/part/errors/v2"
 	file "github.com/qydysky/part/file"
 	slice "github.com/qydysky/part/slice"
 )
@@ -76,7 +76,7 @@ func Test_FLVCut(t *testing.T) {
 	}
 
 	e := NewFlvDecoder().Cut(f, time.Minute*10, time.Second*20, cutf.File(), false, false)
-	t.Log(perrors.ErrorFormat(e))
+	t.Log(pe.ErrorFormat(e))
 }
 
 func Test_FLVGenFastSeed(t *testing.T) {
@@ -103,7 +103,7 @@ func Test_FLVGenFastSeed(t *testing.T) {
 		delete()
 		t.Fatal(e)
 	}
-	// t.Log(perrors.ErrorFormat(e))
+	// t.Log(pe.ErrorFormat(e))
 }
 
 // 10s-30s 215.815423ms
@@ -137,5 +137,5 @@ func Test_FLVCutSeed(t *testing.T) {
 	}
 
 	e = NewFlvDecoder().CutSeed(f, time.Minute*10, time.Second*20, cutf.File(), f, gf, false, false)
-	t.Log(perrors.ErrorFormat(e))
+	t.Log(pe.ErrorFormat(e))
 }

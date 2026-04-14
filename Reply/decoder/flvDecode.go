@@ -9,7 +9,7 @@ import (
 
 	"github.com/dustin/go-humanize"
 	F "github.com/qydysky/bili_danmu/F"
-	perrors "github.com/qydysky/part/errors"
+	pe "github.com/qydysky/part/errors/v2"
 	slice "github.com/qydysky/part/slice"
 )
 
@@ -34,11 +34,13 @@ var (
 	ErrTagSize          = errors.New("ErrTagSize")
 	ErrSignLost         = errors.New("ErrSignLost")
 
-	ActionInitFlv        perrors.Action = `InitFlv`
-	ActionGetIndexFlv    perrors.Action = `GetIndexFlv`
-	ActionGenFastSeedFlv perrors.Action = `GenFastSeedFlv`
-	ActionSeekFlv        perrors.Action = `SeekFlv`
-	ActionOneFFlv        perrors.Action = `OneFFlv`
+	ActFlv = pe.Action[struct {
+		InitFlv        pe.Error
+		GetIndexFlv    pe.Error
+		GenFastSeedFlv pe.Error
+		SeekFlv        pe.Error
+		OneFFlv        pe.Error
+	}](`ActFlv`)
 )
 
 type FlvDecoder struct {
@@ -304,7 +306,7 @@ func (t *FlvDecoder) CutSeed(reader io.Reader, startT, duration time.Duration, w
 
 		if !init {
 			if frontBuf, dropOffset, e := t.Init(buff.GetPureBuf()); e != nil {
-				return perrors.New(e.Error(), ActionInitFlv)
+				return pe.Join(ActFlv.InitFlv, e)
 			} else {
 				if dropOffset != 0 {
 					_ = buff.RemoveFront(dropOffset)
@@ -319,10 +321,10 @@ func (t *FlvDecoder) CutSeed(reader io.Reader, startT, duration time.Duration, w
 		} else {
 			if !seek && seeker != nil && getIndex != nil {
 				if index, e := getIndex(startT); e != nil {
-					return perrors.New(e.Error(), ActionGetIndexFlv)
+					return pe.Join(ActFlv.GetIndexFlv, e)
 				} else {
 					if _, e := seeker.Seek(index, io.SeekStart); e != nil {
-						return perrors.New(e.Error(), ActionSeekFlv)
+						return pe.Join(ActFlv.SeekFlv, e)
 					}
 				}
 				seek = true
@@ -331,7 +333,7 @@ func (t *FlvDecoder) CutSeed(reader io.Reader, startT, duration time.Duration, w
 			}
 			for {
 				if dropOffset, e := t.oneF(buff.GetPureBuf(), wf); e != nil {
-					return perrors.New(e.Error(), ActionOneFFlv)
+					return pe.Join(ActFlv.OneFFlv, e)
 				} else {
 					if dropOffset != 0 {
 						_ = buff.RemoveFront(dropOffset)
@@ -363,7 +365,7 @@ func (t *FlvDecoder) GenFastSeed(reader io.Reader, save func(seedTo time.Duratio
 
 		if !init {
 			if frontBuf, dropOffset, e := t.Init(buff.GetPureBuf()); e != nil {
-				return perrors.New(e.Error(), ActionInitFlv)
+				return pe.Join(ActFlv.InitFlv, e)
 			} else {
 				if dropOffset != 0 {
 					_ = buff.RemoveFront(dropOffset)
@@ -380,11 +382,11 @@ func (t *FlvDecoder) GenFastSeed(reader io.Reader, save func(seedTo time.Duratio
 						firstFT = t
 					}
 					if e := save(time.Millisecond*time.Duration(t-firstFT), int64(totalRead-buff.Size()+index)); e != nil {
-						return perrors.Join(ActionGenFastSeedFlv, e)
+						return pe.Join(ActFlv.GenFastSeedFlv, e)
 					}
 					return nil
 				}); e != nil {
-					return perrors.Join(ActionGenFastSeedFlv, ActionOneFFlv, e)
+					return pe.Join(ActFlv.GenFastSeedFlv, ActFlv.OneFFlv, e)
 				} else {
 					if dropOffset != 0 {
 						_ = buff.RemoveFront(dropOffset)

@@ -33,7 +33,7 @@ import (
 	videoInfo "github.com/qydysky/bili_danmu/Reply/F/videoInfo"
 	decoder "github.com/qydysky/bili_danmu/Reply/decoder"
 	pctx "github.com/qydysky/part/ctx"
-	perrors "github.com/qydysky/part/errors"
+	pe "github.com/qydysky/part/errors/v2"
 	file "github.com/qydysky/part/file"
 	funcCtrl "github.com/qydysky/part/funcCtrl"
 	pio "github.com/qydysky/part/io"
@@ -169,7 +169,10 @@ func (t *m4s_link_item) getNo() (int, error) {
 }
 
 var (
-	ActionErrFmp4DownloadCareTO perrors.Action = `ActionErrFmp4DownloadCareTO`
+	ActFmp4Download = pe.Action[struct {
+		CareTO pe.Error
+		m      pe.Method
+	}](`ActFmp4Download`)
 )
 
 func (link *m4s_link_item) download(reqPool *pool.Buf[reqf.Req], reqConfig reqf.Rval) (err error) {
@@ -201,7 +204,7 @@ func (link *m4s_link_item) download(reqPool *pool.Buf[reqf.Req], reqConfig reqf.
 		return e
 	} else {
 		if int64(reqConfig.Timeout) < r.UsedTime.Milliseconds()+3000 {
-			err = ActionErrFmp4DownloadCareTO.New(fmt.Sprintf("fmp4切片下载超时s(%d)或许应该大于%d", reqConfig.Timeout/1000, (r.UsedTime.Milliseconds()+4000)/1000))
+			err = ActFmp4Download.CareTO.Raw(fmt.Sprintf("fmp4切片下载超时s(%d)或许应该大于%d", reqConfig.Timeout/1000, (r.UsedTime.Milliseconds()+4000)/1000))
 		}
 
 		// 调试，随机触发下载失败
@@ -327,13 +330,11 @@ func (t *M4SStream) fetchCheckStream() bool {
 	// 直播流仅清晰度
 	if v, ok := t.common.K_v.LoadV("直播流仅清晰度").(bool); ok && v {
 		if _, ok := t.common.Qn[t.config.want_qn]; ok {
-			if !t.common.QnMatched() {
-				if t.common.Login {
-					l.W(`仅清晰度true,当前清晰度`, t.common.Qn[t.common.Live_qn])
-					return false
-				} else {
-					l.W(`未登录,忽略仅清晰度true,当前清晰度`, t.common.Qn[t.common.Live_qn])
-				}
+			if e := t.common.QnMatched(); errors.Is(e, c.ActQnMatch.NoMatched) {
+				l.W(`仅清晰度true,当前清晰度`, t.common.Qn[t.common.Live_qn])
+				return false
+			} else if errors.Is(e, c.ActQnMatch.NoLogin) {
+				l.W(`未登录,忽略仅清晰度true,当前清晰度`, t.common.Qn[t.common.Live_qn])
 			}
 		}
 	}
@@ -407,7 +408,7 @@ func (t *M4SStream) fetchCheckStream() bool {
 	)
 	if v, ok := t.common.K_v.LoadV("直播流不使用mcdn").(bool); ok && v {
 		if reg, err := regexp.Compile(`\.mcdn\.`); err != nil {
-			l.W(`停用流服务器`, `正则错误`, perrors.ErrorFormat(err, perrors.ErrActionInLineFunc))
+			l.W(`停用流服务器`, `正则错误`, pe.ErrorFormat(err, pe.ErrActionInLineFunc))
 		} else {
 			noSer = append(noSer, reg)
 		}
@@ -416,7 +417,7 @@ func (t *M4SStream) fetchCheckStream() bool {
 		for i := 0; i < len(v); i++ {
 			if s, ok := v[i].(string); ok {
 				if reg, err := regexp.Compile(s); err != nil {
-					l.W(`停用流服务器`, `正则错误`, perrors.ErrorFormat(err, perrors.ErrActionInLineFunc))
+					l.W(`停用流服务器`, `正则错误`, pe.ErrorFormat(err, pe.ErrActionInLineFunc))
 				} else {
 					noSer = append(noSer, reg)
 				}
@@ -453,7 +454,7 @@ func (t *M4SStream) fetchCheckStream() bool {
 			Timeout:          5 * 1000,
 			JustResponseCode: true,
 		}); e != nil {
-			l.W(F.ParseHost(v.Url), perrors.ErrorFormat(e, perrors.ErrActionInLineFunc))
+			l.W(F.ParseHost(v.Url), pe.ErrorFormat(e, pe.ErrActionInLineFunc))
 			v.DisableAuto()
 			continue
 		}
@@ -477,11 +478,13 @@ func (t *M4SStream) fetchCheckStream() bool {
 }
 
 var (
-	ErrM3U8Get           = perrors.Action("ErrM3U8Get")
-	ErrM3U8Parse         = perrors.Action("ErrM3U8Parse")
-	ErrM3U8NoUpdate      = perrors.Action("ErrM3U8NoUpdate")
-	ErrM3U8TooManyUpdate = perrors.Action("ErrM3U8TooManyUpdate")
-	ErrM3U8AllFail       = perrors.Action("ErrM3U8AllFail")
+	ActM3U8 = pe.Action[struct {
+		Get           pe.Error
+		Parse         pe.Error
+		NoUpdate      pe.Error
+		TooManyUpdate pe.Error
+		AllFail       pe.Error
+	}](`ActM3U8`)
 )
 
 // 当正常时， err = nil
@@ -524,8 +527,8 @@ func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo, fmp
 
 		if err := r.Reqf(rval); err != nil {
 			v.DisableAuto()
-			l.WF("服务器 %s 发生故障 %s", F.ParseHost(v.Url), perrors.ErrorFormat(err, perrors.ErrActionInLineFunc))
-			e = perrors.Join(e, ErrM3U8Get)
+			l.WF("服务器 %s 发生故障 %s", F.ParseHost(v.Url), pe.ErrorFormat(err, pe.ErrActionInLineFunc))
+			e = pe.Join(e, ActM3U8.Get)
 			if t.common.ValidLive() == nil {
 				return
 			}
@@ -588,7 +591,7 @@ func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo, fmp
 				// 1min后重新启用
 				l.WF("服务器 %s 发生故障 %v", F.ParseHost(v.Url), err)
 				v.DisableAuto()
-				e = perrors.Join(e, ErrM3U8Parse)
+				e = pe.Join(e, ActM3U8.Parse)
 				if t.common.ValidLive() == nil {
 					return
 				}
@@ -603,7 +606,7 @@ func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo, fmp
 				// 1min后重新启用
 				v.DisableAuto()
 				l.WF("服务器 %s 发生故障 %.2f 秒未产出切片", F.ParseHost(v.Url), time.Since(lastM4s.createdTime).Seconds())
-				e = perrors.Join(e, ErrM3U8NoUpdate)
+				e = pe.Join(e, ActM3U8.NoUpdate)
 				if t.common.ValidLive() == nil {
 					return
 				}
@@ -622,7 +625,7 @@ func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo, fmp
 				// 1min后重新启用
 				v.DisableAuto()
 				l.WF("服务器 %s 发生故障 %d 秒产出了 %d 切片", F.ParseHost(v.Url), int(timed), nos-noe)
-				e = perrors.Join(e, ErrM3U8TooManyUpdate)
+				e = pe.Join(e, ActM3U8.TooManyUpdate)
 				if t.common.ValidLive() == nil {
 					return
 				}
@@ -659,7 +662,7 @@ func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo, fmp
 		return
 	}
 
-	e = ErrM3U8AllFail
+	e = ActM3U8.AllFail
 	return
 }
 
@@ -893,7 +896,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 							return
 						}
 
-						if v1, _ := c.C.K_v.LoadV(`直播流清晰度恢复`).(bool); v1 && !t.common.QnMatched() {
+						if v1, _ := c.C.K_v.LoadV(`直播流清晰度恢复`).(bool); v1 && errors.Is(t.common.QnMatched(), c.ActQnMatch.NoMatched) {
 							cuQn := t.common.Qn[t.common.Live_qn]
 							F.Api.Get(t.common, `AcceptQn`)
 							if n, ok := t.common.AcceptQn[t.common.Live_want_qn]; ok {
@@ -1122,7 +1125,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 		}
 
 		// 获取解析m3u8
-		{
+		if !pctx.Done(t.Status) {
 			// 获取更多服务器
 			{
 				n := t.common.ValidNum()
@@ -1140,24 +1143,24 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 
 			var m4s_links, guessCount, err = t.fetchParseM3U8(lastM4s, fmp4ListUpdateTo, fmp4ListGetTo)
 			if err != nil {
-				t.logg().E(`获取解析m3u8发生错误`, perrors.ErrorFormat(err, perrors.ErrActionInLineFunc))
+				t.logg().E(`获取解析m3u8发生错误`, pe.ErrorFormat(err, pe.ErrActionInLineFunc))
 
 				// 没有服务器可用，尝试获取更多服务器
-				if errors.Is(err, ErrM3U8AllFail) {
+				if errors.Is(err, ActM3U8.AllFail) {
 					continue
 				}
 
 				// 获取错误，或许是网络问题，尝试获取更多服务器
-				if errors.Is(err, ErrM3U8Get) {
+				if errors.Is(err, ActM3U8.Get) {
 					continue
 				}
 
 				// 解析错误 || 产出切片过多
-				if errors.Is(err, ErrM3U8Parse) || errors.Is(err, ErrM3U8TooManyUpdate) {
+				if errors.Is(err, ActM3U8.Parse) || errors.Is(err, ActM3U8.TooManyUpdate) {
 					break
 				}
 
-				// 其他情况 ErrM3U8NoUpdate
+				// 其他情况 ActM3U8.NoUpdate
 			}
 
 			countInLastPeriod := len(m4s_links)
@@ -1243,14 +1246,14 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 					// 	`Connection`: `close`,
 					// },
 				})
-				if ActionErrFmp4DownloadCareTO.Catch(e) {
+				if ActFmp4Download.m.InAction(e) {
 					t.logg().W(e.Error())
 				} else if e != nil {
 					// downErr.Store(true)
 					if reqf.IsTimeout(e) {
 						t.logg().WF("fmp4切片下载超时s或许应该大于%d", to)
 					}
-					t.logg().W(`切片下载失败`, link.Base, link.host(), perrors.ErrorFormat(e, perrors.ErrActionInLineFunc))
+					t.logg().W(`切片下载失败`, link.Base, link.host(), pe.ErrorFormat(e, pe.ErrActionInLineFunc))
 					// 将此切片服务器设置停用
 					_ = t.common.DisableLiveAutoByUuid(link.SerUuid)
 				}
@@ -1356,7 +1359,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 			break
 		}
 
-		if v1, _ := c.C.K_v.LoadV(`直播流清晰度恢复`).(bool); v1 && !t.common.QnMatched() {
+		if v1, _ := c.C.K_v.LoadV(`直播流清晰度恢复`).(bool); v1 && errors.Is(t.common.QnMatched(), c.ActQnMatch.NoMatched) {
 			cuQn := t.common.Qn[t.common.Live_qn]
 			F.Api.Get(t.common, `AcceptQn`)
 			if n, ok := t.common.AcceptQn[t.common.Live_want_qn]; ok {
@@ -1582,7 +1585,7 @@ func (t *M4SStream) Start() bool {
 								if sf, delete, e := vfsi.InitSav(path + ".fastSeed"); e != nil {
 									l.BaseAdd(`GenFastSeed`).E(path, e)
 								} else if e := dealer.GenFastSeed(f, sf); e != nil && !errors.Is(e, io.EOF) {
-									l.BaseAdd(`GenFastSeed`).E(path, perrors.ErrorFormat(e, perrors.ErrActionInLineFunc))
+									l.BaseAdd(`GenFastSeed`).E(path, pe.ErrorFormat(e, pe.ErrActionInLineFunc))
 									delete()
 								}
 								return f.Close()
@@ -1739,6 +1742,13 @@ func (t *M4SStream) PusherToFile(contextC context.Context, filepath string, push
 		_ = t.pullerToFile.CompareAndDelete(`data`, &dataF)
 		return true
 	}
+
+	//写入快速启动缓冲
+	_ = t.bootBufRead(func(data []byte) error {
+		dataF(data)
+		return nil
+	})
+
 	t.pullerToFile.Store(`data`, &dataF)
 	t.pullerToFile.Store(`close`, &closeF)
 
