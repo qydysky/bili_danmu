@@ -898,13 +898,13 @@ func (t *Common) loadConf(customConf string) error {
 	return nil
 }
 
-var (
-	ErrDealEnvUnknowType          = errors.New("ErrDealEnvUnknowType")
-	ErrDealEnvEnvValueTypeNoMatch = errors.New("ErrDealEnvEnvValueTypeNoMatch")
-	ErrDealEnvKeyNoArray          = errors.New("ErrDealEnvKeyNoArray")
-	ErrDealEnvKeyNoMap            = errors.New("ErrDealEnvKeyNoMap")
-	ErrDealEnvKeyArrayNoUInt      = errors.New("ErrDealEnvKeyArrayNoUInt")
-)
+var ActLoadEnv = pe.Action[struct {
+	UnknowType          pe.Error
+	EnvValueTypeNoMatch pe.Error
+	KeyNoArray          pe.Error
+	KeyNoMap            pe.Error
+	KeyArrayNoUInt      pe.Error
+}](`ActLoadEnv`)
 
 // vm:{"key":"","type":"","env":""}
 func dealEnv(K_v *syncmap.Map, vm map[string]any) error {
@@ -928,7 +928,7 @@ func dealEnv(K_v *syncmap.Map, vm map[string]any) error {
 			val = _val
 		case `float64`:
 			if v, err := strconv.ParseFloat(_val, 64); err != nil {
-				return ErrDealEnvEnvValueTypeNoMatch
+				return ActLoadEnv.EnvValueTypeNoMatch
 			} else {
 				val = v
 			}
@@ -939,10 +939,10 @@ func dealEnv(K_v *syncmap.Map, vm map[string]any) error {
 			case `false`:
 				val = false
 			default:
-				return ErrDealEnvEnvValueTypeNoMatch
+				return ActLoadEnv.EnvValueTypeNoMatch
 			}
 		default:
-			return ErrDealEnvUnknowType
+			return ActLoadEnv.UnknowType
 		}
 	}
 
@@ -954,9 +954,9 @@ func dealEnv(K_v *syncmap.Map, vm map[string]any) error {
 		for i := 1; i < len(_keys)-1; i++ {
 			if strings.Contains(_keys[i], "[") {
 				if tmp, ok := key.([]any); !ok {
-					return ErrDealEnvKeyNoArray
+					return ActLoadEnv.KeyNoArray
 				} else if n, err := strconv.ParseInt(_keys[i][1:len(_keys[i])-1], 0, 64); err != nil {
-					return ErrDealEnvKeyArrayNoUInt
+					return ActLoadEnv.KeyArrayNoUInt
 				} else if int(n) > len(tmp)-1 {
 					return nil
 				} else {
@@ -964,7 +964,7 @@ func dealEnv(K_v *syncmap.Map, vm map[string]any) error {
 				}
 			} else {
 				if tmp, ok := key.(map[string]any); !ok {
-					return ErrDealEnvKeyNoMap
+					return ActLoadEnv.KeyNoMap
 				} else {
 					key = tmp[_keys[i]]
 				}
@@ -972,9 +972,9 @@ func dealEnv(K_v *syncmap.Map, vm map[string]any) error {
 		}
 		if strings.Contains(_keys[len(_keys)-1], "[") {
 			if tmp, ok := key.([]any); !ok {
-				return ErrDealEnvKeyNoArray
+				return ActLoadEnv.KeyNoArray
 			} else if n, err := strconv.ParseInt(_keys[len(_keys)-1][1:len(_keys[len(_keys)-1])-1], 0, 64); err != nil {
-				return ErrDealEnvKeyArrayNoUInt
+				return ActLoadEnv.KeyArrayNoUInt
 			} else if int(n) > len(tmp)-1 {
 				return nil
 			} else {
@@ -982,7 +982,7 @@ func dealEnv(K_v *syncmap.Map, vm map[string]any) error {
 			}
 		} else {
 			if tmp, ok := key.(map[string]any); !ok {
-				return ErrDealEnvKeyNoMap
+				return ActLoadEnv.KeyNoMap
 			} else {
 				tmp[_keys[len(_keys)-1]] = val
 			}
