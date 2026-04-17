@@ -27,12 +27,14 @@ const (
 var (
 	flvHeaderSign = []byte{0x46, 0x4c, 0x56}
 
-	ErrNoFoundFlvHeader = errors.New("ErrNoFoundFlvHeader")
-	ErrNoFoundTagHeader = errors.New("ErrNoFoundTagHeader")
-	ErrTagSizeZero      = errors.New("ErrTagSizeZero")
-	ErrStreamId         = errors.New("ErrStreamId")
-	ErrTagSize          = errors.New("ErrTagSize")
-	ErrSignLost         = errors.New("ErrSignLost")
+	ActFlvDecoder = pe.Action[struct {
+		ErrNoFoundFlvHeader pe.Error
+		ErrNoFoundTagHeader pe.Error
+		ErrTagSizeZero      pe.Error
+		ErrStreamId         pe.Error
+		ErrTagSize          pe.Error
+		ErrSignLost         pe.Error
+	}](`ActFlvDecode`)
 
 	ActFlv = pe.Action[struct {
 		InitFlv        pe.Error
@@ -61,12 +63,12 @@ func (t *FlvDecoder) Init(buf []byte) (frontBuf []byte, dropOffset int, err erro
 	}
 
 	if buf[0] != flvHeaderSign[0] || buf[1] != flvHeaderSign[1] || buf[2] != flvHeaderSign[2] {
-		err = ErrNoFoundFlvHeader
+		err = ActFlvDecoder.ErrNoFoundFlvHeader
 		return
 	}
 
 	if buf[flvHeaderSize]|buf[flvHeaderSize+1]|buf[flvHeaderSize+2]|buf[flvHeaderSize+3] != 0 {
-		err = ErrTagSize
+		err = ActFlvDecoder.ErrTagSize
 		return
 	}
 
@@ -76,18 +78,18 @@ func (t *FlvDecoder) Init(buf []byte) (frontBuf []byte, dropOffset int, err erro
 			buf[bufOffset]&0b00011111 != videoTag &&
 				buf[bufOffset]&0b00011111 != audioTag &&
 				buf[bufOffset]&0b00011111 != scriptTag {
-			err = ErrNoFoundTagHeader
+			err = ActFlvDecoder.ErrNoFoundTagHeader
 			return
 		}
 
 		if buf[bufOffset+8]|buf[bufOffset+9]|buf[bufOffset+10] != streamId {
-			err = ErrStreamId
+			err = ActFlvDecoder.ErrStreamId
 			return
 		}
 
 		tagSize := int(F.Btoi32v2(buf[bufOffset+1:bufOffset+4], 0))
 		if tagSize == 0 {
-			err = ErrTagSizeZero
+			err = ActFlvDecoder.ErrTagSizeZero
 			return
 		}
 
@@ -97,7 +99,7 @@ func (t *FlvDecoder) Init(buf []byte) (frontBuf []byte, dropOffset int, err erro
 
 		tagSizeCheck := int(F.Btoi32v2(buf[bufOffset+tagHeaderSize+tagSize:bufOffset+tagHeaderSize+tagSize+previouTagSize], 0))
 		if tagNum != 0 && tagSizeCheck != tagSize+tagHeaderSize {
-			err = ErrTagSize
+			err = ActFlvDecoder.ErrTagSize
 			return
 		}
 
@@ -111,7 +113,7 @@ func (t *FlvDecoder) Init(buf []byte) (frontBuf []byte, dropOffset int, err erro
 			} else if (buf[bufOffset] == scriptTag) && (sign&0x01 == 0x00) {
 				sign |= 0x01
 			} else {
-				err = ErrSignLost
+				err = ActFlvDecoder.ErrSignLost
 				return
 			}
 			bufOffset += tagSizeCheck + previouTagSize
@@ -144,18 +146,18 @@ func (t *FlvDecoder) SearchStreamFrame(buf []byte, keyframe *slice.Buf[byte]) (d
 			buf[bufOffset]&0b00011111 != videoTag &&
 				buf[bufOffset]&0b00011111 != audioTag &&
 				buf[bufOffset]&0b00011111 != scriptTag {
-			err = ErrNoFoundTagHeader
+			err = ActFlvDecoder.ErrNoFoundTagHeader
 			return
 		}
 
 		if buf[bufOffset+8]|buf[bufOffset+9]|buf[bufOffset+10] != streamId {
-			err = ErrStreamId
+			err = ActFlvDecoder.ErrStreamId
 			return
 		}
 
 		tagSize := int(F.Btoi32v2(buf[bufOffset+1:bufOffset+4], 0))
 		if tagSize == 0 {
-			err = ErrTagSizeZero
+			err = ActFlvDecoder.ErrTagSizeZero
 			return
 		}
 		if bufOffset+tagHeaderSize+tagSize+previouTagSize > len(buf) {
@@ -164,7 +166,7 @@ func (t *FlvDecoder) SearchStreamFrame(buf []byte, keyframe *slice.Buf[byte]) (d
 
 		tagSizeCheck := int(F.Btoi32v2(buf[bufOffset+tagHeaderSize+tagSize:bufOffset+tagHeaderSize+tagSize+previouTagSize], 0))
 		if tagSizeCheck != tagSize+tagHeaderSize {
-			err = ErrTagSize
+			err = ActFlvDecoder.ErrTagSize
 			return
 		}
 
@@ -213,18 +215,18 @@ func (t *FlvDecoder) oneF(buf []byte, w ...dealFFlv) (dropOffset int, err error)
 			buf[bufOffset]&0b00011111 != videoTag &&
 				buf[bufOffset]&0b00011111 != audioTag &&
 				buf[bufOffset]&0b00011111 != scriptTag {
-			err = ErrNoFoundTagHeader
+			err = ActFlvDecoder.ErrNoFoundTagHeader
 			return
 		}
 
 		if buf[bufOffset+8]|buf[bufOffset+9]|buf[bufOffset+10] != streamId {
-			err = ErrStreamId
+			err = ActFlvDecoder.ErrStreamId
 			return
 		}
 
 		tagSize := int(F.Btoi32v2(buf[bufOffset+1:bufOffset+4], 0))
 		if tagSize == 0 {
-			err = ErrTagSizeZero
+			err = ActFlvDecoder.ErrTagSizeZero
 			return
 		}
 		if bufOffset+tagHeaderSize+tagSize+previouTagSize > len(buf) {
@@ -233,7 +235,7 @@ func (t *FlvDecoder) oneF(buf []byte, w ...dealFFlv) (dropOffset int, err error)
 
 		tagSizeCheck := int(F.Btoi32v2(buf[bufOffset+tagHeaderSize+tagSize:bufOffset+tagHeaderSize+tagSize+previouTagSize], 0))
 		if tagSizeCheck != tagSize+tagHeaderSize {
-			err = ErrTagSize
+			err = ActFlvDecoder.ErrTagSize
 			return
 		}
 
