@@ -170,3 +170,42 @@ func Test_Mp4CutSeed(t *testing.T) {
 		t.Fatal(pe.ErrorFormat(e, pe.ErrActionInLineFunc))
 	}
 }
+
+func Test_Mp4CutSeedRaw(t *testing.T) {
+	{
+		st := time.Now()
+		defer func() {
+			fmt.Println(time.Since(st))
+		}()
+	}
+
+	cutf := file.Open("testdata/1.raw")
+	defer cutf.CloseErr()
+	_ = cutf.Delete()
+
+	f := file.Open("testdata/0.mp4")
+	defer f.CloseErr()
+
+	if f.IsDir() || !f.IsExist() {
+		t.Log("test file not exist")
+	}
+
+	var VideoFastSeed = comp.GetV3[interface {
+		InitGet(fastSeedFilePath string) (getIndex func(seedTo time.Duration) (int64, error), e error)
+		InitSav(fastSeedFilePath string) (savIndex func(seedTo time.Duration, cuIndex int64) error, delete func(), e error)
+	}](`videoFastSeed`).Inter()
+
+	gf, e := VideoFastSeed.InitGet("testdata/0.fastSeed")
+	if e != nil {
+		t.Fatal(e)
+	}
+
+	fmp4Decoder := Fmp4DecoderPool.Get()
+	defer Fmp4DecoderPool.Put(fmp4Decoder)
+
+	fmp4Decoder.Debug = true
+	e = fmp4Decoder.CutSeedRawV(f, 0, 0, cutf.File(), f, gf, false, false)
+	if e != nil && !errors.Is(e, io.EOF) {
+		t.Fatal(pe.ErrorFormat(e, pe.ErrActionInLineFunc))
+	}
+}
