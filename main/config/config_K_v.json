@@ -132,17 +132,19 @@
             "danmu":""
         }
     ],
-    "指定房间录制回调-help":"当指定roomid的房间结束录制后(包含切片)触发对应的命令，命令执行目录为录播目录，占位符({type}:视频类型)，durationS：录制时长超过指定秒数才触发",
-    "指定房间录制回调":[
+    "指定房间回调-help":"指定roomid触发对应的命令",
+    "指定房间回调":[
         {
             "roomid":0,
-            "durationS":10,
-            "after":["cmd","/c","ffmpeg","-i","0.{type}","-y","-c","copy","1.{type}","1>1.log","2>&1"]
-        },
-        {
-            "roomid":0,
-            "durationS":10,
-            "after":["ffmpeg","-i","0.{type}","-y","-c","copy","1.{type}"]
+            "runDir": "",
+            "begin-help": "当开播时触发，命令执行目录为runDir",
+            "begin": [],
+            "fin-help": "当下播时触发，命令执行目录为runDir",
+            "fin": [],
+            "titleChange-help": "当房间标题变化时触发，命令执行目录为runDir，占位符{oldTitle}:旧标题 {newTitle}:新标题",
+            "titleChange": [],
+            "afterRec-help": "当结束录制后(包含切片)触发对应的命令，recSec:录制时长超过指定秒数才触发，占位符{liveDir}:录播所在目录 {recSec}:录制时长秒数(uint)(>=0) {type}:视频类型",
+            "afterRec":["ffmpeg","-i","{liveDir}0.{type}","-y","-c","copy","{liveDir}1.{type}"]
         }
     ],
     "指定房间录制区间-help":"指定roomid的房间在指定时间段内将会开启录制.start时检查是否在直播,是则开始录制,如已在录制则切片.end时停止录制.在开播时,若同时有start与end的fromTo,且当前在start与end之间,则录制,若无同时有start与end,则开播就录制。5s内只能触发一个fromTo",

@@ -80,6 +80,55 @@
 
 关于离线构建，详见章节`运行`及其`注意事项`
 
+#### 指定房间回调
+在(>v0.20.19)，添加了`指定房间回调`配置项。
+
+其扩展了原配置项`指定房间录制回调`，`指定房间录制回调`将失效。
+
+```json
+{
+  "指定房间回调":[
+    {
+      "roomid-help": "指定房间号，0时禁用",
+      "roomid":0,
+      "runDir-help": "命令执行目录，为空时为本程序所在目录",
+      "runDir": "",
+      "begin-help": "当开播时触发命令",
+      "begin": [],
+      "fin-help": "当下播时触发命令",
+      "fin": [],
+      "titleChange-help": "当房间标题变化时触发，占位符{oldTitle}:旧标题(string) {newTitle}:新标题(string)",
+      "titleChange": [],
+      "afterRec-help": "当结束录制后(包含切片)触发对应的命令，占位符{liveDir}:录播所在目录(string)(末尾有/) {recSec}:录制时长秒数(uint)(>=0) {type}:视频类型(string)(例如mp4)",
+      "afterRec":[]
+    }
+  ]
+}
+```
+
+从`指定房间录制回调`升级，此处使用linux示例：
+```json
+{
+  "durationS":60,
+  "after":["ffmpeg","-i","0.{type}","-y","-c","copy","1.{type}"]
+}
+```
+->
+```json
+{
+  "runDir": "/xxxx/",
+  "afterRec":["./a.sh", "{liveDir}", "{recSec}", "{type}"]
+}
+```
+```sh
+/xxxx/a.sh
+#!/bin/bash
+if [ "$2" -gt 60 ]; then
+  cd $1
+  ffmpeg -i 0.$3 -y -c copy 1.$3
+fi
+```
+
 #### 节目单
 添加节目单功能(>v0.20.3)，用于将多个**按顺序的无缝录播目录**组合。
 
@@ -613,6 +662,8 @@ sqlite3:
 
 
 #### 指定房间录制回调
+在>v0.20.19，此配置作废，你可以使用`指定房间回调`进行等效替换
+
 配置文件添加了如下配置
 ```json
 {
@@ -793,16 +844,16 @@ I: 2022/09/15 02:23:23 Msg [qydysky丶 : 赞]
 
 当所选类型在当前直播中不可用时，会按以下顺序[`fmp4`,`flv`]尝试。
 
-Ass默认`utf-8`编码，在录播结束时生成，可以配合`指定房间录制回调`生成硬编码弹幕的视频，配置项如下(>v0.15.9)
+Ass默认`utf-8`编码，在录播结束时生成，可以配合`指定房间回调`生成硬编码弹幕的视频，配置项如下(>v0.15.9)
 
 ```json
 {
-  "指定房间录制回调":[
+  "指定房间回调":[
     {
       "roomid-help":"0替换为指定的房间号",
       "roomid":0,
-      "durationS":10,
-      "after":["ffmpeg","-i","0.{type}","-y","-vf","ass=0.ass","1.{type}"]
+      "afterRecSec":10,
+      "afterRec":["ffmpeg","-i","{liveDir}0.{type}","-y","-vf","ass=0.ass","{liveDir}1.{type}"]
     }
   ],
   "Ass": {
