@@ -970,7 +970,7 @@ func (t replyF) preparing(s []byte) {
 	if err := json.Unmarshal(s, &type_item); err != nil {
 		msglog.E(err)
 		return
-	} else {
+	} else if t.Liveing {
 		{ //附加功能 savestream结束
 			t.Liveing = false
 			// 停止此房间录制
