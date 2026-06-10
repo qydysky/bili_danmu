@@ -1594,36 +1594,41 @@ func (t *M4SStream) Start() bool {
 					}()
 				}
 
-				//指定房间录制回调
-				if v, ok := ms.common.K_v.LoadV("指定房间录制回调").([]any); ok && len(v) > 0 {
-					l := l.Base(`录制回调`)
-					for i := 0; i < len(v); i++ {
-						if vm, ok := v[i].(map[string]any); ok {
-							if roomid, ok := vm["roomid"].(float64); ok && int(roomid) == ms.common.Roomid {
-								var (
-									durationS, _ = vm["durationS"].(float64)
-									after, _     = vm["after"].([]any)
-								)
-								if len(after) >= 2 && durationS >= 0 && duration.Seconds() > durationS {
-									var cmds []string
-									for i := 0; i < len(after); i++ {
-										if cmd, ok := after[i].(string); ok && cmd != "" {
-											cmds = append(cmds, strings.ReplaceAll(cmd, "{type}", saveType))
-										}
-									}
-
-									cmd := exec.Command(cmds[0], cmds[1:]...)
-									cmd.Dir = savePath
-									l.I("启动", cmd.Args)
-									if e := cmd.Run(); e != nil {
-										l.E(e)
-									}
-									l.I("结束")
-								}
-							}
-						}
+				//指定房间回调
+				replyFunc.RoomSignal.Run2(func(inter replyFunc.RoomSignalI) {
+					if e := inter.FiliterRoomId(ms.common.K_v.LoadV("指定房间回调"), ms.common.Roomid).AfterRec(saveType, savePath, duration); e != nil {
+						l.E(e)
 					}
-				}
+				})
+				// if v, ok := ms.common.K_v.LoadV("指定房间录制回调").([]any); ok && len(v) > 0 {
+				// 	l := l.Base(`录制回调`)
+				// 	for i := 0; i < len(v); i++ {
+				// 		if vm, ok := v[i].(map[string]any); ok {
+				// 			if roomid, ok := vm["roomid"].(float64); ok && int(roomid) == ms.common.Roomid {
+				// 				var (
+				// 					durationS, _ = vm["durationS"].(float64)
+				// 					after, _     = vm["after"].([]any)
+				// 				)
+				// 				if len(after) >= 2 && durationS >= 0 && duration.Seconds() > durationS {
+				// 					var cmds []string
+				// 					for i := 0; i < len(after); i++ {
+				// 						if cmd, ok := after[i].(string); ok && cmd != "" {
+				// 							cmds = append(cmds, strings.ReplaceAll(cmd, "{type}", saveType))
+				// 						}
+				// 					}
+
+				// 					cmd := exec.Command(cmds[0], cmds[1:]...)
+				// 					cmd.Dir = savePath
+				// 					l.I("启动", cmd.Args)
+				// 					if e := cmd.Run(); e != nil {
+				// 						l.E(e)
+				// 					}
+				// 					l.I("结束")
+				// 				}
+				// 			}
+				// 		}
+				// 	}
+				// }
 				return false
 			})()
 		}

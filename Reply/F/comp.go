@@ -17,6 +17,7 @@ import (
 	_ "github.com/qydysky/bili_danmu/Reply/F/lessDanmu"        //removable
 	_ "github.com/qydysky/bili_danmu/Reply/F/parseM3u8"
 	_ "github.com/qydysky/bili_danmu/Reply/F/rev"           //removable
+	_ "github.com/qydysky/bili_danmu/Reply/F/roomSignal"    //removable
 	_ "github.com/qydysky/bili_danmu/Reply/F/saveDanmuToDB" //removable
 	_ "github.com/qydysky/bili_danmu/Reply/F/saveToJson"    //removable
 	_ "github.com/qydysky/bili_danmu/Reply/F/shortDanmu"    //removable
@@ -25,6 +26,18 @@ import (
 	comp "github.com/qydysky/part/component2"
 	log "github.com/qydysky/part/log/v2"
 )
+
+type RoomSignalI interface {
+	FiliterRoomId(configs any, roomId int) interface {
+		LoginChange(isLogin bool) error
+		Begin() error
+		Fin() error
+		TitleChange(oldTitle, newTitle string) error
+		AfterRec(videoType string, liveDir string, duration time.Duration) error
+	}
+}
+
+var RoomSignal = comp.GetV3[RoomSignalI](`roomSignal`)
 
 var GenCpuPprof = comp.GetV3[interface {
 	Start(ctx context.Context, file string) (any, error)

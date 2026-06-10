@@ -692,12 +692,19 @@ func (t replyF) room_change(s []byte) {
 	setTitle := StreamOCut(t.Roomid)
 
 	// 标题改变
-	if t.Title != type_item.Data.Title {
+	if oldTitle := t.Title; oldTitle != type_item.Data.Title {
 		t.Title = type_item.Data.Title
 		setTitle(t.Title)
 		var sh = []any{"标题改变", t.Title}
 		Gui_show(Itos(sh), "0room")
 		msglog.BaseAdd("房").I(sh...)
+
+		go replyFunc.RoomSignal.Run2(func(inter replyFunc.RoomSignalI) {
+			if e := inter.FiliterRoomId(t.K_v.LoadV("指定房间回调"), t.Roomid).TitleChange(oldTitle, t.Title); e != nil {
+				msglog.BaseAdd("房").W(e)
+			}
+		})
+
 	} else {
 		// 直播间标题引入审核机制，触发审核时会接收到一个roomchange但标题不变
 		tryS := 900.0
@@ -708,7 +715,6 @@ func (t replyF) room_change(s []byte) {
 		ctx, cancle := context.WithTimeout(context.Background(), time.Second*time.Duration(tryS))
 		roomChangeFC.FlashWithCallback(cancle)
 
-		oldTitle := t.Title
 		go func(ctx context.Context, roomid int) {
 			for t.Roomid == roomid {
 				select {
@@ -725,6 +731,13 @@ func (t replyF) room_change(s []byte) {
 							var sh = []any{"标题改变", t.Title}
 							Gui_show(Itos(sh), "0room")
 							msglog.BaseAdd("房").I(sh...)
+
+							go replyFunc.RoomSignal.Run2(func(inter replyFunc.RoomSignalI) {
+								if e := inter.FiliterRoomId(t.K_v.LoadV("指定房间回调"), t.Roomid).TitleChange(beforeTitle, t.Title); e != nil {
+									msglog.BaseAdd("房").W(e)
+								}
+							})
+
 							return
 						}
 					}
@@ -957,7 +970,7 @@ func (t replyF) preparing(s []byte) {
 	if err := json.Unmarshal(s, &type_item); err != nil {
 		msglog.E(err)
 		return
-	} else {
+	} else if t.Liveing {
 		{ //附加功能 savestream结束
 			t.Liveing = false
 			// 停止此房间录制
@@ -967,6 +980,11 @@ func (t replyF) preparing(s []byte) {
 			if _, e := liveOver.Sumup.Run(context.Background(), t.Common); e != nil {
 				msglog.E(e)
 			}
+			go replyFunc.RoomSignal.Run2(func(inter replyFunc.RoomSignalI) {
+				if e := inter.FiliterRoomId(t.K_v.LoadV(`指定房间回调`), roomId).Fin(); e != nil {
+					msglog.W("房间", type_item.Roomid, e)
+				}
+			})
 		}
 		Gui_show("房间", type_item.Roomid, "下播了", "0room")
 		msglog.I("房间", type_item.Roomid, "下播了")
@@ -1005,9 +1023,14 @@ func (t replyF) live(s []byte) {
 			}
 			//有时不返回弹幕 开播刷新弹幕
 			t.Danmu_Main_mq.Push_tag(`flash_room`, nil)
+			go replyFunc.RoomSignal.Run2(func(inter replyFunc.RoomSignalI) {
+				if e := inter.FiliterRoomId(t.K_v.LoadV(`指定房间回调`), type_item.Roomid).Begin(); e != nil {
+					msglog.W("房间", type_item.Roomid, e)
+				}
+			})
 		}()
 
-		Gui_show(Itos([]interface{}{"房间", type_item.Roomid, "开播了"}), "0room")
+		Gui_show(Itos([]any{"房间", type_item.Roomid, "开播了"}), "0room")
 		msglog.I("房间", type_item.Roomid, "开播了")
 	}
 }
