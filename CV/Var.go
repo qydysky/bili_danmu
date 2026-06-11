@@ -108,6 +108,11 @@ func (t *Common) Lock() func() {
 	return t.l.Unlock
 }
 
+func (t *Common) RLock() func() {
+	t.l.RLock()
+	return t.l.Unlock
+}
+
 func (t *Common) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
 		Live          []*LiveQn `json:"live"`
