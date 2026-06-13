@@ -93,8 +93,8 @@ func (t *GetFuncV2) isValid(key string) func() bool {
 			return t.common.ParentAreaID > 0
 		case `AreaID`:
 			return t.common.AreaID > 0
-		case `GuardNum`:
-			return t.common.GuardNum > 0
+		// case `GuardNum`:
+		// 	return t.common.GuardNum > 0
 		case `Note`:
 			return t.common.Note != ``
 		case `Live_qn`:

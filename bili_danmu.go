@@ -383,10 +383,9 @@ func entryRoom(mainCtx context.Context, danmulog *plog.Log, common *c.Common) (e
 		danmulog.T("连接 " + v)
 		u, _ := url.Parse(v)
 		ws_c, err := ws.NewClient(&ws.Client{
-			// BufSize:           150,
 			Url:               v,
-			RTOMs:             (heartinterval + 5) * 1000,
-			WTOMs:             (heartinterval + 5) * 1000,
+			RTO:               time.Duration((heartinterval + 5) * int(time.Second)),
+			WTO:               time.Duration((heartinterval + 5) * int(time.Second)),
 			Proxy:             common.Proxy,
 			Func_abort_close:  func() { danmulog.I(`服务器连接中断`) },
 			Func_normal_close: func() { danmulog.I(`服务器连接关闭`) },
@@ -603,7 +602,7 @@ func entryRoom(mainCtx context.Context, danmulog *plog.Log, common *c.Common) (e
 			}
 
 			if err := ws_c.Error(); err != nil {
-				danmulog.E("结束连接错误", err)
+				danmulog.W("结束连接错误", err)
 			}
 
 			cancelfunc()

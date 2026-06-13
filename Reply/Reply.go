@@ -700,7 +700,7 @@ func (t replyF) room_change(s []byte) {
 		msglog.BaseAdd("房").I(sh...)
 
 		go replyFunc.RoomSignal.Run2(func(inter replyFunc.RoomSignalI) {
-			if e := inter.FiliterRoomId(t.K_v.LoadV("指定房间回调"), t.Roomid).TitleChange(oldTitle, t.Title); e != nil {
+			if e := inter.FiliterRoomId(t.K_v.LoadV("指定房间回调"), t.Roomid).TitleChange(oldTitle, type_item.Data.Title); e != nil {
 				msglog.BaseAdd("房").W(e)
 			}
 		})
@@ -715,25 +715,42 @@ func (t replyF) room_change(s []byte) {
 		ctx, cancle := context.WithTimeout(context.Background(), time.Second*time.Duration(tryS))
 		roomChangeFC.FlashWithCallback(cancle)
 
-		go func(ctx context.Context, roomid int) {
-			for t.Roomid == roomid {
+		go func(ctx context.Context, roomid int, title string) {
+			var (
+				loopRoomId = roomid
+				loopTitle  = title
+			)
+			for loopRoomId == roomid {
 				select {
 				case <-ctx.Done():
 					msglog.BaseAdd("房").W(`指定时长内标题未修改，可能需要调大标题修改检测s`)
 					return
 				case <-time.After(time.Second * 30):
-					if beforeTitle := t.Title; t.Roomid != roomid || beforeTitle != oldTitle {
+					{
+						ulock := t.RLock()
+						loopRoomId = t.Roomid
+						loopTitle = t.Title
+						ulock()
+					}
+					// 切换房间 or 循环外标题改变
+					if loopRoomId != roomid || loopTitle != title {
 						return
 					} else {
 						F.Api.Get(t.Common, `Title`)
-						if t.Roomid == roomid && t.Title != beforeTitle {
-							setTitle(t.Title)
-							var sh = []any{"标题改变", t.Title}
+						{
+							ulock := t.RLock()
+							loopRoomId = t.Roomid
+							loopTitle = t.Title
+							ulock()
+						}
+						if loopRoomId == roomid && loopTitle != title {
+							setTitle(loopTitle)
+							var sh = []any{"标题改变", loopTitle}
 							Gui_show(Itos(sh), "0room")
 							msglog.BaseAdd("房").I(sh...)
 
 							go replyFunc.RoomSignal.Run2(func(inter replyFunc.RoomSignalI) {
-								if e := inter.FiliterRoomId(t.K_v.LoadV("指定房间回调"), t.Roomid).TitleChange(beforeTitle, t.Title); e != nil {
+								if e := inter.FiliterRoomId(t.K_v.LoadV("指定房间回调"), loopRoomId).TitleChange(title, loopTitle); e != nil {
 									msglog.BaseAdd("房").W(e)
 								}
 							})
@@ -743,7 +760,7 @@ func (t replyF) room_change(s []byte) {
 					}
 				}
 			}
-		}(ctx, t.Roomid)
+		}(ctx, t.Roomid, t.Title)
 	}
 }
 
@@ -999,7 +1016,7 @@ func (t replyF) live(s []byte) {
 	if err := json.Unmarshal(s, &type_item); err != nil {
 		msglog.E(err)
 		return
-	} else {
+	} else if !t.Liveing {
 		{ //附加功能 obs录播
 			// Obsf(true)
 			// Obs_R(true)
