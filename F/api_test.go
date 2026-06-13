@@ -15,6 +15,10 @@ func TestCookie(t *testing.T) {
 	// if _, ok := c.C.Cookie.Load("LIVE_BUVID"); !ok {
 	// 	t.Fatal()
 	// }
+	c.C.Cookie.Range(func(key, value any) bool {
+		t.Log(key, value)
+		return true
+	})
 	if _, ok := c.C.Cookie.Load("buvid3"); !ok {
 		t.Fatal()
 	}
