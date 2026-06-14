@@ -54,53 +54,54 @@ type StreamType struct {
 }
 
 type Common struct {
-	InIdle            bool                             `json:"-"`            //闲置中？
-	PID               int                              `json:"-"`            //进程id
-	Version           string                           `json:"-"`            //版本
-	Uid               int                              `json:"-"`            //client uid
-	Login             bool                             `json:"login"`        //登录
-	Live              []*LiveQn                        `json:"live"`         //直播流链接
-	Live_qn           int                              `json:"liveQn"`       //当前直播流质量
-	Live_want_qn      int                              `json:"-"`            //期望直播流质量
-	Roomid            int                              `json:"-"`            //房间ID
-	Cookie            *syncmap.Map                     `json:"-"`            //Cookie
-	Title             string                           `json:"title"`        //直播标题
-	Uname             string                           `json:"uname"`        //主播名
-	UpUid             int                              `json:"upUid"`        //主播uid
-	Rev               float64                          `json:"rev"`          //营收
-	Renqi             int                              `json:"renqi"`        //人气
-	Watched           int                              `json:"watched"`      //观看人数
-	OnlineNum         int                              `json:"onlineNum"`    //在线人数
-	GuardNum          int                              `json:"guardNum"`     //舰长数
-	ParentAreaID      int                              `json:"parentAreaID"` //父分区
-	AreaID            int                              `json:"areaID"`       //子分区
-	Locked            bool                             `json:"locked"`       //直播间封禁
-	Note              string                           `json:"note"`         //分区排行
-	Live_Start_Time   time.Time                        `json:"-"`            //直播开始时间
-	Liveing           bool                             `json:"liveing"`      //是否在直播
-	Wearing_FansMedal int                              `json:"-"`            //当前佩戴的粉丝牌
-	Token             string                           `json:"-"`            //弹幕钥
-	WSURL             []string                         `json:"-"`            //弹幕链接
-	LiveBuvidUpdated  time.Time                        `json:"-"`            //LIVE_BUVID更新时间
-	Stream_url        *url.URL                         `json:"-"`            //直播Web服务
-	Proxy             string                           `json:"-"`            //全局代理
-	SerLocation       int                              `json:"-"`            //服务器时区
-	AcceptQn          map[int]string                   `json:"-"`            //允许的直播流质量
-	AcceptQnUpdated   time.Time                        `json:"-"`            //允许的直播流质量更新时间
-	Qn                map[int]string                   `json:"-"`            //全部直播流质量
-	AllStreamType     map[string]StreamType            `json:"-"`            //直播流类型
-	K_v               syncmap.Map                      `json:"-"`            //配置文件
-	Log               *plog.Log                        `json:"-"`            //日志
-	Danmu_Main_mq     *mq.Msgq                         `json:"-"`            //消息
-	ReqPool           *pool.Buf[reqf.Req]              `json:"-"`            //请求池
-	SerF              *web.WebPath                     `json:"-"`            //web服务处理
-	SerLimit          *web.Limits                      `json:"-"`            //Web服务连接限制
-	StartT            time.Time                        `json:"-"`            //启动时间
-	Cache             syncmap.MapExceeded[string, any] `json:"-"`            //缓存
-	RepleyT           time.Time                        `json:"-"`            //websocket最新的响应时间
-	EntryDanmuT       time.Time                        `json:"-"`            //进入房间弹幕的最后发送时间
-	l                 sync.RWMutex                     `json:"-"`
-	buf               []byte                           `json:"-"`
+	InIdle             bool                             `json:"-"`            //闲置中？
+	PID                int                              `json:"-"`            //进程id
+	Version            string                           `json:"-"`            //版本
+	Uid                int                              `json:"-"`            //client uid
+	Login              bool                             `json:"login"`        //登录
+	Live               []*LiveQn                        `json:"live"`         //直播流链接
+	Live_qn            int                              `json:"liveQn"`       //当前直播流质量
+	Live_want_qn       int                              `json:"-"`            //期望直播流质量
+	Roomid             int                              `json:"-"`            //房间ID
+	Cookie             *syncmap.Map                     `json:"-"`            //Cookie
+	Title              string                           `json:"title"`        //直播标题
+	Uname              string                           `json:"uname"`        //主播名
+	UpUid              int                              `json:"upUid"`        //主播uid
+	Rev                float64                          `json:"rev"`          //营收
+	Renqi              int                              `json:"renqi"`        //人气
+	Watched            int                              `json:"watched"`      //观看人数
+	OnlineNum          int                              `json:"onlineNum"`    //在线人数
+	GuardNum           int                              `json:"guardNum"`     //舰长数
+	ParentAreaID       int                              `json:"parentAreaID"` //父分区
+	AreaID             int                              `json:"areaID"`       //子分区
+	Locked             bool                             `json:"locked"`       //直播间封禁
+	Note               string                           `json:"note"`         //分区排行
+	Live_Start_Time    time.Time                        `json:"-"`            //直播开始时间
+	Liveing            bool                             `json:"liveing"`      //是否在直播
+	Wearing_FansMedal  int                              `json:"-"`            //当前佩戴的粉丝牌
+	Token              string                           `json:"-"`            //弹幕钥
+	WSURL              []string                         `json:"-"`            //弹幕链接
+	LiveBuvidUpdated   time.Time                        `json:"-"`            //LIVE_BUVID更新时间
+	Stream_url         *url.URL                         `json:"-"`            //直播Web服务
+	Proxy              string                           `json:"-"`            //全局代理
+	DisableSystemProxy bool                             `json:"-"`            //禁用默认系统代理
+	SerLocation        int                              `json:"-"`            //服务器时区
+	AcceptQn           map[int]string                   `json:"-"`            //允许的直播流质量
+	AcceptQnUpdated    time.Time                        `json:"-"`            //允许的直播流质量更新时间
+	Qn                 map[int]string                   `json:"-"`            //全部直播流质量
+	AllStreamType      map[string]StreamType            `json:"-"`            //直播流类型
+	K_v                syncmap.Map                      `json:"-"`            //配置文件
+	Log                *plog.Log                        `json:"-"`            //日志
+	Danmu_Main_mq      *mq.Msgq                         `json:"-"`            //消息
+	ReqPool            *pool.Buf[reqf.Req]              `json:"-"`            //请求池
+	SerF               *web.WebPath                     `json:"-"`            //web服务处理
+	SerLimit           *web.Limits                      `json:"-"`            //Web服务连接限制
+	StartT             time.Time                        `json:"-"`            //启动时间
+	Cache              syncmap.MapExceeded[string, any] `json:"-"`            //缓存
+	RepleyT            time.Time                        `json:"-"`            //websocket最新的响应时间
+	EntryDanmuT        time.Time                        `json:"-"`            //进入房间弹幕的最后发送时间
+	l                  sync.RWMutex                     `json:"-"`
+	buf                []byte                           `json:"-"`
 }
 
 func (t *Common) Lock() func() {
@@ -256,50 +257,51 @@ func (t *Common) QnMatched() error {
 
 func (t *Common) Copy() *Common {
 	var c = Common{
-		Login:             t.Login,
-		InIdle:            t.InIdle,
-		PID:               t.PID,
-		Version:           t.Version,
-		Uid:               t.Uid,
-		Live:              t.Live,
-		Live_qn:           t.Live_qn,
-		Live_want_qn:      t.Live_want_qn,
-		Roomid:            t.Roomid,
-		Cookie:            t.Cookie,
-		Title:             t.Title,
-		Uname:             t.Uname,
-		UpUid:             t.UpUid,
-		Rev:               t.Rev,
-		Renqi:             t.Renqi,
-		Watched:           t.Watched,
-		OnlineNum:         t.OnlineNum,
-		GuardNum:          t.GuardNum,
-		ParentAreaID:      t.ParentAreaID,
-		AreaID:            t.AreaID,
-		Locked:            t.Locked,
-		Note:              t.Note,
-		Live_Start_Time:   t.Live_Start_Time,
-		Liveing:           t.Liveing,
-		Wearing_FansMedal: t.Wearing_FansMedal,
-		Token:             t.Token,
-		WSURL:             t.WSURL,
-		LiveBuvidUpdated:  t.LiveBuvidUpdated,
-		Stream_url:        t.Stream_url,
-		Proxy:             t.Proxy,
-		SerLocation:       t.SerLocation,
-		AcceptQn:          syncmap.Copy(t.AcceptQn),
-		AcceptQnUpdated:   t.AcceptQnUpdated,
-		Qn:                syncmap.Copy(t.Qn),
-		AllStreamType:     syncmap.Copy(t.AllStreamType),
-		K_v:               t.K_v.Copy(),
-		Log:               t.Log,
-		Danmu_Main_mq:     t.Danmu_Main_mq,
-		ReqPool:           t.ReqPool,
-		SerF:              t.SerF,
-		SerLimit:          t.SerLimit,
-		StartT:            t.StartT,
-		Cache:             *t.Cache.Copy(),
-		RepleyT:           t.RepleyT,
+		Login:              t.Login,
+		InIdle:             t.InIdle,
+		PID:                t.PID,
+		Version:            t.Version,
+		Uid:                t.Uid,
+		Live:               t.Live,
+		Live_qn:            t.Live_qn,
+		Live_want_qn:       t.Live_want_qn,
+		Roomid:             t.Roomid,
+		Cookie:             t.Cookie,
+		Title:              t.Title,
+		Uname:              t.Uname,
+		UpUid:              t.UpUid,
+		Rev:                t.Rev,
+		Renqi:              t.Renqi,
+		Watched:            t.Watched,
+		OnlineNum:          t.OnlineNum,
+		GuardNum:           t.GuardNum,
+		ParentAreaID:       t.ParentAreaID,
+		AreaID:             t.AreaID,
+		Locked:             t.Locked,
+		Note:               t.Note,
+		Live_Start_Time:    t.Live_Start_Time,
+		Liveing:            t.Liveing,
+		Wearing_FansMedal:  t.Wearing_FansMedal,
+		Token:              t.Token,
+		WSURL:              t.WSURL,
+		LiveBuvidUpdated:   t.LiveBuvidUpdated,
+		Stream_url:         t.Stream_url,
+		Proxy:              t.Proxy,
+		DisableSystemProxy: t.DisableSystemProxy,
+		SerLocation:        t.SerLocation,
+		AcceptQn:           syncmap.Copy(t.AcceptQn),
+		AcceptQnUpdated:    t.AcceptQnUpdated,
+		Qn:                 syncmap.Copy(t.Qn),
+		AllStreamType:      syncmap.Copy(t.AllStreamType),
+		K_v:                t.K_v.Copy(),
+		Log:                t.Log,
+		Danmu_Main_mq:      t.Danmu_Main_mq,
+		ReqPool:            t.ReqPool,
+		SerF:               t.SerF,
+		SerLimit:           t.SerLimit,
+		StartT:             t.StartT,
+		Cache:              *t.Cache.Copy(),
+		RepleyT:            t.RepleyT,
 	}
 
 	return &c
@@ -538,7 +540,11 @@ func (t *Common) Init() *Common {
 				}
 				// 停止同配置其他服务
 				if stopPath != "" {
-					var rval = reqf.Rval{Method: http.MethodOptions, Timeout: 500}
+					var rval = reqf.Rval{
+						DisableSystemProxy: true,
+						Method:             http.MethodOptions,
+						Timeout:            500,
+					}
 					if ip.To4() != nil {
 						rval.Url = fmt.Sprintf("http://%s:%s%s", ip.String(), port, stopPath)
 					} else {
@@ -759,6 +765,10 @@ func (t *Common) Init() *Common {
 		t.Stream_url, _ = url.Parse(`http://` + serAdress)
 	}
 
+	if val, ok := t.K_v.LoadV("禁用系统代理").(bool); ok {
+		t.DisableSystemProxy = val
+	}
+
 	if val, exist := t.K_v.Load("代理地址"); exist {
 		t.Proxy = val.(string)
 	}
@@ -846,7 +856,9 @@ func (t *Common) loadConf(customConf string) error {
 			req := t.ReqPool.Get()
 			defer t.ReqPool.Put(req)
 			if e := req.Reqf(reqf.Rval{
-				Url: customConf,
+				Url:                customConf,
+				Proxy:              t.Proxy,
+				DisableSystemProxy: t.DisableSystemProxy,
 				Header: map[string]string{
 					`User-Agent`:      UA,
 					`Accept`:          `*/*`,

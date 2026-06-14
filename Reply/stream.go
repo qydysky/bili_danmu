@@ -436,9 +436,10 @@ func (t *M4SStream) fetchCheckStream() bool {
 		}
 
 		if e := r.Reqf(reqf.Rval{
-			Method: http.MethodGet,
-			Url:    v.Url,
-			Proxy:  t.common.Proxy,
+			Method:             http.MethodGet,
+			Url:                v.Url,
+			Proxy:              t.common.Proxy,
+			DisableSystemProxy: t.common.DisableSystemProxy,
 			Header: map[string]string{
 				`User-Agent`:      c.UA,
 				`Accept`:          `*/*`,
@@ -505,9 +506,10 @@ func (t *M4SStream) fetchParseM3U8(lastM4s *m4s_link_item, fmp4ListUpdateTo, fmp
 
 		// 设置请求参数
 		rval := reqf.Rval{
-			Url:     v.Url,
-			Timeout: int(fmp4ListGetTo) * 1000,
-			Proxy:   c.C.Proxy,
+			Url:                v.Url,
+			Timeout:            int(fmp4ListGetTo) * 1000,
+			Proxy:              c.C.Proxy,
+			DisableSystemProxy: c.C.DisableSystemProxy,
 			Header: map[string]string{
 				`Host`:            F.ParseHost(v.Url),
 				`User-Agent`:      c.UA,
@@ -838,11 +840,12 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 
 		//检查
 		if e := r.Reqf(reqf.Rval{
-			Url:              surl.String(),
-			NoResponse:       true,
-			JustResponseCode: true,
-			Proxy:            t.common.Proxy,
-			Timeout:          5000,
+			Url:                surl.String(),
+			NoResponse:         true,
+			JustResponseCode:   true,
+			Proxy:              t.common.Proxy,
+			DisableSystemProxy: t.common.DisableSystemProxy,
+			Timeout:            5000,
 			Header: map[string]string{
 				`Host`:            surl.Host,
 				`User-Agent`:      c.UA,
@@ -999,6 +1002,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 				NoResponse:          true,
 				Async:               true,
 				Proxy:               t.common.Proxy,
+				DisableSystemProxy:  t.common.DisableSystemProxy,
 				CopyResponseTimeout: int(readTO)*1000*2 + 1,
 				Header: map[string]string{
 					`Host`:            surl.Host,
@@ -1241,6 +1245,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 					Timeout:             to * 1000,
 					CopyResponseTimeout: (to + 2) * 1000,
 					Proxy:               t.common.Proxy,
+					DisableSystemProxy:  t.common.DisableSystemProxy,
 					// change to keep-alive(default) to reuse tcp connection
 					// Header: map[string]string{
 					// 	`Connection`: `close`,

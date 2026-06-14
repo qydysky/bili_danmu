@@ -15,6 +15,7 @@ var biliApi = cmp.GetV3("github.com/qydysky/bili_danmu/F.biliApi", cmp.PreFuncCu
 	Initf: func(ba BiliApiInter) BiliApiInter {
 		ba.SetLocation(c.C.SerLocation)
 		ba.SetProxy(c.C.Proxy)
+		ba.SetDisableSystemProxy(c.C.DisableSystemProxy)
 		ba.SetReqPool(c.C.ReqPool)
 
 		savepath := "./cookie.txt"

@@ -86,10 +86,11 @@ func (t *danmuEmotes) SaveEmote(ctx context.Context, ptr struct {
 					req := c.C.ReqPool.Get()
 					defer c.C.ReqPool.Put(req)
 					if e := req.Reqf(reqf.Rval{
-						SaveToPath: savePath,
-						Url:        url,
-						Proxy:      c.C.Proxy,
-						Timeout:    5000,
+						SaveToPath:         savePath,
+						Url:                url,
+						Proxy:              c.C.Proxy,
+						DisableSystemProxy: c.C.DisableSystemProxy,
+						Timeout:            5000,
 						Header: map[string]string{
 							`User-Agent`:      c.UA,
 							`Accept`:          `*/*`,
@@ -135,10 +136,11 @@ func (t *danmuEmotes) SaveEmote(ctx context.Context, ptr struct {
 							req := c.C.ReqPool.Get()
 							defer c.C.ReqPool.Put(req)
 							if e := req.Reqf(reqf.Rval{
-								SaveToPath: savePath,
-								Url:        url,
-								Proxy:      c.C.Proxy,
-								Timeout:    5000,
+								SaveToPath:         savePath,
+								Url:                url,
+								Proxy:              c.C.Proxy,
+								DisableSystemProxy: c.C.DisableSystemProxy,
+								Timeout:            5000,
 								Header: map[string]string{
 									`User-Agent`:      c.UA,
 									`Accept`:          `*/*`,
