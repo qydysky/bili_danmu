@@ -169,15 +169,19 @@ func (t *cmd) Cmd() {
 					}
 
 					fmt.Print("\n")
-					for k, v := range F.SearchUP(inputs[4:]) {
-						liveList[` to`+strconv.Itoa(k)] = v.Roomid
-						if v.Is_live {
-							fmt.Printf("%d\t%s\t%s(%d)\n", k, `☁`, v.Uname, v.Roomid)
-						} else {
-							fmt.Printf("%d\t%s\t%s(%d)\n", k, ` `, v.Uname, v.Roomid)
+					if e, us := F.SearchUP(inputs[4:]); e != nil {
+						fmt.Println(e)
+					} else {
+						for k, v := range us {
+							liveList[` to`+strconv.Itoa(k)] = v.Roomid
+							if v.Is_live {
+								fmt.Printf("%d\t%s\t%s(%d)\n", k, `☁`, v.Uname, v.Roomid)
+							} else {
+								fmt.Printf("%d\t%s\t%s(%d)\n", k, ` `, v.Uname, v.Roomid)
+							}
 						}
+						fmt.Println("回复' to(序号)'进入直播间")
 					}
-					fmt.Println("回复' to(序号)'进入直播间")
 					fmt.Print("\n")
 
 					continue

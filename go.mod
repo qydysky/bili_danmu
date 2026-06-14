@@ -12,7 +12,7 @@ require (
 
 require (
 	github.com/google/uuid v1.6.0
-	github.com/qydysky/biliApi v0.0.0-20260614092005-d800492040c4
+	github.com/qydysky/biliApi v0.0.0-20260614123854-6f721592e381
 	github.com/qydysky/brotli v0.0.0-20250531004300-54adcf96cc4a
 	golang.org/x/exp v0.0.0-20251113190631-e25ba8c21ef6
 )

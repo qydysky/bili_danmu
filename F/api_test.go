@@ -30,7 +30,15 @@ func Test_SearchUP(t *testing.T) {
 	//获取LIVE_BUVID
 	// Api.Get(c.C, `LIVE_BUVID`)
 
-	if v := SearchUP("qydysky"); len(v) == 0 || v[0].Roomid != 394988 {
+	if e, ls := SearchUP("少年pi"); e != nil {
+		t.Fatal(e)
+	} else {
+		for _, v := range ls {
+			t.Log(v)
+			if v.Roomid == 92613 {
+				return
+			}
+		}
 		t.Fatal()
 	}
 }
