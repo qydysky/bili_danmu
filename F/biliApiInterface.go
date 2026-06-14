@@ -11,6 +11,7 @@ import (
 type BiliApiInter interface {
 	SetReqPool(pool *pool.Buf[reqf.Req])
 	SetProxy(proxy string)
+	SetDisableSystemProxy(disableSystemProxy bool)
 	SetLocation(secOfTimeZone int)                   // east positive
 	SetCookies(cookies []*http.Cookie)               // 设置bili cookie，用于从cookie持久化中恢复
 	SetCookiesCallback(func(cookies []*http.Cookie)) // 当有新cookie时，将调用，用于cookie持久化

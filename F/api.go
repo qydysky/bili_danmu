@@ -2,7 +2,6 @@ package F
 
 import (
 	"errors"
-	"fmt"
 
 	c "github.com/qydysky/bili_danmu/CV"
 	J "github.com/qydysky/bili_danmu/Json"
@@ -188,7 +187,7 @@ func Feed_list() (Uplist []struct {
 	return
 }
 
-func SearchUP(s string) (list []struct {
+func SearchUP(s string) (e error, list []struct {
 	Roomid  int
 	Uname   string
 	Is_live bool
@@ -208,13 +207,11 @@ func SearchUP(s string) (list []struct {
 		return
 	}
 
-	if e, res := biliApi.SearchUP(s); e != nil {
-		fmt.Println(e)
+	e, res := biliApi.SearchUP(s)
+	if e != nil {
 		apilog.E(e)
-		return
-	} else {
-		return res
 	}
+	return e, res
 }
 
 func IsConnected() (ok bool) {

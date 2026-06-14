@@ -271,12 +271,13 @@ func (t *tts) baidu(msg string) error {
 	req := c.C.ReqPool.Get()
 	defer c.C.ReqPool.Put(req)
 	if err := req.Reqf(reqf.Rval{
-		Url:        `https://fanyi.baidu.com/gettts?lan=zh&text=` + url.PathEscape(msg) + `&spd=5&source=web`,
-		SaveToPath: sys.Sys().Cdir() + `/tts.mp3`,
-		Timeout:    3 * 1000,
-		Retry:      1,
-		SleepTime:  5000,
-		Proxy:      c.C.Proxy,
+		Url:                `https://fanyi.baidu.com/gettts?lan=zh&text=` + url.PathEscape(msg) + `&spd=5&source=web`,
+		SaveToPath:         sys.Sys().Cdir() + `/tts.mp3`,
+		Timeout:            3 * 1000,
+		Retry:              1,
+		SleepTime:          5000,
+		Proxy:              c.C.Proxy,
+		DisableSystemProxy: c.C.DisableSystemProxy,
 	}); err != nil {
 		return err
 	}
@@ -306,13 +307,14 @@ func (t *tts) youdao(msg string) error {
 	req := c.C.ReqPool.Get()
 	defer c.C.ReqPool.Put(req)
 	if err := req.Reqf(reqf.Rval{
-		Url:        `https://openapi.youdao.com/ttsapi`,
-		PostStr:    url.PathEscape(postS),
-		SaveToPath: sys.Sys().Cdir() + `/tts.mp3`,
-		Timeout:    3 * 1000,
-		Retry:      1,
-		SleepTime:  5000,
-		Proxy:      c.C.Proxy,
+		Url:                `https://openapi.youdao.com/ttsapi`,
+		PostStr:            url.PathEscape(postS),
+		SaveToPath:         sys.Sys().Cdir() + `/tts.mp3`,
+		Timeout:            3 * 1000,
+		Retry:              1,
+		SleepTime:          5000,
+		Proxy:              c.C.Proxy,
+		DisableSystemProxy: c.C.DisableSystemProxy,
 	}); err != nil {
 		return err
 	}
@@ -402,8 +404,9 @@ func (t *tts) xf(msg string) error {
 				return err
 			} else {
 				xfwsClient, _ := ws.NewClient(&ws.Client{
-					Url:   wsUrl,
-					Proxy: c.C.Proxy,
+					Url:                wsUrl,
+					Proxy:              c.C.Proxy,
+					DisableSystemProxy: c.C.DisableSystemProxy,
 					Header: map[string]string{
 						`User-Agent`:      c.UA,
 						`Accept`:          `*/*`,

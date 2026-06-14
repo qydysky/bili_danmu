@@ -61,10 +61,11 @@ func Send_gift(common *c.Common, gift_id, bag_id, gift_num int) {
 		req := common.ReqPool.Get()
 		defer common.ReqPool.Put(req)
 		if e := req.Reqf(reqf.Rval{
-			Url:     `https://api.live.bilibili.com/xlive/revenue/v2/gift/sendBag`,
-			PostStr: url.PathEscape(sendStr),
-			Timeout: 10 * 1000,
-			Proxy:   common.Proxy,
+			Url:                `https://api.live.bilibili.com/xlive/revenue/v2/gift/sendBag`,
+			PostStr:            url.PathEscape(sendStr),
+			Timeout:            10 * 1000,
+			Proxy:              common.Proxy,
+			DisableSystemProxy: common.DisableSystemProxy,
 			Header: map[string]string{
 				`Host`:            `api.vc.bilibili.com`,
 				`User-Agent`:      c.UA,

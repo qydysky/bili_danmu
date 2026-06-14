@@ -54,10 +54,11 @@ func Send_pm(uid int, msg string) error {
 	req := c.C.ReqPool.Get()
 	defer c.C.ReqPool.Put(req)
 	if e := req.Reqf(reqf.Rval{
-		Url:     `https://api.vc.bilibili.com/web_im/v1/web_im/send_msg`,
-		PostStr: url.PathEscape(send_str),
-		Timeout: 10 * 1000,
-		Proxy:   c.C.Proxy,
+		Url:                `https://api.vc.bilibili.com/web_im/v1/web_im/send_msg`,
+		PostStr:            url.PathEscape(send_str),
+		Timeout:            10 * 1000,
+		Proxy:              c.C.Proxy,
+		DisableSystemProxy: c.C.DisableSystemProxy,
 		Header: map[string]string{
 			`Host`:            `api.vc.bilibili.com`,
 			`User-Agent`:      c.UA,

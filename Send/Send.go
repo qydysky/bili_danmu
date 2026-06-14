@@ -110,11 +110,12 @@ func Danmu_s2(data map[string]string) error {
 	r := c.C.ReqPool.Get()
 	defer c.C.ReqPool.Put(r)
 	err := r.Reqf(reqf.Rval{
-		Url:     "https://api.live.bilibili.com/msg/send",
-		PostStr: postStr,
-		Retry:   2,
-		Timeout: 5 * 1000,
-		Proxy:   c.C.Proxy,
+		Url:                "https://api.live.bilibili.com/msg/send",
+		PostStr:            postStr,
+		Retry:              2,
+		Timeout:            5 * 1000,
+		Proxy:              c.C.Proxy,
+		DisableSystemProxy: c.C.DisableSystemProxy,
 		Header: map[string]string{
 			`Host`:            `api.live.bilibili.com`,
 			`User-Agent`:      c.UA,
