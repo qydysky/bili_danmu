@@ -1062,7 +1062,14 @@ func (t *GetFuncV2) configStreamType(sts []streamType, updateAcceptQn, appendLiv
 		}
 	}
 	// 默认类型
-	wantTypes = append(wantTypes, t.common.AllStreamType[`fmp4`], t.common.AllStreamType[`flv`])
+	wantTypes = append(
+		wantTypes,
+		t.common.AllStreamType[`fmp4`],
+		t.common.AllStreamType[`flv`],
+		t.common.AllStreamType[`fmp4H`],
+		t.common.AllStreamType[`flvH`],
+		t.common.AllStreamType[`fmp4A`],
+	)
 
 	// t.common.Live = t.common.Live[:0]
 	// for i := 0; i < len(t.common.Live); i++ {
