@@ -923,7 +923,7 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 					flvInited  = false
 				)
 
-				buff.ExpandCapTo(humanize.MByte * 5)
+				// buff.ExpandCapTo(humanize.MByte * 5)
 
 				if v, ok := c.C.K_v.LoadV(`flv音视频时间戳容差ms`).(float64); ok && v > 100 {
 					flvDecoder.Diff = v
@@ -931,7 +931,8 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 
 				for {
 					if buff.Size() == buff.Cap() {
-						pctx.PutVal(cancelC, &errCtx, errors.New("[decoder]buf overflow"))
+						buff.ExpandCap(humanize.MByte)
+						// pctx.PutVal(cancelC, &errCtx, errors.New("[decoder]buf overflow"))
 					}
 					if n, e := pipe.Read(buff.GetRawBuf(buff.Size(), min(buff.Size()+humanize.MByte, buff.Cap()))); e != nil {
 						if !errors.Is(e, io.ErrClosedPipe) && !errors.Is(e, io.EOF) {
