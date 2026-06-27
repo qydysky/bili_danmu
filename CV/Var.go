@@ -111,7 +111,7 @@ func (t *Common) Lock() func() {
 
 func (t *Common) RLock() func() {
 	t.l.RLock()
-	return t.l.Unlock
+	return t.l.RUnlock
 }
 
 func (t *Common) MarshalJSON() ([]byte, error) {
