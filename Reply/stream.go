@@ -14,7 +14,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -1783,40 +1782,18 @@ func (t *M4SStream) PusherToFile(contextC context.Context, filepath string, push
 // 在客户端存在某种代理时，将有可能无法监测到客户端关闭，这有可能导致goroutine泄漏
 func (t *M4SStream) PusherToHttp(plog *log.Log, conn net.Conn, w http.ResponseWriter, r *http.Request, pusherEvent PusherEvent) error {
 
-	var (
-		cmdI  io.WriteCloser
-		err   error
-		modeq = r.URL.Query().Get("modeq")
-	)
-	if modeq != "" {
-		if modes, ok := t.common.K_v.LoadV("实时回放预处理").(map[string]any); ok {
-			if mode, ok := modes[modeq]; ok {
-				if cmd, ok := mode.(map[string]any); ok {
-					if args, ok := cmd[t.stream_type]; ok {
-						if tmp, ok := args.([]any); ok {
-							var arg []string
-							for i := range tmp {
-								arg = append(arg, tmp[i].(string))
-							}
-							cmd := exec.CommandContext(r.Context(), arg[0], arg[1:]...)
-							cmd.Stderr = os.Stdout
-							cmd.Stdout = w
-							cmdI, err = cmd.StdinPipe()
-							if err != nil {
-								return err
-							}
-							err = cmd.Start()
-							if err != nil {
-								return err
-							}
-							defer func() {
-								plog.W(F.GetRemoteIp(r), cmd.Wait())
-							}()
-						}
-					}
-				}
+	var cmdI io.WriteCloser
+	if modeq := r.URL.Query().Get("modeq"); modeq != "" {
+		replyFunc.StreamPredeal.Run3(func(inter interface {
+			Deal(mode string, streamType string, ctx context.Context, w http.ResponseWriter) (err error, cmdI io.WriteCloser)
+			Init(any)
+		}, e error) {
+			if err, i := inter.Deal(modeq, t.stream_type, r.Context(), w); err == nil {
+				cmdI = i
+			} else {
+				plog.W(F.GetRemoteIp(r), err)
 			}
-		}
+		})
 	}
 
 	switch t.stream_type {

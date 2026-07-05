@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/fs"
 	"iter"
+	"net/http"
 	"time"
 
 	_ "github.com/qydysky/bili_danmu/Reply/F/ass"              //removable
@@ -21,11 +22,17 @@ import (
 	_ "github.com/qydysky/bili_danmu/Reply/F/saveDanmuToDB" //removable
 	_ "github.com/qydysky/bili_danmu/Reply/F/saveToJson"    //removable
 	_ "github.com/qydysky/bili_danmu/Reply/F/shortDanmu"    //removable
+	_ "github.com/qydysky/bili_danmu/Reply/F/streamPredeal" //removable
 	_ "github.com/qydysky/bili_danmu/Reply/F/tts"           //removable
 	_ "github.com/qydysky/bili_danmu/Reply/F/videoFastSeed" //removable
 	comp "github.com/qydysky/part/component2"
 	log "github.com/qydysky/part/log/v2"
 )
+
+var StreamPredeal = comp.GetV3[interface {
+	Init(any)
+	Deal(mode, streamType string, ctx context.Context, w http.ResponseWriter) (err error, cmdI io.WriteCloser)
+}](`streamPredeal`)
 
 type RoomSignalI interface {
 	FiliterRoomId(configs any, roomId int) interface {
