@@ -5,6 +5,8 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
 	"net/url"
 	"os"
 	"os/signal"
@@ -102,6 +104,13 @@ func Start(rootCtx context.Context) {
 				})
 			}
 		}
+		//streamPredeal初始化
+		replyFunc.StreamPredeal.Run3(func(inter interface {
+			Deal(mode string, streamType string, ctx context.Context, w http.ResponseWriter) (err error, cmdI io.WriteCloser)
+			Init(any)
+		}, e error) {
+			inter.Init(c.C.K_v.LoadV("实时回放预处理"))
+		})
 		//rev初始化
 		if c.C.IsOn(`统计营收`) {
 			replyFunc.Rev.Run2(func(ri replyFunc.RevI) {
@@ -491,7 +500,7 @@ func entryRoom(mainCtx context.Context, danmulog *plog.Log, common *c.Common) (e
 				time.Sleep(time.Millisecond * time.Duration(heartinterval*1000))
 				if lastReplyT := func() time.Time {
 					defer common.Lock()()
-					return common.RepleyT
+					return common.ReplyT
 				}(); lastReplyT.IsZero() {
 					danmulog.WF("心跳无响应")
 				} else if to := lastReplyT.Sub(heartBeatSendT).Seconds(); replayTO > 0 && to > replayTO {

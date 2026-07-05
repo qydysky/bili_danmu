@@ -118,7 +118,7 @@ func Reply(common *c.Common, b []byte) {
 	replyFS := replyF{common}
 	defer replyFS.Lock()()
 
-	replyFS.RepleyT = time.Now()
+	replyFS.ReplyT = time.Now()
 
 	for len(b) != 0 {
 		head := F.HeadChe(b[:c.WS_PACKAGE_HEADER_TOTAL_LENGTH])

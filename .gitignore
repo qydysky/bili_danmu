@@ -42,3 +42,4 @@ Reply/decoder/testdata/0.cut.mp4
 cookie.txt
 *.pgo
 main/*.json
+main/ffmpeg
