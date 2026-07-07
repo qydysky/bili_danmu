@@ -283,7 +283,9 @@ func Start(rootCtx context.Context) {
 			common, _ := c.CommonsLoadOrInit.LoadOrInitPThen(c.C.Roomid)(func(actual *c.Common, loaded bool) (*c.Common, bool) {
 				if loaded {
 					actual.InIdle = false
-					actual.Rev = 0.0 // 营收
+					if actual.Live_Start_Time != c.C.Live_Start_Time {
+						actual.Rev = 0.0 // 营收
+					}
 				} else {
 					actual.UpUid = c.C.UpUid
 					actual.Uname = c.C.Uname
