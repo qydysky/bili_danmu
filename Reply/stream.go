@@ -745,6 +745,11 @@ func (t *M4SStream) saveStream() (e error) {
 	// 清除初始值
 	t.first_buf = nil
 	t.frameCount = 0
+	{
+		ul := t.streamPipe.GetLock()
+		ul.Clear()
+		ul.Unlock()
+	}
 
 	if s, ok := t.common.K_v.LoadV("直播Web服务路径").(string); ok && s != "" {
 		t.logg().I("Web服务地址", t.common.Stream_url.String()+s)
