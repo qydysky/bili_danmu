@@ -43,7 +43,6 @@ import (
 	reqf "github.com/qydysky/part/reqf"
 	signal "github.com/qydysky/part/signal"
 	slice "github.com/qydysky/part/slice"
-	psync "github.com/qydysky/part/sync"
 	pu "github.com/qydysky/part/util"
 	pweb "github.com/qydysky/part/web"
 )
@@ -61,6 +60,7 @@ type M4SStream struct {
 	stream_type          string                //流类型
 	stream_code          string                //流编码
 	stream_msg           *msgq.MsgType[[]byte] //流数据消息 tag:data
+	streamPipe           *slice.Buf[byte]      //流数据消息
 	first_buf            []byte                //m4s起始块 or flv起始块
 	frameCount           uint                  //关键帧数量
 	boot_buf             []byte                //快速启动缓冲
@@ -77,7 +77,7 @@ type M4SStream struct {
 	Callback_stop     func(*M4SStream)          //实例结束的回调
 	reqPool           *pool.Buf[reqf.Req]       //请求池
 	cutNum            atomic.Uint32
-	pullerToFile      psync.MapFunc[string, *func([]byte) (disable bool)]
+	// pullerToFile      psync.MapFunc[string, *func([]byte) (disable bool)]
 }
 
 type M4SStream_Config struct {
@@ -236,8 +236,9 @@ func (t *M4SStream) Common() *c.Common {
 
 func NewM4SStream(c *c.Common) (*M4SStream, error) {
 	var t = &M4SStream{
-		common: c,
-		log:    c.Log.Base(`直播流保存`),
+		common:   c,
+		log:      c.Log.Base(`直播流保存`),
+		exitSign: signal.Init(),
 	}
 
 	//读取配置
@@ -744,6 +745,11 @@ func (t *M4SStream) saveStream() (e error) {
 	// 清除初始值
 	t.first_buf = nil
 	t.frameCount = 0
+	{
+		ul := t.streamPipe.GetLock()
+		ul.Clear()
+		ul.Unlock()
+	}
 
 	if s, ok := t.common.K_v.LoadV("直播Web服务路径").(string); ok && s != "" {
 		t.logg().I("Web服务地址", t.common.Stream_url.String()+s)
@@ -768,15 +774,16 @@ func (t *M4SStream) saveStream() (e error) {
 			startCount = uint(s)
 		}
 		// 确保能接收到第n个帧才开始录制
-		var cancelkeyFrame = t.msg.Pull_tag_only(`keyFrame`, func(ms *M4SStream) (disable bool) {
+		defer t.msg.Pull_tag_only(`keyFrame`, func(ms *M4SStream) (disable bool) {
 			if startCount <= t.frameCount {
 				ms.msg.Push_tag(`cut`, ms)
 				return true
 			}
-			t.logg().TF("%d帧后开始录制", startCount-t.frameCount)
+			f := t.streamPipe.GetRLock()
+			t.logg().TF("%d帧后开始录制,已缓存 %s", startCount-t.frameCount, humanize.Bytes(uint64(f.Size())))
+			f.RUnlock()
 			return false
-		})
-		defer cancelkeyFrame()
+		})()
 	}
 
 	// 获取流
@@ -980,11 +987,13 @@ func (t *M4SStream) saveStreamFlv() (e error) {
 								leastReadUnix.Store(time.Now().Unix())
 
 								buf := keyframe.GetPureBuf()
-								t.bootBufPush(buf)
 								t.stream_msg.PushLock_tag(`data`, buf)
-
-								keyframe.Reset()
+								t.bootBufPush(buf)
+								if t.config.save_to_file {
+									_, _ = t.streamPipe.Write(buf)
+								}
 								t.frameCount += 1
+								keyframe.Reset()
 								t.msg.Push_tag(`keyFrame`, t)
 							}
 						}
@@ -1340,10 +1349,13 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 			// 传递关键帧
 			if !keyframe.IsEmpty() {
 				keyframeBuf := keyframe.GetPureBuf()
-				t.bootBufPush(keyframeBuf)
 				t.stream_msg.PushLock_tag(`data`, keyframeBuf)
-				keyframe.Reset()
+				t.bootBufPush(keyframeBuf)
+				if t.config.save_to_file {
+					_, _ = t.streamPipe.Write(keyframeBuf)
+				}
 				t.frameCount += 1
+				keyframe.Reset()
 				t.msg.Push_tag(`keyFrame`, t)
 			}
 
@@ -1439,8 +1451,9 @@ func (t *M4SStream) Start() bool {
 
 		// 初始化切片消息
 		t.stream_msg = msgq.NewType[[]byte]()
-		t.pullerToFile = psync.NewMapG[string, *func([]byte) (disable bool)]()
-		defer t.stream_msg.Pull_tag_syncmap(t.pullerToFile)()
+		t.streamPipe = slice.New[byte]()
+		// t.pullerToFile = psync.NewMapG[string, *func([]byte) (disable bool)]()
+		// defer t.stream_msg.Pull_tag_syncmap(t.pullerToFile)()
 
 		// 设置事件
 		// 当录制停止时，取消全部录制
@@ -1486,7 +1499,9 @@ func (t *M4SStream) Start() bool {
 
 				ctx1, done := pctx.WithWait(mainCtx, 3, time.Second*30)
 				defer func() {
-					_ = done(true)
+					if e := done(true); e != nil {
+						l.E(`保存停止超时`, e)
+					}
 				}()
 
 				// 分段时长min
@@ -1502,12 +1517,16 @@ func (t *M4SStream) Start() bool {
 				defer ms.msg.Pull_tag(map[string]func(*M4SStream) (disable bool){
 					// 当closefile时，取消录制
 					`closefile`: func(ms *M4SStream) (disable bool) {
-						_ = done(true)
+						if e := done(true); e != nil {
+							l.E(`保存停止超时`, e)
+						}
 						return true
 					},
 					// 当stopRec时，取消录制
 					`stopRec`: func(ms *M4SStream) (disable bool) {
-						_ = done(true)
+						if e := done(true); e != nil {
+							l.E(`保存停止超时`, e)
+						}
 						return true
 					},
 				})()
@@ -1528,7 +1547,7 @@ func (t *M4SStream) Start() bool {
 					fc.FlashWithCallback(func() {
 						// wait all goroutine exit
 						if e := done(true); e != nil {
-							l.E(e)
+							l.E(`保存停止超时`, e)
 						}
 					})
 					return nil
@@ -1677,16 +1696,12 @@ func (t *M4SStream) Start() bool {
 }
 
 func (t *M4SStream) Stop() {
-	if pctx.Done(t.Status) {
-		t.log.I(`正在等待下载完成...`)
-		t.exitSign.Wait()
-		return
+	if !pctx.Done(t.Status) {
+		_ = pctx.CallCancel(t.Status)
+		defer t.log.I(`结束`)
 	}
-	t.exitSign = signal.Init()
-	_ = pctx.CallCancel(t.Status)
 	t.log.I(`正在等待下载完成...`)
 	t.exitSign.Wait()
-	t.log.I(`结束`)
 }
 
 func (t *M4SStream) Cut() {
@@ -1748,27 +1763,35 @@ func (t *M4SStream) PusherToFile(contextC context.Context, filepath string, push
 		return false
 		// }
 	}
-	closeF := func(_ []byte) bool {
-		_ = t.pullerToFile.CompareAndDelete(`data`, &dataF)
-		return true
-	}
+	// closeF := func(_ []byte) bool {
+	// 	_ = t.pullerToFile.CompareAndDelete(`data`, &dataF)
+	// 	return true
+	// }
 
 	//写入快速启动缓冲
-	_ = t.bootBufRead(func(data []byte) error {
-		dataF(data)
-		return nil
-	})
-
-	t.pullerToFile.Store(`data`, &dataF)
-	t.pullerToFile.Store(`close`, &closeF)
+	// _ = t.bootBufRead(func(data []byte) error {
+	// 	dataF(data)
+	// 	return nil
+	// })
 
 	if e := ifNotNil(pusherEvent.readyFunc)(t); e != nil {
 		return e
 	}
-	<-ctx1.Done()
+	buf := make([]byte, humanize.MByte)
+	for !pctx.Done(ctx1) {
+		if n, e := t.streamPipe.ReadCtx(ctx1, buf); n > 0 {
+			dataF(buf[:n])
+		} else if e != nil {
+			done()
+		}
+	}
+	// t.pullerToFile.Store(`data`, &dataF)
+	// t.pullerToFile.Store(`close`, &closeF)
 
-	_ = t.pullerToFile.CompareAndDelete(`data`, &dataF)
-	_ = t.pullerToFile.CompareAndDelete(`close`, &closeF)
+	// <-ctx1.Done()
+
+	// _ = t.pullerToFile.CompareAndDelete(`data`, &dataF)
+	// _ = t.pullerToFile.CompareAndDelete(`close`, &closeF)
 
 	if e := ifNotNil(pusherEvent.stopFunc)(t); e != nil {
 		return e
@@ -1913,8 +1936,7 @@ func (t *M4SStream) PusherToHttp(plog *log.Log, conn net.Conn, w http.ResponseWr
 func (t *M4SStream) bootBufPush(buf []byte) {
 	t.boot_buf_locker.Lock()
 	defer t.boot_buf_locker.Unlock()
-	t.boot_buf = t.boot_buf[:0]
-	t.boot_buf = append(t.boot_buf, buf...)
+	t.boot_buf = append(t.boot_buf[:0], buf...)
 }
 
 func (t *M4SStream) bootBufRead(r func(data []byte) error) error {
