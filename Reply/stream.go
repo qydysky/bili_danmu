@@ -60,7 +60,7 @@ type M4SStream struct {
 	stream_type          string                //流类型
 	stream_code          string                //流编码
 	stream_msg           *msgq.MsgType[[]byte] //流数据消息 tag:data
-	streamPipe           *slice.BufIOM[byte]   //流数据消息
+	streamPipe           *slice.Buf[byte]      //流数据消息
 	first_buf            []byte                //m4s起始块 or flv起始块
 	frameCount           uint                  //关键帧数量
 	boot_buf             []byte                //快速启动缓冲
@@ -769,7 +769,7 @@ func (t *M4SStream) saveStream() (e error) {
 			startCount = uint(s)
 		}
 		// 确保能接收到第n个帧才开始录制
-		var cancelkeyFrame = t.msg.Pull_tag_only(`keyFrame`, func(ms *M4SStream) (disable bool) {
+		defer t.msg.Pull_tag_only(`keyFrame`, func(ms *M4SStream) (disable bool) {
 			if startCount <= t.frameCount {
 				ms.msg.Push_tag(`cut`, ms)
 				return true
@@ -778,8 +778,7 @@ func (t *M4SStream) saveStream() (e error) {
 			t.logg().TF("%d帧后开始录制,已缓存 %s", startCount-t.frameCount, humanize.Bytes(uint64(f.Size())))
 			f.RUnlock()
 			return false
-		})
-		defer cancelkeyFrame()
+		})()
 	}
 
 	// 获取流
@@ -1447,7 +1446,7 @@ func (t *M4SStream) Start() bool {
 
 		// 初始化切片消息
 		t.stream_msg = msgq.NewType[[]byte]()
-		t.streamPipe = slice.New[byte]().IO()
+		t.streamPipe = slice.New[byte]()
 		// t.pullerToFile = psync.NewMapG[string, *func([]byte) (disable bool)]()
 		// defer t.stream_msg.Pull_tag_syncmap(t.pullerToFile)()
 
@@ -1774,9 +1773,8 @@ func (t *M4SStream) PusherToFile(contextC context.Context, filepath string, push
 		return e
 	}
 	buf := make([]byte, humanize.MByte)
-	t.streamPipe.Ctx(ctx1)
 	for !pctx.Done(ctx1) {
-		if n, e := t.streamPipe.Read(buf); n > 0 {
+		if n, e := t.streamPipe.ReadCtx(ctx1, buf); n > 0 {
 			dataF(buf[:n])
 		} else if e != nil {
 			done()
