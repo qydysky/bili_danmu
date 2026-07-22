@@ -246,7 +246,7 @@ var ActQnMatch = pe.Action[struct {
 }](`ActQnMatch`)
 
 func (t *Common) QnMatched() error {
-	if !t.Login {
+	if !t.IsLogin() {
 		return ActQnMatch.NoLogin
 	} else if t.Live_want_qn != t.Live_qn {
 		return ActQnMatch.NoMatched
