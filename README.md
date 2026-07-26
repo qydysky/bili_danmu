@@ -82,6 +82,8 @@
 #### 指定房间回调
 在(>v0.20.19)，添加了`指定房间回调`配置项。
 
+在(>v0.21.5)，`指定房间回调`配置项添加了`loginChange`,当登陆状态变化时触发对应的命令。
+
 其扩展了原配置项`指定房间录制回调`，`指定房间录制回调`将失效。
 
 ```json
@@ -99,7 +101,9 @@
       "titleChange-help": "当房间标题变化时触发，占位符{oldTitle}:旧标题(string) {newTitle}:新标题(string)",
       "titleChange": [],
       "afterRec-help": "当结束录制后(包含切片)触发对应的命令，占位符{liveDir}:录播所在目录(string)(末尾有/) {recSec}:录制时长秒数(uint)(>=0) {type}:视频类型(string)(例如mp4)",
-      "afterRec":[]
+      "afterRec":[],
+      "loginChange-help": "当登陆状态变化时触发对应的命令，占位符{newState}:新的状态(string)(true/false)",
+      "loginChange":[]
     }
   ]
 }
@@ -1027,6 +1031,8 @@ Ass默认`utf-8`编码，在录播结束时生成，可以配合`指定房间回
   - [MXPlayer](https://sites.google.com/site/mxvpen/home)
 
 #### 命令行操作
+在(>v0.21.5)在登陆状态时可以使用` logout`登出当前cookie。
+
 在准备动作完成(`T: 2021/03/06 16:22:39 命令行操作 [回车查看帮助]`)后，输入回车将显示帮助
 ```
 切换房间->输入' 数字'回车

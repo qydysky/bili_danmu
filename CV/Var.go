@@ -146,7 +146,7 @@ func (t *Common) MarshalJSON() ([]byte, error) {
 		ParentAreaID:  t.ParentAreaID,
 		AreaID:        t.AreaID,
 		Locked:        t.Locked,
-		Login:         t.Login,
+		Login:         t.IsLogin(),
 		Note:          t.Note,
 		LiveStartTime: t.Live_Start_Time.Format(time.RFC3339),
 		Liveing:       t.Liveing,

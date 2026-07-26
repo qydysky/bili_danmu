@@ -146,7 +146,9 @@
             "titleChange-help": "当房间标题变化时触发，占位符{oldTitle}:旧标题(string) {newTitle}:新标题(string)",
             "titleChange": [],
             "afterRec-help": "当结束录制后(包含切片)触发对应的命令，占位符{liveDir}:录播所在目录(string)(末尾有/) {recSec}:录制时长秒数(uint)(>=0) {type}:视频类型(string)(例如mp4)",
-            "afterRec":[]
+            "afterRec":[],
+            "loginChange-help": "当登陆状态变化时触发对应的命令，占位符{newState}:新的状态(string)(true/false)",
+            "loginChange":[]
         }
     ],
     "指定房间录制区间-help":"指定roomid的房间在指定时间段内将会开启录制.start时检查是否在直播,是则开始录制,如已在录制则切片.end时停止录制.在开播时,若同时有start与end的fromTo,且当前在start与end之间,则录制,若无同时有start与end,则开播就录制。5s内只能触发一个fromTo",
@@ -239,6 +241,7 @@
     "扫码登录": false,
     "扫码登录路径": "/qr/",
     "扫码登录自动打开标签页": false,
+    "扫码登录-命令行不显示二维码": false,
     "网络中断不退出": true,
     "代理地址-help":"支持http,https,socks5。例http://127.0.0.1:38223 为空时不使用",
     "代理地址":"",
