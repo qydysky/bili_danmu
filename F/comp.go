@@ -2,6 +2,7 @@ package F
 
 import (
 	"net/http"
+	"sync/atomic"
 
 	_ "github.com/qydysky/biliApi" //removable
 	c "github.com/qydysky/bili_danmu/CV"
@@ -22,9 +23,14 @@ var biliApi = cmp.GetV3("github.com/qydysky/bili_danmu/F.biliApi", cmp.PreFuncCu
 		if tmp, ok := c.C.K_v.LoadV("cookie路径").(string); ok && tmp != "" {
 			savepath = tmp
 		}
+		var loginState atomic.Bool
 		ba.SetCookiesCallback(func(cookies []*http.Cookie) {
 			CookieSet(savepath, unsafe.S2B(reqf.Cookies_List_2_String(cookies))) //cookie 存入文件
-			psync.StoreAll(c.C.Cookie, reqf.Cookies_List_2_Map(cookies))         //cookie 存入全局变量
+			c.C.Cookie.ClearAll()
+			psync.StoreAll(c.C.Cookie, reqf.Cookies_List_2_Map(cookies)) //cookie 存入全局变量
+			if cuState := c.C.IsLogin(); loginState.Swap(cuState) != cuState {
+				go c.C.Danmu_Main_mq.Push_tag(`changeLogin`, nil)
+			}
 		})
 		return ba
 	},

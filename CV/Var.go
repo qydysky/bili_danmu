@@ -146,7 +146,7 @@ func (t *Common) MarshalJSON() ([]byte, error) {
 		ParentAreaID:  t.ParentAreaID,
 		AreaID:        t.AreaID,
 		Locked:        t.Locked,
-		Login:         t.Login,
+		Login:         t.IsLogin(),
 		Note:          t.Note,
 		LiveStartTime: t.Live_Start_Time.Format(time.RFC3339),
 		Liveing:       t.Liveing,
@@ -246,7 +246,7 @@ var ActQnMatch = pe.Action[struct {
 }](`ActQnMatch`)
 
 func (t *Common) QnMatched() error {
-	if !t.Login {
+	if !t.IsLogin() {
 		return ActQnMatch.NoLogin
 	} else if t.Live_want_qn != t.Live_qn {
 		return ActQnMatch.NoMatched

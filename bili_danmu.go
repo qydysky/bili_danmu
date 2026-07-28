@@ -335,8 +335,8 @@ func entryRoom(mainCtx context.Context, danmulog *plog.Log, common *c.Common) (e
 					cancel1()
 					continue
 				}
-				//获取cookie，检查是否登录失效
-				F.Api.Get(common, `Cookie`)
+				//检查是否登录失效
+				F.Api.Get(common, `LoginCheck`)
 				//获取LIVE_BUVID
 				// F.Api.Get(common, `LIVE_BUVID`)
 				//附加功能 自动发送即将过期礼物
@@ -427,7 +427,6 @@ func entryRoom(mainCtx context.Context, danmulog *plog.Log, common *c.Common) (e
 			}
 			continue
 		}
-
 		// auth
 		{
 			wsmsg.PushLock_tag(`send`, &ws.WsMsg{
@@ -448,7 +447,10 @@ func entryRoom(mainCtx context.Context, danmulog *plog.Log, common *c.Common) (e
 			<-waitCheckAuth.Done()
 			doneAuth()
 			if err := waitCheckAuth.Err(); errors.Is(err, context.DeadlineExceeded) {
-				danmulog.E("连接验证失败")
+				danmulog.E("连接验证超时")
+				// if ws_c.Isclose() {
+				// 	loopCancel()
+				// }
 				continue
 			}
 		}
@@ -545,7 +547,7 @@ func entryRoom(mainCtx context.Context, danmulog *plog.Log, common *c.Common) (e
 
 		//当前ws
 		{
-			var login = common.Login
+			// var login = common.Login
 			// 处理各种指令
 			var cancelfunc = common.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
 				`interrupt`: func(_ any) (disable bool) {
@@ -582,11 +584,23 @@ func entryRoom(mainCtx context.Context, danmulog *plog.Log, common *c.Common) (e
 					go F.Api.Get(common, `GuardNum`)
 					return false
 				},
+				`changeLogin`: func(_ any) bool { //登陆状态更新
+					// F.Api.Get(common, `Cookie`)
+					cuState, roomid := common.IsLogin(), common.Roomid
+					go replyFunc.RoomSignal.Run2(func(inter replyFunc.RoomSignalI) {
+						if e := inter.FiliterRoomId(c.C.K_v.LoadV(`指定房间回调`), roomid).LoginChange(cuState); e != nil {
+							c.C.Log.Base(`指定房间回调`).W(roomid, e)
+						}
+					})
+					// if login != cuState {
+					danmulog.T("登陆状态变化，重新进入直播间", common.Uname, `(`, common.Roomid, `)`)
+					// common.Danmu_Main_mq.Push_tag(`flash_room`, nil)
+					loopCancel()
+					ws_c.Close()
+					// }
+					return true
+				},
 				`every100s`: func(_ any) bool { //每100s
-					if login != c.C.IsLogin() {
-						common.Danmu_Main_mq.Push_tag(`flash_room`, nil)
-						return false
-					}
 					if v, ok := common.K_v.LoadV("保持牌子亮着-开播时也发送").(bool); !common.Liveing || (ok && v) {
 						replyFunc.KeepMedalLight.Run2(func(kmli replyFunc.KeepMedalLightI) {
 							kmli.Do()

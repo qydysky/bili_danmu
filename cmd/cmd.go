@@ -40,6 +40,7 @@ func (t *cmd) Cmd() {
 					if _, ok := c.C.Cookie.LoadV(`bili_jct`).(string); ok {
 						fmt.Println("查看直播中主播->输入' liv'回车")
 						fmt.Println("查看历史观看主播->输入' his'回车")
+						fmt.Println("登出->输入' logout'回车")
 					} else {
 						fmt.Println("登录->输入' login'回车")
 					}
@@ -51,6 +52,7 @@ func (t *cmd) Cmd() {
 				if _, ok := c.C.Cookie.LoadV(`bili_jct`).(string); ok {
 					fmt.Println("发送弹幕->输入'字符串'回车")
 					fmt.Println("查看直播中主播->输入' liv'回车")
+					fmt.Println("登出->输入' logout'回车")
 				} else {
 					fmt.Println("登录->输入' login'回车")
 				}
@@ -159,6 +161,12 @@ func (t *cmd) Cmd() {
 				if strings.Contains(inputs, ` login`) {
 					//获取cookie
 					F.Api.Get(c.C, `Cookie`)
+					continue
+				}
+				//登出
+				if strings.Contains(inputs, ` logout`) {
+					//获取cookie
+					F.Api.Get(c.C, `Logout`)
 					continue
 				}
 				//搜索主播

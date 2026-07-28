@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
-	"sync/atomic"
 	"time"
 
 	comp "github.com/qydysky/part/component2"
@@ -55,18 +54,18 @@ func (t impl) FiliterRoomId(configs any, roomId int) interface {
 }
 
 var (
-	loginStateInit atomic.Bool
-	lastLoginState atomic.Bool
-	loginRunning   fc.SkipFunc
+	// loginStateInit atomic.Bool
+	// lastLoginState atomic.Bool
+	loginRunning fc.SkipFunc
 )
 
 func (t *impl) LoginChange(isLogin bool) error {
-	if loginStateInit.CompareAndSwap(false, true) {
-		lastLoginState.Store(isLogin)
-		return nil
-	} else if lastLoginState.Swap(isLogin) == isLogin {
-		return nil
-	}
+	// if loginStateInit.CompareAndSwap(false, true) {
+	// 	lastLoginState.Store(isLogin)
+	// 	return nil
+	// } else if lastLoginState.Swap(isLogin) == isLogin {
+	// 	return nil
+	// }
 	defer loginRunning.UnSet()
 	if loginRunning.NeedSkip() {
 		return nil
@@ -79,9 +78,18 @@ func (t *impl) LoginChange(isLogin bool) error {
 	if len(loginChange) < 1 {
 		return nil
 	}
-	var cmds []string
+	var (
+		cmds     []string
+		newState string
+	)
+	if isLogin {
+		newState = "true"
+	} else {
+		newState = "false"
+	}
 	for i := 0; i < len(loginChange); i++ {
 		if cmd, ok := loginChange[i].(string); ok && cmd != "" {
+			cmd = strings.ReplaceAll(cmd, `{newState}`, newState)
 			cmds = append(cmds, cmd)
 		}
 	}

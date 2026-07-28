@@ -14,6 +14,7 @@ import (
 	c "github.com/qydysky/bili_danmu/CV"
 	pe "github.com/qydysky/part/errors/v2"
 	file "github.com/qydysky/part/file"
+	fc "github.com/qydysky/part/funcCtrl"
 	pkf "github.com/qydysky/part/keyFunc"
 	reqf "github.com/qydysky/part/reqf"
 	unsafe "github.com/qydysky/part/unsafe"
@@ -37,6 +38,8 @@ type GetFuncV2 struct {
 func NewGetFuncV2() *GetFuncV2 {
 	t := &GetFuncV2{api: pkf.NewKeyFunc()}
 	t.api.Reg(`CookieNoBlock`, t.isValid(`Cookie`), t.getCookieNoBlock)
+	t.api.Reg(`Logout`, func() bool { return true }, t.logout)
+	t.api.Reg(`LoginCheck`, func() bool { return true }, t.loginCheck)
 	t.api.Reg(`Cookie`, t.isValid(`Cookie`), t.getCookie)
 	t.api.Reg(`UpUid`, t.isValid(`UpUid`), t.getRoomBaseInfo, t.getInfoByRoom, t.getRoomPlayInfoLive, t.htmlLive)
 	t.api.Reg(`Live_Start_Time`, t.isValid(`Live_Start_Time`), t.getRoomBaseInfo, t.getInfoByRoom, t.getRoomPlayInfoLive, t.htmlLive)
@@ -114,9 +117,49 @@ func (t *GetFuncV2) isValid(key string) func() bool {
 	}
 }
 
+func (t *GetFuncV2) logout() (missKey string, err error) {
+	biliApi := biliApi.Inter(func(ce error) BiliApiInter {
+		err = ce
+		apilog.E(`biliApi组件未构建`, ce)
+		return nil
+	})
+	if biliApi == nil {
+		return
+	}
+	if err = biliApi.Logout(); err != nil {
+		apilog.E(err)
+	} else if err = biliApi.GetOtherCookies(); err != nil {
+		apilog.E(err)
+	}
+	return
+}
+
+func (t *GetFuncV2) loginCheck() (missKey string, err error) {
+	biliApi := biliApi.Inter(func(ce error) BiliApiInter {
+		err = ce
+		apilog.E(`biliApi组件未构建`, ce)
+		return nil
+	})
+	if biliApi == nil {
+		return
+	}
+	if err, _ := biliApi.GetNav(); err != nil {
+		apilog.E(err)
+	}
+	return
+}
+
+var loginRunning fc.SkipFunc
+
 // 扫码登录
 func (t *GetFuncV2) getCookie() (missKey string, err error) {
 	apilog := apilog.BaseAdd(`获取Cookie`)
+
+	if loginRunning.NeedSkip() {
+		apilog.T(`登陆中Skip`)
+		return
+	}
+	defer loginRunning.UnSet()
 
 	savepath := "./cookie.txt"
 	if tmp, ok := t.common.K_v.LoadV("cookie路径").(string); ok && tmp != "" {
@@ -200,29 +243,43 @@ func (t *GetFuncV2) getCookie() (missKey string, err error) {
 		defer func() {
 			_ = os.RemoveAll(`qr.png`)
 		}()
-		//启动web
-		if scanPath, ok := t.common.K_v.LoadV("扫码登录路径").(string); ok && scanPath != "" {
-			if t.common.K_v.LoadV(`扫码登录自动打开标签页`).(bool) {
-				_ = open.Run(`http://127.0.0.1:` + t.common.Stream_url.Port() + scanPath)
+		scanPath, _ := t.common.K_v.LoadV("扫码登录路径").(string)
+		noShowInCmd, _ := t.common.K_v.LoadV("扫码登录-命令行不显示二维码").(bool)
+		{
+			//启动web
+			if scanPath != "" {
+				if t.common.K_v.LoadV(`扫码登录自动打开标签页`).(bool) {
+					_ = open.Run(`http://127.0.0.1:` + t.common.Stream_url.Port() + scanPath)
+				}
 			}
-			apilog.W(`扫描命令行二维码或打开链接扫码登录：` + t.common.Stream_url.String() + scanPath)
+			info := ``
+			if !noShowInCmd {
+				info += `扫描命令行二维码 `
+			}
+			if scanPath != "" {
+				info += `打开链接扫码 `
+			}
+			info += `登录：`
+			apilog.W(info + t.common.Stream_url.String() + scanPath)
 		}
 
-		c := qrterminal.Config{
-			Level:     qrterminal.L,
-			Writer:    os.Stdout,
-			BlackChar: `  `,
-			WhiteChar: `OO`,
+		if !noShowInCmd {
+			c := qrterminal.Config{
+				Level:     qrterminal.L,
+				Writer:    os.Stdout,
+				BlackChar: `  `,
+				WhiteChar: `OO`,
+			}
+			if white, ok := t.common.K_v.LoadV(`登录二维码-白`).(string); ok && len(white) != 0 {
+				c.WhiteChar = white
+			}
+			if black, ok := t.common.K_v.LoadV(`登录二维码-黑`).(string); ok && len(black) != 0 {
+				c.BlackChar = black
+			}
+			//show qr code in cmd
+			qrterminal.GenerateWithConfig(img_url, c)
 		}
-		if white, ok := t.common.K_v.LoadV(`登录二维码-白`).(string); ok && len(white) != 0 {
-			c.WhiteChar = white
-		}
-		if black, ok := t.common.K_v.LoadV(`登录二维码-黑`).(string); ok && len(black) != 0 {
-			c.BlackChar = black
-		}
-		//show qr code in cmd
-		qrterminal.GenerateWithConfig(img_url, c)
-		apilog.I(`手机扫命令行二维码登录。如不登录，修改配置文件"扫码登录"为false`)
+		apilog.I(`如不登录，修改配置文件"扫码登录"为false`)
 		time.Sleep(time.Second)
 	}
 
@@ -265,6 +322,11 @@ func (t *GetFuncV2) getCookie() (missKey string, err error) {
 
 func (t *GetFuncV2) getCookieNoBlock() (missKey string, err error) {
 	apilog := apilog.BaseAdd(`获取Cookie`)
+
+	if loginRunning.NeedSkip() {
+		apilog.T(`登陆中Skip`)
+		return
+	}
 
 	savepath := "./cookie.txt"
 	if tmp, ok := t.common.K_v.LoadV("cookie路径").(string); ok && tmp != "" {
@@ -329,33 +391,53 @@ func (t *GetFuncV2) getCookieNoBlock() (missKey string, err error) {
 			apilog.E(`qr error`)
 			return
 		}
-		//启动web
-		if scanPath, ok := t.common.K_v.LoadV("扫码登录路径").(string); ok && scanPath != "" {
-			if t.common.K_v.LoadV(`扫码登录自动打开标签页`).(bool) {
-				_ = open.Run(`http://127.0.0.1:` + t.common.Stream_url.Port() + scanPath)
+		scanPath, _ := t.common.K_v.LoadV("扫码登录路径").(string)
+		noShowInCmd, _ := t.common.K_v.LoadV("扫码登录-命令行不显示二维码").(bool)
+		{
+			//启动web
+			if scanPath != "" {
+				if t.common.K_v.LoadV(`扫码登录自动打开标签页`).(bool) {
+					_ = open.Run(`http://127.0.0.1:` + t.common.Stream_url.Port() + scanPath)
+				}
 			}
-			apilog.W(`扫描命令行二维码或打开链接扫码登录：` + t.common.Stream_url.String() + scanPath)
+			info := ``
+			if !noShowInCmd {
+				info += `扫描命令行二维码 `
+			}
+			if scanPath != "" {
+				info += `打开链接扫码 `
+			}
+			info += `登录：`
+			apilog.W(info + t.common.Stream_url.String() + scanPath)
 		}
 
-		c := qrterminal.Config{
-			Level:     qrterminal.L,
-			Writer:    os.Stdout,
-			BlackChar: `  `,
-			WhiteChar: `OO`,
+		if !noShowInCmd {
+			c := qrterminal.Config{
+				Level:     qrterminal.L,
+				Writer:    os.Stdout,
+				BlackChar: `  `,
+				WhiteChar: `OO`,
+			}
+			if white, ok := t.common.K_v.LoadV(`登录二维码-白`).(string); ok && len(white) != 0 {
+				c.WhiteChar = white
+			}
+			if black, ok := t.common.K_v.LoadV(`登录二维码-黑`).(string); ok && len(black) != 0 {
+				c.BlackChar = black
+			}
+			//show qr code in cmd
+			qrterminal.GenerateWithConfig(img_url, c)
 		}
-		if white, ok := t.common.K_v.LoadV(`登录二维码-白`).(string); ok && len(white) != 0 {
-			c.WhiteChar = white
-		}
-		if black, ok := t.common.K_v.LoadV(`登录二维码-黑`).(string); ok && len(black) != 0 {
-			c.BlackChar = black
-		}
-		//show qr code in cmd
-		qrterminal.GenerateWithConfig(img_url, c)
-		apilog.I(`手机扫命令行二维码登录。如不登录，修改配置文件"扫码登录"为false`)
+		apilog.I(`如不登录，修改配置文件"扫码登录"为false`)
+		time.Sleep(time.Second)
+	}
+
+	if err := biliApi.GetOtherCookies(); err != nil {
+		apilog.E(err)
 	}
 
 	{ //循环查看是否通过
 		go func() {
+			defer loginRunning.UnSet()
 			//获取其他Cookie
 			defer func() {
 				if err := biliApi.GetOtherCookies(); err != nil {

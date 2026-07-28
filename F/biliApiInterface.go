@@ -12,16 +12,17 @@ type BiliApiInter interface {
 	SetReqPool(pool *pool.Buf[reqf.Req])
 	SetProxy(proxy string)
 	SetDisableSystemProxy(disableSystemProxy bool)
-	SetLocation(secOfTimeZone int)                   // east positive
-	SetCookies(cookies []*http.Cookie)               // 设置bili cookie，用于从cookie持久化中恢复
-	SetCookiesCallback(func(cookies []*http.Cookie)) // 当有新cookie时，将调用，用于cookie持久化
-	GetCookies() (cookies []*http.Cookie)            // 获取所有cookie，用于其他需要cookie的情况
-	GetCookie(name string) (error, string)           // 获取特定cookie，用于其他需要cookie的情况
-	IsLogin() bool                                   // 通过cookie判断是否登录
+	SetLocation(secOfTimeZone int)                        // east positive
+	SetCookies(cookies []*http.Cookie, overwrite ...bool) // 设置bili cookie，用于从cookie持久化中恢复
+	SetCookiesCallback(func(cookies []*http.Cookie))      // 当有新cookie时，将调用，用于cookie持久化
+	GetCookies() (cookies []*http.Cookie)                 // 获取所有cookie，用于其他需要cookie的情况
+	GetCookie(name string) (error, string)                // 获取特定cookie，用于其他需要cookie的情况
+	IsLogin() bool                                        // 通过cookie判断是否登录
 
 	LikeReport(hitCount, uid, roomid, upUid int) (err error)
 	LoginQrCode() (err error, imgUrl string, QrcodeKey string)
 	LoginQrPoll(QrcodeKey string) (err error, code int)
+	Logout() error
 	GetOtherCookies() (err error)
 	GetLiveBuvid(Roomid int) (err error)
 	GetRoomBaseInfo(Roomid int) (err error, res struct {
