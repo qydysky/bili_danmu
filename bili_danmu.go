@@ -503,7 +503,7 @@ func entryRoom(mainCtx context.Context, danmulog *plog.Log, common *c.Common) (e
 				})
 				time.Sleep(time.Millisecond * time.Duration(heartinterval*1000))
 				if lastReplyT := func() time.Time {
-					defer common.Lock()()
+					defer common.RLock()()
 					return common.ReplyT
 				}(); lastReplyT.IsZero() {
 					danmulog.WF("心跳无响应")
