@@ -988,20 +988,21 @@ func (t replyF) preparing(s []byte) {
 		msglog.E(err)
 		return
 	} else if t.Liveing {
+		t.Liveing = false
 		{ //附加功能 savestream结束
-			t.Liveing = false
-			// 停止此房间录制
-			var roomId, _ = strconv.Atoi(type_item.Roomid)
-			StreamOStop(roomId)
+			// 停止此房间录制, 异步避免长时间持有锁
+			go func(roomId int, _ error) {
+				StreamOStop(roomId)
+				replyFunc.RoomSignal.Run2(func(inter replyFunc.RoomSignalI) {
+					if e := inter.FiliterRoomId(t.K_v.LoadV(`指定房间回调`), roomId).Fin(); e != nil {
+						msglog.W("房间", type_item.Roomid, e)
+					}
+				})
+			}(strconv.Atoi(type_item.Roomid))
 			// 下播总结
 			if _, e := liveOver.Sumup.Run(context.Background(), t.Common); e != nil {
 				msglog.E(e)
 			}
-			go replyFunc.RoomSignal.Run2(func(inter replyFunc.RoomSignalI) {
-				if e := inter.FiliterRoomId(t.K_v.LoadV(`指定房间回调`), roomId).Fin(); e != nil {
-					msglog.W("房间", type_item.Roomid, e)
-				}
-			})
 		}
 		Gui_show("房间", type_item.Roomid, "下播了", "0room")
 		msglog.I("房间", type_item.Roomid, "下播了")
