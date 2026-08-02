@@ -323,8 +323,15 @@ var ActFetchStream = pe.Action[struct {
 	NoLive, QnNoMatched, TyNoMatched, AllFail, ParseFail pe.Error
 }](`ActFetchStream`)
 
-func (t *M4SStream) fetchCheckStream() error {
+func (t *M4SStream) fetchCheckStream(reset bool) error {
 	l := t.logg().BaseAdd("获取流")
+
+	if reset {
+		t.common.Live = t.common.Live[:0]
+		t.stream_code = ``
+		t.stream_type = ``
+	}
+
 	// 获取流地址
 	t.common.Live_want_qn = t.config.want_qn
 	if F.Api.Get(t.common, `Live`); len(t.common.Live) == 0 {
@@ -1169,7 +1176,7 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 				n := t.common.ValidNum()
 				if d, ok := t.common.K_v.LoadV("fmp4获取更多服务器").(bool); ok && d && n <= 1 && len(t.common.Live) <= 5 {
 					t.logg().I("获取更多服务器...")
-					if err := t.fetchCheckStream(); ActFetchStream.AllFail.Is(err) || ActFetchStream.NoLive.Is(err) {
+					if err := t.fetchCheckStream(false); ActFetchStream.AllFail.Is(err) || ActFetchStream.NoLive.Is(err) {
 						e = errors.New("全部流服务器发生故障")
 						break
 					} else if ActFetchStream.QnNoMatched.Is(err) {
@@ -1702,11 +1709,8 @@ func (t *M4SStream) Start() bool {
 				break
 			}
 
-			// 新循环，取消所有流
-			t.common.Live = t.common.Live[:0]
-
 			// 获取 and 检查流地址状态
-			if e := t.fetchCheckStream(); e != nil {
+			if e := t.fetchCheckStream(true); e != nil {
 				t.log.I(pe.ErrorFormat(e, pe.ErrActionInLineFunc))
 				time.Sleep(time.Second * 5)
 				continue
