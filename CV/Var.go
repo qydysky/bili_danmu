@@ -217,6 +217,32 @@ func (t *LiveQn) Disable(reUpTime time.Time) {
 	t.ReUpTime = reUpTime
 }
 
+func (t *LiveQn) GetStreamType() string {
+	var (
+		cuType string
+		cuCode string
+	)
+	if strings.Contains(t.Codec, `hevc`) {
+		cuCode = `hevc`
+	} else if strings.Contains(t.Codec, `avc`) {
+		cuCode = `avc`
+	} else if strings.Contains(t.Codec, `av1`) {
+		cuCode = `av1`
+	} else {
+		cuCode = `unknow`
+	}
+	if u, e := url.Parse(t.Url); e != nil {
+		cuType = `unknow`
+	} else if strings.Contains(u.Path, `m3u8`) {
+		cuType = `mp4`
+	} else if strings.Contains(u.Path, `flv`) {
+		cuType = `flv`
+	} else {
+		cuType = `unknow`
+	}
+	return C.GetStreamType(cuType, cuCode)
+}
+
 func (t *Common) GenReqCookie() string {
 	return reqf.Iter_2_Cookies_String(func(yield func(string, string) bool) {
 		t.Cookie.Range(func(k, v any) bool {
@@ -317,30 +343,6 @@ func (t *Common) DisableLiveAutoByUuid(uuid string) (hadDisable bool) {
 	return
 }
 
-// 存在缺陷
-// func (t *Common) DisableLiveAuto(host string) (hadDisable bool) {
-// 	for i := 0; i < len(t.Live); i++ {
-// 		if liveUrl, e := url.Parse(t.Live[i].Url); e == nil {
-// 			if host == liveUrl.Host {
-// 				return t.Live[i].DisableAuto()
-// 			}
-// 		}
-// 	}
-// 	return
-// }
-
-// 存在缺陷
-// func (t *Common) DisableLive(host string, reUpTime time.Time) {
-// 	for i := 0; i < len(t.Live); i++ {
-// 		if liveUrl, e := url.Parse(t.Live[i].Url); e == nil {
-// 			if host == liveUrl.Host {
-// 				t.Live[i].ReUpTime = reUpTime
-// 				break
-// 			}
-// 		}
-// 	}
-// }
-
 func (t *Common) ValidNum() (num int) {
 	for i := 0; i < len(t.Live); i++ {
 		if time.Now().After(t.Live[i].ReUpTime) {
@@ -358,6 +360,15 @@ func (t *Common) ValidLive() *LiveQn {
 		return t.Live[i]
 	}
 	return nil
+}
+
+func (t *Common) GetStreamType(Format_name, Codec_name string) string {
+	for k, v := range t.AllStreamType {
+		if v.Codec_name == Codec_name && v.Format_name == Format_name {
+			return k
+		}
+	}
+	return "unknow"
 }
 
 func (t *Common) Init() *Common {
