@@ -203,7 +203,7 @@ func (link *m4s_link_item) download(reqPool *pool.Buf[reqf.Req], reqConfig reqf.
 		return e
 	} else {
 		if int64(reqConfig.Timeout) < r.UsedTime.Milliseconds()+3000 {
-			err = ActFmp4Download.CareTO.Raw(fmt.Sprintf("fmp4切片下载超时s(%d)或许应该大于%d", reqConfig.Timeout/1000, (r.UsedTime.Milliseconds()+4000)/1000))
+			err = ActFmp4Download.CareTO.WithInfo(fmt.Sprintf("fmp4切片下载超时s(%d)或许应该大于%d", reqConfig.Timeout/1000, (r.UsedTime.Milliseconds()+4000)/1000))
 		}
 
 		// 调试，随机触发下载失败
@@ -320,7 +320,11 @@ func (t *M4SStream) getFirstBuf() []byte {
 }
 
 var ActFetchStream = pe.Action[struct {
-	NoLive, QnNoMatched, TyNoMatched, AllFail, ParseFail pe.Error
+	NoLive      pe.Error `err:"无可用服务器"`
+	QnNoMatched pe.Error `err:"流质量不符合要求"`
+	TyNoMatched pe.Error `err:"流类型不符合要求"`
+	AllFail     pe.Error `err:"全部流服务器发生故障"`
+	ParseFail   pe.Error
 }](`ActFetchStream`)
 
 func (t *M4SStream) fetchCheckStream(reset bool) error {
@@ -826,7 +830,7 @@ func (t *M4SStream) saveStream() (e error) {
 		e = t.saveStreamFlv()
 	default:
 		e = errors.New("undefind stream type")
-		t.logg().E(e)
+		t.logg().W(e)
 	}
 
 	// 退出当前方法时，结束录制
@@ -1176,14 +1180,8 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 				n := t.common.ValidNum()
 				if d, ok := t.common.K_v.LoadV("fmp4获取更多服务器").(bool); ok && d && n <= 1 && len(t.common.Live) <= 5 {
 					t.logg().I("获取更多服务器...")
-					if err := t.fetchCheckStream(false); ActFetchStream.AllFail.Is(err) || ActFetchStream.NoLive.Is(err) {
-						e = errors.New("全部流服务器发生故障")
-						break
-					} else if ActFetchStream.QnNoMatched.Is(err) {
-						e = errors.New("流质量不符合要求")
-						break
-					} else if ActFetchStream.TyNoMatched.Is(err) {
-						e = errors.New("流类型不符合要求")
+					if err := t.fetchCheckStream(false); err != nil {
+						e = err
 						break
 					}
 				} else if n == 0 {
@@ -1403,9 +1401,8 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 		// 停止录制
 		if pctx.Done(t.Status) {
 			if len(download_seq) != 0 {
-				if time.Now().Unix() > t.stream_last_modified.Unix()+300 {
+				if time.Since(t.stream_last_modified).Seconds() > 300 {
 					e = errors.New("切片下载超时")
-					t.logg().E(e)
 				} else {
 					t.logg().I(`下载最后切片:`, len(download_seq))
 					continue
