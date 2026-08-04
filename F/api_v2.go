@@ -1146,7 +1146,7 @@ func (t *GetFuncV2) configStreamType(sts []streamType, updateAcceptQn, appendLiv
 	}()
 
 	// 期望类型
-	if v, ok := t.common.K_v.LoadV("直播流类型恢复").(bool); ok && !v && len(t.common.Live) > 0 {
+	if v, _ := t.common.K_v.LoadV("直播流类型恢复").(bool); !v && len(t.common.Live) > 0 {
 		if st, ok := t.common.AllStreamType[t.common.Live[0].GetStreamType()]; ok {
 			wantTypes = append(wantTypes, st)
 		}
