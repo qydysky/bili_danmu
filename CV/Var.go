@@ -234,7 +234,7 @@ func (t *LiveQn) GetStreamType() string {
 	if u, e := url.Parse(t.Url); e != nil {
 		cuType = `unknow`
 	} else if strings.Contains(u.Path, `m3u8`) {
-		cuType = `mp4`
+		cuType = `fmp4`
 	} else if strings.Contains(u.Path, `flv`) {
 		cuType = `flv`
 	} else {

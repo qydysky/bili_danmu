@@ -1167,6 +1167,14 @@ func (t *GetFuncV2) configStreamType(sts []streamType, updateAcceptQn, appendLiv
 		t.common.AllStreamType[`fmp4A`],
 	)
 
+	{
+		var typeName []string
+		for i := 0; i < len(wantTypes); i++ {
+			typeName = append(typeName, t.common.GetStreamType(wantTypes[i].Format_name, wantTypes[i].Codec_name))
+		}
+		apilog.TF("开始选择类型 %v", typeName)
+	}
+
 	// t.common.Live = t.common.Live[:0]
 	// for i := 0; i < len(t.common.Live); i++ {
 	// 	if time.Now().Add(time.Minute).Before(t.common.Live[i].ReUpTime) {

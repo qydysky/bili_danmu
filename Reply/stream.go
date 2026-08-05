@@ -57,7 +57,7 @@ type M4SStream struct {
 	log                  *log.Log              //日志
 	config               M4SStream_Config      //配置
 	stream_last_modified time.Time             //流地址更新时间
-	stream_type          string                //流类型
+	stream_type          string                //流类型 mp4 flv
 	stream_code          string                //流编码
 	stream_msg           *msgq.MsgType[[]byte] //流数据消息 tag:data
 	streamPipe           *slice.Buf[byte]      //流数据消息
@@ -792,7 +792,7 @@ func (t *M4SStream) saveStream() (e error) {
 		e = t.saveStreamFlv()
 	default:
 		e = errors.New("undefind stream type")
-		t.logg().W(e)
+		t.logg().E(e)
 	}
 
 	// 退出当前方法时，结束录制
@@ -1678,9 +1678,8 @@ func (t *M4SStream) Start() bool {
 			// testChangeQn()
 
 			// 保存流
-			err := t.saveStream()
-			if err != nil {
-				t.log.E("saveStream:", err)
+			if err := t.saveStream(); err != nil {
+				t.log.W("saveStream:", err)
 			}
 		}
 
