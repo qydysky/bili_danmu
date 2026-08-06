@@ -27,7 +27,6 @@ main/coverage.txt
 coverage.txt
 main/danmu.sqlite3
 plugin/*.go
-bili_danmu.go
 main/emots/*.png
 fastgit.sh
 fastgit2.sh

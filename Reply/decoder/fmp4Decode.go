@@ -295,9 +295,9 @@ func (t *Fmp4Decoder) SearchStreamFrame(buf []byte, keyframe *slice.Buf[byte]) (
 				if maxVT == 0 {
 					maxVT = ts.getT()
 				} else if maxVT == ts.getT() {
-					err = ActFmp4.CheckTFail.Raw("equal VT detect")
+					err = ActFmp4.CheckTFail.WithInfo("equal VT detect")
 				} else if maxVT > ts.getT() {
-					err = ActFmp4.CheckTFail.Raw("lower VT detect")
+					err = ActFmp4.CheckTFail.WithInfo("lower VT detect")
 				} else {
 					maxVT = ts.getT()
 				}
@@ -305,9 +305,9 @@ func (t *Fmp4Decoder) SearchStreamFrame(buf []byte, keyframe *slice.Buf[byte]) (
 				if maxAT == 0 {
 					maxAT = ts.getT()
 				} else if maxAT == ts.getT() {
-					err = ActFmp4.CheckTFail.Raw("equal AT detect")
+					err = ActFmp4.CheckTFail.WithInfo("equal AT detect")
 				} else if maxAT > ts.getT() {
-					err = ActFmp4.CheckTFail.Raw("lower AT detect")
+					err = ActFmp4.CheckTFail.WithInfo("lower AT detect")
 				} else {
 					maxAT = ts.getT()
 				}
@@ -542,9 +542,9 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...dealFMp4) (cu int, err error) {
 				if maxVT == 0 {
 					maxVT = ts.getT()
 				} else if maxVT == ts.getT() {
-					err = ActFmp4.CheckTFail.Raw("equal VT detect")
+					err = ActFmp4.CheckTFail.WithInfo("equal VT detect")
 				} else if maxVT > ts.getT() {
-					err = ActFmp4.CheckTFail.Raw("lower VT detect")
+					err = ActFmp4.CheckTFail.WithInfo("lower VT detect")
 				} else {
 					maxVT = ts.getT()
 				}
@@ -552,9 +552,9 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...dealFMp4) (cu int, err error) {
 				if maxAT == 0 {
 					maxAT = ts.getT()
 				} else if maxAT == ts.getT() {
-					err = ActFmp4.CheckTFail.Raw("equal AT detect")
+					err = ActFmp4.CheckTFail.WithInfo("equal AT detect")
 				} else if maxAT > ts.getT() {
-					err = ActFmp4.CheckTFail.Raw("lower AT detect")
+					err = ActFmp4.CheckTFail.WithInfo("lower AT detect")
 				} else {
 					maxAT = ts.getT()
 				}
@@ -763,7 +763,7 @@ func (t *Fmp4Decoder) CutSeed(reader io.Reader, startT, duration time.Duration, 
 	}
 	for err == nil && !over {
 		if t.buf.Size() == t.buf.Cap() {
-			return ActDecoder.BufOverflow.Raw("尝试调大`fmp4解码缓存MB`")
+			return ActDecoder.BufOverflow.WithInfo("尝试调大`fmp4解码缓存MB`")
 		}
 		n, e := reader.Read(t.buf.GetRawBuf(t.buf.Size(), min(t.buf.Size()+humanize.MByte, t.buf.Cap())))
 		t.buf.AddSize(n)
@@ -868,7 +868,7 @@ func (t *Fmp4Decoder) CutSeedRawV(reader io.Reader, startT, duration time.Durati
 					}
 				}
 			default:
-				return ActDecoder.Decode.Raw("未定义的视频编码(" + videoCode + ")")
+				return ActDecoder.Decode.WithInfo("未定义的视频编码(" + videoCode + ")")
 			}
 		}
 		return
@@ -882,7 +882,7 @@ func (t *Fmp4Decoder) CutSeedRawV(reader io.Reader, startT, duration time.Durati
 	}
 	for err == nil && !over {
 		if t.buf.Size() == t.buf.Cap() {
-			return ActDecoder.BufOverflow.Raw("尝试调大`fmp4解码缓存MB`")
+			return ActDecoder.BufOverflow.WithInfo("尝试调大`fmp4解码缓存MB`")
 		}
 		n, e := t.buf.ReadMoreN(reader, min(humanize.MByte, t.buf.Cap()-t.buf.Size()))
 		// n, e := reader.Read(t.buf.GetRawBuf(t.buf.Size(), min(t.buf.Size()+humanize.MByte, t.buf.Cap())))
@@ -1024,9 +1024,9 @@ func (t *Fmp4Decoder) oneFRawV(buf []byte, w ...dealFMp4) (cu int, err error) {
 				if maxVT == 0 {
 					maxVT = ts.getT()
 				} else if maxVT == ts.getT() {
-					err = ActFmp4.CheckTFail.Raw("equal VT detect")
+					err = ActFmp4.CheckTFail.WithInfo("equal VT detect")
 				} else if maxVT > ts.getT() {
-					err = ActFmp4.CheckTFail.Raw("lower VT detect")
+					err = ActFmp4.CheckTFail.WithInfo("lower VT detect")
 				} else {
 					maxVT = ts.getT()
 				}
@@ -1034,9 +1034,9 @@ func (t *Fmp4Decoder) oneFRawV(buf []byte, w ...dealFMp4) (cu int, err error) {
 				if maxAT == 0 {
 					maxAT = ts.getT()
 				} else if maxAT == ts.getT() {
-					err = ActFmp4.CheckTFail.Raw("equal AT detect")
+					err = ActFmp4.CheckTFail.WithInfo("equal AT detect")
 				} else if maxAT > ts.getT() {
-					err = ActFmp4.CheckTFail.Raw("lower AT detect")
+					err = ActFmp4.CheckTFail.WithInfo("lower AT detect")
 				} else {
 					maxAT = ts.getT()
 				}
@@ -1239,7 +1239,7 @@ func (t *Fmp4Decoder) GenFastSeed(reader io.Reader, save func(seedTo time.Durati
 
 	for c := 0; err == nil; c++ {
 		if t.buf.Size() == t.buf.Cap() {
-			return ActDecoder.BufOverflow.Raw("尝试调大`fmp4解码缓存MB`")
+			return ActDecoder.BufOverflow.WithInfo("尝试调大`fmp4解码缓存MB`")
 		}
 		n, e := reader.Read(t.buf.GetRawBuf(t.buf.Size(), min(t.buf.Size()+humanize.MByte, t.buf.Cap())))
 		t.buf.AddSize(n)
@@ -1370,7 +1370,7 @@ func searchBox(buf []byte, cu *int) (boxName string, i int, e int, err error) {
 	boxName = unsafe.B2S(buf[*cu+fmp4BoxLenSize : *cu+fmp4BoxLenSize+fmp4BoxNameSize])
 	isPureBoxOrNeedSkip, ok := boxs[boxName]
 	if !ok {
-		err = ActFmp4Decode.ErrUnkownBox.Raw(fmt.Sprintf("未知包: hex(%x%x%x%x) %s", boxName[0], boxName[1], boxName[2], boxName[3], boxName))
+		err = ActFmp4Decode.ErrUnkownBox.WithInfo(fmt.Sprintf("未知包: hex(%x%x%x%x) %s", boxName[0], boxName[1], boxName[2], boxName[3], boxName))
 	} else if e > len(buf) {
 		err = io.EOF
 	} else if isPureBoxOrNeedSkip {

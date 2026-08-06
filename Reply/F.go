@@ -305,7 +305,7 @@ func getLiveDir[T PlayItem | *PlayItem](pareDir string, playitems ...T) error {
 					if live.liveDirExp == nil || !live.liveDirExp.MatchString(dir.Name()) {
 						continue
 					} else if live.liveDirExpRes && live.LiveDir != dir.SelfName() {
-						return ActGetLiveDir.MultiMatched.Raw(live.LiveDir + "匹配结果不唯一")
+						return ActGetLiveDir.MultiMatched.WithInfo(live.LiveDir + "匹配结果不唯一")
 					} else {
 						live.liveDirExpRes = true
 						live.LiveDir = dir.SelfName()
@@ -318,7 +318,7 @@ func getLiveDir[T PlayItem | *PlayItem](pareDir string, playitems ...T) error {
 					if live.liveDirExp == nil || !live.liveDirExp.MatchString(dir.Name()) {
 						continue
 					} else if live.liveDirExpRes && live.LiveDir != dir.SelfName() {
-						return ActGetLiveDir.MultiMatched.Raw(live.LiveDir + "匹配结果不唯一")
+						return ActGetLiveDir.MultiMatched.WithInfo(live.LiveDir + "匹配结果不唯一")
 					} else {
 						live.liveDirExpRes = true
 						live.LiveDir = dir.SelfName()
@@ -1610,6 +1610,6 @@ func LiveDirF(liveRootDir, qref string) (e error, hasLivsJson bool, dir string, 
 			}
 		}
 	}
-	e = ActLiveDirF.ErrNotExist.Raw(qref)
+	e = ActLiveDirF.ErrNotExist.WithInfo(qref)
 	return
 }

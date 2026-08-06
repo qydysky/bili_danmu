@@ -1,6 +1,7 @@
 package F
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/url"
@@ -215,6 +216,9 @@ func (t *GetFuncV2) getCookie() (missKey string, err error) {
 		apilog.I(`"扫码登录"为true，开始登录`)
 	}
 
+	// 响应主程序ctrl+c
+	var cancle, interruptChan = c.C.Danmu_Main_mq.Pull_tag_chan(`interrupt`, 2, context.Background())
+	defer cancle()
 	//获取id
 	// id := boot_Get_cookie.Flash()
 	// defer boot_Get_cookie.UnFlash()
@@ -293,7 +297,11 @@ func (t *GetFuncV2) getCookie() (missKey string, err error) {
 		// defer t.common.ReqPool.Put(r)
 		for pollC := 10; pollC > 0; pollC-- {
 			//3s刷新查看是否通过
-			time.Sleep(time.Duration(3) * time.Second)
+			select {
+			case <-time.After(3 * time.Second):
+			case <-interruptChan:
+				return "", errors.New(`中止等待`)
+			}
 
 			//有新实例，退出
 			// if boot_Get_cookie.NeedExit(id) {
@@ -1138,6 +1146,12 @@ func (t *GetFuncV2) configStreamType(sts []streamType, updateAcceptQn, appendLiv
 	}()
 
 	// 期望类型
+	if v, _ := t.common.K_v.LoadV("直播流类型恢复").(bool); !v && len(t.common.Live) > 0 {
+		if st, ok := t.common.AllStreamType[t.common.Live[0].GetStreamType()]; ok {
+			wantTypes = append(wantTypes, st)
+		}
+	}
+	// 配置类型
 	if v, ok := t.common.K_v.LoadV(`直播流类型`).(string); ok {
 		if st, ok := t.common.AllStreamType[v]; ok {
 			wantTypes = append(wantTypes, st)
@@ -1152,6 +1166,14 @@ func (t *GetFuncV2) configStreamType(sts []streamType, updateAcceptQn, appendLiv
 		t.common.AllStreamType[`flvH`],
 		t.common.AllStreamType[`fmp4A`],
 	)
+
+	{
+		var typeName []string
+		for i := 0; i < len(wantTypes); i++ {
+			typeName = append(typeName, t.common.GetStreamType(wantTypes[i].Format_name, wantTypes[i].Codec_name))
+		}
+		apilog.TF("开始选择类型 %v", typeName)
+	}
 
 	// t.common.Live = t.common.Live[:0]
 	// for i := 0; i < len(t.common.Live); i++ {

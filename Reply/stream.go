@@ -57,7 +57,7 @@ type M4SStream struct {
 	log                  *log.Log              //日志
 	config               M4SStream_Config      //配置
 	stream_last_modified time.Time             //流地址更新时间
-	stream_type          string                //流类型
+	stream_type          string                //流类型 mp4 flv
 	stream_code          string                //流编码
 	stream_msg           *msgq.MsgType[[]byte] //流数据消息 tag:data
 	streamPipe           *slice.Buf[byte]      //流数据消息
@@ -203,7 +203,7 @@ func (link *m4s_link_item) download(reqPool *pool.Buf[reqf.Req], reqConfig reqf.
 		return e
 	} else {
 		if int64(reqConfig.Timeout) < r.UsedTime.Milliseconds()+3000 {
-			err = ActFmp4Download.CareTO.Raw(fmt.Sprintf("fmp4切片下载超时s(%d)或许应该大于%d", reqConfig.Timeout/1000, (r.UsedTime.Milliseconds()+4000)/1000))
+			err = ActFmp4Download.CareTO.WithInfo(fmt.Sprintf("fmp4切片下载超时s(%d)或许应该大于%d", reqConfig.Timeout/1000, (r.UsedTime.Milliseconds()+4000)/1000))
 		}
 
 		// 调试，随机触发下载失败
@@ -319,12 +319,27 @@ func (t *M4SStream) getFirstBuf() []byte {
 	return t.first_buf
 }
 
-func (t *M4SStream) fetchCheckStream() bool {
+var ActFetchStream = pe.Action[struct {
+	NoLive      pe.Error `err:"无可用服务器"`
+	QnNoMatched pe.Error `err:"流质量不符合要求"`
+	TyNoMatched pe.Error `err:"流类型不符合要求"`
+	AllFail     pe.Error `err:"全部流服务器发生故障"`
+	ParseFail   pe.Error
+}](`ActFetchStream`)
+
+func (t *M4SStream) fetchCheckStream(reset bool) error {
 	l := t.logg().BaseAdd("获取流")
+
+	if reset {
+		t.common.Live = t.common.Live[:0]
+		t.stream_code = ``
+		t.stream_type = ``
+	}
+
 	// 获取流地址
 	t.common.Live_want_qn = t.config.want_qn
 	if F.Api.Get(t.common, `Live`); len(t.common.Live) == 0 {
-		return false
+		return ActFetchStream.NoLive
 	}
 
 	// 直播流仅清晰度
@@ -332,7 +347,7 @@ func (t *M4SStream) fetchCheckStream() bool {
 		if _, ok := t.common.Qn[t.config.want_qn]; ok {
 			if e := t.common.QnMatched(); errors.Is(e, c.ActQnMatch.NoMatched) {
 				l.W(`仅清晰度true,当前清晰度`, t.common.Qn[t.common.Live_qn])
-				return false
+				return ActFetchStream.QnNoMatched
 			} else if errors.Is(e, c.ActQnMatch.NoLogin) {
 				l.W(`未登录,忽略仅清晰度true,当前清晰度`, t.common.Qn[t.common.Live_qn])
 			}
@@ -343,59 +358,38 @@ func (t *M4SStream) fetchCheckStream() bool {
 	if v, ok := t.common.K_v.LoadV("直播流仅类型").(bool); ok && v {
 		// 期望类型
 		if vt, ok := t.common.K_v.LoadV(`直播流类型`).(string); ok {
-			var (
-				pass   bool
-				cuType string
-				cuCode string
-			)
-
-			if strings.Contains(t.common.Live[0].Codec, `hevc`) {
-				cuCode = `hevc`
-			} else if strings.Contains(t.common.Live[0].Codec, `avc`) {
-				cuCode = `avc`
-			} else if strings.Contains(t.common.Live[0].Codec, `av1`) {
-				cuCode = `av1`
-			} else {
-				cuCode = `unknow`
-			}
-
-			if strings.Contains(t.common.Live[0].Url, `m3u8`) {
-				cuType = `m3u8`
-			} else if strings.Contains(t.common.Live[0].Url, `flv`) {
-				cuType = `flv`
-			} else {
-				cuType = `unknow`
-			}
-
-			switch vt {
-			case `fmp4A`:
-				pass = cuType == `m3u8` && cuCode == `av1`
-			case `fmp4H`:
-				pass = cuType == `m3u8` && cuCode == `hevc`
-			case `fmp4`:
-				pass = cuType == `m3u8` && cuCode == `avc`
-			case `flvH`:
-				pass = cuType == `flv` && cuCode == `hevc`
-			case `flv`:
-				pass = cuType == `flv` && cuCode == `avc`
-			}
-
-			if !pass {
-				l.W(`仅类型true,当前类型`, cuType, cuCode)
-				return false
+			if tmp := t.common.Live[0].GetStreamType(); tmp != vt {
+				l.W(`仅类型true,当前类型`, tmp)
+				return ActFetchStream.TyNoMatched
 			}
 		}
 	}
 
-	// 保存流类型
-	if strings.Contains(t.common.Live[0].Url, `m3u8`) {
-		t.stream_type = "mp4"
-	} else if strings.Contains(t.common.Live[0].Url, `flv`) {
-		t.stream_type = "flv"
+	// 类型不同时，重启录制
+	for _, v := range t.common.Live {
+		// 保存流类型
+		if u, e := url.Parse(v.Url); e != nil {
+			return ActFetchStream.ParseFail
+		} else if t.stream_type == `` {
+			if strings.Contains(u.Path, `m3u8`) {
+				t.stream_type = "mp4"
+			} else if strings.Contains(u.Path, `flv`) {
+				t.stream_type = "flv"
+			}
+		} else {
+			if strings.Contains(u.Path, `m3u8`) && t.stream_type != "mp4" {
+				return ActFetchStream.TyNoMatched
+			} else if strings.Contains(u.Path, `flv`) && t.stream_type != "flv" {
+				return ActFetchStream.TyNoMatched
+			}
+		}
+		// 保存流编码
+		if t.stream_code == `` {
+			t.stream_code = v.Codec
+		} else if t.stream_code != v.Codec {
+			return ActFetchStream.TyNoMatched
+		}
 	}
-
-	// 保存流编码
-	t.stream_code = t.common.Live[0].Codec
 
 	var (
 		noSer  []*regexp.Regexp
@@ -475,7 +469,11 @@ func (t *M4SStream) fetchCheckStream() bool {
 		}
 	}
 
-	return t.common.ValidLive() != nil
+	if t.common.ValidLive() == nil {
+		return ActFetchStream.AllFail
+	} else {
+		return nil
+	}
 }
 
 var (
@@ -1144,8 +1142,8 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 				n := t.common.ValidNum()
 				if d, ok := t.common.K_v.LoadV("fmp4获取更多服务器").(bool); ok && d && n <= 1 && len(t.common.Live) <= 5 {
 					t.logg().I("获取更多服务器...")
-					if !t.fetchCheckStream() {
-						e = errors.New("全部流服务器发生故障")
+					if err := t.fetchCheckStream(false); err != nil {
+						e = err
 						break
 					}
 				} else if n == 0 {
@@ -1365,9 +1363,8 @@ func (t *M4SStream) saveStreamM4s() (e error) {
 		// 停止录制
 		if pctx.Done(t.Status) {
 			if len(download_seq) != 0 {
-				if time.Now().Unix() > t.stream_last_modified.Unix()+300 {
+				if time.Since(t.stream_last_modified).Seconds() > 300 {
 					e = errors.New("切片下载超时")
-					t.logg().E(e)
 				} else {
 					t.logg().I(`下载最后切片:`, len(download_seq))
 					continue
@@ -1671,11 +1668,9 @@ func (t *M4SStream) Start() bool {
 				break
 			}
 
-			// 新循环，取消所有流
-			t.common.Live = t.common.Live[:0]
-
 			// 获取 and 检查流地址状态
-			if !t.fetchCheckStream() {
+			if e := t.fetchCheckStream(true); e != nil {
+				t.log.I(pe.ErrorFormat(e, pe.ErrActionInLineFunc))
 				time.Sleep(time.Second * 5)
 				continue
 			}
@@ -1683,9 +1678,8 @@ func (t *M4SStream) Start() bool {
 			// testChangeQn()
 
 			// 保存流
-			err := t.saveStream()
-			if err != nil {
-				t.log.E("saveStream:", err)
+			if err := t.saveStream(); err != nil {
+				t.log.W("saveStream:", err)
 			}
 		}
 
