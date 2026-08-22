@@ -670,6 +670,8 @@ func (t *Common) Init() *Common {
 						pprof.Profile(w, r)
 					case "trace":
 						pprof.Trace(w, r)
+					case "symbol":
+						pprof.Symbol(w, r)
 					default:
 						pprof.Handler(name).ServeHTTP(w, r)
 					}

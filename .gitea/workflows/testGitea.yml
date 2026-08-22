@@ -20,7 +20,7 @@ jobs:
     runs-on: linux_amd64
     strategy:
       matrix:
-        go: [ '1.26' ]
+        go: [ '1.27' ]
     steps:
     - name: Set up Go${{ matrix.go }}
       uses: actions/setup-go@v5
@@ -62,7 +62,7 @@ jobs:
     runs-on: linux_amd64
     strategy:
       matrix:
-        go: [ '1.26' ]
+        go: [ '1.27' ]
     steps:
     - name: Set up Go${{ matrix.go }}
       uses: actions/setup-go@v5
