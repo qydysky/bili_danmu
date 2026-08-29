@@ -9,7 +9,7 @@ require (
 	github.com/jackc/pgx/v5 v5.9.2
 	github.com/lib/pq v1.10.9
 	github.com/mdp/qrterminal/v3 v3.2.0
-	github.com/qydysky/biliApi v0.0.0-20260726175122-c4a976b61578
+	github.com/qydysky/biliApi v0.0.0-20260829174310-11fc8644074d
 	github.com/qydysky/brotli v0.0.0-20250531004300-54adcf96cc4a
 	github.com/qydysky/part v0.28.20260826184655
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
