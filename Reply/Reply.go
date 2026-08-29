@@ -491,7 +491,7 @@ func (t replyF) user_toast_msg(s []byte) {
 		})
 	}
 	{ //额外 ass 私信
-		t.Danmu_Main_mq.Push_tag(`guard_update`, nil) //使用连续付费的新舰长无法区分，刷新舰长数
+		t.Danmu_Main_mq.Push_tag(`guard_update`, any(nil)) //使用连续付费的新舰长无法区分，刷新舰长数
 		if msg := t.K_v.LoadV(`上舰私信`).(string); uid != 0 && msg != "" {
 			t.Danmu_Main_mq.Push_tag(`pm`, send.Pm_item{
 				Uid: uid,
@@ -1040,7 +1040,7 @@ func (t replyF) live(s []byte) {
 				msglog.W("房间", type_item.Roomid, e)
 			}
 			//有时不返回弹幕 开播刷新弹幕
-			t.Danmu_Main_mq.Push_tag(`flash_room`, nil)
+			t.Danmu_Main_mq.Push_tag(`flash_room`, any(nil))
 			go replyFunc.RoomSignal.Run2(func(inter replyFunc.RoomSignalI) {
 				if e := inter.FiliterRoomId(t.K_v.LoadV(`指定房间回调`), type_item.Roomid).Begin(); e != nil {
 					msglog.W("房间", type_item.Roomid, e)

@@ -196,12 +196,12 @@ func (t *cmd) Cmd() {
 				}
 				//退出当前房间
 				if strings.Contains(inputs, ` exit`) && c.C.Roomid != 0 {
-					c.C.Danmu_Main_mq.Push_tag(`exit_room`, nil)
+					c.C.Danmu_Main_mq.Push_tag(`exit_room`, any(nil))
 					continue
 				}
 				//重载弹幕
 				if strings.Contains(inputs, ` reload`) && c.C.Roomid != 0 {
-					c.C.Danmu_Main_mq.Push_tag(`flash_room`, nil)
+					c.C.Danmu_Main_mq.Push_tag(`flash_room`, any(nil))
 					continue
 				}
 				//当前直播间信息
