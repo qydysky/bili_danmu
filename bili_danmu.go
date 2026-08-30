@@ -55,7 +55,7 @@ func Start(rootCtx context.Context) {
 	}()
 
 	// 用户中断
-	var cancelInterrupt, interrupt_chan = c.C.Danmu_Main_mq.Pull_tag_chan[any](`interrupt`, 2, mainCtx)
+	var cancelInterrupt, interrupt_chan = c.C.Danmu_Main_mq.PullSignChan(`interrupt`, mainCtx)
 	defer cancelInterrupt()
 
 	//ctrl+c退出
@@ -69,10 +69,10 @@ func Start(rootCtx context.Context) {
 			case <-interrupt:
 			case <-rootCtx.Done():
 			}
-			c.C.Danmu_Main_mq.Push_tag(`interrupt`, any(nil))
+			c.C.Danmu_Main_mq.PushSign(`interrupt`)
 			select {
 			case <-interrupt:
-				c.C.Danmu_Main_mq.Push_tag(`interrupt`, any(nil))
+				c.C.Danmu_Main_mq.PushSign(`interrupt`)
 				os.Exit(1)
 			case <-time.After(time.Second * 3):
 			}
@@ -161,9 +161,9 @@ func Start(rootCtx context.Context) {
 			})
 		}
 		// login
-		c.C.Danmu_Main_mq.Pull_tag_only(`login`, func(_ any) (disable bool) {
+		c.C.Danmu_Main_mq.PullSignOnly(`login`, func(_ struct{}) (disable bool) {
 			F.Api.Get(c.C, `CookieNoBlock`)
-			return false
+			return
 		})
 
 		var (
@@ -202,7 +202,7 @@ func Start(rootCtx context.Context) {
 
 			//如果连接中断，则等待
 			if !F.IsConnected() {
-				cancel1, ch := c.C.Danmu_Main_mq.Pull_tag_chan[any](`exit_room`, 1, rootCtx)
+				cancel1, ch := c.C.Danmu_Main_mq.PullSignChan(`exit_room`, rootCtx)
 				select {
 				case <-ch:
 					reply.StreamOStop(c.C.Roomid)
@@ -251,8 +251,8 @@ func Start(rootCtx context.Context) {
 					}
 					return
 				})
-				fc.Tag(`gtk_close`, func(_ any) (disable bool) { // gtk close
-					c.C.Danmu_Main_mq.PushLock_tag(`interrupt`, any(nil))
+				fc.Tag(`gtk_close`, func(_ struct{}) (disable bool) { // gtk close
+					c.C.Danmu_Main_mq.PushLockSign(`interrupt`)
 					return
 				})
 				fc.Tag(`pm`, func(tmp send.Pm_item) (disable bool) {
@@ -261,7 +261,7 @@ func Start(rootCtx context.Context) {
 					}
 					return
 				})
-				fc.Tag(`new day`, func(_ any) (disable bool) {
+				fc.Tag(`new day`, func(_ struct{}) (disable bool) {
 					go func() {
 						//每日兑换硬币
 						F.Api.Get(c.C, `Silver2Coin`)
@@ -317,7 +317,7 @@ func entryRoom(mainCtx context.Context, danmulog *plog.Log, common *c.Common) (e
 			for !pctx.Done(loopCtx) {
 				//如果连接中断，则等待
 				if !F.IsConnected() {
-					cancel1, ch := c.C.Danmu_Main_mq.Pull_tag_chan[any](`exit_room`, 1, mainCtx)
+					cancel1, ch := c.C.Danmu_Main_mq.PullSignChan(`exit_room`, mainCtx)
 					select {
 					case <-ch:
 						reply.StreamOStop(c.C.Roomid)
@@ -472,7 +472,7 @@ func entryRoom(mainCtx context.Context, danmulog *plog.Log, common *c.Common) (e
 						return nil
 					})
 				}()
-				return false
+				return
 			},
 			`close`: func(_ *ws.WsMsg) (disable bool) {
 				return true
@@ -503,7 +503,7 @@ func entryRoom(mainCtx context.Context, danmulog *plog.Log, common *c.Common) (e
 					danmulog.WF("心跳无响应")
 				} else if to := lastReplyT.Sub(heartBeatSendT).Seconds(); replayTO > 0 && to > replayTO {
 					danmulog.WF("心跳响应超时(%v)，重新进入房间", to)
-					common.Danmu_Main_mq.Push_tag(`flash_room`, any(nil))
+					common.Danmu_Main_mq.PushSign(`flash_room`)
 				}
 			}
 		}()
@@ -544,7 +544,7 @@ func entryRoom(mainCtx context.Context, danmulog *plog.Log, common *c.Common) (e
 			// var login = common.Login
 			// 处理各种指令
 			var cancelfunc = common.Danmu_Main_mq.Pull_tags(func(fc *mq.Register) {
-				fc.Tag(`interrupt`, func(_ any) (disable bool) {
+				fc.TagSign(`interrupt`, func(_ struct{}) (disable bool) {
 					reply.StreamOStopAll() //停止录制
 					exitSign = true
 					danmulog.I("停止，等待服务器断开连接")
@@ -552,7 +552,7 @@ func entryRoom(mainCtx context.Context, danmulog *plog.Log, common *c.Common) (e
 					ws_c.Close()
 					return true
 				})
-				fc.Tag(`exit_room`, func(_ any) (disable bool) {
+				fc.TagSign(`exit_room`, func(_ struct{}) (disable bool) {
 					reply.StreamOStop(common.Roomid)
 					c.C.Roomid = 0
 					danmulog.I("退出房间", common.Roomid)
@@ -569,16 +569,16 @@ func entryRoom(mainCtx context.Context, danmulog *plog.Log, common *c.Common) (e
 					ws_c.Close()
 					return true
 				})
-				fc.Tag(`flash_room`, func(_ any) bool { //重进房时退出当前房间
+				fc.TagSign(`flash_room`, func(_ struct{}) bool { //重进房时退出当前房间
 					F.Api.Get(common, `WSURL`)
 					ws_c.Close()
 					return true
 				})
-				fc.Tag(`guard_update`, func(_ any) bool { //舰长更新
+				fc.TagSign(`guard_update`, func(_ struct{}) (disable bool) { //舰长更新
 					go F.Api.Get(common, `GuardNum`)
-					return false
+					return
 				})
-				fc.Tag(`changeLogin`, func(_ any) bool { //登陆状态更新
+				fc.TagSign(`changeLogin`, func(_ struct{}) bool { //登陆状态更新
 					// F.Api.Get(common, `Cookie`)
 					cuState, roomid := common.IsLogin(), common.Roomid
 					go replyFunc.RoomSignal.Run2(func(inter replyFunc.RoomSignalI) {
@@ -594,18 +594,18 @@ func entryRoom(mainCtx context.Context, danmulog *plog.Log, common *c.Common) (e
 					// }
 					return true
 				})
-				fc.Tag(`every100s`, func(_ any) bool { //每100s
+				fc.TagSign(`every100s`, func(_ struct{}) (disable bool) { //每100s
 					if v, ok := common.K_v.LoadV("保持牌子亮着-开播时也发送").(bool); !common.Liveing || (ok && v) {
 						replyFunc.KeepMedalLight.Run2(func(kmli replyFunc.KeepMedalLightI) {
 							kmli.Do()
 						})
 					}
 					if v, ok := common.K_v.LoadV("下播后不记录人气观看人数").(bool); ok && v && !common.Liveing {
-						return false
+						return
 					}
 					// 在线人数
 					go F.Api.Get(common, `getOnlineGoldRank`)
-					return false
+					return
 				})
 			})
 
@@ -615,7 +615,7 @@ func entryRoom(mainCtx context.Context, danmulog *plog.Log, common *c.Common) (e
 				cancel, c := wsmsg.Pull_tag_chan(`exit`, 1, ctx)
 				select {
 				case <-ctx.Done():
-					common.Danmu_Main_mq.Push_tag(`flash_room`, any(nil))
+					common.Danmu_Main_mq.PushSign(`flash_room`)
 				case <-c:
 				}
 				cancel()

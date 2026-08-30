@@ -1166,12 +1166,12 @@ func init() {
 			case `now`:
 				if IsOn("直播Web可以发送弹幕") {
 					StreamWs.Interface().Pull_tag(map[string]func(websocket.Uinterface) (disable bool){
-						`recv`: func(u websocket.Uinterface) bool {
+						`recv`: func(u websocket.Uinterface) (disable bool) {
 							if bytes.Equal(u.Data[:2], []byte("%S")) && len(u.Data) > 0 {
 								flog.BaseAdd(`流服务弹幕`).I(unsafe.B2S(u.Data[2:]))
 								Msg_senddanmu(unsafe.B2S(u.Data[2:]))
 							}
-							return false
+							return
 						},
 						`close`: func(i websocket.Uinterface) bool { return true },
 					})

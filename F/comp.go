@@ -29,7 +29,7 @@ var biliApi = cmp.GetV3("github.com/qydysky/bili_danmu/F.biliApi", cmp.PreFuncCu
 			c.C.Cookie.ClearAll()
 			psync.StoreAll(c.C.Cookie, reqf.Cookies_List_2_Map(cookies)) //cookie 存入全局变量
 			if cuState := c.C.IsLogin(); loginState.Swap(cuState) != cuState {
-				go c.C.Danmu_Main_mq.Push_tag(`changeLogin`, any(nil))
+				go c.C.Danmu_Main_mq.PushSign(`changeLogin`)
 			}
 		})
 		return ba

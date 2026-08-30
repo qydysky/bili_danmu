@@ -429,10 +429,10 @@ func (t *Common) Init() *Common {
 		var old = time.Now().Hour()
 		for {
 			if now := time.Now().Hour(); now == 0 && old != now {
-				t.Danmu_Main_mq.Push_tag(`new day`, any(nil))
+				t.Danmu_Main_mq.PushSign(`new day`)
 				old = now
 			}
-			t.Danmu_Main_mq.Push_tag(`every100s`, any(nil))
+			t.Danmu_Main_mq.PushSign(`every100s`)
 			time.Sleep(time.Second * time.Duration(100))
 		}
 	}()
@@ -647,7 +647,7 @@ func (t *Common) Init() *Common {
 					if q := file.Open("qr.png"); q.IsExist() {
 						_ = q.CopyToIoWriter(w, pio.CopyConfig{})
 					} else if !t.IsLogin() {
-						t.Danmu_Main_mq.Push_tag(`login`, any(nil))
+						t.Danmu_Main_mq.PushSign(`login`)
 						_ = q.CopyToIoWriter(w, pio.CopyConfig{})
 					} else {
 						w.WriteHeader(http.StatusNotFound)
@@ -690,7 +690,7 @@ func (t *Common) Init() *Common {
 					w.Header().Set("Allow", "GET")
 					return
 				}
-				t.Danmu_Main_mq.Push_tag(`interrupt`, any(nil))
+				t.Danmu_Main_mq.PushSign(`interrupt`)
 			})
 		}
 
