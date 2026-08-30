@@ -217,7 +217,7 @@ func (t *GetFuncV2) getCookie() (missKey string, err error) {
 	}
 
 	// 响应主程序ctrl+c
-	var cancle, interruptChan = c.C.Danmu_Main_mq.Pull_tag_chan(`interrupt`, 2, context.Background())
+	var cancle, interruptChan = c.C.Danmu_Main_mq.PullSignChan(`interrupt`, context.Background())
 	defer cancle()
 	//获取id
 	// id := boot_Get_cookie.Flash()

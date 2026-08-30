@@ -1470,7 +1470,7 @@ func (t *M4SStream) Start() bool {
 		if t.Callback_stopRec != nil {
 			defer t.msg.Pull_tag_only(`stopRec`, func(ms *M4SStream) (disable bool) {
 				ms.Callback_stopRec(ms)
-				return false
+				return
 			})()
 		}
 		cancel := t.msg.Pull_tag_only("stop", func(ms *M4SStream) (disable bool) {
@@ -1881,7 +1881,7 @@ func (t *M4SStream) PusherToHttp(plog *log.Log, conn net.Conn, w http.ResponseWr
 	}
 
 	var cancelRec = t.stream_msg.Pull_tag(map[string]func([]byte) bool{
-		`data`: func(b []byte) bool {
+		`data`: func(b []byte) (disable bool) {
 			select {
 			case <-ctx.Done():
 				return true
@@ -1907,7 +1907,7 @@ func (t *M4SStream) PusherToHttp(plog *log.Log, conn net.Conn, w http.ResponseWr
 					return true
 				}
 			}
-			return false
+			return
 		},
 		`close`: func(_ []byte) bool {
 			return true

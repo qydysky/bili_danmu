@@ -26,7 +26,7 @@ import (
 	plog "github.com/qydysky/part/log/v2"
 	sys "github.com/qydysky/part/sys"
 
-	msgq "github.com/qydysky/part/msgq"
+	mq "github.com/qydysky/part/msgq"
 	ws "github.com/qydysky/part/websocket"
 )
 
@@ -55,7 +55,7 @@ func Start(rootCtx context.Context) {
 	}()
 
 	// 用户中断
-	var cancelInterrupt, interrupt_chan = c.C.Danmu_Main_mq.Pull_tag_chan(`interrupt`, 2, mainCtx)
+	var cancelInterrupt, interrupt_chan = c.C.Danmu_Main_mq.PullSignChan(`interrupt`, mainCtx)
 	defer cancelInterrupt()
 
 	//ctrl+c退出
@@ -69,10 +69,10 @@ func Start(rootCtx context.Context) {
 			case <-interrupt:
 			case <-rootCtx.Done():
 			}
-			c.C.Danmu_Main_mq.Push_tag(`interrupt`, nil)
+			c.C.Danmu_Main_mq.PushSign(`interrupt`)
 			select {
 			case <-interrupt:
-				c.C.Danmu_Main_mq.Push_tag(`interrupt`, nil)
+				c.C.Danmu_Main_mq.PushSign(`interrupt`)
 				os.Exit(1)
 			case <-time.After(time.Second * 3):
 			}
@@ -161,9 +161,9 @@ func Start(rootCtx context.Context) {
 			})
 		}
 		// login
-		c.C.Danmu_Main_mq.Pull_tag_only(`login`, func(_ any) (disable bool) {
+		c.C.Danmu_Main_mq.PullSignOnly(`login`, func(_ struct{}) (disable bool) {
 			F.Api.Get(c.C, `CookieNoBlock`)
-			return false
+			return
 		})
 
 		var (
@@ -182,10 +182,10 @@ func Start(rootCtx context.Context) {
 				if Cmd.Err() == nil {
 					fmt.Println("回车查看指令")
 				}
-				cancel1, ch := c.C.Danmu_Main_mq.Pull_tag_chan(`change_room`, 1, ctx)
+				cancel1, ch := c.C.Danmu_Main_mq.Pull_tag_chan[int](`change_room`, 1, ctx)
 				select {
 				case roomid := <-ch:
-					c.C.Roomid = roomid.(int)
+					c.C.Roomid = roomid
 				case <-interrupt_chan:
 					exitSign = true
 				}
@@ -202,7 +202,7 @@ func Start(rootCtx context.Context) {
 
 			//如果连接中断，则等待
 			if !F.IsConnected() {
-				cancel1, ch := c.C.Danmu_Main_mq.Pull_tag_chan(`exit_room`, 1, rootCtx)
+				cancel1, ch := c.C.Danmu_Main_mq.PullSignChan(`exit_room`, rootCtx)
 				select {
 				case <-ch:
 					reply.StreamOStop(c.C.Roomid)
@@ -226,48 +226,42 @@ func Start(rootCtx context.Context) {
 			F.Api.Get(c.C, `Roomid`)
 
 			//使用带tag的消息队列在功能间传递消息
-			var cancelfunc = c.C.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
-				`c.Rev_add`: func(data any) bool { //收入
-					if rev, ok := data.(struct {
-						Roomid int
-						Rev    float64
-					}); ok {
-						common, ok := c.Commons.LoadV(c.C.Roomid).(*c.Common)
-						if ok {
-							common.Rev += rev.Rev
-							// 显示营收
-							replyFunc.Rev.Run2(func(ri replyFunc.RevI) {
-								ri.ShowRev(common.Roomid, common.Rev)
-							})
-						}
+			var cancelfunc = c.C.Danmu_Main_mq.Pull_tags(func(fc *mq.Register) {
+				fc.Tag(`c.Rev_add`, func(rev struct { //收入
+					Roomid int
+					Rev    float64
+				}) (disable bool) {
+					common, ok := c.Commons.LoadV(c.C.Roomid).(*c.Common)
+					if ok {
+						common.Rev += rev.Rev
+						// 显示营收
+						replyFunc.Rev.Run2(func(ri replyFunc.RevI) {
+							ri.ShowRev(common.Roomid, common.Rev)
+						})
 					}
-					return false
-				},
-				`c.Renqi`: func(data any) bool { //人气更新
-					if tmp, ok := data.(struct {
-						Roomid int
-						Renqi  int
-					}); ok {
-						common, ok := c.Commons.LoadV(c.C.Roomid).(*c.Common)
-						if ok {
-							common.Renqi = tmp.Renqi
-						}
+					return
+				})
+				fc.Tag(`c.Renqi`, func(tmp struct { // 人气
+					Roomid int
+					Renqi  int
+				}) (disable bool) {
+					common, ok := c.Commons.LoadV(c.C.Roomid).(*c.Common)
+					if ok {
+						common.Renqi = tmp.Renqi
 					}
-					return false
-				},
-				`gtk_close`: func(_ any) bool { //gtk关闭信号
-					c.C.Danmu_Main_mq.PushLock_tag(`interrupt`, nil)
-					return false
-				},
-				`pm`: func(data any) bool { //私信
-					if tmp, ok := data.(send.Pm_item); ok {
-						if e := send.Send_pm(tmp.Uid, tmp.Msg); e != nil {
-							danmulog.BaseAdd(`私信`).E(e)
-						}
+					return
+				})
+				fc.Tag(`gtk_close`, func(_ struct{}) (disable bool) { // gtk close
+					c.C.Danmu_Main_mq.PushLockSign(`interrupt`)
+					return
+				})
+				fc.Tag(`pm`, func(tmp send.Pm_item) (disable bool) {
+					if e := send.Send_pm(tmp.Uid, tmp.Msg); e != nil {
+						danmulog.BaseAdd(`私信`).E(e)
 					}
-					return false
-				},
-				`new day`: func(_ any) bool { //日期更换
+					return
+				})
+				fc.Tag(`new day`, func(_ struct{}) (disable bool) {
 					go func() {
 						//每日兑换硬币
 						F.Api.Get(c.C, `Silver2Coin`)
@@ -276,8 +270,8 @@ func Start(rootCtx context.Context) {
 						//附加功能 自动发送即将过期礼物
 						reply.AutoSend_silver_gift(c.C)
 					}()
-					return false
-				},
+					return
+				})
 			})
 
 			common, _ := c.CommonsLoadOrInit.LoadOrInitPThen(c.C.Roomid)(func(actual *c.Common, loaded bool) (*c.Common, bool) {
@@ -323,7 +317,7 @@ func entryRoom(mainCtx context.Context, danmulog *plog.Log, common *c.Common) (e
 			for !pctx.Done(loopCtx) {
 				//如果连接中断，则等待
 				if !F.IsConnected() {
-					cancel1, ch := c.C.Danmu_Main_mq.Pull_tag_chan(`exit_room`, 1, mainCtx)
+					cancel1, ch := c.C.Danmu_Main_mq.PullSignChan(`exit_room`, mainCtx)
 					select {
 					case <-ch:
 						reply.StreamOStop(c.C.Roomid)
@@ -478,7 +472,7 @@ func entryRoom(mainCtx context.Context, danmulog *plog.Log, common *c.Common) (e
 						return nil
 					})
 				}()
-				return false
+				return
 			},
 			`close`: func(_ *ws.WsMsg) (disable bool) {
 				return true
@@ -509,7 +503,7 @@ func entryRoom(mainCtx context.Context, danmulog *plog.Log, common *c.Common) (e
 					danmulog.WF("心跳无响应")
 				} else if to := lastReplyT.Sub(heartBeatSendT).Seconds(); replayTO > 0 && to > replayTO {
 					danmulog.WF("心跳响应超时(%v)，重新进入房间", to)
-					common.Danmu_Main_mq.Push_tag(`flash_room`, nil)
+					common.Danmu_Main_mq.PushSign(`flash_room`)
 				}
 			}
 		}()
@@ -549,42 +543,42 @@ func entryRoom(mainCtx context.Context, danmulog *plog.Log, common *c.Common) (e
 		{
 			// var login = common.Login
 			// 处理各种指令
-			var cancelfunc = common.Danmu_Main_mq.Pull_tag(msgq.FuncMap{
-				`interrupt`: func(_ any) (disable bool) {
+			var cancelfunc = common.Danmu_Main_mq.Pull_tags(func(fc *mq.Register) {
+				fc.TagSign(`interrupt`, func(_ struct{}) (disable bool) {
 					reply.StreamOStopAll() //停止录制
 					exitSign = true
 					danmulog.I("停止，等待服务器断开连接")
 					loopCancel()
 					ws_c.Close()
 					return true
-				},
-				`exit_room`: func(_ any) bool { //退出当前房间
+				})
+				fc.TagSign(`exit_room`, func(_ struct{}) (disable bool) {
 					reply.StreamOStop(common.Roomid)
 					c.C.Roomid = 0
 					danmulog.I("退出房间", common.Roomid)
 					loopCancel()
 					ws_c.Close()
 					return true
-				},
-				`change_room`: func(roomid any) bool { //换房时退出当前房间
-					c.C.Roomid = roomid.(int)
+				})
+				fc.Tag(`change_room`, func(roomid int) (disable bool) {
+					c.C.Roomid = roomid
 					if v, ok := common.K_v.LoadV(`仅保存当前直播间流`).(bool); ok && v {
 						reply.StreamOStopOther(c.C.Roomid) //停止其他房间录制
 					}
 					loopCancel()
 					ws_c.Close()
 					return true
-				},
-				`flash_room`: func(_ any) bool { //重进房时退出当前房间
+				})
+				fc.TagSign(`flash_room`, func(_ struct{}) bool { //重进房时退出当前房间
 					F.Api.Get(common, `WSURL`)
 					ws_c.Close()
 					return true
-				},
-				`guard_update`: func(_ any) bool { //舰长更新
+				})
+				fc.TagSign(`guard_update`, func(_ struct{}) (disable bool) { //舰长更新
 					go F.Api.Get(common, `GuardNum`)
-					return false
-				},
-				`changeLogin`: func(_ any) bool { //登陆状态更新
+					return
+				})
+				fc.TagSign(`changeLogin`, func(_ struct{}) bool { //登陆状态更新
 					// F.Api.Get(common, `Cookie`)
 					cuState, roomid := common.IsLogin(), common.Roomid
 					go replyFunc.RoomSignal.Run2(func(inter replyFunc.RoomSignalI) {
@@ -599,20 +593,20 @@ func entryRoom(mainCtx context.Context, danmulog *plog.Log, common *c.Common) (e
 					ws_c.Close()
 					// }
 					return true
-				},
-				`every100s`: func(_ any) bool { //每100s
+				})
+				fc.TagSign(`every100s`, func(_ struct{}) (disable bool) { //每100s
 					if v, ok := common.K_v.LoadV("保持牌子亮着-开播时也发送").(bool); !common.Liveing || (ok && v) {
 						replyFunc.KeepMedalLight.Run2(func(kmli replyFunc.KeepMedalLightI) {
 							kmli.Do()
 						})
 					}
 					if v, ok := common.K_v.LoadV("下播后不记录人气观看人数").(bool); ok && v && !common.Liveing {
-						return false
+						return
 					}
 					// 在线人数
 					go F.Api.Get(common, `getOnlineGoldRank`)
-					return false
-				},
+					return
+				})
 			})
 
 			danmulog.T("启动完成", common.Uname, `(`, common.Roomid, `)`)
@@ -621,7 +615,7 @@ func entryRoom(mainCtx context.Context, danmulog *plog.Log, common *c.Common) (e
 				cancel, c := wsmsg.Pull_tag_chan(`exit`, 1, ctx)
 				select {
 				case <-ctx.Done():
-					common.Danmu_Main_mq.Push_tag(`flash_room`, nil)
+					common.Danmu_Main_mq.PushSign(`flash_room`)
 				case <-c:
 				}
 				cancel()
