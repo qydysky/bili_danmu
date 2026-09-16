@@ -64,7 +64,7 @@ func (t *Pd) Child() *PdDecoder {
 }
 func (t *Pd) Slice() iter.Seq[*PdDecoder] {
 	t.dealed = true
-	return t.p.slics()
+	return t.p.slice()
 }
 
 type PdDecoder struct {
@@ -305,7 +305,7 @@ func (t *PdDecoder) child() *PdDecoder {
 	return p
 }
 
-func (t *PdDecoder) slics() iter.Seq[*PdDecoder] {
+func (t *PdDecoder) slice() iter.Seq[*PdDecoder] {
 	if t.pos >= len(t.buf) {
 		return nil
 	}
