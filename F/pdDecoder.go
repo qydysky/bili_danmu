@@ -2,10 +2,12 @@ package F
 
 import (
 	"encoding/base64"
+	"encoding/binary"
 	"errors"
 	"iter"
 	"math"
 	"reflect"
+
 	unsafe "github.com/qydysky/part/unsafe"
 )
 
@@ -37,13 +39,32 @@ func (t *Pd) Uint32() (r uint32) {
 	t.dealed = true
 	return t.p.uint32()
 }
+func (t *Pd) Float32() (r float32) {
+	t.dealed = true
+	return t.p.float32()
+}
+func (t *Pd) Float64() (r float64) {
+	t.dealed = true
+	return t.p.float64()
+}
+func (t *Pd) Double() (r float64) {
+	return t.Float64()
+}
 func (t *Pd) Bytes() (r []byte) {
 	t.dealed = true
 	return t.p.bytes()
 }
+func (t *Pd) String() (r string) {
+	t.dealed = true
+	return unsafe.B2S(t.p.bytes())
+}
 func (t *Pd) Child() *PdDecoder {
 	t.dealed = true
 	return t.p.child()
+}
+func (t *Pd) Slice() iter.Seq[*PdDecoder] {
+	t.dealed = true
+	return t.p.slics()
 }
 
 type PdDecoder struct {
@@ -146,7 +167,14 @@ func (t *PdDecoder) UnmarshalRaw(v any) error {
 				case "[]uint8":
 					rv.SetBytes(pd.Bytes())
 				default:
-					return ErrValUnSupportFieldType
+					for pd := range pd.Slice() {
+						rvv := reflect.New(rv.Type().Elem()).Elem()
+						if e := pd.UnmarshalRaw(rvv.Addr()); e != nil {
+							return e
+						}
+						rvv = reflect.Append(rv, rvv)
+						rv.Set(rvv)
+					}
 				}
 			case reflect.String:
 				rv.SetString(unsafe.B2S(pd.Bytes()))
@@ -157,7 +185,9 @@ func (t *PdDecoder) UnmarshalRaw(v any) error {
 			case reflect.Bool:
 				rv.SetBool(pd.Bool())
 			case reflect.Float64:
-				rv.SetFloat(math.Float64frombits(uint64(pd.Uint32())))
+				rv.SetFloat(pd.Float64())
+			case reflect.Float32:
+				rv.SetFloat(float64(pd.Float32()))
 			default:
 				return ErrValUnSupportFieldType
 			}
@@ -243,6 +273,18 @@ func (t *PdDecoder) uint32() (r uint32) {
 	return
 }
 
+func (t *PdDecoder) float32() (r float32) {
+	r = math.Float32frombits(binary.LittleEndian.Uint32(t.buf[t.pos : t.pos+4]))
+	t.pos += 4
+	return
+}
+
+func (t *PdDecoder) float64() (r float64) {
+	r = math.Float64frombits(binary.LittleEndian.Uint64(t.buf[t.pos : t.pos+8]))
+	t.pos += 8
+	return
+}
+
 func (t *PdDecoder) bytes() (r []byte) {
 	if t.pos >= len(t.buf) {
 		return
@@ -261,4 +303,15 @@ func (t *PdDecoder) child() *PdDecoder {
 	p := NewPdDecoder().LoadBuf(t.buf[t.pos : t.pos+int(size)])
 	t.pos += int(size)
 	return p
+}
+
+func (t *PdDecoder) slics() iter.Seq[*PdDecoder] {
+	if t.pos >= len(t.buf) {
+		return nil
+	}
+	return func(yield func(*PdDecoder) bool) {
+		if !yield(t.child()) {
+			return
+		}
+	}
 }

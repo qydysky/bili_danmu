@@ -964,6 +964,83 @@ func (t replyF) send_gift(s []byte) {
 	// Gui_show("====\n")
 }
 
+func (t replyF) send_gift_v2(s []byte) {
+	msglog := msglog.BaseAdd("礼").LShow(false)
+
+	var j ws_msg.SEND_GIFT_V2
+	if e := json.Unmarshal(s, &j); e != nil {
+		msglog.E(e)
+		return
+	} else if e := F.UnmarshalBase64S(j.Data.Pb, &j.Data.PbS); e != nil {
+		msglog.E(e)
+		return
+	}
+
+	for _, v := range j.Data.PbS.GiftList {
+		//忽略银瓜子
+		if v.CoinType == "silver" {
+			return
+		}
+
+		num := v.Num
+		uname := j.Data.PbS.Uname
+		action := v.Action
+		giftName := v.GiftName
+		total_coin := v.TotalCoin
+
+		var sh = []any{uname, action, num, "个", giftName}
+		var sh_log []any
+		var allprice float64
+
+		if total_coin != 0 {
+			allprice = float64(total_coin) / 1000
+			sh_log = append(sh, fmt.Sprintf("￥%.1f", allprice)) //不在界面显示价格
+			t.Danmu_Main_mq.Push_tag(`c.Rev_add`, struct {
+				Roomid int
+				Rev    float64
+			}{
+				Roomid: t.Roomid,
+				Rev:    allprice,
+			})
+		}
+
+		if len(sh) == 0 {
+			return
+		}
+
+		//小于设定
+		{
+			var tmp = 20.0
+			if v, ok := t.K_v.Load(`弹幕_礼物金额显示阈值`); ok {
+				tmp = v.(float64)
+			}
+			if allprice < tmp {
+				msglog.T(sh_log...)
+				return
+			}
+			msglog.I(sh_log...)
+		}
+
+		{ //语言tts
+			replyFunc.TTS.Run2(func(t replyFunc.TTSI) {
+				t.Deal("0gift", map[string]string{
+					`{num}`:      strconv.Itoa(num),
+					`{uname}`:    uname,
+					`{action}`:   action,
+					`{giftName}`: giftName,
+				})
+			})
+		}
+		fmt.Println("\n====")
+		fmt.Println(sh...)
+		fmt.Print("====\n\n")
+
+		// Gui_show("\n====")
+		Gui_show(Itos(sh), "0gift")
+		// Gui_show("====\n")
+	}
+}
+
 // Msg-房间封禁信息
 func (t replyF) room_block_msg(s []byte) {
 
