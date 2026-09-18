@@ -52,7 +52,6 @@
   "ROOM_KICKOUT": true,
   "ROOM_LOCK": true,
   "ROOM_LIMIT": true,
-  "SEND_GIFT_V2": true,
   "SEND_TOP": true,
   "GIFT_PANEL_PLAN": true,
   "BOX_ACTIVITY_START": true,

@@ -124,6 +124,7 @@ var Msg_map = map[string]func(replyF, []byte){
 	"ROOM_SILENT_OFF":                      replyF.roomsilent,         //禁言结束
 	"ROOM_SILENT_ON":                       replyF.roomsilent,         //禁言开始
 	"SEND_GIFT":                            replyF.send_gift,          //礼物
+	"SEND_GIFT_V2":                         replyF.send_gift_v2,       //礼物v2
 	"ROOM_BLOCK_MSG":                       replyF.room_block_msg,     //封禁
 	"PREPARING":                            replyF.preparing,          //下播
 	"LIVE":                                 replyF.live,               //开播
