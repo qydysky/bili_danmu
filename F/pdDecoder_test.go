@@ -1,6 +1,7 @@
 package F
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
@@ -104,22 +105,6 @@ func Test_SendGiftV2(t *testing.T) {
 		t.Fatal(e)
 	} else {
 		decoder := NewPdDecoder()
-		for pd := range decoder.LoadBase64S(s.Data.Pb).Range() {
-			switch pd.Type() {
-			case 8:
-			case 10:
-				// for v := range pd.Slice() {
-				// 	for pd := range v.Range() {
-				// 		t.Log("", pd.Type())
-				// 	}
-				// }
-			case 11:
-			case 13:
-			case 15:
-			default:
-				t.Log(pd.Type())
-			}
-		}
 		if e := decoder.UnmarshalBase64S(s.Data.Pb, &s.Data.PbS); e != nil {
 			t.Fatal(e)
 		} else if s, e := json.MarshalIndent(s.Data.PbS, " ", " "); e == nil {
@@ -136,7 +121,6 @@ func TestS(t *testing.T) {
 		uname   string
 	)
 	for pd := range NewPdDecoder().LoadBase64S(base64S).Range() {
-		fmt.Println(pd.Type())
 		switch pd.Type() {
 		case 22:
 			for pd1 := range pd.Child().Range() {
@@ -180,6 +164,41 @@ func TestU(t *testing.T) {
 		t.Fatal(e)
 	}
 	if ss.MsgType != 1 || ss.Uname != "别死在火星上" {
+		t.Fatal()
+	}
+}
+
+func TestU1(t *testing.T) {
+	base64S := `CgR0ZXN0CgNhYnMSBI4DBAEYAiD9//////////8BKAQyAv8P`
+
+	type S struct {
+		A []string `pd:"1"`
+		B []uint32 `pd:"2"`
+		C uint32   `pd:"3"`
+		D int32    `pd:"4"`
+		E uint32   `pd:"5"`
+		F []byte   `pd:"6"`
+	}
+
+	ss := S{}
+
+	if e := NewPdDecoder().UnmarshalBase64S(base64S, &ss); e != nil {
+		t.Fatal(e)
+	}
+
+	if ss.A[0] != "test" || ss.A[1] != "abs" {
+		t.Fatal()
+	}
+	if ss.B[0] != 398 || ss.B[1] != 4 || ss.B[2] != 1 {
+		t.Fatal()
+	}
+	if ss.C != 2 {
+		t.Fatal()
+	}
+	if ss.D != -3 {
+		t.Fatal()
+	}
+	if !bytes.Equal(ss.F, []byte{255, 15}) {
 		t.Fatal()
 	}
 }
