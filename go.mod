@@ -11,7 +11,7 @@ require (
 	github.com/mdp/qrterminal/v3 v3.2.0
 	github.com/qydysky/biliApi v0.0.0-20260829174310-11fc8644074d
 	github.com/qydysky/brotli v0.0.0-20250531004300-54adcf96cc4a
-	github.com/qydysky/part v0.28.20260830123555
+	github.com/qydysky/part v0.28.20260918133308
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966
 	golang.org/x/exp v0.0.0-20251113190631-e25ba8c21ef6
