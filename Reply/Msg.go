@@ -17,11 +17,10 @@ var msglog = c.C.Log.Base(`Msg`)
 
 // Msg类型数据处理方法map
 var Msg_map = map[string]func(replyF, []byte){
-	`PANEL_INTERACTIVE_NOTIFY_CHANGE`:      replyF.panelInteractiveNotifyChange, //预言
-	`FLOW_REWARD_CARD`:                     nil,                                 //直播间推荐
-	`WIDGET_GIFT_STAR_PROCESS_V2`:          nil,                                 // 礼物
-	`COLLABORATION_LIVE_INFO`:              nil,                                 // 联合直播提示
-	`CNY_HOT_RANK`:                         nil,                                 // 房间助手
+	`FLOW_REWARD_CARD`:                     nil, //直播间推荐
+	`WIDGET_GIFT_STAR_PROCESS_V2`:          nil, // 礼物
+	`COLLABORATION_LIVE_INFO`:              nil, // 联合直播提示
+	`CNY_HOT_RANK`:                         nil, // 房间助手
 	`ROOM_CONTENT_AUDIT_REPORT`:            nil,
 	`FULL_SCREEN_MASK_OPEN`:                replyF.fullScreenMaskOpen, // 房间全屏提示
 	`OTHER_SLICE_LOADING_RESULT`:           nil,                       // 切片
