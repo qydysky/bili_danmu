@@ -789,7 +789,7 @@ func (t replyF) like_info_v3_click(s []byte) {
 
 	Gui_show(type_item.Data.Uname+type_item.Data.LikeText, "0room")
 
-	msglog.BaseAdd("房").I(s)
+	msglog.BaseAdd("房").I(type_item.Data.Uname + type_item.Data.LikeText)
 }
 
 // Msg-小提示窗口

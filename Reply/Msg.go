@@ -180,7 +180,7 @@ func init() {
 		if !errors.Is(err, io.EOF) {
 			return
 		}
-		var buf map[string]interface{}
+		var buf map[string]any
 		_ = json.Unmarshal(bb, &buf)
 		for k, v := range buf {
 			if able, ok := v.(bool); ok { //设置为true时，使用默认显示
