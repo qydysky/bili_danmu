@@ -173,6 +173,30 @@ func (t replyF) defaultMsg(s []byte) {
 	msglog.BaseAdd("Unknow").W(unsafe.B2S(s))
 }
 
+// Msg-预言
+func (t replyF) panelInteractiveNotifyChange(s []byte) {
+	msglog := msglog.BaseAdd("房")
+	var j ws_msg.PANEL_INTERACTIVE_NOTIFY_CHANGE
+	if e := json.Unmarshal(s, &j); e != nil {
+		msglog.E(e)
+		return
+	}
+
+	var tmp = fmt.Sprintf("%s 时长 %d s", j.Data.Text, j.Data.EndTime)
+
+	if j.Data.EndTime == 0 {
+		tmp = `主播停止预言`
+	}
+
+	Gui_show(tmp, "0room")
+	replyFunc.TTS.Run2(func(t replyFunc.TTSI) {
+		t.Deal("0room", map[string]string{
+			`{msg}`: tmp,
+		})
+	})
+	msglog.I(tmp)
+}
+
 // 排名变动
 func (t replyF) rank_changed(s []byte) {
 	msglog := msglog.BaseAdd("房")
@@ -789,7 +813,7 @@ func (t replyF) like_info_v3_click(s []byte) {
 
 	Gui_show(type_item.Data.Uname+type_item.Data.LikeText, "0room")
 
-	msglog.BaseAdd("房").I(s)
+	msglog.BaseAdd("房").I(type_item.Data.Uname + type_item.Data.LikeText)
 }
 
 // Msg-小提示窗口
