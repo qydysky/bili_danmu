@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"math"
+	"syscall"
 	"time"
 
 	"github.com/dustin/go-humanize"
@@ -34,6 +35,7 @@ var (
 		ErrStreamId         pe.Error
 		ErrTagSize          pe.Error
 		ErrSignLost         pe.Error
+		NormalOk            pe.Error
 	}](`ActFlvDecode`)
 
 	ActFlv = pe.Action[struct {
@@ -259,6 +261,9 @@ func (t *FlvDecoder) oneF(buf []byte, w ...dealFFlv) (dropOffset int, err error)
 			if keyframeOp >= 0 && len(w) > 0 {
 				dropOffset = bufOffset
 				err = w[0](timeStamp, keyframeOp, buf[keyframeOp:bufOffset])
+				if errors.Is(err, syscall.EPIPE) {
+					err = nil
+				}
 				return
 			}
 			keyframeOp = bufOffset
