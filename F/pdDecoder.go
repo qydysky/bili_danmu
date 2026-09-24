@@ -33,6 +33,10 @@ func (t *Pd) Bool() bool {
 	t.dealed = true
 	return t.p.uint32() != 0
 }
+func (t *Pd) Uint64() (r uint64) {
+	t.dealed = true
+	return t.p.uint64()
+}
 func (t *Pd) Uint32() (r uint32) {
 	t.dealed = true
 	return t.p.uint32()
@@ -98,6 +102,11 @@ func (t *PdDecoder) LoadBuf(buf []byte) *PdDecoder {
 }
 
 func UnmarshalBase64S(data string, v any) error {
+	// defer func() {
+	// 	if panicM := recover(); panicM != nil {
+	// 		panic(panicM)
+	// 	}
+	// }()
 	if data == "" {
 		return nil
 	}
@@ -188,9 +197,9 @@ func setFunc(pd *Pd, rv reflect.Value) error {
 	case reflect.String:
 		rv.SetString(unsafe.B2S(pd.Bytes()))
 	case reflect.Int, reflect.Int32, reflect.Int64:
-		rv.SetInt(int64(pd.Uint32()))
+		rv.SetInt(int64(pd.Uint64()))
 	case reflect.Uint, reflect.Uint32, reflect.Uint64:
-		rv.SetUint(uint64(pd.Uint32()))
+		rv.SetUint(pd.Uint64())
 	case reflect.Bool:
 		rv.SetBool(pd.Bool())
 	case reflect.Float64:
@@ -261,6 +270,23 @@ func (t *PdDecoder) uint32() (r uint32) {
 		}
 		if t.buf[t.pos]&0b10000000 == 0x00 {
 			s = 32
+		}
+		t.pos += 1
+	}
+	return
+}
+
+func (t *PdDecoder) uint64() (r uint64) {
+	for s := 0; s < 64 && t.pos < len(t.buf); {
+		if s < 60 {
+			r |= uint64(t.buf[t.pos]&0b01111111) << s
+			s += 7
+		} else {
+			r |= uint64(t.buf[t.pos]&0b1111) << s
+			s += 4
+		}
+		if t.buf[t.pos]&0b10000000 == 0x00 {
+			s = 64
 		}
 		t.pos += 1
 	}

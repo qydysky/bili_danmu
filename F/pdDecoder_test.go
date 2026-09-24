@@ -12,6 +12,32 @@ import (
 	unsafe "github.com/qydysky/part/unsafe"
 )
 
+func Test_SendGiftV2_2(t *testing.T) {
+	raw := []byte(`CIiRgObOraYGEgdRSU54TGl1GkpodHRwczovL2kyLmhkc2xiLmNvbS9iZnMvZmFjZS85ZjY1MDJmYjNjYTM0M2Y0NzAzOWQwZTRiM2VmMjIwNWFlNWFmZDMyLmpwZ0InCKuCp+IBKAEyCeeyieS4neWbojiOrfICQMCBgwZIwIGDBlDAgYMGUqgFCMSJAhIJ5Lq65rCU56WoGAEgAShkMGQ4ZEIEZ29sZEoTNDgyMDU1OTc0MDI4NTM5MjM4NFDKwtTVBlgBYkViYXRjaDpnaWZ0OmNvbWJvX2lkOjM1NDYzOTI4MjgwNTM2NDA6MjA3MTY5MTE3MzozMzk4ODoxNzkwMjU1NDM0Ljc5NThoCnBkeAWFAQAAgD+IAQGSAQbmipXlloLAAYTxmgHqARoKEuaXoOeVj+Wlkee6pui1m+S6ixCl/+3bB4oC9wEIpf/t2wcS7gEKEuaXoOeVj+Wlkee6pui1m+S6ixJKaHR0cHM6Ly9pMS5oZHNsYi5jb20vYmZzL2ZhY2UvNDRjYTJiZTRkMTdhOGM3Y2Q1NDVmZGM5MzM4MDg4MTExNTFlMjBlYi5qcGcyYAoS5peg55WP5aWR57qm6LWb5LqLEkpodHRwczovL2kxLmhkc2xiLmNvbS9iZnMvZmFjZS80NGNhMmJlNGQxN2E4YzdjZDU0NWZkYzkzMzgwODgxMTE1MWUyMGViLmpwZzoqCAMSJOaXoOeVj+Wlkee6pui1m+S6i+ebtOaSreWumOaWuei0puWPtyABkgIAmgLlAQpKaHR0cHM6Ly9zMS5oZHNsYi5jb20vYmZzL2xpdmUvN2Q3ODY0NmVlNGVjYzkwMGNlYmJlNDZjYjk2M2Y0MjEwNzk1NDhmMC5wbmcSS2h0dHBzOi8vaTAuaGRzbGIuY29tL2Jmcy9saXZlLzRkNTIxNWRhNDdkMjViM2RiNzg3ZDJiYTU0NDkwMTZlZTE0MmRjODAud2VicCpKaHR0cHM6Ly9pMC5oZHNsYi5jb20vYmZzL2xpdmUvNzBkOTJhZjBhODM3YWU2NmUyNWYyMzQ5M2E1NmUxNjkwZjc2ZWJiYS5naWaqAgBYAWoCCAN6qQIIiJGA5s6tpgYSuQEKB1FJTnhMaXUSSmh0dHBzOi8vaTIuaGRzbGIuY29tL2Jmcy9mYWNlLzlmNjUwMmZiM2NhMzQzZjQ3MDM5ZDBlNGIzZWYyMjA1YWU1YWZkMzIuanBnMlUKB1FJTnhMaXUSSmh0dHBzOi8vaTIuaGRzbGIuY29tL2Jmcy9mYWNlLzlmNjUwMmZiM2NhMzQzZjQ3MDM5ZDBlNGIzZWYyMjA1YWU1YWZkMzIuanBnOgsg////////////ARpiCgnnsonkuJ3lm6IQARjAgYMGIMCBgwYowIGDBjCOrfICUKuCp+IBYAF6CSM5MTkyOThDQ4IBCSM5MTkyOThDQ4oBCSM5MTkyOThDQ5IBByNGRkZGRkaaAQkjOTE5Mjk4RTY=`)
+
+	var s = struct {
+		Uid      int    `pd:"1"`
+		Uname    string `pd:"2"`
+		GiftList []struct {
+			GiftName        string `pd:"2"`
+			Num             int64  `pd:"3"`
+			TotalCoin       int64  `pd:"7"`
+			CoinType        string `pd:"8"`
+			ReceiveUserInfo struct {
+				Uname string `pd:"1"`
+				Uid   int64  `pd:"2"`
+			} `pd:"29"`
+		} `pd:"10"`
+	}{}
+
+	decoder := NewPdDecoder()
+	if e := decoder.UnmarshalBase64S(string(raw), &s); e != nil {
+		t.Fatal(e)
+	} else if s, e := json.MarshalIndent(s, " ", " "); e == nil {
+		t.Log(string(s))
+	}
+}
+
 func Test_SendGiftV2(t *testing.T) {
 	raw := []byte(`{"cmd":"SEND_GIFT_V2","danmu":{"area":1},"data":{"dmscore":140,"pb":"CM3igxASEuS7u+WlueiKseW8gOiKseiQvRpKaHR0cHM6Ly9pMi5oZHNsYi5jb20vYmZzL2ZhY2UvYWYzZDBhNzhiZWQ4M2QwMDEyMWFlOWY5YmFhNzk2NjA1MzdjZTVjYS5qcGdCAFKRBgi88wESD+eyieS4neWboueBr+eJjBgBIAEoZDBkOGRCBGdvbGRKEzQ4MTc2NTk3MDQxMjM3ODk4MjRQ7Kiq1QZYAWI4YmF0Y2g6Z2lmdDpjb21ib19pZDozMzYxNjIwNTo2NzE0MTozMTE2NDoxNzg5NTY0MDEyLjI5MjloCnBkeAWFAQAAgD+IAQGSAQbmipXlloLAAby1y6ED6gEYChLlgrLmhaLnmoTlsI/ogonljIUQxYwEigLNAgjFjAQSxgIKEuWCsuaFoueahOWwj+iCieWMhRJKaHR0cHM6Ly9pMS5oZHNsYi5jb20vYmZzL2dhcmIvNGQ5MzhkZjY5OWNiOWUzNjdjODcyNWYwOWFmYTI0OWU5NmE1YzUwNS5wbmcyYAoS5YKy5oWi55qE5bCP6IKJ5YyFEkpodHRwczovL2kxLmhkc2xiLmNvbS9iZnMvZ2FyYi80ZDkzOGRmNjk5Y2I5ZTM2N2M4NzI1ZjA5YWZhMjQ5ZTk2YTVjNTA1LnBuZzqBAQgBEhpiaWxpYmlsaSDnn6XlkI3muLjmiI9VUOS4uxph5Luj6KGo5L2c44CK44CQ55Sf5YyW5Y2x5py6N0RMQ+OAkeS8iuajruW/hemhu+atu+iuqeS8iuajruWTreedgOaJvuWmiOWmiOeahOmAmuWFs+aUu+eVpeinhumikeOAi5ICBwiM4NcCEAGaAuUBCkpodHRwczovL3MxLmhkc2xiLmNvbS9iZnMvbGl2ZS9lMDUxZGZkNDU1NzY3OGY4ZWRjYWM0OTkzZWQwMGEwOTM1Y2JkOWNjLnBuZxJLaHR0cHM6Ly9pMC5oZHNsYi5jb20vYmZzL2xpdmUvMzJiNzk5MTIwZTE2MTRmYTYyNzViNmQxNWRhN2E1MmIyMWRkMDE5ZC53ZWJwKkpodHRwczovL2kwLmhkc2xiLmNvbS9iZnMvbGl2ZS84MTZmOGI3YWEyMTMyODg4ZmNlOTI4Y2RmYjE3YjljZjIxY2MwODIzLmdpZqoCFAgBEgcI9bfwAhACEgcIjODXAhABWAFqAggIerYCCM3igxASzwEKEuS7u+WlueiKseW8gOiKseiQvRJKaHR0cHM6Ly9pMi5oZHNsYi5jb20vYmZzL2ZhY2UvYWYzZDBhNzhiZWQ4M2QwMDEyMWFlOWY5YmFhNzk2NjA1MzdjZTVjYS5qcGcyYAoS5Lu75aW56Iqx5byA6Iqx6JC9EkpodHRwczovL2kyLmhkc2xiLmNvbS9iZnMvZmFjZS9hZjNkMGE3OGJlZDgzZDAwMTIxYWU5ZjliYWE3OTY2MDUzN2NlNWNhLmpwZzoLIP///////////wEaXQoEQ+mFsRAdGMCBgwYgwIGDBijAgYMGMNWQtAFQxYwEYL2fAXoJIzkxOTI5OENDggEJIzkxOTI5OENDigEJIzkxOTI5OENDkgEHI0ZGRkZGRpoBCSM5MTkyOThFNg=="}}`)
 
