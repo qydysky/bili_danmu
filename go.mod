@@ -9,9 +9,9 @@ require (
 	github.com/jackc/pgx/v5 v5.9.2
 	github.com/lib/pq v1.10.9
 	github.com/mdp/qrterminal/v3 v3.2.0
-	github.com/qydysky/biliApi v0.0.0-20260829174310-11fc8644074d
+	github.com/qydysky/biliApi v0.0.0-20261021122503-061c33cf0c6e
 	github.com/qydysky/brotli v0.0.0-20250531004300-54adcf96cc4a
-	github.com/qydysky/part v0.28.20260918133308
+	github.com/qydysky/part v0.28.20261021122203
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966
 	golang.org/x/exp v0.0.0-20251113190631-e25ba8c21ef6
@@ -25,7 +25,7 @@ require (
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
-	github.com/klauspost/compress v1.18.2 // indirect
+	github.com/klauspost/compress v1.18.7 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/miekg/dns v1.1.68 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
