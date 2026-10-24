@@ -1004,6 +1004,7 @@ func init() {
 
 				if checkKey {
 					if e := expirer.LoopCheck(r.Context(), r.URL.Query().Get("key"), func(key string, e error) {
+						flog.T(`直播流回放检查失败`, key, e)
 						_ = c.C.SerF.GetConn(r).Close()
 					}); e != nil {
 						w.WriteHeader(http.StatusTooManyRequests)
