@@ -1137,7 +1137,7 @@ func init() {
 						}(time.Now())
 						sst, sdur, skipHeader := parseDuration(playlist.Lives[0].StartT)+st, parseDuration(playlist.Lives[len(playlist.Lives)-1].Dur), false
 						nodur := dur == 0
-						for i := 0; i < len(playlist.Lives) && (nodur || dur > 0); i++ {
+						for i := 0; !pctx.Done(r.Context()) && i < len(playlist.Lives) && (nodur || dur > 0); i++ {
 							if fi, e := videoInfo.Get.Run(context.Background(), dir+"/"+playlist.Lives[i].LiveDir); e != nil {
 								flog.W(`读取节目单元数据失败`, dir+"/"+playlist.Lives[i].LiveDir, e)
 								w.WriteHeader(http.StatusServiceUnavailable)
