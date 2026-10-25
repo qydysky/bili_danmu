@@ -952,7 +952,7 @@ func init() {
 							flog.E(e)
 							return e
 						} else {
-							if v, ok := c.C.K_v.LoadV(`直播流回放速率-按码率配置`).(bool); ok && v {
+							if v, ok := c.C.K_v.LoadV(`直播流回放速率-按码率配置`).(bool); !ok || v {
 								// 按码率重新配置响应速率
 								if sampleMs, sampleSize, e := gf(time.Minute, true); e != nil && !errors.Is(e, io.EOF) {
 									flog.E(e)
