@@ -959,7 +959,7 @@ func init() {
 									return e
 								} else {
 									bytePreSec := uint64(sampleSize / (sampleMs / 1000))
-									flog.TF("按码率配置回放速率 %v/s", humanize.Bytes(bytePreSec))
+									flog.TF("按码率配置回放速率 %v %v/s", videoDir, humanize.Bytes(bytePreSec))
 									res = pio.WriterWithConfig(w, pio.CopyConfig{BytePerSec: bytePreSec, SkipByte: *offsetByte})
 								}
 							}
