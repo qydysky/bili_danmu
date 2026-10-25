@@ -823,7 +823,7 @@ func (t *Fmp4Decoder) CutSeed(reader io.Reader, startT, duration time.Duration, 
 }
 
 // w 将写入解包装后的视频流
-func (t *Fmp4Decoder) CutSeedRawV(reader io.Reader, startT, duration time.Duration, w io.Writer, seeker io.Seeker, getIndex func(seedTo time.Duration) (int64, error), skipHeader, writeLastBuf bool) (err error) {
+func (t *Fmp4Decoder) CutSeedRawV(reader io.Reader, startT, duration time.Duration, w io.Writer, seeker io.Seeker, getIndex func(seedTo time.Duration, eofReturnLast ...bool) (ms int64, index int64, e error), skipHeader bool) (err error) {
 	init := false
 	seek := false
 	over := false
@@ -915,7 +915,7 @@ func (t *Fmp4Decoder) CutSeedRawV(reader io.Reader, startT, duration time.Durati
 			}
 		} else {
 			if !seek && seeker != nil && getIndex != nil {
-				if index, e := getIndex(startT); e != nil {
+				if _, index, e := getIndex(startT); e != nil {
 					return pe.Join(ActFmp4.GetIndexFmp4, e)
 				} else {
 					if _, e := seeker.Seek(index, io.SeekStart); e != nil {
