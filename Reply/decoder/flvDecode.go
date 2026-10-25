@@ -275,15 +275,15 @@ func (t *FlvDecoder) oneF(buf []byte, w ...dealFFlv) (dropOffset int, err error)
 }
 
 // Deprecated:效率低于GenFastSeed+CutSeed
-func (t *FlvDecoder) Cut(reader io.Reader, startT, duration time.Duration, w io.Writer, skipHeader, writeLastBuf bool) (err error) {
-	return t.CutSeed(reader, startT, duration, w, nil, nil, skipHeader, writeLastBuf)
+func (t *FlvDecoder) Cut(reader io.Reader, startT, duration time.Duration, w io.Writer, skipHeader bool) (err error) {
+	return t.CutSeed(reader, startT, duration, w, nil, nil, skipHeader)
 }
 
-func (t *FlvDecoder) CutSeed(reader io.Reader, startT, duration time.Duration, w io.Writer, seeker io.Seeker, getIndex func(seedTo time.Duration) (int64, error), skipHeader, writeLastBuf bool) (err error) {
+func (t *FlvDecoder) CutSeed(reader io.Reader, startT, duration time.Duration, w io.Writer, seeker io.Seeker, getIndex func(seedTo time.Duration, eofReturnLast ...bool) (ms int64, index int64, e error), skipHeader bool) (err error) {
 	buf := make([]byte, humanize.KByte*500)
 	buff := slice.New[byte]()
 	over := false
-	seek := false
+	seek := startT == 0
 	init := false
 	startTM := startT.Milliseconds()
 	durationM := duration.Milliseconds()
@@ -327,7 +327,7 @@ func (t *FlvDecoder) CutSeed(reader io.Reader, startT, duration time.Duration, w
 			init = true
 		} else {
 			if !seek && seeker != nil && getIndex != nil {
-				if index, e := getIndex(startT); e != nil {
+				if _, index, e := getIndex(startT); e != nil {
 					return pe.Join(ActFlv.GetIndexFlv, e)
 				} else {
 					if _, e := seeker.Seek(index, io.SeekStart); e != nil {

@@ -2,6 +2,7 @@ package videofastseed
 
 import (
 	"errors"
+	"io"
 	"os"
 	"time"
 
@@ -10,7 +11,7 @@ import (
 )
 
 type TargetInterface interface {
-	InitGet(fastSeedFilePath string) (getIndex func(seedTo time.Duration) (int64, error), e error)
+	InitGet(fastSeedFilePath string) (getIndex func(seedTo time.Duration, eofReturnLast ...bool) (ms int64, index int64, e error), e error)
 	InitSav(fastSeedFilePath string) (savIndex func(seedTo time.Duration, cuIndex int64) error, delete func(), e error)
 }
 
@@ -32,7 +33,7 @@ type videoFastSeed struct {
 	filepath string
 }
 
-func (v videoFastSeed) InitGet(fastSeedFilePath string) (getIndex func(seedTo time.Duration) (int64, error), e error) {
+func (v videoFastSeed) InitGet(fastSeedFilePath string) (getIndex func(seedTo time.Duration, eofReturnLast ...bool) (ms int64, index int64, e error), e error) {
 	t := videoFastSeed{}
 	t.filepath = fastSeedFilePath
 	f := file.Open(t.filepath)
@@ -79,26 +80,31 @@ func (t *videoFastSeed) SavIndex(ms time.Duration, cuIndex int64) error {
 	return nil
 }
 
-func (t *videoFastSeed) GetIndex(seedTo time.Duration) (int64, error) {
+func (t *videoFastSeed) GetIndex(seedTo time.Duration, eofReturnLast ...bool) (ms int64, index int64, e error) {
 	if !t.initGet {
-		return -1, ErrNoInitGet
+		return 0, -1, ErrNoInitGet
 	}
 	f := file.Open(t.filepath)
 	defer f.CloseErr()
 	if !f.IsExist() {
-		return -1, os.ErrNotExist
+		return 0, -1, os.ErrNotExist
 	}
 	buf := make([]byte, 16)
+	lastMs := int64(0)
 	lastIndex := int64(0)
 	for {
 		if n, e := f.Read(buf); e != nil {
-			return -1, e
+			if errors.Is(e, io.EOF) && len(eofReturnLast) > 0 && eofReturnLast[0] {
+				return lastMs, lastIndex, nil
+			}
+			return 0, -1, e
 		} else if n != 16 {
-			return -1, ErrFormat
+			return 0, -1, ErrFormat
 		} else {
 			if ms := Btoi(buf[:8], 0, 8); ms > seedTo.Milliseconds() {
-				return lastIndex, nil
+				return lastMs, lastIndex, nil
 			} else {
+				lastMs = Btoi(buf[:8], 0, 8)
 				lastIndex = Btoi(buf[8:], 0, 8)
 			}
 		}

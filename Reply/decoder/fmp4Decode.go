@@ -726,13 +726,13 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...dealFMp4) (cu int, err error) {
 }
 
 // Deprecated:效率低于GenFastSeed+CutSeed
-func (t *Fmp4Decoder) Cut(reader io.Reader, startT, duration time.Duration, w io.Writer, skipHeader, writeLastBuf bool) (err error) {
-	return t.CutSeed(reader, startT, duration, w, nil, nil, skipHeader, writeLastBuf)
+func (t *Fmp4Decoder) Cut(reader io.Reader, startT, duration time.Duration, w io.Writer, skipHeader bool) (err error) {
+	return t.CutSeed(reader, startT, duration, w, nil, nil, skipHeader)
 }
 
-func (t *Fmp4Decoder) CutSeed(reader io.Reader, startT, duration time.Duration, w io.Writer, seeker io.Seeker, getIndex func(seedTo time.Duration) (int64, error), skipHeader, writeLastBuf bool) (err error) {
+func (t *Fmp4Decoder) CutSeed(reader io.Reader, startT, duration time.Duration, w io.Writer, seeker io.Seeker, getIndex func(seedTo time.Duration, eofReturnLast ...bool) (ms int64, index int64, e error), skipHeader bool) (err error) {
 	init := false
-	seek := false
+	seek := startT == 0
 	over := false
 	startTM := startT.Seconds()
 	durationM := duration.Seconds()
@@ -795,7 +795,7 @@ func (t *Fmp4Decoder) CutSeed(reader io.Reader, startT, duration time.Duration, 
 			}
 		} else {
 			if !seek && seeker != nil && getIndex != nil {
-				if index, e := getIndex(startT); e != nil {
+				if _, index, e := getIndex(startT); e != nil {
 					return pe.Join(ActFmp4.GetIndexFmp4, e)
 				} else {
 					if _, e := seeker.Seek(index, io.SeekStart); e != nil {
