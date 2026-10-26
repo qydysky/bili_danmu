@@ -933,7 +933,7 @@ func init() {
 							speed = s
 						}
 					}
-					if v, ok := c.C.K_v.LoadV(`直播流回放速率-按码率配置`).(bool); ok && !v {
+					if v, ok := c.C.K_v.LoadV(`直播流回放速率-原速响应`).(bool); ok && !v {
 						res = pio.WriterWithConfig(w, pio.CopyConfig{BytePerSec: speed, SkipByte: *offsetByte})
 						streaming = false
 					}
