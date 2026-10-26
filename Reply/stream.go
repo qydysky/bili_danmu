@@ -10,7 +10,6 @@ import (
 	"io"
 	"iter"
 	"math"
-	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -1797,7 +1796,7 @@ func (t *M4SStream) PusherToFile(contextC context.Context, filepath string, push
 // 流服务推送方法
 //
 // 在客户端存在某种代理时，将有可能无法监测到客户端关闭，这有可能导致goroutine泄漏
-func (t *M4SStream) PusherToHttp(plog *log.Log, conn net.Conn, w http.ResponseWriter, r *http.Request, pusherEvent PusherEvent) error {
+func (t *M4SStream) PusherToHttp(plog *log.Log, w http.ResponseWriter, r *http.Request, pusherEvent PusherEvent) error {
 
 	var cmdI io.WriteCloser
 	if modeq := r.URL.Query().Get("modeq"); modeq != "" {
@@ -1891,7 +1890,6 @@ func (t *M4SStream) PusherToHttp(plog *log.Log, conn net.Conn, w http.ResponseWr
 				return true
 			}
 
-			_ = conn.SetWriteDeadline(time.Now().Add(time.Second * 30))
 			if cmdI != nil {
 				if _, err := cmdI.Write(b); err != nil {
 					plog.W(F.GetRemoteIp(r), err)

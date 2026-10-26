@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -850,7 +849,8 @@ func init() {
 		})
 
 		var (
-			readFile = func(w http.ResponseWriter, liveRoot, videoDirFromRoot string, startT, duration time.Duration, skipHeader, writeLastBuf bool, offsetByte *int) {
+			// skipHeader: 在读取多个文件时， 后面的文件不能写入视频头
+			readFile = func(w http.ResponseWriter, liveRoot, videoDirFromRoot string, startT, duration time.Duration, skipHeader bool, offsetByte *int) {
 				if rawPath, e := url.PathUnescape(videoDirFromRoot); e != nil {
 					w.WriteHeader(http.StatusServiceUnavailable)
 					flog.I("路径解码失败", videoDirFromRoot)
@@ -883,90 +883,99 @@ func init() {
 					return
 				}
 
-				// 直播流回放速率
-				var speed, _ = humanize.ParseBytes("1 M")
-				if rc, ok := c.C.K_v.LoadV(`直播流回放速率`).(string); ok {
-					if s, e := humanize.ParseBytes(rc); e != nil {
-						w.WriteHeader(http.StatusServiceUnavailable)
-						flog.W(`直播流回放速率不合法:`, e)
-						return
-					} else {
-						speed = s
+				// if startT+duration != 0 || skipHeader {
+				func() {
+					type decodeCuter interface {
+						CutSeed(reader io.Reader, startT time.Duration, duration time.Duration, w io.Writer, seeker io.Seeker, getIndex func(seedTo time.Duration, eofReturnLast ...bool) (ms int64, index int64, e error), skipHeader, streaming bool) (err error)
+						Cut(reader io.Reader, startT time.Duration, duration time.Duration, w io.Writer, skipHeader bool) (err error)
+						GenFastSeed(reader io.Reader, save func(seedTo time.Duration, cuIndex int64) error) (err error)
 					}
-				}
 
-				if startT+duration != 0 || skipHeader {
-					func() {
-						type decodeCuter interface {
-							CutSeed(reader io.Reader, startT time.Duration, duration time.Duration, w io.Writer, seeker io.Seeker, getIndex func(seedTo time.Duration) (int64, error), skipHeader, writeLastBuf bool) (err error)
-							Cut(reader io.Reader, startT time.Duration, duration time.Duration, w io.Writer, skipHeader, writeLastBuf bool) (err error)
-							GenFastSeed(reader io.Reader, save func(seedTo time.Duration, cuIndex int64) error) (err error)
+					var cuter decodeCuter
+
+					switch videoType {
+					case "flv":
+						w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=\"%d.flv\"", time.Now().Unix()))
+						flvDecoder := decoder.NewFlvDecoder()
+						if v, ok := c.C.K_v.LoadV(`flv音视频时间戳容差ms`).(float64); ok && v > 100 {
+							flvDecoder.Diff = v
 						}
+						cuter = flvDecoder
+					case "mp4":
+						w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=\"%d.mp4\"", time.Now().Unix()))
+						fmp4Decoder := decoder.Fmp4DecoderPool.Get()
+						defer decoder.Fmp4DecoderPool.Put(fmp4Decoder)
+						if v, ok := c.C.K_v.LoadV(`debug模式`).(bool); ok && v {
+							fmp4Decoder.Debug = true
+						}
+						if v, ok := c.C.K_v.LoadV(`fmp4音视频时间戳容差s`).(float64); ok && v > 0.1 {
+							fmp4Decoder.AVTDiff = v
+						}
+						cuter = fmp4Decoder
+					default:
+						w.WriteHeader(http.StatusServiceUnavailable)
+						flog.W(`未配置的视频类型`, videoDir)
+						return
+					}
 
-						var cuter decodeCuter
-
-						switch videoType {
-						case "flv":
-							w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=\"%d.flv\"", time.Now().Unix()))
-							flvDecoder := decoder.NewFlvDecoder()
-							if v, ok := c.C.K_v.LoadV(`flv音视频时间戳容差ms`).(float64); ok && v > 100 {
-								flvDecoder.Diff = v
-							}
-							cuter = flvDecoder
-						case "mp4":
-							w.Header().Set("Content-Disposition", fmt.Sprintf("inline; filename=\"%d.mp4\"", time.Now().Unix()))
-							fmp4Decoder := decoder.Fmp4DecoderPool.Get()
-							defer decoder.Fmp4DecoderPool.Put(fmp4Decoder)
-							if v, ok := c.C.K_v.LoadV(`debug模式`).(bool); ok && v {
-								fmp4Decoder.Debug = true
-							}
-							if v, ok := c.C.K_v.LoadV(`fmp4音视频时间戳容差s`).(float64); ok && v > 0.1 {
-								fmp4Decoder.AVTDiff = v
-							}
-							cuter = fmp4Decoder
-						default:
+					var (
+						res       io.Writer = w
+						streaming           = true
+					)
+					// 直播流回放速率
+					var speed, _ = humanize.ParseBytes("1 M")
+					if rc, ok := c.C.K_v.LoadV(`直播流回放速率`).(string); ok {
+						if s, e := humanize.ParseBytes(rc); e != nil {
 							w.WriteHeader(http.StatusServiceUnavailable)
-							flog.W(`未配置的视频类型`, videoDir)
+							flog.W(`直播流回放速率不合法:`, e)
 							return
+						} else {
+							speed = s
+						}
+					}
+					if v, ok := c.C.K_v.LoadV(`直播流回放速率-原速响应`).(bool); ok && !v {
+						res = pio.WriterWithConfig(w, pio.CopyConfig{BytePerSec: speed, SkipByte: *offsetByte})
+						streaming = false
+					}
+
+					// fastSeed
+					if e := replyFunc.VideoFastSeed.Run(func(vfsi replyFunc.VideoFastSeedI) error {
+
+						f := file.Open(videoDir + "0." + videoType)
+
+						if !file.IsExist(videoDir + "0." + videoType + ".fastSeed") {
+							flog := flog.BaseAdd("重生成索引")
+							defer f.Close()
+							if sf, delete, e := vfsi.InitSav(videoDir + "0." + videoType + ".fastSeed"); e != nil {
+								flog.E(e)
+							} else if e := cuter.GenFastSeed(f, sf); e != nil && !errors.Is(e, io.EOF) {
+								flog.E(pe.ErrorFormat(e, pe.ErrActionInLineFunc))
+								delete()
+							}
+							_, _ = f.Seek(0, int(file.AtOrigin))
 						}
 
-						res := pio.WriterWithConfig(w, pio.CopyConfig{BytePerSec: speed, SkipByte: *offsetByte})
-
-						// fastSeed
-						if e := replyFunc.VideoFastSeed.Run(func(vfsi replyFunc.VideoFastSeedI) error {
-
-							f := file.Open(videoDir + "0." + videoType)
-
-							if !file.IsExist(videoDir + "0." + videoType + ".fastSeed") {
-								flog := flog.BaseAdd("重生成索引")
-								defer f.Close()
-								if sf, delete, e := vfsi.InitSav(videoDir + "0." + videoType + ".fastSeed"); e != nil {
-									flog.E(e)
-								} else if e := cuter.GenFastSeed(f, sf); e != nil && !errors.Is(e, io.EOF) {
-									flog.E(pe.ErrorFormat(e, pe.ErrActionInLineFunc))
-									delete()
-								}
-								_, _ = f.Seek(0, int(file.AtOrigin))
-							}
-
-							if gf, e := vfsi.InitGet(videoDir + "0." + videoType + ".fastSeed"); e != nil {
-								flog.E(e)
-								return e
-							} else if e := cuter.CutSeed(f, startT, duration, res, f, gf, skipHeader, writeLastBuf); e != nil && !errors.Is(e, io.EOF) {
+						if gf, e := vfsi.InitGet(videoDir + "0." + videoType + ".fastSeed"); e != nil {
+							flog.E(e)
+							return e
+						} else {
+							if e := cuter.CutSeed(f, startT, duration, res, f, gf, skipHeader, streaming); e != nil && !errors.Is(e, io.EOF) {
 								flog.E(pe.ErrorFormat(e, pe.ErrActionInLineFunc))
 								return e
 							}
-							return nil
-						}); e != nil {
-							flog.E(e)
-							if e := cuter.Cut(f, startT, duration, res, skipHeader, writeLastBuf); e != nil && !errors.Is(e, io.EOF) {
-								flog.I(e)
-							}
 						}
-					}()
-				} else if e := f.CopyToIoWriter(w, pio.CopyConfig{BytePerSec: speed, SkipByte: *offsetByte}); e != nil {
-					flog.I(pe.ErrorFormat(e, pe.ErrActionInLineFunc))
-				}
+						return nil
+					}); e != nil {
+						flog.E(e)
+						if e := cuter.Cut(f, startT, duration, res, skipHeader); e != nil && !errors.Is(e, io.EOF) {
+							flog.I(e)
+						}
+					}
+				}()
+				// 速率不匹配容易导致前端缓冲区满请求停止，导致后端写入错误
+				// } else if e := f.CopyToIoWriter(w, pio.CopyConfig{BytePerSec: speed, SkipByte: *offsetByte}); e != nil {
+				// 	flog.I(pe.ErrorFormat(e, pe.ErrActionInLineFunc))
+				// }
 			}
 		)
 
@@ -989,6 +998,8 @@ func init() {
 				return
 			}
 
+			conn := c.C.SerF.GetConn(r)
+
 			// 检查key
 			{
 				var checkKey = true
@@ -1005,7 +1016,7 @@ func init() {
 				if checkKey {
 					if e := expirer.LoopCheck(r.Context(), r.URL.Query().Get("key"), func(key string, e error) {
 						flog.T(`直播流回放检查失败`, key, e)
-						_ = c.C.SerF.GetConn(r).Close()
+						_ = conn.Close()
 					}); e != nil {
 						w.WriteHeader(http.StatusTooManyRequests)
 						return
@@ -1020,6 +1031,9 @@ func init() {
 			w.Header().Set("Access-Control-Allow-Origin", "*")
 			w.Header().Set("Connection", "keep-alive")
 			w.Header().Set("Content-Transfer-Encoding", "binary")
+
+			//keepalive
+			_ = conn.SetWriteDeadline(time.Time{})
 
 			switch ref := r.URL.Query().Get("ref"); ref {
 			case ``:
@@ -1056,8 +1070,6 @@ func init() {
 						return nil
 					}
 
-					conn, _ := r.Context().Value(c.C.SerF).(net.Conn)
-
 					// 在客户端存在某种代理时，将有可能无法监测到客户端关闭，这有可能导致goroutine泄漏
 					// if to, ok := c.C.K_v.LoadV(`直播流回放限时min`).(float64); ok && to > 0 {
 					// 	if e := conn.SetDeadline(time.Now().Add(time.Duration(int(time.Minute) * int(to)))); e != nil {
@@ -1065,7 +1077,7 @@ func init() {
 					// 	}
 					// }
 
-					if e := currentStreamO.PusherToHttp(flog, conn, w, r, PusherEvent{startFunc, nil, stopFunc}); e != nil {
+					if e := currentStreamO.PusherToHttp(flog, w, r, PusherEvent{startFunc, nil, stopFunc}); e != nil {
 						flog.W(e)
 					}
 				}
@@ -1104,7 +1116,7 @@ func init() {
 					defer func(ts time.Time) {
 						flog.T(F.GetRemoteIp(r), `断开录播`, time.Since(ts))
 					}(time.Now())
-					readFile(w, dir+"/", "/", st, dur, false, true, &rangeHeaderNum)
+					readFile(w, dir+"/", "/", st, dur, false, &rangeHeaderNum)
 				} else {
 					if _, playlist := ps.Search(playlists, func(t *PlayItem) bool { return t.Path == filepath.Base(ref) }); playlist == nil || len(playlist.Lives) == 0 {
 						w.WriteHeader(http.StatusNotFound)
@@ -1121,7 +1133,7 @@ func init() {
 						}(time.Now())
 						sst, sdur, skipHeader := parseDuration(playlist.Lives[0].StartT)+st, parseDuration(playlist.Lives[len(playlist.Lives)-1].Dur), false
 						nodur := dur == 0
-						for i := 0; i < len(playlist.Lives) && (nodur || dur > 0); i++ {
+						for i := 0; !pctx.Done(r.Context()) && i < len(playlist.Lives) && (nodur || dur > 0); i++ {
 							if fi, e := videoInfo.Get.Run(context.Background(), dir+"/"+playlist.Lives[i].LiveDir); e != nil {
 								flog.W(`读取节目单元数据失败`, dir+"/"+playlist.Lives[i].LiveDir, e)
 								w.WriteHeader(http.StatusServiceUnavailable)
@@ -1133,7 +1145,7 @@ func init() {
 								if i == len(playlist.Lives)-1 && !nodur && sdur != 0 {
 									dur = min(dur, sdur)
 								}
-								readFile(w, dir+"/", playlist.Lives[i].LiveDir+"/", sst, dur, skipHeader, true, &rangeHeaderNum)
+								readFile(w, dir+"/", playlist.Lives[i].LiveDir+"/", sst, dur, skipHeader, &rangeHeaderNum)
 								skipHeader = true
 								if !nodur {
 									dur -= (fi.Dur - sst)

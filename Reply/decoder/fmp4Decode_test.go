@@ -90,7 +90,7 @@ func Test_Mp4Cut(t *testing.T) {
 	fmp4Decoder := Fmp4DecoderPool.Get()
 	defer Fmp4DecoderPool.Put(fmp4Decoder)
 
-	e := fmp4Decoder.Cut(f, time.Minute*30, time.Second*20, cutf.File(), false, false)
+	e := fmp4Decoder.Cut(f, time.Minute*30, time.Second*20, cutf.File(), false)
 	if !errors.Is(e, io.EOF) {
 		t.Fatal(pe.ErrorFormat(e))
 	}
@@ -98,7 +98,7 @@ func Test_Mp4Cut(t *testing.T) {
 
 func Test_Mp4GenFastSeed(t *testing.T) {
 	var VideoFastSeed = comp.GetV3[interface {
-		InitGet(fastSeedFilePath string) (getIndex func(seedTo time.Duration) (int64, error), e error)
+		InitGet(fastSeedFilePath string) (getIndex func(seedTo time.Duration, eofReturnLast ...bool) (ms int64, index int64, e error), e error)
 		InitSav(fastSeedFilePath string) (savIndex func(seedTo time.Duration, cuIndex int64) error, delete func(), e error)
 	}](`videoFastSeed`).Inter()
 
@@ -152,7 +152,7 @@ func Test_Mp4CutSeed(t *testing.T) {
 	}
 
 	var VideoFastSeed = comp.GetV3[interface {
-		InitGet(fastSeedFilePath string) (getIndex func(seedTo time.Duration) (int64, error), e error)
+		InitGet(fastSeedFilePath string) (getIndex func(seedTo time.Duration, eofReturnLast ...bool) (ms int64, index int64, e error), e error)
 		InitSav(fastSeedFilePath string) (savIndex func(seedTo time.Duration, cuIndex int64) error, delete func(), e error)
 	}](`videoFastSeed`).Inter()
 
@@ -191,7 +191,7 @@ func Test_Mp4CutSeedRaw(t *testing.T) {
 	}
 
 	var VideoFastSeed = comp.GetV3[interface {
-		InitGet(fastSeedFilePath string) (getIndex func(seedTo time.Duration) (int64, error), e error)
+		InitGet(fastSeedFilePath string) (getIndex func(seedTo time.Duration, eofReturnLast ...bool) (ms int64, index int64, e error), e error)
 		InitSav(fastSeedFilePath string) (savIndex func(seedTo time.Duration, cuIndex int64) error, delete func(), e error)
 	}](`videoFastSeed`).Inter()
 
@@ -204,7 +204,7 @@ func Test_Mp4CutSeedRaw(t *testing.T) {
 	defer Fmp4DecoderPool.Put(fmp4Decoder)
 
 	fmp4Decoder.Debug = true
-	e = fmp4Decoder.CutSeedRawV(f, 0, 0, cutf.File(), f, gf, false, false)
+	e = fmp4Decoder.CutSeedRawV(f, 0, 0, cutf.File(), f, gf, false)
 	if e != nil && !errors.Is(e, io.EOF) {
 		t.Fatal(pe.ErrorFormat(e, pe.ErrActionInLineFunc))
 	}
