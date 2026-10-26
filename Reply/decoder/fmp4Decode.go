@@ -727,13 +727,14 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...dealFMp4) (cu int, err error) {
 
 // Deprecated:效率低于GenFastSeed+CutSeed
 func (t *Fmp4Decoder) Cut(reader io.Reader, startT, duration time.Duration, w io.Writer, skipHeader bool) (err error) {
-	return t.CutSeed(reader, startT, duration, w, nil, nil, skipHeader)
+	return t.CutSeed(reader, startT, duration, w, nil, nil, skipHeader, true)
 }
 
-func (t *Fmp4Decoder) CutSeed(reader io.Reader, startT, duration time.Duration, w io.Writer, seeker io.Seeker, getIndex func(seedTo time.Duration, eofReturnLast ...bool) (ms int64, index int64, e error), skipHeader bool) (err error) {
+func (t *Fmp4Decoder) CutSeed(reader io.Reader, startT, duration time.Duration, w io.Writer, seeker io.Seeker, getIndex func(seedTo time.Duration, eofReturnLast ...bool) (ms int64, index int64, e error), skipHeader, streaming bool) (err error) {
 	init := false
 	seek := startT == 0
 	over := false
+	funcStartT := time.Now()
 	startTM := startT.Seconds()
 	durationM := duration.Seconds()
 	firstFT := -1.0
@@ -750,6 +751,9 @@ func (t *Fmp4Decoder) CutSeed(reader io.Reader, startT, duration time.Duration, 
 		cu := t - firstFT
 		over = duration != 0 && cu > durationM+startTM
 		if startTM <= cu && !over {
+			if streaming {
+				time.Sleep(time.Second * time.Duration(cu-startTM-time.Since(funcStartT).Seconds()))
+			}
 			_, e = io.Copy(w, re)
 		}
 		return

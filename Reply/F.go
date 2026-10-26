@@ -886,7 +886,7 @@ func init() {
 				// if startT+duration != 0 || skipHeader {
 				func() {
 					type decodeCuter interface {
-						CutSeed(reader io.Reader, startT time.Duration, duration time.Duration, w io.Writer, seeker io.Seeker, getIndex func(seedTo time.Duration, eofReturnLast ...bool) (ms int64, index int64, e error), skipHeader bool) (err error)
+						CutSeed(reader io.Reader, startT time.Duration, duration time.Duration, w io.Writer, seeker io.Seeker, getIndex func(seedTo time.Duration, eofReturnLast ...bool) (ms int64, index int64, e error), skipHeader, streaming bool) (err error)
 						Cut(reader io.Reader, startT time.Duration, duration time.Duration, w io.Writer, skipHeader bool) (err error)
 						GenFastSeed(reader io.Reader, save func(seedTo time.Duration, cuIndex int64) error) (err error)
 					}
@@ -918,6 +918,10 @@ func init() {
 						return
 					}
 
+					var (
+						res       io.Writer = w
+						streaming           = true
+					)
 					// 直播流回放速率
 					var speed, _ = humanize.ParseBytes("1 M")
 					if rc, ok := c.C.K_v.LoadV(`直播流回放速率`).(string); ok {
@@ -929,7 +933,10 @@ func init() {
 							speed = s
 						}
 					}
-					res := pio.WriterWithConfig(w, pio.CopyConfig{BytePerSec: speed, SkipByte: *offsetByte})
+					if v, ok := c.C.K_v.LoadV(`直播流回放速率-按码率配置`).(bool); ok && !v {
+						res = pio.WriterWithConfig(w, pio.CopyConfig{BytePerSec: speed, SkipByte: *offsetByte})
+						streaming = false
+					}
 
 					// fastSeed
 					if e := replyFunc.VideoFastSeed.Run(func(vfsi replyFunc.VideoFastSeedI) error {
@@ -952,18 +959,7 @@ func init() {
 							flog.E(e)
 							return e
 						} else {
-							if v, ok := c.C.K_v.LoadV(`直播流回放速率-按码率配置`).(bool); !ok || v {
-								// 按码率重新配置响应速率
-								if sampleMs, sampleSize, e := gf(time.Minute, true); e != nil && !errors.Is(e, io.EOF) {
-									flog.E(e)
-									return e
-								} else {
-									bytePreSec := uint64(sampleSize / (sampleMs / 1000))
-									flog.TF("按码率配置回放速率 %v %v/s", videoDir, humanize.Bytes(bytePreSec))
-									res = pio.WriterWithConfig(w, pio.CopyConfig{BytePerSec: bytePreSec, SkipByte: *offsetByte})
-								}
-							}
-							if e := cuter.CutSeed(f, startT, duration, res, f, gf, skipHeader); e != nil && !errors.Is(e, io.EOF) {
+							if e := cuter.CutSeed(f, startT, duration, res, f, gf, skipHeader, streaming); e != nil && !errors.Is(e, io.EOF) {
 								flog.E(pe.ErrorFormat(e, pe.ErrActionInLineFunc))
 								return e
 							}

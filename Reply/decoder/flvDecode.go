@@ -276,15 +276,16 @@ func (t *FlvDecoder) oneF(buf []byte, w ...dealFFlv) (dropOffset int, err error)
 
 // Deprecated:效率低于GenFastSeed+CutSeed
 func (t *FlvDecoder) Cut(reader io.Reader, startT, duration time.Duration, w io.Writer, skipHeader bool) (err error) {
-	return t.CutSeed(reader, startT, duration, w, nil, nil, skipHeader)
+	return t.CutSeed(reader, startT, duration, w, nil, nil, skipHeader, true)
 }
 
-func (t *FlvDecoder) CutSeed(reader io.Reader, startT, duration time.Duration, w io.Writer, seeker io.Seeker, getIndex func(seedTo time.Duration, eofReturnLast ...bool) (ms int64, index int64, e error), skipHeader bool) (err error) {
+func (t *FlvDecoder) CutSeed(reader io.Reader, startT, duration time.Duration, w io.Writer, seeker io.Seeker, getIndex func(seedTo time.Duration, eofReturnLast ...bool) (ms int64, index int64, e error), skipHeader, streaming bool) (err error) {
 	buf := make([]byte, humanize.KByte*500)
 	buff := slice.New[byte]()
 	over := false
 	seek := startT == 0
 	init := false
+	funcStartT := time.Now()
 	startTM := startT.Milliseconds()
 	durationM := duration.Milliseconds()
 	firstFT := -1
@@ -296,6 +297,9 @@ func (t *FlvDecoder) CutSeed(reader io.Reader, startT, duration time.Duration, w
 		cu := int64(t - firstFT)
 		over = duration != 0 && cu > durationM+startTM
 		if startTM <= cu && !over {
+			if streaming {
+				time.Sleep(time.Millisecond * time.Duration(cu-startTM-time.Since(funcStartT).Milliseconds()))
+			}
 			_, e = w.Write(buf)
 		}
 		return

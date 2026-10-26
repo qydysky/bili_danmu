@@ -136,6 +136,6 @@ func Test_FLVCutSeed(t *testing.T) {
 		t.Fatal(e)
 	}
 
-	e = NewFlvDecoder().CutSeed(f, time.Minute*10, time.Second*20, cutf.File(), f, gf, false)
+	e = NewFlvDecoder().CutSeed(f, time.Minute*10, time.Second*20, cutf.File(), f, gf, false, false)
 	t.Log(pe.ErrorFormat(e))
 }
