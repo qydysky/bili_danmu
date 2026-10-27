@@ -90,7 +90,7 @@ func Test_Mp4Cut(t *testing.T) {
 	fmp4Decoder := Fmp4DecoderPool.Get()
 	defer Fmp4DecoderPool.Put(fmp4Decoder)
 
-	e := fmp4Decoder.Cut(f, time.Minute*30, time.Second*20, cutf.File(), false)
+	e := fmp4Decoder.Cut(t.Context(), f, time.Minute*30, time.Second*20, cutf.File(), false)
 	if !errors.Is(e, io.EOF) {
 		t.Fatal(pe.ErrorFormat(e))
 	}
@@ -165,7 +165,7 @@ func Test_Mp4CutSeed(t *testing.T) {
 	defer Fmp4DecoderPool.Put(fmp4Decoder)
 
 	fmp4Decoder.Debug = true
-	e = fmp4Decoder.CutSeed(f, time.Minute*30, time.Second*20, cutf.File(), f, gf, false, false)
+	e = fmp4Decoder.CutSeed(t.Context(), f, time.Minute*30, time.Second*20, cutf.File(), f, gf, false, false)
 	if !errors.Is(e, io.EOF) {
 		t.Fatal(pe.ErrorFormat(e, pe.ErrActionInLineFunc))
 	}
