@@ -1,6 +1,7 @@
 package decoder
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -11,6 +12,7 @@ import (
 	"github.com/dustin/go-humanize"
 	cv "github.com/qydysky/bili_danmu/CV"
 	F "github.com/qydysky/bili_danmu/F"
+	pc "github.com/qydysky/part/ctx"
 	pe "github.com/qydysky/part/errors/v2"
 	pio "github.com/qydysky/part/io"
 	pool "github.com/qydysky/part/pool"
@@ -726,11 +728,11 @@ func (t *Fmp4Decoder) oneF(buf []byte, w ...dealFMp4) (cu int, err error) {
 }
 
 // Deprecated:效率低于GenFastSeed+CutSeed
-func (t *Fmp4Decoder) Cut(reader io.Reader, startT, duration time.Duration, w io.Writer, skipHeader bool) (err error) {
-	return t.CutSeed(reader, startT, duration, w, nil, nil, skipHeader, true)
+func (t *Fmp4Decoder) Cut(ctx context.Context, reader io.Reader, startT, duration time.Duration, w io.Writer, skipHeader bool) (err error) {
+	return t.CutSeed(ctx, reader, startT, duration, w, nil, nil, skipHeader, true)
 }
 
-func (t *Fmp4Decoder) CutSeed(reader io.Reader, startT, duration time.Duration, w io.Writer, seeker io.Seeker, getIndex func(seedTo time.Duration, eofReturnLast ...bool) (ms int64, index int64, e error), skipHeader, streaming bool) (err error) {
+func (t *Fmp4Decoder) CutSeed(ctx context.Context, reader io.Reader, startT, duration time.Duration, w io.Writer, seeker io.Seeker, getIndex func(seedTo time.Duration, eofReturnLast ...bool) (ms int64, index int64, e error), skipHeader, streaming bool) (err error) {
 	init := false
 	seek := startT == 0
 	over := false
@@ -765,7 +767,7 @@ func (t *Fmp4Decoder) CutSeed(reader io.Reader, startT, duration time.Duration, 
 			fmt.Printf("cut startT: %v duration: %v maxBufSize: %v\n", startT, duration, maxBufSize)
 		}()
 	}
-	for err == nil && !over {
+	for err == nil && !over && !pc.Done(ctx) {
 		if t.buf.Size() == t.buf.Cap() {
 			return ActDecoder.BufOverflow.WithInfo("尝试调大`fmp4解码缓存MB`")
 		}

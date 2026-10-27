@@ -1,6 +1,7 @@
 package decoder
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/dustin/go-humanize"
 	F "github.com/qydysky/bili_danmu/F"
+	pc "github.com/qydysky/part/ctx"
 	pe "github.com/qydysky/part/errors/v2"
 	slice "github.com/qydysky/part/slice"
 )
@@ -275,11 +277,11 @@ func (t *FlvDecoder) oneF(buf []byte, w ...dealFFlv) (dropOffset int, err error)
 }
 
 // Deprecated:效率低于GenFastSeed+CutSeed
-func (t *FlvDecoder) Cut(reader io.Reader, startT, duration time.Duration, w io.Writer, skipHeader bool) (err error) {
-	return t.CutSeed(reader, startT, duration, w, nil, nil, skipHeader, true)
+func (t *FlvDecoder) Cut(ctx context.Context, reader io.Reader, startT, duration time.Duration, w io.Writer, skipHeader bool) (err error) {
+	return t.CutSeed(ctx, reader, startT, duration, w, nil, nil, skipHeader, true)
 }
 
-func (t *FlvDecoder) CutSeed(reader io.Reader, startT, duration time.Duration, w io.Writer, seeker io.Seeker, getIndex func(seedTo time.Duration, eofReturnLast ...bool) (ms int64, index int64, e error), skipHeader, streaming bool) (err error) {
+func (t *FlvDecoder) CutSeed(ctx context.Context, reader io.Reader, startT, duration time.Duration, w io.Writer, seeker io.Seeker, getIndex func(seedTo time.Duration, eofReturnLast ...bool) (ms int64, index int64, e error), skipHeader, streaming bool) (err error) {
 	buf := make([]byte, humanize.KByte*500)
 	buff := slice.New[byte]()
 	over := false
@@ -305,7 +307,7 @@ func (t *FlvDecoder) CutSeed(reader io.Reader, startT, duration time.Duration, w
 		return
 	}
 
-	for c := 0; err == nil && !over; c++ {
+	for err == nil && !over && !pc.Done(ctx) {
 		n, e := reader.Read(buf)
 		if n == 0 && errors.Is(e, io.EOF) {
 			if buff.Size() > 0 {

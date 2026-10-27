@@ -850,7 +850,7 @@ func init() {
 
 		var (
 			// skipHeader: 在读取多个文件时， 后面的文件不能写入视频头
-			readFile = func(w http.ResponseWriter, liveRoot, videoDirFromRoot string, startT, duration time.Duration, skipHeader bool, offsetByte *int) {
+			readFile = func(ctx context.Context, w http.ResponseWriter, liveRoot, videoDirFromRoot string, startT, duration time.Duration, skipHeader bool, offsetByte *int) {
 				if rawPath, e := url.PathUnescape(videoDirFromRoot); e != nil {
 					w.WriteHeader(http.StatusServiceUnavailable)
 					flog.I("路径解码失败", videoDirFromRoot)
@@ -886,8 +886,8 @@ func init() {
 				// if startT+duration != 0 || skipHeader {
 				func() {
 					type decodeCuter interface {
-						CutSeed(reader io.Reader, startT time.Duration, duration time.Duration, w io.Writer, seeker io.Seeker, getIndex func(seedTo time.Duration, eofReturnLast ...bool) (ms int64, index int64, e error), skipHeader, streaming bool) (err error)
-						Cut(reader io.Reader, startT time.Duration, duration time.Duration, w io.Writer, skipHeader bool) (err error)
+						CutSeed(ctx context.Context, reader io.Reader, startT time.Duration, duration time.Duration, w io.Writer, seeker io.Seeker, getIndex func(seedTo time.Duration, eofReturnLast ...bool) (ms int64, index int64, e error), skipHeader, streaming bool) (err error)
+						Cut(ctx context.Context, reader io.Reader, startT time.Duration, duration time.Duration, w io.Writer, skipHeader bool) (err error)
 						GenFastSeed(reader io.Reader, save func(seedTo time.Duration, cuIndex int64) error) (err error)
 					}
 
@@ -959,7 +959,7 @@ func init() {
 							flog.E(e)
 							return e
 						} else {
-							if e := cuter.CutSeed(f, startT, duration, res, f, gf, skipHeader, streaming); e != nil && !errors.Is(e, io.EOF) {
+							if e := cuter.CutSeed(ctx, f, startT, duration, res, f, gf, skipHeader, streaming); e != nil && !errors.Is(e, io.EOF) {
 								flog.E(pe.ErrorFormat(e, pe.ErrActionInLineFunc))
 								return e
 							}
@@ -967,7 +967,7 @@ func init() {
 						return nil
 					}); e != nil {
 						flog.E(e)
-						if e := cuter.Cut(f, startT, duration, res, skipHeader); e != nil && !errors.Is(e, io.EOF) {
+						if e := cuter.Cut(ctx, f, startT, duration, res, skipHeader); e != nil && !errors.Is(e, io.EOF) {
 							flog.I(e)
 						}
 					}
@@ -998,7 +998,8 @@ func init() {
 				return
 			}
 
-			conn := c.C.SerF.GetConn(r)
+			rctx, cancle := context.WithCancel(r.Context())
+			defer cancle()
 
 			// 检查key
 			{
@@ -1014,9 +1015,9 @@ func init() {
 				}
 
 				if checkKey {
-					if e := expirer.LoopCheck(r.Context(), r.URL.Query().Get("key"), func(key string, e error) {
-						flog.T(`直播流回放检查失败`, key, e)
-						_ = conn.Close()
+					if e := expirer.LoopCheck(rctx, r.URL.Query().Get("key"), func(key string, e error) {
+						flog.T(`直播流回放检查失败`, r.RemoteAddr, e)
+						cancle()
 					}); e != nil {
 						w.WriteHeader(http.StatusTooManyRequests)
 						return
@@ -1032,8 +1033,8 @@ func init() {
 			w.Header().Set("Connection", "keep-alive")
 			w.Header().Set("Content-Transfer-Encoding", "binary")
 
-			//keepalive
-			_ = conn.SetWriteDeadline(time.Time{})
+			// disable writeTimeout
+			_ = c.C.SerF.GetConn(r).SetWriteDeadline(time.Time{})
 
 			switch ref := r.URL.Query().Get("ref"); ref {
 			case ``:
@@ -1116,7 +1117,7 @@ func init() {
 					defer func(ts time.Time) {
 						flog.T(F.GetRemoteIp(r), `断开录播`, time.Since(ts))
 					}(time.Now())
-					readFile(w, dir+"/", "/", st, dur, false, &rangeHeaderNum)
+					readFile(rctx, w, dir+"/", "/", st, dur, false, &rangeHeaderNum)
 				} else {
 					if _, playlist := ps.Search(playlists, func(t *PlayItem) bool { return t.Path == filepath.Base(ref) }); playlist == nil || len(playlist.Lives) == 0 {
 						w.WriteHeader(http.StatusNotFound)
@@ -1133,7 +1134,7 @@ func init() {
 						}(time.Now())
 						sst, sdur, skipHeader := parseDuration(playlist.Lives[0].StartT)+st, parseDuration(playlist.Lives[len(playlist.Lives)-1].Dur), false
 						nodur := dur == 0
-						for i := 0; !pctx.Done(r.Context()) && i < len(playlist.Lives) && (nodur || dur > 0); i++ {
+						for i := 0; !pctx.Done(rctx) && i < len(playlist.Lives) && (nodur || dur > 0); i++ {
 							if fi, e := videoInfo.Get.Run(context.Background(), dir+"/"+playlist.Lives[i].LiveDir); e != nil {
 								flog.W(`读取节目单元数据失败`, dir+"/"+playlist.Lives[i].LiveDir, e)
 								w.WriteHeader(http.StatusServiceUnavailable)
@@ -1145,7 +1146,7 @@ func init() {
 								if i == len(playlist.Lives)-1 && !nodur && sdur != 0 {
 									dur = min(dur, sdur)
 								}
-								readFile(w, dir+"/", playlist.Lives[i].LiveDir+"/", sst, dur, skipHeader, &rangeHeaderNum)
+								readFile(rctx, w, dir+"/", playlist.Lives[i].LiveDir+"/", sst, dur, skipHeader, &rangeHeaderNum)
 								skipHeader = true
 								if !nodur {
 									dur -= (fi.Dur - sst)
