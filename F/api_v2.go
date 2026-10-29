@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"net/url"
 	"os"
 	"strconv"
@@ -610,7 +611,7 @@ func (t *GetFuncV2) getRoomPlayInfo(updateAcceptQn bool, appendLive bool) (missK
 			//未在直播，不获取直播流
 			if !t.common.Liveing {
 				t.common.Live_qn = 0
-				t.common.AcceptQn = t.common.Qn
+				t.common.AcceptQn = maps.Clone(t.common.Qn)
 				t.common.AcceptQnUpdated = time.Now()
 				t.common.Live = t.common.Live[:0]
 				return "", nil
@@ -679,7 +680,7 @@ func (t *GetFuncV2) html(updateAcceptQn bool, appendLive bool) (missKey string, 
 				//未在直播，不获取直播流
 				if !t.common.Liveing {
 					t.common.Live_qn = 0
-					t.common.AcceptQn = t.common.Qn
+					t.common.AcceptQn = maps.Clone(t.common.Qn)
 					t.common.AcceptQnUpdated = time.Now()
 					t.common.Live = t.common.Live[:0]
 					return "", nil
@@ -843,7 +844,7 @@ func (t *GetFuncV2) getRoomPlayInfoByQn(updateAcceptQn bool, appendLive bool) (m
 			//未在直播，不获取直播流
 			if !t.common.Liveing {
 				t.common.Live_qn = 0
-				t.common.AcceptQn = t.common.Qn
+				t.common.AcceptQn = maps.Clone(t.common.Qn)
 				t.common.AcceptQnUpdated = time.Now()
 				t.common.Live = t.common.Live[:0]
 				return "", nil
