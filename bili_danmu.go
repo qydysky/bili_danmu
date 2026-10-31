@@ -609,6 +609,7 @@ func entryRoom(mainCtx context.Context, danmulog *plog.Log, common *c.Common) (e
 						// 在线人数
 						go F.Api.Get(common, `getOnlineGoldRank`)
 					}
+					danmulog.LShow(false).IF("%d 在线人数: %d", common.Roomid, common.OnlineNum)
 					return
 				})
 			})
