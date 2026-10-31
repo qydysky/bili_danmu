@@ -278,7 +278,8 @@ func Start(rootCtx context.Context) {
 				if loaded {
 					actual.InIdle = false
 					if !actual.Live_Start_Time.Equal(c.C.Live_Start_Time) {
-						actual.Rev = 0.0 // 营收
+						actual.Rev = 0.0        // 营收
+						actual.TotalViewMin = 0 // 观时
 					}
 				} else {
 					actual.UpUid = c.C.UpUid
@@ -594,7 +595,7 @@ func entryRoom(mainCtx context.Context, danmulog *plog.Log, common *c.Common) (e
 					// }
 					return true
 				})
-				fc.TagSign(`every100s`, func(_ struct{}) (disable bool) { //每100s
+				fc.TagSign(`every60s`, func(_ struct{}) (disable bool) { //每60s
 					if v, ok := common.K_v.LoadV("保持牌子亮着-开播时也发送").(bool); !common.Liveing || (ok && v) {
 						replyFunc.KeepMedalLight.Run2(func(kmli replyFunc.KeepMedalLightI) {
 							kmli.Do()
@@ -603,8 +604,11 @@ func entryRoom(mainCtx context.Context, danmulog *plog.Log, common *c.Common) (e
 					if v, ok := common.K_v.LoadV("下播后不记录人气观看人数").(bool); ok && v && !common.Liveing {
 						return
 					}
-					// 在线人数
-					go F.Api.Get(common, `getOnlineGoldRank`)
+					common.TotalViewMin += common.OnlineNum
+					if time.Since(common.OnlineNumUpdated) > time.Minute {
+						// 在线人数
+						go F.Api.Get(common, `getOnlineGoldRank`)
+					}
 					return
 				})
 			})
