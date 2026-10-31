@@ -54,52 +54,54 @@ type StreamType struct {
 }
 
 type Common struct {
-	InIdle             bool                             `json:"-"`            //闲置中？
-	PID                int                              `json:"-"`            //进程id
-	Version            string                           `json:"-"`            //版本
-	Uid                int                              `json:"-"`            //client uid
-	Login              bool                             `json:"login"`        //登录
-	Live               []*LiveQn                        `json:"live"`         //直播流链接
-	Live_qn            int                              `json:"liveQn"`       //当前直播流质量
-	Live_want_qn       int                              `json:"-"`            //期望直播流质量
-	Roomid             int                              `json:"-"`            //房间ID
-	Cookie             *syncmap.Map                     `json:"-"`            //Cookie
-	Title              string                           `json:"title"`        //直播标题
-	Uname              string                           `json:"uname"`        //主播名
-	UpUid              int                              `json:"upUid"`        //主播uid
-	Rev                float64                          `json:"rev"`          //营收
-	Renqi              int                              `json:"renqi"`        //人气
-	Watched            int                              `json:"watched"`      //观看人数
-	OnlineNum          int                              `json:"onlineNum"`    //在线人数
-	GuardNum           int                              `json:"guardNum"`     //舰长数
-	ParentAreaID       int                              `json:"parentAreaID"` //父分区
-	AreaID             int                              `json:"areaID"`       //子分区
-	Locked             bool                             `json:"locked"`       //直播间封禁
-	Note               string                           `json:"note"`         //分区排行
-	Live_Start_Time    time.Time                        `json:"-"`            //直播开始时间
-	Liveing            bool                             `json:"liveing"`      //是否在直播
-	Wearing_FansMedal  int                              `json:"-"`            //当前佩戴的粉丝牌
-	Token              string                           `json:"-"`            //弹幕钥
-	WSURL              []string                         `json:"-"`            //弹幕链接
-	LiveBuvidUpdated   time.Time                        `json:"-"`            //LIVE_BUVID更新时间
-	Stream_url         *url.URL                         `json:"-"`            //直播Web服务
-	Proxy              string                           `json:"-"`            //全局代理
-	DisableSystemProxy bool                             `json:"-"`            //禁用默认系统代理
-	SerLocation        int                              `json:"-"`            //服务器时区
-	AcceptQn           map[int]string                   `json:"-"`            //允许的直播流质量
-	AcceptQnUpdated    time.Time                        `json:"-"`            //允许的直播流质量更新时间
-	Qn                 map[int]string                   `json:"-"`            //全部直播流质量
-	AllStreamType      map[string]StreamType            `json:"-"`            //直播流类型
-	K_v                syncmap.Map                      `json:"-"`            //配置文件
-	Log                *plog.Log                        `json:"-"`            //日志
-	Danmu_Main_mq      *mq.Msgq                         `json:"-"`            //消息
-	ReqPool            *pool.Buf[reqf.Req]              `json:"-"`            //请求池
-	SerF               *web.WebPath                     `json:"-"`            //web服务处理
-	SerLimit           *web.Limits                      `json:"-"`            //Web服务连接限制
-	StartT             time.Time                        `json:"-"`            //启动时间
-	Cache              syncmap.MapExceeded[string, any] `json:"-"`            //缓存
-	ReplyT             time.Time                        `json:"-"`            //websocket最新的响应时间
-	EntryDanmuT        time.Time                        `json:"-"`            //进入房间弹幕的最后发送时间
+	InIdle             bool                             `json:"-"`                //闲置中？
+	PID                int                              `json:"-"`                //进程id
+	Version            string                           `json:"-"`                //版本
+	Uid                int                              `json:"-"`                //client uid
+	Login              bool                             `json:"login"`            //登录
+	Live               []*LiveQn                        `json:"live"`             //直播流链接
+	Live_qn            int                              `json:"liveQn"`           //当前直播流质量
+	Live_want_qn       int                              `json:"-"`                //期望直播流质量
+	Roomid             int                              `json:"-"`                //房间ID
+	Cookie             *syncmap.Map                     `json:"-"`                //Cookie
+	Title              string                           `json:"title"`            //直播标题
+	Uname              string                           `json:"uname"`            //主播名
+	UpUid              int                              `json:"upUid"`            //主播uid
+	Rev                float64                          `json:"rev"`              //营收
+	Renqi              int                              `json:"renqi"`            //人气
+	Watched            int                              `json:"watched"`          //观看人数
+	TotalViewMin       int                              `json:"totalViewMin"`     //在线观看分钟
+	OnlineNum          int                              `json:"onlineNum"`        //在线人数
+	OnlineNumUpdated   time.Time                        `json:"onlineNumUpdated"` //在线人数更新时间
+	GuardNum           int                              `json:"guardNum"`         //舰长数
+	ParentAreaID       int                              `json:"parentAreaID"`     //父分区
+	AreaID             int                              `json:"areaID"`           //子分区
+	Locked             bool                             `json:"locked"`           //直播间封禁
+	Note               string                           `json:"note"`             //分区排行
+	Live_Start_Time    time.Time                        `json:"-"`                //直播开始时间
+	Liveing            bool                             `json:"liveing"`          //是否在直播
+	Wearing_FansMedal  int                              `json:"-"`                //当前佩戴的粉丝牌
+	Token              string                           `json:"-"`                //弹幕钥
+	WSURL              []string                         `json:"-"`                //弹幕链接
+	LiveBuvidUpdated   time.Time                        `json:"-"`                //LIVE_BUVID更新时间
+	Stream_url         *url.URL                         `json:"-"`                //直播Web服务
+	Proxy              string                           `json:"-"`                //全局代理
+	DisableSystemProxy bool                             `json:"-"`                //禁用默认系统代理
+	SerLocation        int                              `json:"-"`                //服务器时区
+	AcceptQn           map[int]string                   `json:"-"`                //允许的直播流质量
+	AcceptQnUpdated    time.Time                        `json:"-"`                //允许的直播流质量更新时间
+	Qn                 map[int]string                   `json:"-"`                //全部直播流质量
+	AllStreamType      map[string]StreamType            `json:"-"`                //直播流类型
+	K_v                syncmap.Map                      `json:"-"`                //配置文件
+	Log                *plog.Log                        `json:"-"`                //日志
+	Danmu_Main_mq      *mq.Msgq                         `json:"-"`                //消息
+	ReqPool            *pool.Buf[reqf.Req]              `json:"-"`                //请求池
+	SerF               *web.WebPath                     `json:"-"`                //web服务处理
+	SerLimit           *web.Limits                      `json:"-"`                //Web服务连接限制
+	StartT             time.Time                        `json:"-"`                //启动时间
+	Cache              syncmap.MapExceeded[string, any] `json:"-"`                //缓存
+	ReplyT             time.Time                        `json:"-"`                //websocket最新的响应时间
+	EntryDanmuT        time.Time                        `json:"-"`                //进入房间弹幕的最后发送时间
 	l                  sync.RWMutex                     `json:"-"`
 	buf                []byte                           `json:"-"`
 }
@@ -123,6 +125,7 @@ func (t *Common) MarshalJSON() ([]byte, error) {
 		UpUid         int       `json:"upUid"`
 		Rev           float64   `json:"rev"`
 		Watched       int       `json:"watched"`
+		TotalViewMin  int       `json:"totalViewMin"`
 		OnlineNum     int       `json:"onlineNum"`
 		GuardNum      int       `json:"guardNum"`
 		ParentAreaID  int       `json:"parentAreaID"`
@@ -141,6 +144,7 @@ func (t *Common) MarshalJSON() ([]byte, error) {
 		UpUid:         t.UpUid,
 		Rev:           math.Round(t.Rev*100) / 100,
 		Watched:       t.Watched,
+		TotalViewMin:  t.TotalViewMin,
 		OnlineNum:     t.OnlineNum,
 		GuardNum:      t.GuardNum,
 		ParentAreaID:  t.ParentAreaID,
@@ -299,7 +303,9 @@ func (t *Common) Copy() *Common {
 		Rev:                t.Rev,
 		Renqi:              t.Renqi,
 		Watched:            t.Watched,
+		TotalViewMin:       t.TotalViewMin,
 		OnlineNum:          t.OnlineNum,
+		OnlineNumUpdated:   t.OnlineNumUpdated,
 		GuardNum:           t.GuardNum,
 		ParentAreaID:       t.ParentAreaID,
 		AreaID:             t.AreaID,
@@ -432,8 +438,8 @@ func (t *Common) Init() *Common {
 				t.Danmu_Main_mq.PushSign(`new day`)
 				old = now
 			}
-			t.Danmu_Main_mq.PushSign(`every100s`)
-			time.Sleep(time.Second * time.Duration(100))
+			t.Danmu_Main_mq.PushSign(`every60s`)
+			time.Sleep(time.Minute)
 		}
 	}()
 	t.ReqPool = pool.New(

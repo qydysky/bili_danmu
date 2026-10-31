@@ -420,6 +420,28 @@ func (t replyF) anchor_lot_award(s []byte) {
 	msglog.BaseAdd("房").LShow(false).I(sh...)
 }
 
+// Msg-在线人数ONLINE_RANK_COUNT
+func (t replyF) OnlineRankCount(s []byte) {
+	j := struct {
+		Data struct {
+			Count       int `json:"count"`
+			OnlineCount int `json:"online_count"`
+		} `json:"data"`
+	}{}
+
+	if e := json.Unmarshal(s, &j); e != nil {
+		msglog.BaseAdd("房", "在线人数").E(e)
+		return
+	}
+
+	if j.Data.OnlineCount != 0 {
+		t.Common.OnlineNum = j.Data.OnlineCount
+	} else if j.Data.Count != 0 {
+		t.Common.OnlineNum = j.Data.Count
+	}
+	t.Common.OnlineNumUpdated = time.Now()
+}
+
 // msg-通常是大航海购买续费
 func (t replyF) user_toast_msg(s []byte) {
 	msglog := msglog.BaseAdd("礼", "大航海")
@@ -1101,6 +1123,7 @@ func (t replyF) live(s []byte) {
 		}
 		{
 			t.Rev = 0.0                    //营收
+			t.TotalViewMin = 0.0           //观时
 			t.Liveing = true               //直播i标志
 			t.Live_Start_Time = time.Now() //开播h时间
 		}
