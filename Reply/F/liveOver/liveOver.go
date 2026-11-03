@@ -18,7 +18,7 @@ func sumup(ctx context.Context, ptr *c.Common) (any, error) {
 	} else {
 		var pperm float64
 		var yperm float64
-		if dura == 0 {
+		if dura != 0 {
 			pperm = float64(ptr.Watched) / float64(dura/time.Minute)
 			yperm = float64(ptr.Rev) / float64(dura/time.Minute)
 		}
