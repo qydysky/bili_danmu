@@ -79,7 +79,7 @@ var Msg_map = map[string]func(replyF, []byte){
 	`WIDGET_BANNER`:                        nil,                                 //每日任务
 	`ROOM_ADMINS`:                          nil,                                 //房管列表
 	`ONLINE_RANK_TOP3`:                     nil,
-	`ONLINE_RANK_COUNT`:                    nil,
+	`ONLINE_RANK_COUNT`:                    replyF.OnlineRankCount, //在线人数
 	`ONLINE_RANK_V2`:                       nil,
 	`ONLINE_RANK_V3`:                       nil,
 	"TRADING_SCORE":                        nil, //每日任务
