@@ -1,6 +1,7 @@
 package decoder
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -36,39 +37,44 @@ var (
 	}](`ActFmp4`)
 )
 
-var boxs map[string]bool
+type boxInfo struct {
+	noHaveChildBox bool
+	needToSkip     bool
+	nextBox        string
+}
+
+var boxs map[string]boxInfo
 
 func init() {
-	boxs = make(map[string]bool)
+	boxs = make(map[string]boxInfo)
 	//noHaveChildBox? || need to skip?
-	boxs["ftyp"] = true
-	boxs["moov"] = false
-	boxs["mvhd"] = true
-	boxs["trak"] = false
-	boxs["tkhd"] = true
-	boxs["mdia"] = false
-	boxs["mdhd"] = true
-	boxs["hdlr"] = true
-	boxs["minf"] = false
-	boxs["vmhd"] = true
-	boxs["dinf"] = true
-	boxs["smhd"] = true
-	boxs["stbl"] = false
-	boxs["stsd"] = true
-	boxs["stts"] = true
-	boxs["stss"] = true
-	boxs["stsc"] = true
-	boxs["stsz"] = true
-	boxs["stco"] = true
-	boxs["stco"] = true
-	boxs["mvex"] = false || true
-	boxs["moof"] = false
-	boxs["mfhd"] = true
-	boxs["traf"] = false
-	boxs["tfhd"] = true
-	boxs["tfdt"] = true
-	boxs["trun"] = true
-	boxs["mdat"] = true
+	boxs["ftyp"] = boxInfo{noHaveChildBox: true}
+	boxs["moov"] = boxInfo{noHaveChildBox: false}
+	boxs["mvhd"] = boxInfo{noHaveChildBox: true}
+	boxs["trak"] = boxInfo{noHaveChildBox: false}
+	boxs["tkhd"] = boxInfo{noHaveChildBox: true}
+	boxs["mdia"] = boxInfo{noHaveChildBox: false}
+	boxs["mdhd"] = boxInfo{noHaveChildBox: true}
+	boxs["hdlr"] = boxInfo{noHaveChildBox: true}
+	boxs["minf"] = boxInfo{noHaveChildBox: false}
+	boxs["vmhd"] = boxInfo{noHaveChildBox: true}
+	boxs["dinf"] = boxInfo{noHaveChildBox: true}
+	boxs["smhd"] = boxInfo{noHaveChildBox: true}
+	boxs["stbl"] = boxInfo{noHaveChildBox: false}
+	boxs["stsd"] = boxInfo{noHaveChildBox: true}
+	boxs["stts"] = boxInfo{noHaveChildBox: true}
+	boxs["stss"] = boxInfo{noHaveChildBox: true}
+	boxs["stsc"] = boxInfo{noHaveChildBox: true}
+	boxs["stsz"] = boxInfo{noHaveChildBox: true}
+	boxs["stco"] = boxInfo{noHaveChildBox: true}
+	boxs["mvex"] = boxInfo{noHaveChildBox: false, needToSkip: true, nextBox: "moof"}
+	boxs["moof"] = boxInfo{noHaveChildBox: false}
+	boxs["mfhd"] = boxInfo{noHaveChildBox: true}
+	boxs["traf"] = boxInfo{noHaveChildBox: false}
+	boxs["tfhd"] = boxInfo{noHaveChildBox: true}
+	boxs["tfdt"] = boxInfo{noHaveChildBox: true}
+	boxs["trun"] = boxInfo{noHaveChildBox: true}
+	boxs["mdat"] = boxInfo{noHaveChildBox: true}
 }
 
 type ie struct {
@@ -1333,14 +1339,17 @@ var (
 
 // buf can not mod until recycle
 func decode(buf []byte) (m *[]ie, recycle func(*[]ie), err error) {
-	var cu int
+	var (
+		cu         int
+		preBoxName string
+	)
 
 	m = iesPool.Get()
 	recycle = iesPool.Put
 	*m = (*m)[:0]
 
 	for cu < len(buf)-fmp4BoxLenSize-fmp4BoxNameSize {
-		boxName, i, e, E := searchBox(buf, &cu)
+		boxName, i, e, E := searchBox(buf, &cu, preBoxName)
 		if E != nil {
 			if errors.Is(E, io.EOF) {
 				if len(*m) == 0 {
@@ -1350,6 +1359,8 @@ func decode(buf []byte) (m *[]ie, recycle func(*[]ie), err error) {
 			}
 			err = E
 			return
+		} else {
+			preBoxName = boxName
 		}
 
 		if cu := len(*m); cu < cap(*m) {
@@ -1370,19 +1381,32 @@ func decode(buf []byte) (m *[]ie, recycle func(*[]ie), err error) {
 }
 
 // buf can not mod
-func searchBox(buf []byte, cu *int) (boxName string, i int, e int, err error) {
+func searchBox(buf []byte, cu *int, preBox string) (boxName string, i int, e int, err error) {
 	i = *cu
 	e = i + int(F.Btoiv2(buf, *cu, fmp4BoxLenSize))
 	boxName = unsafe.B2S(buf[*cu+fmp4BoxLenSize : *cu+fmp4BoxLenSize+fmp4BoxNameSize])
-	isPureBoxOrNeedSkip, ok := boxs[boxName]
+	boxinfo, ok := boxs[boxName]
 	if !ok {
-		err = ActFmp4Decode.ErrUnkownBox.WithInfo(fmt.Sprintf("未知包: hex(%x%x%x%x) %s", boxName[0], boxName[1], boxName[2], boxName[3], boxName))
-	} else if e > len(buf) {
+		// 发现未知包，尝试查找下一个有效包
+		if preboxinfo, ok := boxs[preBox]; !ok || preboxinfo.nextBox == `` {
+			err = ActFmp4Decode.ErrUnkownBox.WithInfo(fmt.Sprintf("未知包: hex(%x%x%x%x)", boxName[0], boxName[1], boxName[2], boxName[3]))
+			return
+		} else if nextBoxIndex := bytes.Index(buf[*cu:], unsafe.S2B(preboxinfo.nextBox)); nextBoxIndex == -1 {
+			err = ActFmp4Decode.ErrUnkownBox.WithInfo(fmt.Sprintf("未知包: hex(%x%x%x%x)", boxName[0], boxName[1], boxName[2], boxName[3]))
+			return
+		} else {
+			boxName = preboxinfo.nextBox
+			*cu += nextBoxIndex - fmp4BoxLenSize
+			i = *cu
+			e = i + int(F.Btoiv2(buf, *cu, fmp4BoxLenSize))
+		}
+	}
+	if e > len(buf) {
 		err = io.EOF
-	} else if isPureBoxOrNeedSkip {
+	} else if boxinfo.needToSkip || boxinfo.noHaveChildBox {
 		*cu = e
 	} else {
-		*cu += 8
+		*cu += fmp4BoxLenSize + fmp4BoxNameSize
 	}
 	return
 }
